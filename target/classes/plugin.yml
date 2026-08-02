@@ -1,0 +1,30 @@
+name: Mainplugins
+version: 1.0-SNAPSHOT
+main: elo.mainplugins.Mainplugins
+api-version: '1.20'
+
+commands:
+  menu:
+    description: Panel pomocy
+  quest:
+    description: Zadania
+  tab:
+    description: Tablist
+  itemy:
+    description: Schowek
+  narzedzia:
+    description: Narzedzia
+  sklep:
+    description: Sklep
+  is:
+    description: Wyspa
+  home:
+    description: Dom / Wyspa
+  sell:
+    description: Sprzedaj trzymany przedmiot
+  sellall:
+    description: Sprzedaj wszystkie przedmioty tego typu z ekwipunku
+  targ:
+    description: Otwórz targ graczy
+  adminhelp:
+    description: Wyświetl pełny panel informacyjny o pluginach i funkcjach serwera

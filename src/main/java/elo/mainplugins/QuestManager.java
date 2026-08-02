@@ -21,8 +21,12 @@ public class QuestManager implements Listener {
     private final Map<UUID, Map<String, Set<Integer>>> postepyGraczy = new HashMap<>();
     private final Map<String, List<Quest>> questyKategorii = new HashMap<>();
 
-    // Siatka 4x7 = 28 slotów. Górny rząd (0-8) jest pusty dla idealnej symetrii.
+    // Zmienna zapamiętująca czy gracz wszedł z poziomu /menu
+    private final Map<UUID, Boolean> otwartoZMenu = new HashMap<>();
+
+    // Definiujemy 35 slotów na środku (7 kolumn x 5 rzędów)
     private final int[] slotySrodkowe = {
+            1, 2, 3, 4, 5, 6, 7,
             10, 11, 12, 13, 14, 15, 16,
             19, 20, 21, 22, 23, 24, 25,
             28, 29, 30, 31, 32, 33, 34,
@@ -34,7 +38,7 @@ public class QuestManager implements Listener {
     }
 
     private void zaladujQuesty() {
-        // GÓRNICTWO - 40 questów (pokazuje, jak działa przejście na 2 stronę przy 28 questach na stronę)
+        // GÓRNICTWO - 40 questów (pokazuje paginację)
         List<Quest> gornictwo = new ArrayList<>();
         for (int i = 1; i <= 40; i++) {
             gornictwo.add(new Quest(i, "Górnik " + i, Material.COBBLESTONE, 64, new ItemStack(Material.DIAMOND, 1), "1x Diament"));
@@ -55,7 +59,7 @@ public class QuestManager implements Listener {
                 new Quest(3, "Nocny Marek", Material.STRING, 10, new ItemStack(Material.EXPERIENCE_BOTTLE, 16), "16x Butelka EXP")
         ));
 
-        // Puste listy dla kategorii narzędziowych
+        // Inicjalizacja pustych list dla nowych kategorii narzędziowych, aby nie rzucały błędem
         questyKategorii.put("Mistrz Kilofa", new ArrayList<>());
         questyKategorii.put("Mistrz Siekiery", new ArrayList<>());
         questyKategorii.put("Mistrz Miecza", new ArrayList<>());
@@ -63,10 +67,13 @@ public class QuestManager implements Listener {
         questyKategorii.put("Mistrz Łopaty", new ArrayList<>());
     }
 
-    public void otworzMenuQuestow(Player player) {
+    // Dodano obsługę argumentu zMenu
+    public void otworzMenuQuestow(Player player, boolean zMenu) {
+        otwartoZMenu.put(player.getUniqueId(), zMenu);
         Inventory gui = Bukkit.createInventory(null, 54, Component.text("Kategorie Zadań", NamedTextColor.DARK_GREEN, TextDecoration.BOLD));
         wypelnijTlo(gui);
 
+        // Rząd 2 (Sloty 10-16)
         gui.setItem(10, stworzIkoneKategorii(Material.IRON_PICKAXE, "Górnictwo", "Zadania w kopalni"));
         gui.setItem(11, stworzIkoneKategorii(Material.WHEAT, "Hodowla", "Zadania rolnicze"));
         gui.setItem(12, stworzIkoneKategorii(Material.BOW, "Łowca", "Zadania z potworami"));
@@ -75,6 +82,7 @@ public class QuestManager implements Listener {
         gui.setItem(15, stworzIkoneKategorii(Material.BREWING_STAND, "Alchemik", "Warzenie mikstur"));
         gui.setItem(16, stworzIkoneKategorii(Material.ANVIL, "Kowal", "Tworzenie narzędzi"));
 
+        // Rząd 3 (Sloty 19-25)
         gui.setItem(19, stworzIkoneKategorii(Material.COOKED_BEEF, "Kucharz", "Zadania kulinarne"));
         gui.setItem(20, stworzIkoneKategorii(Material.BRICKS, "Budowniczy", "Budowa wyspy"));
         gui.setItem(21, stworzIkoneKategorii(Material.ENCHANTING_TABLE, "Mag", "Zaklęcia"));
@@ -83,6 +91,7 @@ public class QuestManager implements Listener {
         gui.setItem(24, stworzIkoneKategorii(Material.OAK_SAPLING, "Ogrodnik", "Sadzenie drzew"));
         gui.setItem(25, stworzIkoneKategorii(Material.DIAMOND, "Jubiler", "Cenne kruszce"));
 
+        // Rząd 4 (Sloty 28-34)
         gui.setItem(28, stworzIkoneKategorii(Material.GOLD_NUGGET, "Złodziej", "Kradzież (Zadania)"));
         gui.setItem(29, stworzIkoneKategorii(Material.DIAMOND_SWORD, "Wojownik", "Walka PvP/PvE"));
         gui.setItem(30, stworzIkoneKategorii(Material.EMERALD, "Handlarz", "Wymiana handlowa"));
@@ -91,15 +100,19 @@ public class QuestManager implements Listener {
         gui.setItem(33, stworzIkoneKategorii(Material.BONE_MEAL, "Zbieracz", "Zbieranie surowców"));
         gui.setItem(34, stworzIkoneKategorii(Material.NETHER_STAR, "Mistrz", "Zadania elitarne"));
 
-        // KATEGORIE NARZĘDZIOWE
+        // Rząd 5 (Przedostatnia linia) - KATEGORIE NARZĘDZIOWE (wyśrodkowane: 38, 39, 40, 41, 42)
         gui.setItem(38, stworzIkoneKategorii(Material.DIAMOND_PICKAXE, "Mistrz Kilofa", "Zadania dla kilofa"));
         gui.setItem(39, stworzIkoneKategorii(Material.DIAMOND_AXE, "Mistrz Siekiery", "Zadania dla siekiery"));
         gui.setItem(40, stworzIkoneKategorii(Material.DIAMOND_SWORD, "Mistrz Miecza", "Zadania dla miecza"));
         gui.setItem(41, stworzIkoneKategorii(Material.DIAMOND_HOE, "Mistrz Motyki", "Zadania dla motyki"));
         gui.setItem(42, stworzIkoneKategorii(Material.DIAMOND_SHOVEL, "Mistrz Łopaty", "Zadania dla łopaty"));
 
-        // Przycisk wyjścia na środku dołu
-        gui.setItem(49, stworzPrzycisk(Material.BARRIER, "Zamknij Menu", NamedTextColor.RED));
+        // Rząd 6 (Przycisk wyjścia na środku) dostosowany pod menu
+        if (zMenu) {
+            gui.setItem(49, stworzPrzycisk(Material.NETHER_STAR, "« Wróć do Menu głównego", NamedTextColor.RED));
+        } else {
+            gui.setItem(49, stworzPrzycisk(Material.BARRIER, "Zamknij Menu", NamedTextColor.RED));
+        }
 
         player.openInventory(gui);
     }
@@ -114,8 +127,8 @@ public class QuestManager implements Listener {
         Set<Integer> postepy = postepyGraczy.computeIfAbsent(player.getUniqueId(), k -> new HashMap<>())
                 .computeIfAbsent(nazwaKategorii, k -> new HashSet<>());
 
-        int startIndex = strona * 28;
-        for (int i = 0; i < 28; i++) {
+        int startIndex = strona * 35;
+        for (int i = 0; i < 35; i++) {
             if (startIndex + i < questy.size()) {
                 Quest q = questy.get(startIndex + i);
                 boolean ukonczony = postepy.contains(q.id);
@@ -125,7 +138,7 @@ public class QuestManager implements Listener {
 
         gui.setItem(49, stworzPrzycisk(Material.DARK_OAK_DOOR, "Powrót do Kategorii", NamedTextColor.GOLD));
         if (strona > 0) gui.setItem(45, stworzPrzycisk(Material.ARROW, "Poprzednia Strona", NamedTextColor.YELLOW));
-        if (startIndex + 28 < questy.size()) gui.setItem(53, stworzPrzycisk(Material.ARROW, "Następna Strona", NamedTextColor.YELLOW));
+        if (startIndex + 35 < questy.size()) gui.setItem(53, stworzPrzycisk(Material.ARROW, "Następna Strona", NamedTextColor.YELLOW));
 
         player.openInventory(gui);
     }
@@ -186,7 +199,13 @@ public class QuestManager implements Listener {
         int slot = event.getRawSlot();
 
         if (title.equals("Kategorie Zadań")) {
-            if (slot == 49) player.closeInventory();
+            if (slot == 49) {
+                player.closeInventory();
+                // Sprawdzamy czy gracz wszedł z menu, jeśli tak - cofamy go tam
+                if (otwartoZMenu.getOrDefault(player.getUniqueId(), false)) {
+                    player.performCommand("menu");
+                }
+            }
             else if (event.getCurrentItem() != null && event.getCurrentItem().getType() != Material.GRAY_STAINED_GLASS_PANE) {
                 String kategoria = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(event.getCurrentItem().getItemMeta().displayName());
                 otworzKategorie(player, kategoria, 0);
@@ -198,14 +217,17 @@ public class QuestManager implements Listener {
             int strona = Integer.parseInt(parts[0].replace("Strona ", "").trim()) - 1;
             String kategoria = parts[1].trim();
 
-            if (slot == 49) otworzMenuQuestow(player);
+            if (slot == 49) {
+                // Powrót do głównych kategorii, przekazując pamięć o zMenu
+                otworzMenuQuestow(player, otwartoZMenu.getOrDefault(player.getUniqueId(), false));
+            }
             else if (slot == 53 && event.getCurrentItem() != null) otworzKategorie(player, kategoria, strona + 1);
             else if (slot == 45 && event.getCurrentItem() != null) otworzKategorie(player, kategoria, strona - 1);
             else {
                 for (int i = 0; i < slotySrodkowe.length; i++) {
                     if (slot == slotySrodkowe[i]) {
                         List<Quest> questy = questyKategorii.get(kategoria);
-                        int questIndex = (strona * 28) + i;
+                        int questIndex = (strona * 35) + i;
                         if (questIndex < questy.size()) {
                             zrealizujQuest(player, kategoria, questy.get(questIndex), strona);
                         }

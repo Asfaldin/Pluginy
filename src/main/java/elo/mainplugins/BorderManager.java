@@ -10,12 +10,11 @@ import org.bukkit.plugin.Plugin;
 
 public class BorderManager implements Listener {
 
-    private final Plugin plugin;
+    private final Plugin plugin; // tirplesperm
 
     public BorderManager(Plugin plugin) {
         this.plugin = plugin;
     }
-
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         wyczyscCzerwonyEkranBorderu(event.getPlayer());

@@ -71,6 +71,14 @@ public class IslandManager implements Listener, IslandService {
         // IslandSummary) - skyblock nie ma i nie powinien mieć zależności na moduł spawnerów.
         private final Map<String, Integer> spawnerLevels = new HashMap<>();
 
+        // Własny punkt teleportu ustawiony przez /is sethome - null dopóki gracz go nie
+        // ustawi, wtedy teleportDoWyspy() używa domyślnego środka wyspy zamiast tego.
+        private Double homeX;
+        private Double homeY;
+        private Double homeZ;
+        private float homeYaw;
+        private float homePitch;
+
         public IslandData(int id, UUID ownerUUID, int centerX, int centerZ, int borderSize) {
             this.id = id;
             this.ownerUUID = ownerUUID;
@@ -99,6 +107,20 @@ public class IslandManager implements Listener, IslandService {
         public Map<String, Integer> getSpawnerLevels() { return spawnerLevels; }
         public int getSpawnerLevel(String typ) { return spawnerLevels.getOrDefault(typ, 1); }
         public void setSpawnerLevel(String typ, int level) { spawnerLevels.put(typ, level); }
+
+        public boolean hasCustomHome() { return homeX != null; }
+        public double getHomeX() { return homeX; }
+        public double getHomeY() { return homeY; }
+        public double getHomeZ() { return homeZ; }
+        public float getHomeYaw() { return homeYaw; }
+        public float getHomePitch() { return homePitch; }
+        public void setHome(double x, double y, double z, float yaw, float pitch) {
+            this.homeX = x;
+            this.homeY = y;
+            this.homeZ = z;
+            this.homeYaw = yaw;
+            this.homePitch = pitch;
+        }
 
         // Rola WYŁĄCZNIE dla członków spoza właściciela - właściciel nigdy nie jest kluczem
         // w tej mapie, jego status wynika zawsze z porównania UUID z ownerUUID (patrz mozeZarzadzac).
@@ -219,6 +241,16 @@ public class IslandManager implements Listener, IslandService {
                 }
             }
 
+            if (configWysp.contains(path + "home.x")) {
+                data.setHome(
+                        configWysp.getDouble(path + "home.x"),
+                        configWysp.getDouble(path + "home.y"),
+                        configWysp.getDouble(path + "home.z"),
+                        (float) configWysp.getDouble(path + "home.yaw", 0),
+                        (float) configWysp.getDouble(path + "home.pitch", 0)
+                );
+            }
+
             for (String memberStr : configWysp.getStringList(path + "czlonkowie")) {
                 try {
                     UUID memberUUID = UUID.fromString(memberStr);
@@ -260,6 +292,14 @@ public class IslandManager implements Listener, IslandService {
             configWysp.set(path + "allowPvP", data.isAllowPvP());
             configWysp.set(path + "allowBreak", data.isAllowBreak());
             configWysp.set(path + "visualBorder", data.isVisualBorder());
+
+            if (data.hasCustomHome()) {
+                configWysp.set(path + "home.x", data.getHomeX());
+                configWysp.set(path + "home.y", data.getHomeY());
+                configWysp.set(path + "home.z", data.getHomeZ());
+                configWysp.set(path + "home.yaw", data.getHomeYaw());
+                configWysp.set(path + "home.pitch", data.getHomePitch());
+            }
 
             for (Map.Entry<String, Integer> lvl : data.getSpawnerLevels().entrySet()) {
                 configWysp.set(path + "spawnerLevels." + lvl.getKey(), lvl.getValue());
@@ -308,6 +348,8 @@ public class IslandManager implements Listener, IslandService {
             case "promote" -> zmienRoleKomenda(player, args, IslandRole.ADMIN);
             case "demote" -> zmienRoleKomenda(player, args, IslandRole.CZLONEK);
             case "remove" -> usunCzlonkaKomenda(player, args);
+            case "home" -> teleportDoWyspy(player);
+            case "sethome" -> ustawDomek(player);
             default -> {
                 if (!playerIslandMap.containsKey(uuid)) {
                     stworzWyspe(player, zMenu);
@@ -678,10 +720,124 @@ public class IslandManager implements Listener, IslandService {
             return;
         }
 
-        Location loc = new Location(skyblockWorld, data.getCenterX() + 0.5, 101, data.getCenterZ() + 0.5);
+        // Domyślnie środek wyspy (ten sam punkt, w który wklejany jest schemat startowy)
+        // - jeśli gracz ustawił własny punkt przez /is sethome, używamy tego zamiast.
+        Location loc = data.hasCustomHome()
+                ? new Location(skyblockWorld, data.getHomeX(), data.getHomeY(), data.getHomeZ(), data.getHomeYaw(), data.getHomePitch())
+                : new Location(skyblockWorld, data.getCenterX() + 0.5, 101, data.getCenterZ() + 0.5);
+        zabezpieczPunktSpawnu(loc);
         player.teleport(loc);
         ustawWizualnyBorder(player, data);
         player.sendMessage(Component.text("Przeteleportowano na wyspę!", NamedTextColor.AQUA));
+    }
+
+    // Ile bloków w dół szukamy gruntu pod punktem teleportu, zanim uznamy że tam
+    // po prostu jest za głęboka dziura i trzeba szukać gdzie indziej.
+    private static final int MAX_GLEBOKOSC_SZUKANIA_W_DOL = 10;
+    // Promień (we wszystkich kierunkach) szukania najbliższego bloku, gdy w dół nic nie ma.
+    private static final int PROMIEN_SZUKANIA_OBOK = 5;
+
+    /**
+     * Gracz mógł wyczyścić cały teren pod punktem teleportu (ręcznie albo np. wybuchem
+     * TNT), albo grunt wyspy po prostu leży niżej niż spodziewane Y=101 - bez tego
+     * gracz teleportowałby się w pustkę i spadał aż do obrażeń od "pustki" (void).
+     * Kolejność prób: 1) grunt prosto pod celem (do 10 bloków w dół) - typowy przypadek,
+     * najtańszy; 2) najbliższy solidny blok w promieniu 5 dookoła, gdy w dół jest za
+     * głęboko; 3) w ostateczności - postaw ziemię dokładnie w oryginalnym miejscu.
+     */
+    private void zabezpieczPunktSpawnu(Location loc) {
+        Location wDol = szukajGruntuWDol(loc, MAX_GLEBOKOSC_SZUKANIA_W_DOL);
+        if (wDol != null) {
+            przeniesXYZ(loc, wDol);
+            return;
+        }
+
+        Location obok = szukajNajblizszegoGruntu(loc, PROMIEN_SZUKANIA_OBOK);
+        if (obok != null) {
+            przeniesXYZ(loc, obok);
+            return;
+        }
+
+        loc.clone().subtract(0, 1, 0).getBlock().setType(Material.DIRT);
+    }
+
+    /** Nadpisuje X/Y/Z celu znalezioną lokalizacją, zachowując oryginalny kierunek patrzenia (yaw/pitch). */
+    private void przeniesXYZ(Location cel, Location znaleziona) {
+        cel.setX(znaleziona.getX());
+        cel.setY(znaleziona.getY());
+        cel.setZ(znaleziona.getZ());
+    }
+
+    /** Pierwszy solidny blok prosto pod `loc`, maks. `maxGlebokosc` bloków w dół - albo null, jeśli nic nie ma. */
+    private Location szukajGruntuWDol(Location loc, int maxGlebokosc) {
+        World world = loc.getWorld();
+        int x = loc.getBlockX();
+        int z = loc.getBlockZ();
+        int startY = loc.getBlockY();
+
+        for (int dy = 1; dy <= maxGlebokosc; dy++) {
+            int y = startY - dy;
+            if (y < world.getMinHeight()) break;
+            if (world.getBlockAt(x, y, z).getType().isSolid()) {
+                return new Location(world, x + 0.5, y + 1, z + 0.5);
+            }
+        }
+        return null;
+    }
+
+    /** Najbliższy (w linii prostej) solidny blok z dwoma wolnymi kratkami nad sobą, w promieniu `promien` we wszystkich kierunkach - albo null. */
+    private Location szukajNajblizszegoGruntu(Location loc, int promien) {
+        World world = loc.getWorld();
+        int cx = loc.getBlockX();
+        int cy = loc.getBlockY();
+        int cz = loc.getBlockZ();
+
+        Location najlepsza = null;
+        int najlepszyDystansKw = Integer.MAX_VALUE;
+
+        for (int dx = -promien; dx <= promien; dx++) {
+            for (int dy = -promien; dy <= promien; dy++) {
+                for (int dz = -promien; dz <= promien; dz++) {
+                    int x = cx + dx, y = cy + dy, z = cz + dz;
+                    if (y < world.getMinHeight() || y + 2 >= world.getMaxHeight()) continue;
+                    if (!world.getBlockAt(x, y, z).getType().isSolid()) continue;
+                    if (!world.getBlockAt(x, y + 1, z).getType().isAir()) continue;
+                    if (!world.getBlockAt(x, y + 2, z).getType().isAir()) continue;
+
+                    int dystansKw = dx * dx + dy * dy + dz * dz;
+                    if (dystansKw < najlepszyDystansKw) {
+                        najlepszyDystansKw = dystansKw;
+                        najlepsza = new Location(world, x + 0.5, y + 1, z + 0.5);
+                    }
+                }
+            }
+        }
+        return najlepsza;
+    }
+
+    /**
+     * /is sethome - nadpisuje domyślny punkt teleportu (środek wyspy) własnym,
+     * ustawionym tam, gdzie gracz akurat stoi. To ustawienie WSPÓLNE dla całej wyspy
+     * (dotyczy każdego, kto potem wpisze /is albo /is home), więc - tak jak border/PvP/
+     * ulepszenia - może to zrobić tylko właściciel albo admin (wlasnaWyspaJakoZarzadca),
+     * nie każdy zwykły członek. Wymagamy też, żeby stał na SWOJEJ wyspie - bez tego
+     * dałoby się ustawić dom gdziekolwiek w świecie (np. na cudzej wyspie).
+     */
+    private void ustawDomek(Player player) {
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
+        if (data == null) return;
+
+        Location loc = player.getLocation();
+        if (loc.getWorld() == null || !loc.getWorld().equals(skyblockWorld)
+                || Math.abs(loc.getBlockX() - data.getCenterX()) > data.getBorderSize()
+                || Math.abs(loc.getBlockZ() - data.getCenterZ()) > data.getBorderSize()) {
+            player.sendMessage(Component.text("Musisz stać na własnej wyspie, żeby tu ustawić punkt teleportu!", NamedTextColor.RED));
+            return;
+        }
+
+        data.setHome(loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch());
+        zapiszWyspy();
+        player.sendMessage(Component.text("Ustawiono nowy punkt teleportacji (/is home) na Twojej wyspie!", NamedTextColor.GREEN));
     }
 
     private void ustawWizualnyBorder(Player player, IslandData data) {

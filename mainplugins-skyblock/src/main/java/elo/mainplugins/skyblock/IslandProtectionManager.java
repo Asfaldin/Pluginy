@@ -3,6 +3,7 @@ package elo.mainplugins.skyblock;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
@@ -10,13 +11,17 @@ import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.util.Vector;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -64,6 +69,61 @@ public class IslandProtectionManager implements Listener {
             event.setCancelled(true);
             event.getPlayer().sendMessage(Component.text("Nie możesz stawiać bloków na cudzej wyspie!", NamedTextColor.RED));
         }
+    }
+
+    /**
+     * Tłok potrafi pchnąć blok poza granicę wyspy bez wywołania BlockPlaceEvent
+     * (silnik gry po prostu przesuwa istniejący blok) - onBlockPlace/onBlockBreak
+     * wyżej w ogóle tego nie widzą. Tutaj sprawdzamy NOWĄ pozycję każdego
+     * przesuwanego bloku: jeśli którykolwiek wylądowałby poza granicami
+     * JAKIEJKOLWIEK wyspy (w "pustce" między wyspami), odwołujemy cały ruch
+     * tłoka - dotyczy to również właściciela wyspy, nie tylko gości.
+     *
+     * Osobny przypadek: tłok potrafi też wypchnąć STOJĄCEGO GRACZA (nie blok) -
+     * np. gracz stoi tuż przed pchanym rzędem bloków. To zupełnie inny mechanizm
+     * gry niż przesuwanie bloków, więc sprawdzamy go osobno w sprawdzGraczaPodPchnieciem().
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onPistonExtend(BlockPistonExtendEvent event) {
+        if (!islandManager.jestSwiatemWysp(event.getBlock().getWorld())) return;
+
+        Vector kierunek = event.getDirection().getDirection();
+
+        for (Block block : event.getBlocks()) {
+            Location docelowaLokalizacja = block.getLocation().add(kierunek);
+            if (islandManager.znajdzWyspePod(docelowaLokalizacja) == null) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+
+        if (sprawdzGraczaPodPchnieciem(event, kierunek)) {
+            event.setCancelled(true);
+        }
+    }
+
+    /**
+     * Sprawdza miejsce, w które tłok właśnie wepchnie się (koniec łańcucha pchanych
+     * bloków + jedno pole "na przedzie", gdzie może stać gracz czekający na pchnięcie).
+     * Jeśli w którymś z tych miejsc stoi gracz, a pchnięcie wyrzuciłoby go poza
+     * granicę jakiejkolwiek wyspy - zwraca true, żeby cały ruch tłoka odwołać.
+     */
+    private boolean sprawdzGraczaPodPchnieciem(BlockPistonExtendEvent event, Vector kierunek) {
+        List<Block> sprawdzaneMiejsca = new ArrayList<>(event.getBlocks());
+        sprawdzaneMiejsca.add(event.getBlock().getRelative(event.getDirection(), sprawdzaneMiejsca.size() + 1));
+
+        for (Block miejsce : sprawdzaneMiejsca) {
+            Location srodekBloku = miejsce.getLocation().add(0.5, 0.5, 0.5);
+            for (Entity entity : miejsce.getWorld().getNearbyEntities(srodekBloku, 0.6, 1.2, 0.6)) {
+                if (!(entity instanceof Player player)) continue;
+
+                Location docelowaGracza = player.getLocation().add(kierunek);
+                if (islandManager.znajdzWyspePod(docelowaGracza) == null) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     @EventHandler(ignoreCancelled = true)

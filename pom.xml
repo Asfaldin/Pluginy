@@ -39,6 +39,8 @@
         <module>mainplugins-teleport</module>
         <module>mainplugins-announcer</module>
         <module>mainplugins-crates</module>
+        <module>mainplugins-farming</module>
+        <module>mainplugins-spawners</module>
     </modules>
 
     <properties>

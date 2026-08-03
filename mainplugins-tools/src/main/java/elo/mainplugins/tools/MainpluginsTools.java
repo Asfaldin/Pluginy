@@ -2,6 +2,7 @@ package elo.mainplugins.tools;
 
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.tools.pickaxe.PickaxeSkillManager;
+import elo.mainplugins.tools.special.NiszczycielManager;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -15,6 +16,9 @@ public final class MainpluginsTools extends JavaPlugin {
 
         PickaxeSkillManager pickaxeSkillManager = new PickaxeSkillManager(this, CoreAPI.getEconomyService());
         getServer().getPluginManager().registerEvents(pickaxeSkillManager, this);
+
+        NiszczycielManager niszczycielManager = new NiszczycielManager(this);
+        getServer().getPluginManager().registerEvents(niszczycielManager, this);
 
         if (getCommand("narzedzia") != null) {
             getCommand("narzedzia").setExecutor((sender, command, label, args) -> {

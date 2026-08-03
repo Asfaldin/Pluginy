@@ -1,0 +1,6 @@
+name: MainpluginsSpawners
+version: ${project.version}
+main: elo.mainplugins.spawners.MainpluginsSpawners
+api-version: '1.20'
+depend: [MainpluginsCore]
+softdepend: [MainpluginsSkyblock]

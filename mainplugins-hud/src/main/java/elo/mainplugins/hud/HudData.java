@@ -33,9 +33,9 @@ final class HudData {
     );
 
     private static final List<IslandSummary> FAKE_TOP_WYSP = List.of(
-            new IslandSummary(null, "Steve", 120, 3),
-            new IslandSummary(null, "Alex", 95, 2),
-            new IslandSummary(null, "Notch", 80, 1)
+            new IslandSummary(null, "Steve", 120, 3, java.util.Map.of()),
+            new IslandSummary(null, "Alex", 95, 2, java.util.Map.of()),
+            new IslandSummary(null, "Notch", 80, 1, java.util.Map.of())
     );
 
     static List<TopGracz> pobierzTopGraczy(EconomyService economy, int limit) {

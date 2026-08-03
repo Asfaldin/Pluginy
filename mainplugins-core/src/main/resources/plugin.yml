@@ -9,8 +9,19 @@ commands:
     permission: mainplugins.core.admin
   komendy:
     description: Lista wszystkich komend serwera, pogrupowana segmentami
+  moneyadd:
+    description: "[TEST] Dodaj kasę graczowi"
+    permission: mainplugins.core.moneyadd
+    usage: /<command> [gracz] <kwota>
+  moneyundo:
+    description: "[TEST] Wyzeruj kasę graczowi"
+    permission: mainplugins.core.moneyadd
+    usage: /<command> [gracz]
 
 permissions:
   mainplugins.core.admin:
     description: Dostęp do /adminhelp
+    default: op
+  mainplugins.core.moneyadd:
+    description: Dostęp do testowego doładowania/zerowania ekonomii
     default: op

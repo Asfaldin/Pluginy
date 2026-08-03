@@ -65,6 +65,12 @@ public class IslandManager implements Listener, IslandService {
         private boolean allowBreak = false;
         private boolean visualBorder = true; // Nowa zmienna do wizualnego borderu
 
+        // Poziom (domyślnie 1) każdego typu customowego spawnera wykupionego przez
+        // właściciela wyspy - klucz to SpawnerType.name() z mainplugins-spawners,
+        // ale IslandData celowo trzyma go jako zwykły String (patrz komentarz w
+        // IslandSummary) - skyblock nie ma i nie powinien mieć zależności na moduł spawnerów.
+        private final Map<String, Integer> spawnerLevels = new HashMap<>();
+
         public IslandData(int id, UUID ownerUUID, int centerX, int centerZ, int borderSize) {
             this.id = id;
             this.ownerUUID = ownerUUID;
@@ -89,7 +95,29 @@ public class IslandManager implements Listener, IslandService {
         public void setAllowBreak(boolean allowBreak) { this.allowBreak = allowBreak; }
         public boolean isVisualBorder() { return visualBorder; }
         public void setVisualBorder(boolean visualBorder) { this.visualBorder = visualBorder; }
+
+        public Map<String, Integer> getSpawnerLevels() { return spawnerLevels; }
+        public int getSpawnerLevel(String typ) { return spawnerLevels.getOrDefault(typ, 1); }
+        public void setSpawnerLevel(String typ, int level) { spawnerLevels.put(typ, level); }
     }
+
+    /** Identyfikator musi się zgadzać z SpawnerType.name() w mainplugins-spawners - patrz komentarz przy IslandData.spawnerLevels. */
+    private record SpawnerTypInfo(String id, String nazwaOdmieniona, Material ikona) {}
+
+    private static final int SPAWNER_MAX_LEVEL = 5;
+    private static final int SPAWNER_KOSZT_ZA_POZIOM = 5000;
+
+    // MUSZĄ się zgadzać 1:1 z tymi samymi literałami w SpawnerManager (mainplugins-spawners).
+    private static final String SUFIKS_ILOSC = "_ILOSC";
+    private static final String SUFIKS_SZYBKOSC = "_SZYBKOSC";
+
+    private static final List<SpawnerTypInfo> SPAWNER_TYPY = List.of(
+            new SpawnerTypInfo("PIGLIN", "Piglinów", Material.GOLD_NUGGET),
+            new SpawnerTypInfo("SHEEP", "Owiec", Material.WHITE_WOOL),
+            new SpawnerTypInfo("RABBIT", "Królików", Material.RABBIT_HIDE),
+            new SpawnerTypInfo("BREEZE", "Breeze'ów", Material.BREEZE_ROD),
+            new SpawnerTypInfo("GLOW_SQUID", "Świetlistych Kałamarnic", Material.GLOW_INK_SAC)
+    );
 
     private final Map<UUID, IslandData> islandDatabase = new HashMap<>();
     private final Map<UUID, UUID> playerIslandMap = new HashMap<>();
@@ -97,6 +125,8 @@ public class IslandManager implements Listener, IslandService {
     private final Set<UUID> pendingAddMember = new HashSet<>();
     // Zapamiętuje, który slot w GUI "Członkowie Wyspy" odpowiada za którego gracza
     private final Map<UUID, Map<Integer, UUID>> slotyCzlonkow = new HashMap<>();
+    // Który typ spawnera gracz aktualnie ma otwarty w podmenu "Spawner: X" (Ilość/Szybkość)
+    private final Map<UUID, String> otwartySpawnerTyp = new HashMap<>();
     private int nextIslandId = 0;
 
     private final File plikWysp;
@@ -171,6 +201,13 @@ public class IslandManager implements Listener, IslandService {
             data.setAllowBreak(configWysp.getBoolean(path + "allowBreak", false));
             data.setVisualBorder(configWysp.getBoolean(path + "visualBorder", true));
 
+            ConfigurationSection spawnerSekcja = configWysp.getConfigurationSection(path + "spawnerLevels");
+            if (spawnerSekcja != null) {
+                for (String typKey : spawnerSekcja.getKeys(false)) {
+                    data.setSpawnerLevel(typKey, spawnerSekcja.getInt(typKey, 1));
+                }
+            }
+
             for (String memberStr : configWysp.getStringList(path + "czlonkowie")) {
                 try {
                     UUID memberUUID = UUID.fromString(memberStr);
@@ -203,6 +240,10 @@ public class IslandManager implements Listener, IslandService {
             configWysp.set(path + "allowPvP", data.isAllowPvP());
             configWysp.set(path + "allowBreak", data.isAllowBreak());
             configWysp.set(path + "visualBorder", data.isVisualBorder());
+
+            for (Map.Entry<String, Integer> lvl : data.getSpawnerLevels().entrySet()) {
+                configWysp.set(path + "spawnerLevels." + lvl.getKey(), lvl.getValue());
+            }
 
             List<String> czlonkowie = new ArrayList<>();
             for (UUID member : data.getMembers()) czlonkowie.add(member.toString());
@@ -607,6 +648,18 @@ public class IslandManager implements Listener, IslandService {
         itemUpgradeSize.setItemMeta(metaSize);
         gui.setItem(11, itemUpgradeSize);
 
+        ItemStack itemDropy = new ItemStack(Material.SPAWNER);
+        ItemMeta metaDropy = itemDropy.getItemMeta();
+        metaDropy.displayName(Component.text("Wzrost Dropów", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
+        metaDropy.lore(List.of(
+                Component.text("Ulepszaj poziomy customowych spawnerów", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("postawionych na Twojej wyspie", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.empty(),
+                Component.text("Kliknij, aby otworzyć", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false)
+        ));
+        itemDropy.setItemMeta(metaDropy);
+        gui.setItem(13, itemDropy);
+
         ItemStack itemBack = new ItemStack(Material.ARROW);
         ItemMeta metaBack = itemBack.getItemMeta();
         metaBack.displayName(Component.text("Powrót do Menu", NamedTextColor.RED, TextDecoration.BOLD));
@@ -614,6 +667,140 @@ public class IslandManager implements Listener, IslandService {
         gui.setItem(15, itemBack);
 
         player.openInventory(gui);
+    }
+
+    /**
+     * Poziomy (1-5) customowych spawnerów mainplugins-spawners, per wyspa. Sam moduł
+     * spawnerów o tym nic nie wie poza odczytem IslandSummary.spawnerLevels() -
+     * cała logika ulepszania (koszt, limit) żyje tutaj, w panelu wyspy.
+     */
+    public void otworzMenuWzrostuDropow(Player player) {
+        IslandData data = wlasnaWyspaLubKomunikat(player);
+        if (data == null) return;
+
+        Inventory gui = Bukkit.createInventory(null, 27, Component.text("Wzrost Dropów", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
+
+        ItemStack tlo = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        ItemMeta metaTlo = tlo.getItemMeta();
+        metaTlo.displayName(Component.empty());
+        tlo.setItemMeta(metaTlo);
+        for (int i = 0; i < 27; i++) gui.setItem(i, tlo);
+
+        int[] sloty = {10, 11, 12, 13, 14};
+        for (int i = 0; i < SPAWNER_TYPY.size(); i++) {
+            SpawnerTypInfo typ = SPAWNER_TYPY.get(i);
+            int poziomIlosci = data.getSpawnerLevel(typ.id() + SUFIKS_ILOSC);
+            int poziomSzybkosci = data.getSpawnerLevel(typ.id() + SUFIKS_SZYBKOSC);
+
+            ItemStack item = new ItemStack(typ.ikona());
+            ItemMeta meta = item.getItemMeta();
+            meta.displayName(Component.text("Spawner: " + typ.nazwaOdmieniona(), NamedTextColor.YELLOW, TextDecoration.BOLD));
+
+            List<Component> lore = new ArrayList<>();
+            lore.add(Component.text("Ilość: " + poziomIlosci + "/" + SPAWNER_MAX_LEVEL, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Szybkość: " + poziomSzybkosci + "/" + SPAWNER_MAX_LEVEL, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.empty());
+            lore.add(Component.text("Kliknij, aby zarządzać ulepszeniami", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
+            meta.lore(lore);
+            item.setItemMeta(meta);
+
+            gui.setItem(sloty[i], item);
+        }
+
+        ItemStack itemBack = new ItemStack(Material.ARROW);
+        ItemMeta metaBack = itemBack.getItemMeta();
+        metaBack.displayName(Component.text("Powrót do Ulepszeń", NamedTextColor.RED, TextDecoration.BOLD));
+        itemBack.setItemMeta(metaBack);
+        gui.setItem(22, itemBack);
+
+        player.openInventory(gui);
+    }
+
+    private SpawnerTypInfo znajdzTypSpawnera(String id) {
+        for (SpawnerTypInfo typ : SPAWNER_TYPY) {
+            if (typ.id().equals(id)) return typ;
+        }
+        return null;
+    }
+
+    /** Podmenu jednego typu spawnera - osobne ulepszanie Ilości (mobków/cykl) i Szybkości (odstęp między cyklami). */
+    public void otworzMenuUlepszenSpawnera(Player player, String typId) {
+        IslandData data = wlasnaWyspaLubKomunikat(player);
+        if (data == null) return;
+
+        SpawnerTypInfo typ = znajdzTypSpawnera(typId);
+        if (typ == null) return;
+
+        otwartySpawnerTyp.put(player.getUniqueId(), typId);
+
+        Inventory gui = Bukkit.createInventory(null, 27, Component.text("Spawner: " + typ.nazwaOdmieniona(), NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
+
+        ItemStack tlo = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        ItemMeta metaTlo = tlo.getItemMeta();
+        metaTlo.displayName(Component.empty());
+        tlo.setItemMeta(metaTlo);
+        for (int i = 0; i < 27; i++) gui.setItem(i, tlo);
+
+        int poziomIlosci = data.getSpawnerLevel(typId + SUFIKS_ILOSC);
+        int poziomSzybkosci = data.getSpawnerLevel(typId + SUFIKS_SZYBKOSC);
+
+        gui.setItem(11, itemUlepszeniaStatystyki("Ilość", "Więcej mobków na jeden cykl spawnu", typ.ikona(), poziomIlosci));
+        gui.setItem(15, itemUlepszeniaStatystyki("Szybkość", "Krótszy odstęp między cyklami spawnu", Material.CLOCK, poziomSzybkosci));
+
+        ItemStack itemBack = new ItemStack(Material.ARROW);
+        ItemMeta metaBack = itemBack.getItemMeta();
+        metaBack.displayName(Component.text("Powrót do Wzrostu Dropów", NamedTextColor.RED, TextDecoration.BOLD));
+        itemBack.setItemMeta(metaBack);
+        gui.setItem(22, itemBack);
+
+        player.openInventory(gui);
+    }
+
+    private ItemStack itemUlepszeniaStatystyki(String nazwa, String opis, Material ikona, int level) {
+        boolean maksimum = level >= SPAWNER_MAX_LEVEL;
+
+        ItemStack item = new ItemStack(ikona);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.text(nazwa, NamedTextColor.YELLOW, TextDecoration.BOLD));
+
+        List<Component> lore = new ArrayList<>();
+        lore.add(Component.text(opis, NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.text("Poziom: " + level + "/" + SPAWNER_MAX_LEVEL, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.empty());
+        if (maksimum) {
+            lore.add(Component.text("Osiągnięto maksymalny poziom!", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
+        } else {
+            lore.add(Component.text("Koszt ulepszenia: " + (level * SPAWNER_KOSZT_ZA_POZIOM) + " $", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Kliknij, aby ulepszyć", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
+        }
+        meta.lore(lore);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private void ulepszSpawnerStatystyke(Player player, String typId, String sufiks) {
+        IslandData data = wlasnaWyspaLubKomunikat(player);
+        if (data == null) return;
+
+        String klucz = typId + sufiks;
+        int level = data.getSpawnerLevel(klucz);
+        if (level >= SPAWNER_MAX_LEVEL) {
+            player.sendMessage(Component.text("Ta statystyka ma już maksymalny poziom!", NamedTextColor.RED));
+            return;
+        }
+
+        int cost = level * SPAWNER_KOSZT_ZA_POZIOM;
+        if (!economyManager.maWystarczajaco(player.getUniqueId(), cost)) {
+            player.sendMessage(Component.text("Nie masz wystarczająco pieniędzy! Potrzebujesz " + cost + " $.", NamedTextColor.RED));
+            return;
+        }
+
+        economyManager.odejmijKase(player.getUniqueId(), cost);
+        data.setSpawnerLevel(klucz, level + 1);
+        zapiszWyspy();
+
+        player.sendMessage(Component.text("Ulepszono do poziomu " + (level + 1) + "!", NamedTextColor.GREEN));
+        otworzMenuUlepszenSpawnera(player, typId);
     }
 
     @EventHandler
@@ -660,7 +847,31 @@ public class IslandManager implements Listener, IslandService {
             event.setCancelled(true);
             int slot = event.getRawSlot();
             if (slot == 11) { uprosGranice(player); }
+            else if (slot == 13) { otworzMenuWzrostuDropow(player); }
             else if (slot == 15) { otworzMenuWyspy(player, zMenu); }
+        }
+        else if (title.contains("Wzrost Dropów")) {
+            event.setCancelled(true);
+            int slot = event.getRawSlot();
+            if (slot == 22) { otworzMenuUlepszen(player); return; }
+
+            int[] sloty = {10, 11, 12, 13, 14};
+            for (int i = 0; i < sloty.length; i++) {
+                if (sloty[i] == slot) {
+                    otworzMenuUlepszenSpawnera(player, SPAWNER_TYPY.get(i).id());
+                    break;
+                }
+            }
+        }
+        else if (title.contains("Spawner: ")) {
+            event.setCancelled(true);
+            int slot = event.getRawSlot();
+            String typId = otwartySpawnerTyp.get(player.getUniqueId());
+            if (typId == null) return;
+
+            if (slot == 11) { ulepszSpawnerStatystyke(player, typId, SUFIKS_ILOSC); }
+            else if (slot == 15) { ulepszSpawnerStatystyke(player, typId, SUFIKS_SZYBKOSC); }
+            else if (slot == 22) { otworzMenuWzrostuDropow(player); }
         }
         else if (title.contains("Członkowie Wyspy")) {
             event.setCancelled(true);
@@ -921,7 +1132,8 @@ public class IslandManager implements Listener, IslandService {
                 data.getOwnerUUID(),
                 nick != null ? nick : data.getOwnerUUID().toString().substring(0, 8),
                 data.getBorderSize(),
-                data.getMembers().size()
+                data.getMembers().size(),
+                new HashMap<>(data.getSpawnerLevels())
         );
     }
 

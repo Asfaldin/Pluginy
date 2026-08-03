@@ -1,6 +1,7 @@
 package elo.mainplugins.core;
 
 import elo.mainplugins.core.api.EconomyService;
+import elo.mainplugins.core.api.IslandService;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
@@ -23,5 +24,15 @@ public final class CoreAPI {
             throw new IllegalStateException("MainpluginsCore nie jest włączony lub nie zarejestrował jeszcze EconomyService - sprawdź plugin.yml (depend: [MainpluginsCore]).");
         }
         return rsp.getProvider();
+    }
+
+    /**
+     * W przeciwieństwie do EconomyService - opcjonalny. Zwraca null, jeśli
+     * MainpluginsSkyblock nie jest wgrany/włączony; wołający musi mieć na to
+     * sensowny fallback (patrz javadoc {@link IslandService}).
+     */
+    public static IslandService getIslandService() {
+        RegisteredServiceProvider<IslandService> rsp = Bukkit.getServicesManager().getRegistration(IslandService.class);
+        return rsp != null ? rsp.getProvider() : null;
     }
 }

@@ -3,6 +3,7 @@ package elo.mainplugins.hud;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.IslandSummary;
 import elo.mainplugins.core.api.TopGracz;
+import elo.mainplugins.core.util.MoneyFormat;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -15,6 +16,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -75,12 +77,14 @@ public class TablistManager implements Listener {
         }
     }
 
+    private static final int MAX_TOP = 10;
+
     private List<TopGracz> pobierzTopGraczy() {
-        return HudData.pobierzTopGraczy(economyManager, 3);
+        return HudData.pobierzTopGraczy(economyManager, MAX_TOP);
     }
 
     private List<IslandSummary> pobierzTopWysp() {
-        return HudData.pobierzTopWysp(3);
+        return HudData.pobierzTopWysp(MAX_TOP);
     }
 
     private double pobierzTps() {
@@ -121,55 +125,71 @@ public class TablistManager implements Listener {
         return NamedTextColor.RED;
     }
 
-    /**
-     * Jedna kolumna, ułożona w sekcje jedna pod drugą - zamiast próby ręcznego
-     * wyrównywania spacjami w kilku kolumnach obok siebie. Domyślna czcionka
-     * Minecrafta NIE jest monospace (litery mają różną szerokość), więc żadne
-     * dopełnianie spacjami nigdy nie wyjdzie naprawdę równo - stąd poprzednia
-     * wersja z 3 kolumnami wyglądała "rozlanie". Pojedyncza kolumna nie ma
-     * tego problemu, bo nic nie musi się wyrównywać w poziomie.
-     */
+    // Szerokości (w znakach) pierwszych dwóch kolumn - trzecia (Twoje Statystyki) jest
+    // ostatnia, więc nie musi być dopełniana. Czcionka Minecrafta NIE jest monospace
+    // (litery mają różną szerokość), więc dopełnianie spacjami po liczbie znaków nigdy
+    // nie wyjdzie co do piksela idealnie równo - to twardy limit bez własnej czcionki
+    // w resource packu. Przy zwykłych nickach/kwotach różnica jest w praktyce niewielka.
+    private static final int SZEROKOSC_KOLUMNY_GRACZY = 26;
+    private static final int SZEROKOSC_KOLUMNY_WYSP = 22;
+
+    /** 3 kolumny obok siebie: Top Gracze | Top Wyspy | Twoje Statystyki - budowane wiersz po wierszu. */
     private Component stworzStopke(Player player, List<TopGracz> topGracze, List<IslandSummary> topWyspy, String podpowiedz) {
         double balance = economyManager.getKasa(player.getUniqueId());
         IslandSummary wlasnaWyspa = HudData.pobierzWlasnaWyspe(player.getUniqueId());
 
-        Component wynik = Component.text("\n")
-                .append(sekcja("★ Top Wyspy ★", NamedTextColor.GOLD));
-        for (int i = 0; i < topWyspy.size(); i++) {
-            IslandSummary w = topWyspy.get(i);
-            wynik = wynik.append(pozycja((i + 1) + ". " + w.ownerName() + " - " + w.borderSize() + " bloków", NamedTextColor.YELLOW));
+        List<String> kolGracze = new ArrayList<>();
+        kolGracze.add("★ Top Gracze ★");
+        for (int i = 0; i < MAX_TOP; i++) {
+            kolGracze.add(i < topGracze.size()
+                    ? (i + 1) + ". " + topGracze.get(i).nick() + " - " + MoneyFormat.kompaktowo(topGracze.get(i).kasa()) + " $"
+                    : "");
         }
 
-        wynik = wynik.append(Component.text("\n")).append(sekcja("★ Top Gracze ★", NamedTextColor.GREEN));
-        for (int i = 0; i < topGracze.size(); i++) {
-            TopGracz g = topGracze.get(i);
-            wynik = wynik.append(pozycja((i + 1) + ". " + g.nick() + " - " + formatKasa(g.kasa()) + " $", NamedTextColor.WHITE));
+        List<String> kolWyspy = new ArrayList<>();
+        kolWyspy.add("★ Top Wyspy ★");
+        for (int i = 0; i < MAX_TOP; i++) {
+            kolWyspy.add(i < topWyspy.size()
+                    ? (i + 1) + ". " + topWyspy.get(i).ownerName() + " - " + topWyspy.get(i).borderSize() + " bl."
+                    : "");
         }
 
-        wynik = wynik.append(Component.text("\n")).append(sekcja("★ Twoje Statystyki ★", NamedTextColor.AQUA));
-        wynik = wynik
-                .append(pozycja("Nick: " + player.getName(), NamedTextColor.GRAY))
-                .append(pozycja("Portfel: " + formatKasa(balance) + " $", NamedTextColor.GRAY))
-                .append(pozycja(wlasnaWyspa != null
-                        ? "Wyspa: " + wlasnaWyspa.borderSize() + " bloków (" + wlasnaWyspa.memberCount() + " członków)"
-                        : "Wyspa: Brak (wpisz /is)", NamedTextColor.GRAY));
+        List<String> kolTy = new ArrayList<>();
+        kolTy.add("★ Twoje Statystyki ★");
+        kolTy.add("Nick: " + player.getName());
+        kolTy.add("Portfel: " + MoneyFormat.kompaktowo(balance) + " $");
+        kolTy.add(wlasnaWyspa != null
+                ? "Wyspa: " + wlasnaWyspa.borderSize() + " bl. (" + wlasnaWyspa.memberCount() + " członków)"
+                : "Wyspa: Brak (wpisz /is)");
 
-        wynik = wynik
-                .append(Component.text("\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n", NamedTextColor.DARK_GRAY))
+        int wiersze = Math.max(kolGracze.size(), Math.max(kolWyspy.size(), kolTy.size()));
+
+        Component wynik = Component.text("\n");
+        for (int i = 0; i < wiersze; i++) {
+            boolean naglowek = (i == 0);
+            String a = i < kolGracze.size() ? kolGracze.get(i) : "";
+            String b = i < kolWyspy.size() ? kolWyspy.get(i) : "";
+            String c = i < kolTy.size() ? kolTy.get(i) : "";
+
+            wynik = wynik
+                    .append(komorka(dopelnij(a, SZEROKOSC_KOLUMNY_GRACZY), NamedTextColor.GREEN, naglowek))
+                    .append(komorka(dopelnij(b, SZEROKOSC_KOLUMNY_WYSP), NamedTextColor.GOLD, naglowek))
+                    .append(komorka(c, NamedTextColor.AQUA, naglowek))
+                    .append(Component.text("\n"));
+        }
+
+        return wynik
+                .append(Component.text("▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n", NamedTextColor.DARK_GRAY))
                 .append(Component.text(podpowiedz, NamedTextColor.DARK_AQUA));
-
-        return wynik;
     }
 
-    private Component sekcja(String tytul, NamedTextColor kolor) {
-        return Component.text(tytul, kolor, TextDecoration.BOLD).append(Component.text("\n"));
+    private Component komorka(String tekst, NamedTextColor kolor, boolean naglowek) {
+        return Component.text(tekst, kolor).decoration(TextDecoration.BOLD, naglowek);
     }
 
-    private Component pozycja(String tekst, NamedTextColor kolor) {
-        return Component.text(" " + tekst, kolor).append(Component.text("\n"));
-    }
-
-    private String formatKasa(double kasa) {
-        return String.format(java.util.Locale.US, "%,.0f", kasa);
+    /** Dopełnia spacjami do stałej liczby znaków (albo przycina, jeśli tekst jest dłuższy) - patrz komentarz przy szerokościach kolumn. */
+    private String dopelnij(String tekst, int szerokosc) {
+        if (tekst.length() >= szerokosc) return tekst.substring(0, szerokosc);
+        return tekst + " ".repeat(szerokosc - tekst.length());
     }
 }

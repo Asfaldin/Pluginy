@@ -1,0 +1,4 @@
+name: MainpluginsFarming
+version: ${project.version}
+main: elo.mainplugins.farming.MainpluginsFarming
+api-version: '1.20'

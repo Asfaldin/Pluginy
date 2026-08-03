@@ -3,6 +3,7 @@ package elo.mainplugins.hud;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.IslandSummary;
 import elo.mainplugins.core.api.TopGracz;
+import elo.mainplugins.core.util.MoneyFormat;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -113,14 +114,14 @@ public class ScoreboardManager implements Listener {
             IslandSummary wlasnaWyspa = HudData.pobierzWlasnaWyspe(p.getUniqueId());
 
             ustawLinie(board, "linia8", etykieta("Gracz", p.getName(), NamedTextColor.AQUA));
-            ustawLinie(board, "linia7", etykieta("Kasa", formatKasa(kasa) + "$", NamedTextColor.GOLD));
+            ustawLinie(board, "linia7", etykieta("Kasa", MoneyFormat.kompaktowo(kasa) + "$", NamedTextColor.GOLD));
             ustawLinie(board, "linia6", etykieta("Wyspa", wlasnaWyspa != null
                     ? wlasnaWyspa.borderSize() + " bl."
                     : "Brak", NamedTextColor.GREEN));
 
             ustawLinie(board, "linia5", Component.text("▬▬▬▬▬▬▬▬▬▬▬▬▬", NamedTextColor.DARK_GRAY));
 
-            ustawLinie(board, "linia4", etykieta("Lider", lider != null ? lider.nick() + " " + formatKasa(lider.kasa()) + "$" : "brak", NamedTextColor.YELLOW));
+            ustawLinie(board, "linia4", etykieta("Lider", lider != null ? lider.nick() + " " + MoneyFormat.kompaktowo(lider.kasa()) + "$" : "brak", NamedTextColor.YELLOW));
             ustawLinie(board, "linia3", etykieta("Wyspa#1", najwiekszaWyspa != null ? najwiekszaWyspa.ownerName() + " " + najwiekszaWyspa.borderSize() + "bl." : "brak", NamedTextColor.YELLOW));
 
             ustawLinie(board, "linia2", etykieta("Online", onlineCount + "/" + maxSlots, NamedTextColor.WHITE));
@@ -139,10 +140,6 @@ public class ScoreboardManager implements Listener {
         if (tps >= 18.0) return NamedTextColor.GREEN;
         if (tps >= 15.0) return NamedTextColor.YELLOW;
         return NamedTextColor.RED;
-    }
-
-    private String formatKasa(double kasa) {
-        return String.format(Locale.US, "%,.0f", kasa);
     }
 
     private void ustawLinie(Scoreboard board, String teamName, Component tekst) {

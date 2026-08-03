@@ -1,6 +1,7 @@
 package elo.mainplugins.shop;
 
 import elo.mainplugins.core.api.EconomyService;
+import elo.mainplugins.core.util.CustomItemKeys;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -16,6 +17,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
@@ -71,6 +73,85 @@ public class ShopManager implements Listener {
                 e.printStackTrace();
             }
         }
+
+        // Dokładane niezależnie od bloku wyżej, żeby doszło też na już istniejącym sklep.yml
+        // (aktualizacja pluginu, nie tylko świeża instalacja).
+        if (!sklepConfig.contains("categories.rolnictwo")) {
+            try {
+                sklepConfig.set("categories.rolnictwo.name", "Rolnictwo");
+                sklepConfig.set("categories.rolnictwo.icon", "GOLDEN_CARROT");
+                sklepConfig.set("categories.rolnictwo.slot", 11);
+                sklepConfig.set("categories.rolnictwo.items.0.material", "GOLDEN_CARROT");
+                sklepConfig.set("categories.rolnictwo.items.0.slot", 0);
+                sklepConfig.set("categories.rolnictwo.items.0.amount", 1);
+                sklepConfig.set("categories.rolnictwo.items.0.buy-price", 40.0);
+                sklepConfig.set("categories.rolnictwo.items.0.sell-price", 12.0);
+                sklepConfig.save(sklepFile);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        // Spawnery: 5 itemów o tym samym Material.SPAWNER, rozróżnianych po custom-id
+        // (PDC tag odczytywany przez mainplugins-spawners) i display-name w GUI/ekwipunku.
+        if (!sklepConfig.contains("categories.spawnery")) {
+            try {
+                sklepConfig.set("categories.spawnery.name", "Spawnery");
+                sklepConfig.set("categories.spawnery.icon", "SPAWNER");
+                sklepConfig.set("categories.spawnery.slot", 12);
+                ustawSpawnerWSklepie(0, "PIGLIN", "Spawner: Piglinów", 5000.0);
+                ustawSpawnerWSklepie(1, "SHEEP", "Spawner: Owiec", 3000.0);
+                ustawSpawnerWSklepie(2, "RABBIT", "Spawner: Królików", 4000.0);
+                ustawSpawnerWSklepie(3, "BREEZE", "Spawner: Breeze'ów", 8000.0);
+                ustawSpawnerWSklepie(4, "GLOW_SQUID", "Spawner: Świetlistych Kałamarnic", 6000.0);
+                sklepConfig.save(sklepFile);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        // Itemy Specjalne: unikalne przedmioty z realną, customową logiką w innych modułach
+        // (np. Niszczyciel w mainplugins-tools) - rozpoznawane po tym samym custom-id co spawnery.
+        if (!sklepConfig.contains("categories.specjalne")) {
+            try {
+                sklepConfig.set("categories.specjalne.name", "Itemy Specjalne");
+                sklepConfig.set("categories.specjalne.icon", "NETHERITE_PICKAXE");
+                sklepConfig.set("categories.specjalne.slot", 13);
+                ustawSpecjalnyItemWSklepie(0, "NETHERITE_PICKAXE", "NISZCZYCIEL", "Niszczyciel", 50000.0, List.of(
+                        "Kilof z ultra szybkim kopaniem (Haste X)",
+                        "PPM: niszczy 3x3 bloków naraz",
+                        "Zawsze dropi właściwy blok (jak Silk Touch)",
+                        "Służy tylko do kopania - nic więcej"
+                ));
+                sklepConfig.save(sklepFile);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void ustawSpecjalnyItemWSklepie(int slot, String material, String customId, String displayName, double buyPrice, List<String> lore) {
+        String path = "categories.specjalne.items." + slot + ".";
+        sklepConfig.set(path + "material", material);
+        sklepConfig.set(path + "custom-id", customId);
+        sklepConfig.set(path + "display-name", displayName);
+        sklepConfig.set(path + "lore", lore);
+        sklepConfig.set(path + "slot", slot);
+        sklepConfig.set(path + "amount", 1);
+        sklepConfig.set(path + "buy-price", buyPrice);
+        // Celowo bez sell-price - patrz uwaga przy ustawSpawnerWSklepie.
+    }
+
+    private void ustawSpawnerWSklepie(int slot, String customId, String displayName, double buyPrice) {
+        String path = "categories.spawnery.items." + slot + ".";
+        sklepConfig.set(path + "material", "SPAWNER");
+        sklepConfig.set(path + "custom-id", customId);
+        sklepConfig.set(path + "display-name", displayName);
+        sklepConfig.set(path + "slot", slot);
+        sklepConfig.set(path + "amount", 1);
+        sklepConfig.set(path + "buy-price", buyPrice);
+        // Celowo bez sell-price - patrz uwaga przy odczycie w znajdzCeneSprzedazy/onInventoryClick,
+        // sprzedaż dopasowuje wyłącznie po Material, więc 5 itemów z tym samym SPAWNER byłoby niejednoznaczne.
     }
 
     public void otworzSklep(Player player, boolean zMenu) {
@@ -153,15 +234,23 @@ public class ShopManager implements Listener {
                     int amount = sklepConfig.getInt(path + "amount", 1);
                     double buyPrice = sklepConfig.getDouble(path + "buy-price", -1);
                     double sellPrice = sklepConfig.getDouble(path + "sell-price", -1);
+                    String customDisplayName = sklepConfig.getString(path + "display-name", null);
+                    List<String> customLore = sklepConfig.getStringList(path + "lore");
 
                     Material material = Material.matchMaterial(matName);
                     if (material == null) material = Material.STONE;
 
                     ItemStack item = new ItemStack(material, Math.min(Math.max(amount, 1), 64));
                     ItemMeta meta = item.getItemMeta();
-                    meta.displayName(Component.text(amount + "x " + material.name(), NamedTextColor.YELLOW, TextDecoration.BOLD));
+                    meta.displayName(customDisplayName != null
+                            ? Component.text(customDisplayName, NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD)
+                            : Component.text(amount + "x " + material.name(), NamedTextColor.YELLOW, TextDecoration.BOLD));
 
                     List<Component> lore = new ArrayList<>();
+                    for (String linia : customLore) {
+                        lore.add(Component.text(linia, NamedTextColor.LIGHT_PURPLE).decoration(TextDecoration.ITALIC, false));
+                    }
+                    if (!customLore.isEmpty()) lore.add(Component.empty());
                     if (buyPrice >= 0) lore.add(Component.text("Cena kupna: " + buyPrice + " $", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
                     if (sellPrice >= 0) lore.add(Component.text("Cena sprzedaży: " + sellPrice + " $", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
                     lore.add(Component.empty());
@@ -277,6 +366,34 @@ public class ShopManager implements Listener {
         double totalEarned = sellPricePerUnit * totalCount;
         economyManager.dodajKase(player.getUniqueId(), totalEarned);
         player.sendMessage(Component.text("Sprzedano wszystkie (" + totalCount + "x) " + targetMat.name() + " za " + totalEarned + " $!", NamedTextColor.AQUA));
+    }
+
+    /** Buduje kupiony item; jeśli wpis ma custom-id, doczepia PDC tag + display-name + lore (patrz kategorie "spawnery"/"specjalne"). */
+    private ItemStack stworzKupionyItem(Material material, int amount, String configPath) {
+        ItemStack item = new ItemStack(material, amount);
+
+        String customId = sklepConfig.getString(configPath + "custom-id", null);
+        String displayName = sklepConfig.getString(configPath + "display-name", null);
+        List<String> lore = sklepConfig.getStringList(configPath + "lore");
+        if (customId == null && displayName == null && lore.isEmpty()) return item;
+
+        ItemMeta meta = item.getItemMeta();
+        if (displayName != null) {
+            meta.displayName(Component.text(displayName, NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
+        }
+        if (!lore.isEmpty()) {
+            List<Component> loreComponents = new ArrayList<>();
+            for (String linia : lore) {
+                loreComponents.add(Component.text(linia, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            }
+            meta.lore(loreComponents);
+        }
+        if (customId != null) {
+            meta.getPersistentDataContainer().set(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING, customId);
+            meta.setEnchantmentGlintOverride(true);
+        }
+        item.setItemMeta(meta);
+        return item;
     }
 
     private double znajdzCeneSprzedazy(Material material) {
@@ -398,7 +515,7 @@ public class ShopManager implements Listener {
                         }
                         if (economyManager.maWystarczajaco(player.getUniqueId(), buyPrice)) {
                             economyManager.odejmijKase(player.getUniqueId(), buyPrice);
-                            player.getInventory().addItem(new ItemStack(cfgMaterial, amount));
+                            player.getInventory().addItem(stworzKupionyItem(cfgMaterial, amount, path));
                             player.sendMessage(Component.text("Kupiono " + amount + "x za " + buyPrice + " $!", NamedTextColor.GREEN));
                         } else {
                             player.sendMessage(Component.text("Brak pieniędzy!", NamedTextColor.RED));

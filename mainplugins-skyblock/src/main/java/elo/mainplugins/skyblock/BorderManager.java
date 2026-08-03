@@ -1,21 +1,63 @@
 package elo.mainplugins.skyblock;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.WorldBorder;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.plugin.Plugin;
 
+/**
+ * Świadomy wysp - dopóki gracz jest w skyblockWorld, border ma trzymać się jego
+ * aktualnej pozycji (wyspa, na której fizycznie stoi) przy KAŻDEJ zmianie świata
+ * i teleportacji, a nie tylko bezpośrednio po /is. Bez tego border "znikał" po
+ * powrocie z innego świata (np. spawna), bo nic go nie odtwarzało przy wejściu.
+ */
 public class BorderManager implements Listener {
 
-    public BorderManager(Plugin plugin) {
+    private final IslandManager islandManager;
+
+    public BorderManager(Plugin plugin, IslandManager islandManager) {
+        this.islandManager = islandManager;
     }
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        wyczyscCzerwonyEkranBorderu(event.getPlayer());
+        Player player = event.getPlayer();
+        if (islandManager.jestSwiatemWysp(player.getWorld())) {
+            islandManager.aplikujBorderDlaLokalizacji(player, player.getLocation());
+        } else {
+            wyczyscCzerwonyEkranBorderu(player);
+        }
+    }
+
+    @EventHandler
+    public void onWorldChange(PlayerChangedWorldEvent event) {
+        Player player = event.getPlayer();
+        if (islandManager.jestSwiatemWysp(player.getWorld())) {
+            islandManager.aplikujBorderDlaLokalizacji(player, player.getLocation());
+        } else {
+            wyczyscCzerwonyEkranBorderu(player);
+        }
+    }
+
+    /**
+     * Teleportacje WEWNĄTRZ świata wysp (np. /tp do innego gracza) nie wywołują
+     * PlayerChangedWorldEvent, ale mogą przenieść gracza na teren zupełnie innej
+     * wyspy (albo w pustkę) - bez tego jego border zostałby ustawiony na starą
+     * lokalizację aż do następnej zmiany świata.
+     */
+    @EventHandler
+    public void onTeleport(PlayerTeleportEvent event) {
+        Location to = event.getTo();
+        if (to == null || to.getWorld() == null) return;
+        if (islandManager.jestSwiatemWysp(to.getWorld())) {
+            islandManager.aplikujBorderDlaLokalizacji(event.getPlayer(), to);
+        }
     }
 
     public void wyczyscCzerwonyEkranBorderu(Player player) {

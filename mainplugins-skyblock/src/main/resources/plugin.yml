@@ -7,7 +7,7 @@ depend: [MainpluginsCore]
 commands:
   is:
     description: Wyspa
-    usage: "/is [delete|border|guests|pvp|mobs|upgrade|members|add <gracz>|remove <gracz>]"
+    usage: "/is [menu|delete|border|guests|pvp|mobs|upgrade|members|invite <gracz>|accept|deny|leave|promote <gracz>|demote <gracz>|remove <gracz>]"
   home:
     description: Dom / Wyspa
 

@@ -21,7 +21,7 @@ public final class MainpluginsSkyblock extends JavaPlugin {
         EconomyService economyService = CoreAPI.getEconomyService();
 
         islandManager = new IslandManager(this, economyService);
-        borderManager = new BorderManager(this);
+        borderManager = new BorderManager(this, islandManager);
         IslandProtectionManager islandProtectionManager = new IslandProtectionManager(islandManager);
 
         getServer().getPluginManager().registerEvents(islandManager, this);
@@ -40,7 +40,6 @@ public final class MainpluginsSkyblock extends JavaPlugin {
                     return true;
                 }
                 islandManager.handleCommand(player, args);
-                borderManager.wyczyscCzerwonyEkranBorderu(player);
                 return true;
             }
         };

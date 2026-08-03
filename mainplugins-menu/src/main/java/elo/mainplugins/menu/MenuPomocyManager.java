@@ -81,7 +81,9 @@ public class MenuPomocyManager implements Listener {
         switch (typ) {
             case EMERALD -> player.performCommand("sklep zmenu");
             case GOLD_INGOT -> player.performCommand("targ zmenu");
-            case GRASS_BLOCK -> player.performCommand("is zmenu");
+            // "is menu zmenu" (a nie "is zmenu") - od zmiany semantyki /is bare "is" teleportuje
+            // bezpośrednio na wyspę zamiast otwierać panel; z głównego /menu chcemy pokazać panel.
+            case GRASS_BLOCK -> player.performCommand("is menu zmenu");
             case BOOK -> player.performCommand("quest zmenu");
             case CHEST -> player.performCommand("itemy zmenu");
             case DIAMOND_PICKAXE -> player.performCommand("narzedzia");

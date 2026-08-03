@@ -2,16 +2,18 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/Mainplugins.iml" filepath="$PROJECT_DIR$/Mainplugins.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-announcer/mainplugins-announcer.iml" filepath="$PROJECT_DIR$/mainplugins-announcer/mainplugins-announcer.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-core/mainplugins-core.iml" filepath="$PROJECT_DIR$/mainplugins-core/mainplugins-core.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-crates/mainplugins-crates.iml" filepath="$PROJECT_DIR$/mainplugins-crates/mainplugins-crates.iml" />
+      <module fileurl="file://$PROJECT_DIR$/mainplugins-farming/mainplugins-farming.iml" filepath="$PROJECT_DIR$/mainplugins-farming/mainplugins-farming.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-hud/mainplugins-hud.iml" filepath="$PROJECT_DIR$/mainplugins-hud/mainplugins-hud.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-market/mainplugins-market.iml" filepath="$PROJECT_DIR$/mainplugins-market/mainplugins-market.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-menu/mainplugins-menu.iml" filepath="$PROJECT_DIR$/mainplugins-menu/mainplugins-menu.iml" />
-      <module fileurl="file://$PROJECT_DIR$/mainplugins-parent.iml" filepath="$PROJECT_DIR$/mainplugins-parent.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-quests/mainplugins-quests.iml" filepath="$PROJECT_DIR$/mainplugins-quests/mainplugins-quests.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-shop/mainplugins-shop.iml" filepath="$PROJECT_DIR$/mainplugins-shop/mainplugins-shop.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-skyblock/mainplugins-skyblock.iml" filepath="$PROJECT_DIR$/mainplugins-skyblock/mainplugins-skyblock.iml" />
+      <module fileurl="file://$PROJECT_DIR$/mainplugins-spawners/mainplugins-spawners.iml" filepath="$PROJECT_DIR$/mainplugins-spawners/mainplugins-spawners.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-storage/mainplugins-storage.iml" filepath="$PROJECT_DIR$/mainplugins-storage/mainplugins-storage.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-teleport/mainplugins-teleport.iml" filepath="$PROJECT_DIR$/mainplugins-teleport/mainplugins-teleport.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-tools/mainplugins-tools.iml" filepath="$PROJECT_DIR$/mainplugins-tools/mainplugins-tools.iml" />

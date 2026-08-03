@@ -1,0 +1,10 @@
+name: MainpluginsHUD
+version: ${project.version}
+main: elo.mainplugins.hud.MainpluginsHUD
+api-version: '1.20'
+depend: [MainpluginsCore]
+
+# Scoreboard i tablista działają w pełni automatycznie (PlayerJoinEvent +
+# zadanie cykliczne) - nie potrzebują żadnej komendy. Oryginalne plugin.yml
+# deklarowało tu "tab", ale nigdzie nie było podpiętego handlera - usunięte
+# jako martwa konfiguracja.

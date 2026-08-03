@@ -1,0 +1,9 @@
+name: MainpluginsMarket
+version: ${project.version}
+main: elo.mainplugins.market.MainpluginsMarket
+api-version: '1.20'
+depend: [MainpluginsCore]
+
+commands:
+  targ:
+    description: Otwórz targ graczy

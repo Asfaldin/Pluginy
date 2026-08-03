@@ -1,0 +1,22 @@
+name: MainpluginsShop
+version: ${project.version}
+main: elo.mainplugins.shop.MainpluginsShop
+api-version: '1.20'
+depend: [MainpluginsCore]
+
+commands:
+  sklep:
+    description: Sklep
+    aliases: [buy]
+  sell:
+    description: Sprzedaj trzymany przedmiot
+  sellall:
+    description: Sprzedaj wszystkie przedmioty tego typu z ekwipunku
+  reloadsklep:
+    description: Wczytaj sklep.yml na nowo, bez restartu serwera
+    permission: mainplugins.shop.reload
+
+permissions:
+  mainplugins.shop.reload:
+    description: Pozwala przeładować konfigurację sklepu
+    default: op

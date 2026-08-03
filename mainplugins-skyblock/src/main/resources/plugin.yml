@@ -1,0 +1,17 @@
+name: MainpluginsSkyblock
+version: ${project.version}
+main: elo.mainplugins.skyblock.MainpluginsSkyblock
+api-version: '1.20'
+depend: [MainpluginsCore]
+
+commands:
+  is:
+    description: Wyspa
+    usage: "/is [delete|border|guests|pvp|mobs|upgrade|members|add <gracz>|remove <gracz>]"
+  home:
+    description: Dom / Wyspa
+
+permissions:
+  mainplugins.skyblock.bypass:
+    description: Pozwala przechodzić przez granice wysp bez ograniczeń ruchu
+    default: op

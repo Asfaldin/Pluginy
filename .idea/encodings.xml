@@ -1,6 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/mainplugins-announcer/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-announcer/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-core/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-core/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-crates/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-crates/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-hud/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-hud/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-market/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-market/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-menu/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-menu/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-quests/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-quests/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-shop/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-shop/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-skyblock/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-skyblock/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-storage/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-storage/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-teleport/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-teleport/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-tools/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mainplugins-tools/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
   </component>

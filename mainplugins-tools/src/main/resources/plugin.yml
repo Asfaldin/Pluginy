@@ -1,0 +1,18 @@
+name: MainpluginsTools
+version: ${project.version}
+main: elo.mainplugins.tools.MainpluginsTools
+api-version: '1.20'
+depend: [MainpluginsCore]
+
+commands:
+  narzedzia:
+    description: Narzedzia
+  addlvl:
+    description: "[DEBUG] Dodaje poziomy trzymanemu narzedziu (testy)"
+    usage: "/<command> [ilosc]"
+    permission: mainplugins.tools.addlvl
+
+permissions:
+  mainplugins.tools.addlvl:
+    description: Pozwala levelowac trzymane narzedzie do testow
+    default: op

@@ -6,7 +6,18 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="Mainplugins" />
+        <module name="mainplugins-storage" />
+        <module name="mainplugins-hud" />
+        <module name="mainplugins-crates" />
+        <module name="mainplugins-quests" />
+        <module name="mainplugins-teleport" />
+        <module name="mainplugins-menu" />
+        <module name="mainplugins-announcer" />
+        <module name="mainplugins-core" />
+        <module name="mainplugins-shop" />
+        <module name="mainplugins-market" />
+        <module name="mainplugins-skyblock" />
+        <module name="mainplugins-tools" />
       </profile>
     </annotationProcessing>
   </component>

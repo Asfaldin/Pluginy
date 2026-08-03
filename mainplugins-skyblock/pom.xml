@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>elo</groupId>
+        <artifactId>mainplugins-parent</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>mainplugins-skyblock</artifactId>
+    <packaging>jar</packaging>
+    <name>Mainplugins - Skyblock</name>
+
+    <dependencies>
+        <!--
+            scope=provided: klasy Core mają być widoczne przy kompilacji, ale NIE
+            wolno ich pakować do środka tego jara (shade by je zduplikował, a wtedy
+            EconomyService.class z tego jara != EconomyService.class zarejestrowany
+            przez MainpluginsCore -> ServicesManager nie znajdzie usługi w runtime).
+            Core musi być fizycznie osobnym, wgranym na serwer pluginem - patrz
+            depend: [MainpluginsCore] w plugin.yml.
+        -->
+        <dependency>
+            <groupId>elo</groupId>
+            <artifactId>mainplugins-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.sk89q.worldedit</groupId>
+            <artifactId>worldedit-bukkit</artifactId>
+        </dependency>
+    </dependencies>
+</project>

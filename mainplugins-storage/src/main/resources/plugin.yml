@@ -1,0 +1,9 @@
+name: MainpluginsStorage
+version: ${project.version}
+main: elo.mainplugins.storage.MainpluginsStorage
+api-version: '1.20'
+depend: [MainpluginsCore]
+
+commands:
+  itemy:
+    description: Schowek

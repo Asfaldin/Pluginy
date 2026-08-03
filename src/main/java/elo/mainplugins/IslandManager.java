@@ -10,11 +10,17 @@ import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
 import com.sk89q.worldedit.function.operation.Operation;
 import com.sk89q.worldedit.function.operation.Operations;
 import com.sk89q.worldedit.math.BlockVector3;
+import com.sk89q.worldedit.regions.CuboidRegion;
+import com.sk89q.worldedit.regions.Region;
 import com.sk89q.worldedit.session.ClipboardHolder;
+import com.sk89q.worldedit.world.block.BlockTypes;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.*;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -27,6 +33,7 @@ import org.bukkit.plugin.Plugin;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.*;
 
 public class IslandManager implements Listener {
@@ -35,6 +42,10 @@ public class IslandManager implements Listener {
     private final World skyblockWorld;
     private final File schemFile;
     private final EconomyManager economyManager;
+
+    // Plik, w którym na trwałe zapisujemy dane o wszystkich wyspach graczy
+    private final File plikWysp;
+    private final FileConfiguration configWysp;
 
     // Mapa pamiętająca, czy gracz wszedł do GUI z komendy /menu
     private final Map<UUID, Boolean> otwartoZMenu = new HashMap<>();
@@ -60,6 +71,7 @@ public class IslandManager implements Listener {
             this.borderSize = borderSize;
         }
 
+        public int getId() { return id; }
         public UUID getOwnerUUID() { return ownerUUID; }
         public int getCenterX() { return centerX; }
         public int getCenterZ() { return centerZ; }
@@ -93,6 +105,86 @@ public class IslandManager implements Listener {
 
         File faweFolder = new File(plugin.getDataFolder().getParentFile(), "FastAsyncWorldEdit/schematics");
         this.schemFile = new File(faweFolder, "wyspa_startowa.schem");
+
+        // Przygotowanie pliku wyspy.yml (tworzymy go, jeśli jeszcze nie istnieje)
+        this.plikWysp = new File(plugin.getDataFolder(), "wyspy.yml");
+        if (!plikWysp.exists()) {
+            plikWysp.getParentFile().mkdirs();
+            try { plikWysp.createNewFile(); } catch (IOException ignored) {}
+        }
+        this.configWysp = YamlConfiguration.loadConfiguration(plikWysp);
+
+        // Wczytujemy z pliku wyspy zapisane podczas poprzedniego działania serwera
+        wczytajWyspy();
+    }
+
+    // Wczytuje wszystkie wyspy zapisane w pliku wyspy.yml do pamięci gry (uruchamiane raz, przy starcie)
+    private void wczytajWyspy() {
+        nextIslandId = configWysp.getInt("nextIslandId", 0);
+
+        ConfigurationSection sekcjaWysp = configWysp.getConfigurationSection("wyspy");
+        if (sekcjaWysp == null) return;
+
+        for (String ownerKey : sekcjaWysp.getKeys(false)) {
+            UUID ownerUUID = UUID.fromString(ownerKey);
+            String path = "wyspy." + ownerKey + ".";
+
+            int id = configWysp.getInt(path + "id", 0);
+            int centerX = configWysp.getInt(path + "centerX", 0);
+            int centerZ = configWysp.getInt(path + "centerZ", 0);
+            int borderSize = configWysp.getInt(path + "borderSize", 50);
+
+            IslandData data = new IslandData(id, ownerUUID, centerX, centerZ, borderSize);
+            data.setAllowMobs(configWysp.getBoolean(path + "allowMobs", true));
+            data.setAllowPvP(configWysp.getBoolean(path + "allowPvP", false));
+            data.setAllowBreak(configWysp.getBoolean(path + "allowBreak", true));
+            data.setVisualBorder(configWysp.getBoolean(path + "visualBorder", true));
+
+            for (String memberStr : configWysp.getStringList(path + "members")) {
+                UUID memberUUID = UUID.fromString(memberStr);
+                data.getMembers().add(memberUUID);
+                playerIslandMap.put(memberUUID, ownerUUID);
+            }
+
+            islandDatabase.put(ownerUUID, data);
+            playerIslandMap.put(ownerUUID, ownerUUID);
+        }
+    }
+
+    // Zapisuje (lub nadpisuje) dane jednej wyspy w pliku wyspy.yml
+    private void zapiszWyspe(IslandData data) {
+        String path = "wyspy." + data.getOwnerUUID() + ".";
+        configWysp.set(path + "id", data.getId());
+        configWysp.set(path + "centerX", data.getCenterX());
+        configWysp.set(path + "centerZ", data.getCenterZ());
+        configWysp.set(path + "borderSize", data.getBorderSize());
+        configWysp.set(path + "allowMobs", data.isAllowMobs());
+        configWysp.set(path + "allowPvP", data.isAllowPvP());
+        configWysp.set(path + "allowBreak", data.isAllowBreak());
+        configWysp.set(path + "visualBorder", data.isVisualBorder());
+
+        List<String> membersStr = new ArrayList<>();
+        for (UUID member : data.getMembers()) membersStr.add(member.toString());
+        configWysp.set(path + "members", membersStr);
+
+        // Numer następnej wyspy też musi być zapisany, żeby po restarcie nie zaczynał się od nowa od 0
+        configWysp.set("nextIslandId", nextIslandId);
+
+        zapiszPlikWysp();
+    }
+
+    // Usuwa dane wyspy z pliku wyspy.yml (gdy gracz kasuje swoją wyspę)
+    private void usunWyspeZPliku(UUID ownerUUID) {
+        configWysp.set("wyspy." + ownerUUID, null);
+        zapiszPlikWysp();
+    }
+
+    private void zapiszPlikWysp() {
+        try {
+            configWysp.save(plikWysp);
+        } catch (IOException e) {
+            plugin.getLogger().warning("Nie mozna zapisac pliku wyspy.yml!");
+        }
     }
 
     public void handleCommand(Player player, String[] args) {
@@ -131,6 +223,7 @@ public class IslandManager implements Listener {
         IslandData data = new IslandData(myIslandId, player.getUniqueId(), x, z, 50);
         islandDatabase.put(player.getUniqueId(), data);
         playerIslandMap.put(player.getUniqueId(), player.getUniqueId());
+        zapiszWyspe(data); // Od razu zapisujemy nową wyspę na dysk
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try {
@@ -342,6 +435,7 @@ public class IslandManager implements Listener {
                     IslandData data = islandDatabase.get(ownerUUID);
                     data.setVisualBorder(!data.isVisualBorder());
                     ustawWizualnyBorder(player, data);
+                    zapiszWyspe(data); // Zapisujemy zmianę ustawienia borderu
                     otworzMenuWyspy(player, zMenu); // odśwież
                 }
             }
@@ -393,6 +487,7 @@ public class IslandManager implements Listener {
         economyManager.odejmijKase(player.getUniqueId(), cost);
         data.setBorderSize(data.getBorderSize() + 25);
         ustawWizualnyBorder(player, data);
+        zapiszWyspe(data); // Zapisujemy nowy, większy rozmiar wyspy
 
         player.sendMessage(Component.text("Sukces! Powiększono teren wyspy. Nowy promień: " + data.getBorderSize() + " bloków.", NamedTextColor.GREEN));
         otworzMenuUlepszen(player);
@@ -429,6 +524,7 @@ public class IslandManager implements Listener {
 
         data.getMembers().add(target.getUniqueId());
         playerIslandMap.put(target.getUniqueId(), ownerUUID);
+        zapiszWyspe(data); // Zapisujemy nową listę członków wyspy
 
         player.sendMessage(Component.text("Pomyślnie dodano gracza " + target.getName() + " do wyspy!", NamedTextColor.GREEN));
         target.sendMessage(Component.text("Zostałeś dodany do wyspy gracza " + player.getName() + "!", NamedTextColor.AQUA));
@@ -448,6 +544,10 @@ public class IslandManager implements Listener {
                 playerIslandMap.remove(memberUUID);
             }
 
+            // Usuwamy wyspę też z pliku wyspy.yml, żeby po restarcie serwera
+            // gra na pewno pamiętała, że ta wyspa już nie istnieje
+            usunWyspeZPliku(ownerUUID);
+
             // Teleport na główny spawn (świat główny)
             player.teleport(new Location(Bukkit.getWorlds().get(0), 0, 100, 0));
 
@@ -457,21 +557,24 @@ public class IslandManager implements Listener {
             player.setWorldBorder(clearBorder);
 
             // Czyszczenie bloków ze świata (Zamiana na powietrze wokół środka)
+            // Robimy to przez WorldEdit/FAWE - tym samym systemem, którym wklejamy wyspę.
+            // Dzięki temu nie mieszamy dwóch różnych systemów edycji świata na tym samym terenie
+            // (mieszanie ich powodowało, że usunięte bloki czasem "wracały").
             int promien = data.getBorderSize() + 10;
             int x = data.getCenterX();
             int y = 100; // Środek Y dla schematu
             int z = data.getCenterZ();
 
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                for (int dx = x - promien; dx <= x + promien; dx++) {
-                    for (int dy = y - 40; dy <= y + 60; dy++) {
-                        for (int dz = z - promien; dz <= z + promien; dz++) {
-                            org.bukkit.block.Block block = skyblockWorld.getBlockAt(dx, dy, dz);
-                            if (block.getType() != Material.AIR) {
-                                block.setType(Material.AIR, false);
-                            }
-                        }
-                    }
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(skyblockWorld))) {
+                    Region region = new CuboidRegion(
+                            BukkitAdapter.adapt(skyblockWorld),
+                            BlockVector3.at(x - promien, y - 40, z - promien),
+                            BlockVector3.at(x + promien, y + 60, z + promien)
+                    );
+                    editSession.setBlocks(region, BlockTypes.AIR.getDefaultState());
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
             });
 

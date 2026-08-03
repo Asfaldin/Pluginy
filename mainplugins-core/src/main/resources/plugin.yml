@@ -1,0 +1,16 @@
+name: MainpluginsCore
+version: ${project.version}
+main: elo.mainplugins.core.MainpluginsCore
+api-version: '1.20'
+
+commands:
+  adminhelp:
+    description: Panel administratora - moduły, statystyki i wszystkie komendy
+    permission: mainplugins.core.admin
+  komendy:
+    description: Lista wszystkich komend serwera, pogrupowana segmentami
+
+permissions:
+  mainplugins.core.admin:
+    description: Dostęp do /adminhelp
+    default: op

@@ -1,0 +1,8 @@
+name: MainpluginsMenu
+version: ${project.version}
+main: elo.mainplugins.menu.MainpluginsMenu
+api-version: '1.20'
+
+commands:
+  menu:
+    description: Panel pomocy

@@ -1,0 +1,13 @@
+name: MainpluginsTeleport
+version: ${project.version}
+main: elo.mainplugins.teleport.MainpluginsTeleport
+api-version: '1.20'
+
+commands:
+  tp:
+    description: Wyślij prośbę o teleportację do gracza
+    usage: /tp <gracz>
+  tpaccept:
+    description: Zaakceptuj prośbę o teleportację
+  tpdeny:
+    description: Odrzuć prośbę o teleportację

@@ -5,17 +5,95 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>elo</groupId>
-    <artifactId>Mainplugins</artifactId>
+    <artifactId>mainplugins-parent</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <packaging>pom</packaging>
 
-    <name>Mainplugins</name>
+    <name>Mainplugins (parent)</name>
+
+    <!--
+        Punkt wejścia całego ekosystemu pluginów. Nie generuje własnego jara.
+        Każdy podkatalog to osobny, samodzielny plugin Bukkit/Paper (własny plugin.yml,
+        własna klasa główna, własny jar w target/).
+
+        Jedyny moduł, od którego pozostałe mogą (ale nie muszą) zależeć to
+        mainplugins-core - to jest oficjalne, "hermetycznie" wydzielone miejsce na
+        wspólny kod (ekonomia jako serwis, generator pustego świata, wspólne narzędzia GUI).
+        Zależność od niego jest zawsze w scope "provided" (patrz komentarz w modułach
+        zależnych) - core ląduje na serwerze jako osobny jar, więc nie wolno go pakować
+        drugi raz do środka innych pluginów.
+
+        `mvn clean package` odpalone TUTAJ buduje wszystkie moduły za jednym razem
+        (Maven sam ustala kolejność - mainplugins-core zawsze pierwszy).
+    -->
+    <modules>
+        <module>mainplugins-core</module>
+        <module>mainplugins-menu</module>
+        <module>mainplugins-skyblock</module>
+        <module>mainplugins-shop</module>
+        <module>mainplugins-market</module>
+        <module>mainplugins-storage</module>
+        <module>mainplugins-quests</module>
+        <module>mainplugins-tools</module>
+        <module>mainplugins-hud</module>
+        <module>mainplugins-teleport</module>
+        <module>mainplugins-announcer</module>
+        <module>mainplugins-crates</module>
+    </modules>
 
     <properties>
         <java.version>25</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <paper-api.version>[26.2.build,)</paper-api.version>
+        <worldedit-bukkit.version>7.3.0</worldedit-bukkit.version>
     </properties>
 
+    <repositories>
+        <!-- Główne repozytorium PaperMC -->
+        <repository>
+            <id>papermc-repo</id>
+            <url>https://repo.papermc.io/repository/maven-public/</url>
+        </repository>
+        <!-- Repozytorium wymagane dla API WorldEdit / FAWE (tylko moduł mainplugins-skyblock) -->
+        <repository>
+            <id>enginehub-maven</id>
+            <url>https://maven.enginehub.org/repo/</url>
+        </repository>
+    </repositories>
+
+    <!-- Wersje wspólne dla wszystkich modułów - każdy moduł deklaruje tylko groupId/artifactId -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.papermc.paper</groupId>
+                <artifactId>paper-api</artifactId>
+                <version>${paper-api.version}</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.sk89q.worldedit</groupId>
+                <artifactId>worldedit-bukkit</artifactId>
+                <version>${worldedit-bukkit.version}</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>elo</groupId>
+                <artifactId>mainplugins-core</artifactId>
+                <version>${project.version}</version>
+                <scope>provided</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- Paper API jest potrzebne w KAŻDYM module - deklarujemy raz, dziedziczą wszyscy -->
+    <dependencies>
+        <dependency>
+            <groupId>io.papermc.paper</groupId>
+            <artifactId>paper-api</artifactId>
+        </dependency>
+    </dependencies>
+
+    <!-- Konfiguracja kompilatora i shade jest wspólna - dziedziczą wszyscy, zero powtórzeń w modułach -->
     <build>
         <defaultGoal>clean package</defaultGoal>
         <plugins>
@@ -41,6 +119,38 @@
                     </execution>
                 </executions>
             </plugin>
+            <!--
+                Wygodowy dodatek: po zbudowaniu każdego modułu kopiuje jego gotowy jar
+                do wspólnego folderu dist/ w katalogu głównym. Dzięki temu po "mvn package"
+                nie trzeba ręcznie zaglądać do 10 osobnych target/ - wystarczy zgrać na
+                serwer całą zawartość dist/. Na module rodzica (packaging=pom) ten krok
+                nic nie kopiuje (brak pasującego jara), więc jest tam nieszkodliwym no-opem.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>collect-plugin-jar-to-dist</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${maven.multiModuleProjectDirectory}/dist</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.build.directory}</directory>
+                                    <includes>
+                                        <include>${project.build.finalName}.jar</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
         <resources>
             <resource>
@@ -49,34 +159,4 @@
             </resource>
         </resources>
     </build>
-
-    <repositories>
-        <!-- Główne repozytorium PaperMC -->
-        <repository>
-            <id>papermc-repo</id>
-            <url>https://repo.papermc.io/repository/maven-public/</url>
-        </repository>
-        <!-- Repozytorium wymagane dla API WorldEdit / FAWE -->
-        <repository>
-            <id>enginehub-maven</id>
-            <url>https://maven.enginehub.org/repo/</url>
-        </repository>
-    </repositories>
-
-    <dependencies>
-        <!-- Zależność Paper API -->
-        <dependency>
-            <groupId>io.papermc.paper</groupId>
-            <artifactId>paper-api</artifactId>
-            <version>[26.2.build,)</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- Zależność WorldEdit / FAWE API -->
-        <dependency>
-            <groupId>com.sk89q.worldedit</groupId>
-            <artifactId>worldedit-bukkit</artifactId>
-            <version>7.3.0</version>
-            <scope>provided</scope>
-        </dependency>
-    </dependencies>
 </project>

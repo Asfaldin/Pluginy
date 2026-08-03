@@ -1,0 +1,20 @@
+name: MainpluginsCrates
+version: ${project.version}
+main: elo.mainplugins.crates.MainpluginsCrates
+api-version: '1.20'
+
+commands:
+  dajklucz:
+    description: "[TEST] Daj sobie klucz do skrzynki"
+    permission: mainplugins.crates.admin
+  dajskrzynia:
+    description: "[TEST] Daj sobie tajemniczą skrzynkę"
+    permission: mainplugins.crates.admin
+  reloadcrates:
+    description: Wczytaj crate-rewards.yml na nowo, bez restartu serwera
+    permission: mainplugins.crates.admin
+
+permissions:
+  mainplugins.crates.admin:
+    description: Dostęp do testowych komend skrzynek i przeładowania konfiguracji
+    default: op

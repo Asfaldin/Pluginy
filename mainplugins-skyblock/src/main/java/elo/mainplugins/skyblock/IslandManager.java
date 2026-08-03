@@ -121,7 +121,17 @@ public class IslandManager implements Listener, IslandService {
             this.homeYaw = yaw;
             this.homePitch = pitch;
         }
+
+        // Rola WYŁĄCZNIE dla członków spoza właściciela - właściciel nigdy nie jest kluczem
+        // w tej mapie, jego status wynika zawsze z porównania UUID z ownerUUID (patrz mozeZarzadzac).
+        private final Map<UUID, IslandRole> memberRoles = new HashMap<>();
+        public IslandRole getRole(UUID uuid) { return memberRoles.getOrDefault(uuid, IslandRole.CZLONEK); }
+        public void setRole(UUID uuid, IslandRole role) { memberRoles.put(uuid, role); }
+        public Map<UUID, IslandRole> getMemberRoles() { return memberRoles; }
     }
+
+    /** Ranga członka wyspy (nie dotyczy właściciela - patrz komentarz przy IslandData.memberRoles). */
+    public enum IslandRole { CZLONEK, ADMIN }
 
     /** Identyfikator musi się zgadzać z SpawnerType.name() w mainplugins-spawners - patrz komentarz przy IslandData.spawnerLevels. */
     private record SpawnerTypInfo(String id, String nazwaOdmieniona, Material ikona) {}
@@ -144,7 +154,8 @@ public class IslandManager implements Listener, IslandService {
     private final Map<UUID, IslandData> islandDatabase = new HashMap<>();
     private final Map<UUID, UUID> playerIslandMap = new HashMap<>();
     private final Set<UUID> pendingDeleteConfirmation = new HashSet<>();
-    private final Set<UUID> pendingAddMember = new HashSet<>();
+    private final Set<UUID> pendingLeaveConfirmation = new HashSet<>();
+    private final Set<UUID> pendingInviteChat = new HashSet<>();
     // Zapamiętuje, który slot w GUI "Członkowie Wyspy" odpowiada za którego gracza
     private final Map<UUID, Map<Integer, UUID>> slotyCzlonkow = new HashMap<>();
     // Który typ spawnera gracz aktualnie ma otwarty w podmenu "Spawner: X" (Ilość/Szybkość)
@@ -248,6 +259,15 @@ public class IslandManager implements Listener, IslandService {
                 } catch (IllegalArgumentException ignored) {}
             }
 
+            ConfigurationSection roleSekcja = configWysp.getConfigurationSection(path + "role");
+            if (roleSekcja != null) {
+                for (String memberStr : roleSekcja.getKeys(false)) {
+                    try {
+                        data.setRole(UUID.fromString(memberStr), IslandRole.valueOf(roleSekcja.getString(memberStr, "CZLONEK")));
+                    } catch (IllegalArgumentException ignored) {}
+                }
+            }
+
             islandDatabase.put(ownerUUID, data);
             playerIslandMap.put(ownerUUID, ownerUUID);
         }
@@ -288,6 +308,11 @@ public class IslandManager implements Listener, IslandService {
             List<String> czlonkowie = new ArrayList<>();
             for (UUID member : data.getMembers()) czlonkowie.add(member.toString());
             configWysp.set(path + "czlonkowie", czlonkowie);
+
+            configWysp.set(path + "role", null); // czyścimy, tak samo jak "wyspy" wyżej - usunięci/zdegradowani członkowie nie mają zostawać
+            for (Map.Entry<UUID, IslandRole> role : data.getMemberRoles().entrySet()) {
+                configWysp.set(path + "role." + role.getKey(), role.getValue().name());
+            }
         }
 
         try {
@@ -308,6 +333,7 @@ public class IslandManager implements Listener, IslandService {
         String sub = args.length > 0 ? args[0].toLowerCase() : "";
 
         switch (sub) {
+            case "menu" -> otworzMenuWyspy(player, zMenu);
             case "delete" -> obslugaUsuwaniaKomenda(player, args);
             case "border" -> przelaczWizualnyBorder(player);
             case "guests", "build" -> przelaczBudowanieDlaGosci(player);
@@ -315,15 +341,20 @@ public class IslandManager implements Listener, IslandService {
             case "mobs" -> przelaczPotwory(player);
             case "upgrade" -> otworzMenuUlepszen(player);
             case "members" -> otworzMenuCzlonkow(player);
-            case "add" -> dodajCzlonkaKomenda(player, args);
+            case "add", "invite" -> zaprosGracza(player, args);
+            case "accept" -> zaakceptujZaproszenie(player);
+            case "deny" -> odrzucZaproszenie(player);
+            case "leave" -> opuscWyspe(player);
+            case "promote" -> zmienRoleKomenda(player, args, IslandRole.ADMIN);
+            case "demote" -> zmienRoleKomenda(player, args, IslandRole.CZLONEK);
             case "remove" -> usunCzlonkaKomenda(player, args);
-            case "home", "h" -> teleportDoWyspy(player);
+            case "home" -> teleportDoWyspy(player);
             case "sethome" -> ustawDomek(player);
             default -> {
                 if (!playerIslandMap.containsKey(uuid)) {
                     stworzWyspe(player, zMenu);
                 } else {
-                    otworzMenuWyspy(player, zMenu);
+                    teleportDoWyspy(player);
                 }
             }
         }
@@ -341,6 +372,10 @@ public class IslandManager implements Listener, IslandService {
         UUID uuid = player.getUniqueId();
         if (!playerIslandMap.containsKey(uuid)) {
             player.sendMessage(Component.text("Nie posiadasz wyspy!", NamedTextColor.RED));
+            return;
+        }
+        if (!uuid.equals(playerIslandMap.get(uuid))) {
+            player.sendMessage(Component.text("Tylko właściciel może usunąć wyspę!", NamedTextColor.RED));
             return;
         }
 
@@ -365,8 +400,29 @@ public class IslandManager implements Listener, IslandService {
         return data;
     }
 
-    public void przelaczWizualnyBorder(Player player) {
+    /** Właściciel wyspy ZAWSZE ma pełne uprawnienia zarządzania - niezależnie od (braku) wpisu w memberRoles. */
+    private boolean mozeZarzadzac(UUID uuid, IslandData data) {
+        return data.getOwnerUUID().equals(uuid) || data.getRole(uuid) == IslandRole.ADMIN;
+    }
+
+    /**
+     * Jedyne miejsce sprawdzające "czy gracz może zarządzać SWOJĄ wyspą" (właściciel lub admin) -
+     * używane identycznie przez komendy /is i kliknięcia w GUI, żeby nie duplikować tej logiki
+     * w dwóch miejscach. Zwraca null i wysyła komunikat, jeśli gracz nie ma wyspy ALBO jest na niej
+     * tylko zwykłym członkiem.
+     */
+    private IslandData wlasnaWyspaJakoZarzadca(Player player) {
         IslandData data = wlasnaWyspaLubKomunikat(player);
+        if (data == null) return null;
+        if (!mozeZarzadzac(player.getUniqueId(), data)) {
+            player.sendMessage(Component.text("Tylko właściciel i administratorzy wyspy mogą to zrobić!", NamedTextColor.RED));
+            return null;
+        }
+        return data;
+    }
+
+    public void przelaczWizualnyBorder(Player player) {
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
         if (data == null) return;
         data.setVisualBorder(!data.isVisualBorder());
         ustawWizualnyBorder(player, data);
@@ -375,7 +431,7 @@ public class IslandManager implements Listener, IslandService {
     }
 
     public void przelaczBudowanieDlaGosci(Player player) {
-        IslandData data = wlasnaWyspaLubKomunikat(player);
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
         if (data == null) return;
         data.setAllowBreak(!data.isAllowBreak());
         zapiszWyspy();
@@ -383,7 +439,7 @@ public class IslandManager implements Listener, IslandService {
     }
 
     public void przelaczPvP(Player player) {
-        IslandData data = wlasnaWyspaLubKomunikat(player);
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
         if (data == null) return;
         data.setAllowPvP(!data.isAllowPvP());
         zapiszWyspy();
@@ -391,19 +447,61 @@ public class IslandManager implements Listener, IslandService {
     }
 
     public void przelaczPotwory(Player player) {
-        IslandData data = wlasnaWyspaLubKomunikat(player);
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
         if (data == null) return;
         data.setAllowMobs(!data.isAllowMobs());
         zapiszWyspy();
         player.sendMessage(Component.text("Potwory na wyspie: " + (data.isAllowMobs() ? "mogą się pojawiać" : "zablokowane"), NamedTextColor.GREEN));
     }
 
-    private void dodajCzlonkaKomenda(Player player, String[] args) {
-        if (args.length < 2) {
-            player.sendMessage(Component.text("Użycie: /is add <gracz>", NamedTextColor.RED));
+    // ---- Zaproszenia na wyspę (zastępują dawne natychmiastowe dodawanie bez zgody celu) ----
+
+    private final Map<UUID, PendingInvite> pendingInvites = new HashMap<>();
+    private static final long TIMEOUT_ZAPROSZENIA_TICKS = 60 * 20L;
+
+    private record PendingInvite(UUID ownerUUID, UUID inviterUUID) {}
+
+    /**
+     * Rdzeń wysyłki zaproszenia - współdzielony przez komendę /is invite i czatowy
+     * przepływ z GUI "Członkowie Wyspy" (przycisk "Zaproś gracza"). Sprawdzenie
+     * playerIslandMap.containsKey tutaj to PIERWSZA z dwóch blokad (druga jest
+     * w zaakceptujZaproszenie) - bez tego dałoby się zaprosić kogoś, kto już ma
+     * własną wyspę albo jest członkiem innej.
+     */
+    private void wykonajZaproszenie(Player inviter, Player target) {
+        UUID targetUUID = target.getUniqueId();
+        if (target.equals(inviter)) {
+            inviter.sendMessage(Component.text("Nie możesz zaprosić samego siebie!", NamedTextColor.RED));
             return;
         }
-        IslandData data = wlasnaWyspaLubKomunikat(player);
+        if (playerIslandMap.containsKey(targetUUID)) {
+            inviter.sendMessage(Component.text("Ten gracz już ma wyspę lub jest członkiem innej wyspy.", NamedTextColor.RED));
+            return;
+        }
+        if (pendingInvites.containsKey(targetUUID)) {
+            inviter.sendMessage(Component.text("Ten gracz ma już oczekujące zaproszenie.", NamedTextColor.RED));
+            return;
+        }
+
+        UUID ownerUUID = playerIslandMap.get(inviter.getUniqueId());
+        pendingInvites.put(targetUUID, new PendingInvite(ownerUUID, inviter.getUniqueId()));
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (pendingInvites.remove(targetUUID) != null) {
+                Player t = Bukkit.getPlayer(targetUUID);
+                if (t != null) t.sendMessage(Component.text("Zaproszenie na wyspę wygasło.", NamedTextColor.GRAY));
+            }
+        }, TIMEOUT_ZAPROSZENIA_TICKS);
+
+        inviter.sendMessage(Component.text("Wysłano zaproszenie do " + target.getName() + ".", NamedTextColor.GREEN));
+        target.sendMessage(Component.text("Zostałeś zaproszony na wyspę gracza " + inviter.getName() + "! Wpisz /is accept lub /is deny w ciągu 60 sekund.", NamedTextColor.AQUA));
+    }
+
+    private void zaprosGracza(Player player, String[] args) {
+        if (args.length < 2) {
+            player.sendMessage(Component.text("Użycie: /is invite <gracz>", NamedTextColor.RED));
+            return;
+        }
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
         if (data == null) return;
 
         Player target = Bukkit.getPlayer(args[1]);
@@ -412,13 +510,126 @@ public class IslandManager implements Listener, IslandService {
             return;
         }
 
-        UUID ownerUUID = data.getOwnerUUID();
-        data.getMembers().add(target.getUniqueId());
-        playerIslandMap.put(target.getUniqueId(), ownerUUID);
+        wykonajZaproszenie(player, target);
+    }
+
+    public void zaakceptujZaproszenie(Player player) {
+        UUID uuid = player.getUniqueId();
+        PendingInvite invite = pendingInvites.remove(uuid);
+        if (invite == null) {
+            player.sendMessage(Component.text("Nie masz żadnych oczekujących zaproszeń.", NamedTextColor.RED));
+            return;
+        }
+        // Druga blokada (patrz komentarz w wykonajZaproszenie) - stan mógł się zmienić
+        // w czasie, gdy zaproszenie czekało (np. gracz założył własną wyspę w międzyczasie).
+        if (playerIslandMap.containsKey(uuid)) {
+            player.sendMessage(Component.text("Masz już wyspę - to zaproszenie jest już nieaktualne.", NamedTextColor.RED));
+            return;
+        }
+        IslandData data = islandDatabase.get(invite.ownerUUID());
+        if (data == null) {
+            player.sendMessage(Component.text("Ta wyspa już nie istnieje.", NamedTextColor.RED));
+            return;
+        }
+
+        data.getMembers().add(uuid);
+        data.setRole(uuid, IslandRole.CZLONEK);
+        playerIslandMap.put(uuid, invite.ownerUUID());
         zapiszWyspy();
 
-        player.sendMessage(Component.text("Pomyślnie dodano gracza " + target.getName() + " do wyspy!", NamedTextColor.GREEN));
-        target.sendMessage(Component.text("Zostałeś dodany do wyspy gracza " + player.getName() + "!", NamedTextColor.AQUA));
+        player.sendMessage(Component.text("Dołączyłeś do wyspy!", NamedTextColor.GREEN));
+        Player inviterOnline = Bukkit.getPlayer(invite.inviterUUID());
+        if (inviterOnline != null) {
+            inviterOnline.sendMessage(Component.text(player.getName() + " zaakceptował zaproszenie i dołączył do wyspy!", NamedTextColor.GREEN));
+        }
+    }
+
+    public void odrzucZaproszenie(Player player) {
+        PendingInvite invite = pendingInvites.remove(player.getUniqueId());
+        if (invite == null) {
+            player.sendMessage(Component.text("Nie masz żadnych oczekujących zaproszeń.", NamedTextColor.RED));
+            return;
+        }
+        player.sendMessage(Component.text("Odrzucono zaproszenie.", NamedTextColor.YELLOW));
+        Player inviterOnline = Bukkit.getPlayer(invite.inviterUUID());
+        if (inviterOnline != null) {
+            inviterOnline.sendMessage(Component.text(player.getName() + " odrzucił zaproszenie na wyspę.", NamedTextColor.RED));
+        }
+    }
+
+    /** Samodzielne opuszczenie wyspy przez nie-właściciela - "hermetyczność" (patrz /is leave, przycisk w panelu). */
+    public void opuscWyspe(Player player) {
+        UUID uuid = player.getUniqueId();
+        UUID ownerUUID = playerIslandMap.get(uuid);
+        if (ownerUUID == null) {
+            player.sendMessage(Component.text("Nie jesteś członkiem żadnej wyspy!", NamedTextColor.RED));
+            return;
+        }
+        if (ownerUUID.equals(uuid)) {
+            player.sendMessage(Component.text("Jesteś właścicielem tej wyspy - użyj /is delete, aby ją usunąć.", NamedTextColor.RED));
+            return;
+        }
+
+        IslandData data = islandDatabase.get(ownerUUID);
+        if (data == null) return;
+
+        data.getMembers().remove(uuid);
+        data.getMemberRoles().remove(uuid);
+        playerIslandMap.remove(uuid);
+        zapiszWyspy();
+
+        player.sendMessage(Component.text("Opuściłeś wyspę.", NamedTextColor.YELLOW));
+        Player ownerOnline = Bukkit.getPlayer(ownerUUID);
+        if (ownerOnline != null) {
+            ownerOnline.sendMessage(Component.text(player.getName() + " opuścił Twoją wyspę.", NamedTextColor.YELLOW));
+        }
+    }
+
+    /** /is promote|demote <gracz> - wyłącznie właściciel, egzekwowane wewnątrz zmienRoleCzlonka. */
+    private void zmienRoleKomenda(Player player, String[] args, IslandRole nowaRola) {
+        if (args.length < 2) {
+            player.sendMessage(Component.text("Użycie: /is " + (nowaRola == IslandRole.ADMIN ? "promote" : "demote") + " <gracz>", NamedTextColor.RED));
+            return;
+        }
+        IslandData data = wlasnaWyspaLubKomunikat(player);
+        if (data == null) return;
+
+        UUID targetUUID = null;
+        for (UUID member : data.getMembers()) {
+            @SuppressWarnings("deprecation")
+            String nick = Bukkit.getOfflinePlayer(member).getName();
+            if (args[1].equalsIgnoreCase(nick)) {
+                targetUUID = member;
+                break;
+            }
+        }
+        if (targetUUID == null) {
+            player.sendMessage(Component.text("Ten gracz nie jest członkiem Twojej wyspy.", NamedTextColor.RED));
+            return;
+        }
+
+        zmienRoleCzlonka(player, targetUUID, nowaRola);
+    }
+
+    /** Zmiana rangi członka - wyłącznie właściciel (nawet admin nie może zarządzać rangami innych). */
+    private void zmienRoleCzlonka(Player owner, UUID targetUUID, IslandRole nowaRola) {
+        UUID ownerUUID = playerIslandMap.get(owner.getUniqueId());
+        IslandData data = ownerUUID != null ? islandDatabase.get(ownerUUID) : null;
+        if (data == null || !data.getOwnerUUID().equals(owner.getUniqueId())) {
+            owner.sendMessage(Component.text("Tylko właściciel wyspy może zmieniać role.", NamedTextColor.RED));
+            return;
+        }
+        if (!data.getMembers().contains(targetUUID)) return;
+
+        data.setRole(targetUUID, nowaRola);
+        zapiszWyspy();
+
+        String nazwaRoli = nowaRola == IslandRole.ADMIN ? "Admin" : "Członek";
+        owner.sendMessage(Component.text("Zmieniono rolę na " + nazwaRoli + ".", NamedTextColor.GREEN));
+        Player targetOnline = Bukkit.getPlayer(targetUUID);
+        if (targetOnline != null) {
+            targetOnline.sendMessage(Component.text("Twoja rola na wyspie została zmieniona na " + nazwaRoli + ".", NamedTextColor.AQUA));
+        }
     }
 
     private void usunCzlonkaKomenda(Player player, String[] args) {
@@ -606,11 +817,14 @@ public class IslandManager implements Listener, IslandService {
 
     /**
      * /is sethome - nadpisuje domyślny punkt teleportu (środek wyspy) własnym,
-     * ustawionym tam, gdzie gracz akurat stoi. Wymagamy, żeby stał na SWOJEJ wyspie -
-     * bez tego dałoby się ustawić dom gdziekolwiek w świecie (np. na cudzej wyspie).
+     * ustawionym tam, gdzie gracz akurat stoi. To ustawienie WSPÓLNE dla całej wyspy
+     * (dotyczy każdego, kto potem wpisze /is albo /is home), więc - tak jak border/PvP/
+     * ulepszenia - może to zrobić tylko właściciel albo admin (wlasnaWyspaJakoZarzadca),
+     * nie każdy zwykły członek. Wymagamy też, żeby stał na SWOJEJ wyspie - bez tego
+     * dałoby się ustawić dom gdziekolwiek w świecie (np. na cudzej wyspie).
      */
     private void ustawDomek(Player player) {
-        IslandData data = wlasnaWyspaLubKomunikat(player);
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
         if (data == null) return;
 
         Location loc = player.getLocation();
@@ -628,9 +842,7 @@ public class IslandManager implements Listener, IslandService {
 
     private void ustawWizualnyBorder(Player player, IslandData data) {
         if (!data.isVisualBorder()) {
-            WorldBorder clearBorder = Bukkit.createWorldBorder();
-            clearBorder.setSize(ROZMIAR_BEZ_BORDERU);
-            player.setWorldBorder(clearBorder);
+            wyczyscBorder(player);
             return;
         }
 
@@ -639,6 +851,29 @@ public class IslandManager implements Listener, IslandService {
         border.setSize(data.getBorderSize() * 2);
         border.setWarningDistance(0);
         player.setWorldBorder(border);
+    }
+
+    /** Border "wyłączony" - wspólne dla przełącznika w panelu i dla opuszczenia terenu wysp. */
+    void wyczyscBorder(Player player) {
+        WorldBorder clearBorder = Bukkit.createWorldBorder();
+        clearBorder.setSize(ROZMIAR_BEZ_BORDERU);
+        player.setWorldBorder(clearBorder);
+    }
+
+    /**
+     * Stosuje border wyspy, na której obszarze fizycznie stoi gracz (właściciel, członek
+     * LUB gość odwiedzający - patrz znajdzWyspePod, dopasowanie jest po współrzędnych,
+     * nie po członkostwie), albo brak borderu, jeśli stoi w pustce między wyspami. Wołane
+     * przez BorderManager przy zmianie świata i teleportacji w obrębie świata wysp, żeby
+     * border faktycznie trzymał się gracza cały czas, a nie tylko bezpośrednio po /is.
+     */
+    void aplikujBorderDlaLokalizacji(Player player, Location loc) {
+        IslandData data = znajdzWyspePod(loc);
+        if (data == null) {
+            wyczyscBorder(player);
+        } else {
+            ustawWizualnyBorder(player, data);
+        }
     }
 
     // Główne zaktualizowane GUI (54 sloty)
@@ -651,6 +886,9 @@ public class IslandManager implements Listener, IslandService {
             player.sendMessage(Component.text("Nie posiadasz wyspy!", NamedTextColor.RED));
             return;
         }
+
+        boolean isOwner = data.getOwnerUUID().equals(player.getUniqueId());
+        boolean canManage = mozeZarzadzac(player.getUniqueId(), data);
 
         Inventory gui = Bukkit.createInventory(null, 54, Component.text("Panel Wyspy", NamedTextColor.DARK_GREEN, TextDecoration.BOLD));
 
@@ -667,9 +905,11 @@ public class IslandManager implements Listener, IslandService {
         List<Component> loreInfo = new ArrayList<>();
         Player owner = Bukkit.getPlayer(data.getOwnerUUID());
         String ownerName = owner != null ? owner.getName() : "Nieznany";
+        String nazwaRoliGracza = isOwner ? "Właściciel" : (data.getRole(player.getUniqueId()) == IslandRole.ADMIN ? "Admin" : "Członek");
         loreInfo.add(Component.text("Właściciel: " + ownerName, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
         loreInfo.add(Component.text("Rozmiar: " + data.getBorderSize() + "x" + data.getBorderSize(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
         loreInfo.add(Component.text("Członkowie: " + data.getMembers().size(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        loreInfo.add(Component.text("Twoja rola: " + nazwaRoliGracza, NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
         mInfo.lore(loreInfo);
         info.setItemMeta(mInfo);
         gui.setItem(11, info);
@@ -682,81 +922,92 @@ public class IslandManager implements Listener, IslandService {
         dom.setItemMeta(mDom);
         gui.setItem(13, dom);
 
-        // 3. ULEPSZENIA
-        ItemStack upg = new ItemStack(Material.BEACON);
-        ItemMeta mUpg = upg.getItemMeta();
-        mUpg.displayName(Component.text("Ulepszenia Wyspy", NamedTextColor.GOLD, TextDecoration.BOLD));
-        mUpg.lore(List.of(Component.text("Zwiększ rozmiar wyspy", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
-        upg.setItemMeta(mUpg);
-        gui.setItem(15, upg);
+        if (canManage) {
+            // 3. ULEPSZENIA
+            ItemStack upg = new ItemStack(Material.BEACON);
+            ItemMeta mUpg = upg.getItemMeta();
+            mUpg.displayName(Component.text("Ulepszenia Wyspy", NamedTextColor.GOLD, TextDecoration.BOLD));
+            mUpg.lore(List.of(Component.text("Zwiększ rozmiar wyspy", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+            upg.setItemMeta(mUpg);
+            gui.setItem(15, upg);
 
-        // 4. BORDER WIZUALNY
-        boolean borderOn = data.isVisualBorder();
-        ItemStack border = new ItemStack(borderOn ? Material.BLUE_STAINED_GLASS : Material.RED_STAINED_GLASS);
-        ItemMeta mBorder = border.getItemMeta();
-        mBorder.displayName(Component.text("Wizualny Border", NamedTextColor.BLUE, TextDecoration.BOLD));
-        mBorder.lore(List.of(
-                Component.text("Stan: " + (borderOn ? "Włączony" : "Wyłączony"), borderOn ? NamedTextColor.GREEN : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false),
-                Component.text("Kliknij, aby przełączyć", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
-        ));
-        border.setItemMeta(mBorder);
-        gui.setItem(29, border);
+            // 4. BORDER WIZUALNY
+            boolean borderOn = data.isVisualBorder();
+            ItemStack border = new ItemStack(borderOn ? Material.BLUE_STAINED_GLASS : Material.RED_STAINED_GLASS);
+            ItemMeta mBorder = border.getItemMeta();
+            mBorder.displayName(Component.text("Wizualny Border", NamedTextColor.BLUE, TextDecoration.BOLD));
+            mBorder.lore(List.of(
+                    Component.text("Stan: " + (borderOn ? "Włączony" : "Wyłączony"), borderOn ? NamedTextColor.GREEN : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false),
+                    Component.text("Kliknij, aby przełączyć", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+            ));
+            border.setItemMeta(mBorder);
+            gui.setItem(29, border);
 
-        // 4b. BUDOWANIE DLA GOŚCI
-        boolean breakOn = data.isAllowBreak();
-        ItemStack breakItem = new ItemStack(breakOn ? Material.GRASS_BLOCK : Material.BEDROCK);
-        ItemMeta mBreak = breakItem.getItemMeta();
-        mBreak.displayName(Component.text("Budowanie dla Gości", NamedTextColor.GREEN, TextDecoration.BOLD));
-        mBreak.lore(List.of(
-                Component.text("Stan: " + (breakOn ? "Otwarte" : "Zamknięte"), breakOn ? NamedTextColor.GREEN : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false),
-                Component.text("Właściciel i członkowie budują zawsze", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false),
-                Component.text("Kliknij, aby przełączyć", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
-        ));
-        breakItem.setItemMeta(mBreak);
-        gui.setItem(20, breakItem);
+            // 4b. BUDOWANIE DLA GOŚCI
+            boolean breakOn = data.isAllowBreak();
+            ItemStack breakItem = new ItemStack(breakOn ? Material.GRASS_BLOCK : Material.BEDROCK);
+            ItemMeta mBreak = breakItem.getItemMeta();
+            mBreak.displayName(Component.text("Budowanie dla Gości", NamedTextColor.GREEN, TextDecoration.BOLD));
+            mBreak.lore(List.of(
+                    Component.text("Stan: " + (breakOn ? "Otwarte" : "Zamknięte"), breakOn ? NamedTextColor.GREEN : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false),
+                    Component.text("Właściciel i członkowie budują zawsze", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false),
+                    Component.text("Kliknij, aby przełączyć", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+            ));
+            breakItem.setItemMeta(mBreak);
+            gui.setItem(20, breakItem);
 
-        // 4c. PVP NA WYSPIE
-        boolean pvpOn = data.isAllowPvP();
-        ItemStack pvpItem = new ItemStack(pvpOn ? Material.IRON_SWORD : Material.SHIELD);
-        ItemMeta mPvp = pvpItem.getItemMeta();
-        mPvp.displayName(Component.text("PvP na Wyspie", NamedTextColor.RED, TextDecoration.BOLD));
-        mPvp.lore(List.of(
-                Component.text("Stan: " + (pvpOn ? "Włączone" : "Wyłączone"), pvpOn ? NamedTextColor.GREEN : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false),
-                Component.text("Kliknij, aby przełączyć", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
-        ));
-        pvpItem.setItemMeta(mPvp);
-        gui.setItem(22, pvpItem);
+            // 4c. PVP NA WYSPIE
+            boolean pvpOn = data.isAllowPvP();
+            ItemStack pvpItem = new ItemStack(pvpOn ? Material.IRON_SWORD : Material.SHIELD);
+            ItemMeta mPvp = pvpItem.getItemMeta();
+            mPvp.displayName(Component.text("PvP na Wyspie", NamedTextColor.RED, TextDecoration.BOLD));
+            mPvp.lore(List.of(
+                    Component.text("Stan: " + (pvpOn ? "Włączone" : "Wyłączone"), pvpOn ? NamedTextColor.GREEN : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false),
+                    Component.text("Kliknij, aby przełączyć", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+            ));
+            pvpItem.setItemMeta(mPvp);
+            gui.setItem(22, pvpItem);
 
-        // 4d. POTWORY NA WYSPIE
-        boolean mobyOn = data.isAllowMobs();
-        ItemStack mobyItem = new ItemStack(mobyOn ? Material.ZOMBIE_HEAD : Material.TOTEM_OF_UNDYING);
-        ItemMeta mMoby = mobyItem.getItemMeta();
-        mMoby.displayName(Component.text("Potwory na Wyspie", NamedTextColor.DARK_GREEN, TextDecoration.BOLD));
-        mMoby.lore(List.of(
-                Component.text("Stan: " + (mobyOn ? "Mogą się pojawiać" : "Zablokowane"), mobyOn ? NamedTextColor.GREEN : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false),
-                Component.text("Kliknij, aby przełączyć", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
-        ));
-        mobyItem.setItemMeta(mMoby);
-        gui.setItem(24, mobyItem);
+            // 4d. POTWORY NA WYSPIE
+            boolean mobyOn = data.isAllowMobs();
+            ItemStack mobyItem = new ItemStack(mobyOn ? Material.ZOMBIE_HEAD : Material.TOTEM_OF_UNDYING);
+            ItemMeta mMoby = mobyItem.getItemMeta();
+            mMoby.displayName(Component.text("Potwory na Wyspie", NamedTextColor.DARK_GREEN, TextDecoration.BOLD));
+            mMoby.lore(List.of(
+                    Component.text("Stan: " + (mobyOn ? "Mogą się pojawiać" : "Zablokowane"), mobyOn ? NamedTextColor.GREEN : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false),
+                    Component.text("Kliknij, aby przełączyć", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+            ));
+            mobyItem.setItemMeta(mMoby);
+            gui.setItem(24, mobyItem);
 
-        // 5. DODAJ GRACZA / ZARZĄDZAJ
-        ItemStack dodaj = new ItemStack(Material.PLAYER_HEAD);
-        ItemMeta mDodaj = dodaj.getItemMeta();
-        mDodaj.displayName(Component.text("Członkowie Wyspy", NamedTextColor.YELLOW, TextDecoration.BOLD));
-        mDodaj.lore(List.of(
-                Component.text("Aktualnie: " + data.getMembers().size() + " członków", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                Component.text("Kliknij, aby zarządzać", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
-        ));
-        dodaj.setItemMeta(mDodaj);
-        gui.setItem(31, dodaj);
+            // 5. CZŁONKOWIE / ZARZĄDZAJ
+            ItemStack dodaj = new ItemStack(Material.PLAYER_HEAD);
+            ItemMeta mDodaj = dodaj.getItemMeta();
+            mDodaj.displayName(Component.text("Członkowie Wyspy", NamedTextColor.YELLOW, TextDecoration.BOLD));
+            mDodaj.lore(List.of(
+                    Component.text("Aktualnie: " + data.getMembers().size() + " członków", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                    Component.text("Kliknij, aby zarządzać", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+            ));
+            dodaj.setItemMeta(mDodaj);
+            gui.setItem(31, dodaj);
+        }
 
-        // 6. USUŃ WYSPĘ
-        ItemStack usun = new ItemStack(Material.TNT);
-        ItemMeta mUsun = usun.getItemMeta();
-        mUsun.displayName(Component.text("Usuń Wyspę", NamedTextColor.DARK_RED, TextDecoration.BOLD));
-        mUsun.lore(List.of(Component.text("Ostrzeżenie: Wyspa zniknie bezpowrotnie!", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false)));
-        usun.setItemMeta(mUsun);
-        gui.setItem(33, usun);
+        // 6. USUŃ WYSPĘ (właściciel) / OPUŚĆ WYSPĘ (reszta)
+        if (isOwner) {
+            ItemStack usun = new ItemStack(Material.TNT);
+            ItemMeta mUsun = usun.getItemMeta();
+            mUsun.displayName(Component.text("Usuń Wyspę", NamedTextColor.DARK_RED, TextDecoration.BOLD));
+            mUsun.lore(List.of(Component.text("Ostrzeżenie: Wyspa zniknie bezpowrotnie!", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false)));
+            usun.setItemMeta(mUsun);
+            gui.setItem(33, usun);
+        } else {
+            ItemStack opusc = new ItemStack(Material.OAK_BOAT);
+            ItemMeta mOpusc = opusc.getItemMeta();
+            mOpusc.displayName(Component.text("Opuść Wyspę", NamedTextColor.RED, TextDecoration.BOLD));
+            mOpusc.lore(List.of(Component.text("Samodzielnie zrezygnujesz z członkostwa", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+            opusc.setItemMeta(mOpusc);
+            gui.setItem(33, opusc);
+        }
 
         // PRZYCISK POWROTU
         ItemStack wyjscie = new ItemStack(zMenu ? Material.NETHER_STAR : Material.BARRIER);
@@ -769,9 +1020,10 @@ public class IslandManager implements Listener, IslandService {
     }
 
     public void otworzMenuUlepszen(Player player) {
-        UUID ownerUUID = playerIslandMap.get(player.getUniqueId());
-        IslandData data = ownerUUID != null ? islandDatabase.get(ownerUUID) : null;
-        int currentSize = data != null ? data.getBorderSize() : 50;
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
+        if (data == null) return;
+
+        int currentSize = data.getBorderSize();
         int cost = currentSize * 1000;
         boolean maksimum = currentSize >= MAX_BORDER_SIZE;
 
@@ -966,6 +1218,11 @@ public class IslandManager implements Listener, IslandService {
         if (title.contains("Panel Wyspy")) {
             event.setCancelled(true);
             int slot = event.getRawSlot();
+
+            UUID panelOwnerUUID = playerIslandMap.get(player.getUniqueId());
+            IslandData panelData = panelOwnerUUID != null ? islandDatabase.get(panelOwnerUUID) : null;
+            boolean panelIsOwner = panelData != null && panelData.getOwnerUUID().equals(player.getUniqueId());
+
             if (slot == 13) { player.closeInventory(); teleportDoWyspy(player); } // Teleport
             else if (slot == 15) { otworzMenuUlepszen(player); } // Ulepszenia
             else if (slot == 31) { otworzMenuCzlonkow(player); } // Członkowie - lista + zarządzanie
@@ -973,7 +1230,7 @@ public class IslandManager implements Listener, IslandService {
             else if (slot == 20) { przelaczBudowanieDlaGosci(player); otworzMenuWyspy(player, zMenu); }
             else if (slot == 22) { przelaczPvP(player); otworzMenuWyspy(player, zMenu); }
             else if (slot == 24) { przelaczPotwory(player); otworzMenuWyspy(player, zMenu); }
-            else if (slot == 33) { // Kosz / Usunięcie
+            else if (slot == 33 && panelIsOwner) { // Kosz / Usunięcie - decyzja po serwerowym isOwner, nie po ikonie klienta
                 if (oczekujeNaPotwierdzenie(player.getUniqueId())) {
                     player.closeInventory();
                     potwierdzUsuniecie(player);
@@ -983,6 +1240,22 @@ public class IslandManager implements Listener, IslandService {
                     if (item != null) {
                         ItemMeta meta = item.getItemMeta();
                         meta.displayName(Component.text("KLIKNIJ PONOWNIE BY USUNĄĆ!", NamedTextColor.DARK_RED, TextDecoration.BOLD));
+                        item.setItemMeta(meta);
+                    }
+                }
+            }
+            else if (slot == 33) { // Opuść Wyspę (nie-właściciel)
+                if (pendingLeaveConfirmation.contains(player.getUniqueId())) {
+                    player.closeInventory();
+                    pendingLeaveConfirmation.remove(player.getUniqueId());
+                    opuscWyspe(player);
+                } else {
+                    pendingLeaveConfirmation.add(player.getUniqueId());
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> pendingLeaveConfirmation.remove(player.getUniqueId()), TIMEOUT_POTWIERDZENIA_TICKS);
+                    ItemStack item = event.getCurrentItem();
+                    if (item != null) {
+                        ItemMeta meta = item.getItemMeta();
+                        meta.displayName(Component.text("KLIKNIJ PONOWNIE, ABY OPUŚCIĆ WYSPĘ!", NamedTextColor.DARK_RED, TextDecoration.BOLD));
                         item.setItemMeta(meta);
                     }
                 }
@@ -1034,30 +1307,39 @@ public class IslandManager implements Listener, IslandService {
 
             if (slot == 49) { // Powrót do panelu wyspy
                 otworzMenuWyspy(player, zMenu);
-            } else if (slot == 53) { // Dodaj gracza (ten sam mechanizm co poprzednio - przez czat)
+            } else if (slot == 53) { // Zaproś gracza (przez czat)
                 player.closeInventory();
-                pendingAddMember.add(player.getUniqueId());
-                player.sendMessage(Component.text("Wpisz na czacie nick gracza, którego chcesz dodać do wyspy (lub wpisz 'anuluj'):", NamedTextColor.YELLOW));
+                pendingInviteChat.add(player.getUniqueId());
+                player.sendMessage(Component.text("Wpisz na czacie nick gracza, którego chcesz zaprosić na wyspę (lub wpisz 'anuluj'):", NamedTextColor.YELLOW));
             } else {
                 Map<Integer, UUID> mapaSlotow = slotyCzlonkow.get(player.getUniqueId());
                 UUID targetUUID = mapaSlotow != null ? mapaSlotow.get(slot) : null;
                 if (targetUUID != null) {
-                    usunCzlonka(player, targetUUID);
+                    if (event.getClick().isRightClick()) {
+                        UUID ownerUUID = playerIslandMap.get(player.getUniqueId());
+                        IslandData data = islandDatabase.get(ownerUUID);
+                        if (data != null) {
+                            IslandRole obecna = data.getRole(targetUUID);
+                            zmienRoleCzlonka(player, targetUUID, obecna == IslandRole.ADMIN ? IslandRole.CZLONEK : IslandRole.ADMIN);
+                        }
+                    } else {
+                        usunCzlonka(player, targetUUID);
+                    }
                     otworzMenuCzlonkow(player); // odśwież listę
                 }
             }
         }
     }
 
-    /** Lista aktualnych członków wyspy z możliwością usunięcia + przycisk dodawania nowego. */
+    /**
+     * Lista aktualnych członków wyspy z możliwością usunięcia/zmiany rangi + przycisk
+     * zapraszania nowych. Dostępne wyłącznie dla właściciela i adminów - zwykli
+     * członkowie w ogóle nie mogą tego otworzyć (wlasnaWyspaJakoZarzadca odrzuca ich
+     * z komunikatem).
+     */
     public void otworzMenuCzlonkow(Player player) {
-        UUID ownerUUID = playerIslandMap.get(player.getUniqueId());
-        IslandData data = ownerUUID != null ? islandDatabase.get(ownerUUID) : null;
-
-        if (data == null) {
-            player.sendMessage(Component.text("Nie posiadasz wyspy!", NamedTextColor.RED));
-            return;
-        }
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
+        if (data == null) return;
 
         Inventory gui = Bukkit.createInventory(null, 54, Component.text("Członkowie Wyspy", NamedTextColor.YELLOW, TextDecoration.BOLD));
 
@@ -1067,10 +1349,27 @@ public class IslandManager implements Listener, IslandService {
         tlo.setItemMeta(metaTlo);
         for (int i = 0; i < 54; i++) gui.setItem(i, tlo);
 
+        boolean viewerIsOwner = data.getOwnerUUID().equals(player.getUniqueId());
+
+        // Slot 0 - nieklikalna karta właściciela, żeby lista jasno pokazywała kto nim jest.
+        @SuppressWarnings("deprecation")
+        OfflinePlayer ownerOffline = Bukkit.getOfflinePlayer(data.getOwnerUUID());
+        String ownerNick = ownerOffline.getName() != null ? ownerOffline.getName() : data.getOwnerUUID().toString();
+        ItemStack kartaWlasciciela = new ItemStack(Material.PLAYER_HEAD);
+        SkullMeta metaWlasciciela = (SkullMeta) kartaWlasciciela.getItemMeta();
+        metaWlasciciela.setOwningPlayer(ownerOffline);
+        metaWlasciciela.displayName(Component.text("[WŁAŚCICIEL] " + ownerNick, NamedTextColor.GOLD, TextDecoration.BOLD));
+        metaWlasciciela.lore(List.of(Component.text("Właściciel wyspy", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+        kartaWlasciciela.setItemMeta(metaWlasciciela);
+        gui.setItem(0, kartaWlasciciela);
+
         Map<Integer, UUID> mapaSlotow = new HashMap<>();
-        int slot = 0;
+        int slot = 1;
         for (UUID memberUUID : data.getMembers()) {
             if (slot >= 45) break; // zabezpieczenie na wypadek bardzo dużej liczby członków
+
+            IslandRole rola = data.getRole(memberUUID);
+            boolean memberIsAdmin = rola == IslandRole.ADMIN;
 
             @SuppressWarnings("deprecation")
             OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(memberUUID);
@@ -1079,8 +1378,22 @@ public class IslandManager implements Listener, IslandService {
             ItemStack glowa = new ItemStack(Material.PLAYER_HEAD);
             SkullMeta meta = (SkullMeta) glowa.getItemMeta();
             meta.setOwningPlayer(offlinePlayer);
-            meta.displayName(Component.text(nick, NamedTextColor.AQUA, TextDecoration.BOLD));
-            meta.lore(List.of(Component.text("Kliknij, aby usunąć z wyspy", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false)));
+            meta.displayName(memberIsAdmin
+                    ? Component.text("[ADMIN] " + nick, NamedTextColor.GOLD, TextDecoration.BOLD)
+                    : Component.text(nick, NamedTextColor.AQUA, TextDecoration.BOLD));
+
+            List<Component> lore = new ArrayList<>();
+            lore.add(Component.text("Rola: " + (memberIsAdmin ? "Administrator" : "Członek"), memberIsAdmin ? NamedTextColor.GOLD : NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.empty());
+            if (viewerIsOwner) {
+                lore.add(Component.text("LPM: Usuń z wyspy", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
+                lore.add(Component.text(memberIsAdmin ? "PPM: Zdegraduj do Członka" : "PPM: Awansuj na Admina", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
+            } else if (!memberIsAdmin) {
+                lore.add(Component.text("LPM: Usuń z wyspy", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
+            } else {
+                lore.add(Component.text("Nie możesz zarządzać innym administratorem", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
+            }
+            meta.lore(lore);
             glowa.setItemMeta(meta);
 
             gui.setItem(slot, glowa);
@@ -1089,12 +1402,12 @@ public class IslandManager implements Listener, IslandService {
         }
         slotyCzlonkow.put(player.getUniqueId(), mapaSlotow);
 
-        ItemStack dodaj = new ItemStack(Material.EMERALD);
-        ItemMeta mDodaj = dodaj.getItemMeta();
-        mDodaj.displayName(Component.text("Dodaj gracza", NamedTextColor.GREEN, TextDecoration.BOLD));
-        mDodaj.lore(List.of(Component.text("Wpisz nick na czacie po kliknięciu", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
-        dodaj.setItemMeta(mDodaj);
-        gui.setItem(53, dodaj);
+        ItemStack zapros = new ItemStack(Material.EMERALD);
+        ItemMeta mZapros = zapros.getItemMeta();
+        mZapros.displayName(Component.text("Zaproś gracza", NamedTextColor.GREEN, TextDecoration.BOLD));
+        mZapros.lore(List.of(Component.text("Wpisz nick na czacie po kliknięciu", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+        zapros.setItemMeta(mZapros);
+        gui.setItem(53, zapros);
 
         ItemStack powrot = new ItemStack(Material.ARROW);
         ItemMeta mPowrot = powrot.getItemMeta();
@@ -1105,22 +1418,33 @@ public class IslandManager implements Listener, IslandService {
         player.openInventory(gui);
     }
 
-    private void usunCzlonka(Player owner, UUID targetUUID) {
-        UUID ownerUUID = playerIslandMap.get(owner.getUniqueId());
+    /** Jedyne miejsce egzekwujące kto kogo może wyrzucić - używane identycznie przez komendę i GUI. */
+    private void usunCzlonka(Player actor, UUID targetUUID) {
+        UUID ownerUUID = playerIslandMap.get(actor.getUniqueId());
         IslandData data = ownerUUID != null ? islandDatabase.get(ownerUUID) : null;
         if (data == null) return;
 
+        if (!mozeZarzadzac(actor.getUniqueId(), data)) {
+            actor.sendMessage(Component.text("Tylko właściciel i administratorzy mogą usuwać członków.", NamedTextColor.RED));
+            return;
+        }
+        boolean actorIsOwner = data.getOwnerUUID().equals(actor.getUniqueId());
+        if (!actorIsOwner && data.getRole(targetUUID) == IslandRole.ADMIN) {
+            actor.sendMessage(Component.text("Nie możesz usunąć innego administratora wyspy.", NamedTextColor.RED));
+            return;
+        }
+
         if (data.getMembers().remove(targetUUID)) {
-            playerIslandMap.remove(targetUUID);
+            data.getMemberRoles().remove(targetUUID);
             zapiszWyspy();
 
             @SuppressWarnings("deprecation")
             String nick = Bukkit.getOfflinePlayer(targetUUID).getName();
-            owner.sendMessage(Component.text("Usunięto gracza " + (nick != null ? nick : targetUUID) + " z wyspy.", NamedTextColor.YELLOW));
+            actor.sendMessage(Component.text("Usunięto gracza " + (nick != null ? nick : targetUUID) + " z wyspy.", NamedTextColor.YELLOW));
 
             Player targetOnline = Bukkit.getPlayer(targetUUID);
             if (targetOnline != null) {
-                targetOnline.sendMessage(Component.text("Zostałeś usunięty z wyspy gracza " + owner.getName() + ".", NamedTextColor.RED));
+                targetOnline.sendMessage(Component.text("Zostałeś usunięty z wyspy gracza " + actor.getName() + ".", NamedTextColor.RED));
             }
         }
     }
@@ -1156,38 +1480,28 @@ public class IslandManager implements Listener, IslandService {
     @EventHandler
     public void onChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
-        if (!pendingAddMember.contains(player.getUniqueId())) return;
+        if (!pendingInviteChat.contains(player.getUniqueId())) return;
 
         event.setCancelled(true);
-        pendingAddMember.remove(player.getUniqueId());
+        pendingInviteChat.remove(player.getUniqueId());
 
         String targetName = event.getMessage();
         if (targetName.equalsIgnoreCase("anuluj")) {
-            player.sendMessage(Component.text("Anulowano dodawanie gracza.", NamedTextColor.RED));
+            player.sendMessage(Component.text("Anulowano zapraszanie gracza.", NamedTextColor.RED));
             return;
         }
 
-        Player target = Bukkit.getPlayer(targetName);
+        // Ponowna walidacja uprawnień - stan mógł się zmienić w czasie, gdy okno czatu było otwarte.
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
+        if (data == null) return;
 
+        Player target = Bukkit.getPlayer(targetName);
         if (target == null || !target.isOnline()) {
             player.sendMessage(Component.text("Nie znaleziono gracza o takim nicku lub jest offline.", NamedTextColor.RED));
             return;
         }
 
-        UUID ownerUUID = playerIslandMap.get(player.getUniqueId());
-        IslandData data = islandDatabase.get(ownerUUID);
-
-        if (data == null) {
-            player.sendMessage(Component.text("Nie posiadasz wyspy!", NamedTextColor.RED));
-            return;
-        }
-
-        data.getMembers().add(target.getUniqueId());
-        playerIslandMap.put(target.getUniqueId(), ownerUUID);
-        zapiszWyspy();
-
-        player.sendMessage(Component.text("Pomyślnie dodano gracza " + target.getName() + " do wyspy!", NamedTextColor.GREEN));
-        target.sendMessage(Component.text("Zostałeś dodany do wyspy gracza " + player.getName() + "!", NamedTextColor.AQUA));
+        wykonajZaproszenie(player, target);
     }
 
     public void potwierdzUsuniecie(Player player) {
@@ -1199,19 +1513,25 @@ public class IslandManager implements Listener, IslandService {
         IslandData data = islandDatabase.remove(ownerUUID);
 
         if (data != null) {
-            // Usuń z mapy wszystkich członków
+            Location spawnLoc = Bukkit.getWorlds().get(0).getSpawnLocation();
+
+            // Usuń z mapy i teleportuj na spawn wszystkich obecnie online członków - ich
+            // przynależność do tej wyspy właśnie znika, więc nie mogą zostać "uwięzieni"
+            // na terenie, który za chwilę jest czyszczony (patrz wyczyscTerenWyspy niżej).
             for (UUID memberUUID : data.getMembers()) {
                 playerIslandMap.remove(memberUUID);
+                Player memberOnline = Bukkit.getPlayer(memberUUID);
+                if (memberOnline != null) {
+                    memberOnline.teleport(spawnLoc);
+                    memberOnline.sendMessage(Component.text("Wyspa, na której byłeś, została usunięta przez właściciela.", NamedTextColor.RED));
+                }
             }
             zapiszWyspy(); // wyspa usunięta z islandDatabase wcześniej - ten zapis usuwa ją też z wyspy.yml
 
-            // Teleport na główny spawn (świat główny)
-            player.teleport(new Location(Bukkit.getWorlds().get(0), 0, 100, 0));
-
-            // Usunięcie borderu
-            WorldBorder clearBorder = Bukkit.createWorldBorder();
-            clearBorder.setSize(ROZMIAR_BEZ_BORDERU);
-            player.setWorldBorder(clearBorder);
+            player.teleport(spawnLoc);
+            // Border (zarówno właściciela, jak i przeteleportowanych wyżej członków) jest
+            // teraz obsługiwany automatycznie przez BorderManager.onWorldChange - spawn jest
+            // w innym świecie niż skyblockWorld, więc ta zmiana świata sama wyczyści border.
 
             wyczyscTerenWyspy(data);
 

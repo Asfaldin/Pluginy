@@ -21,7 +21,7 @@ public final class MainpluginsSkyblock extends JavaPlugin {
         EconomyService economyService = CoreAPI.getEconomyService();
 
         islandManager = new IslandManager(this, economyService);
-        borderManager = new BorderManager(this);
+        borderManager = new BorderManager(this, islandManager);
         IslandProtectionManager islandProtectionManager = new IslandProtectionManager(islandManager);
 
         getServer().getPluginManager().registerEvents(islandManager, this);
@@ -39,15 +39,7 @@ public final class MainpluginsSkyblock extends JavaPlugin {
                     sender.sendMessage("Tylko gracz moze uzyc tej komendy.");
                     return true;
                 }
-                // /home to osobna komenda (nie subkomenda /is), więc handleCommand()
-                // widziałby ją jako "brak argumentów" i otwierał panel GUI zamiast
-                // teleportować - tutaj rozpoznajemy ją po nazwie i idziemy prosto do teleportu.
-                if (command.getName().equalsIgnoreCase("home")) {
-                    islandManager.teleportDoWyspy(player);
-                } else {
-                    islandManager.handleCommand(player, args);
-                }
-                borderManager.wyczyscCzerwonyEkranBorderu(player);
+                islandManager.handleCommand(player, args);
                 return true;
             }
         };

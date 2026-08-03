@@ -49,10 +49,10 @@ public class NiszczycielManager implements Listener {
         for (Player player : Bukkit.getOnlinePlayers()) {
             boolean trzyma = jestNiszczycielem(player.getInventory().getItemInMainHand());
             if (trzyma) {
-                player.addPotionEffect(new PotionEffect(PotionEffectType.FAST_DIGGING, HASTE_CZAS_TICKOW, HASTE_AMPLIFIKATOR, false, false, false));
+                player.addPotionEffect(new PotionEffect(PotionEffectType.HASTE, HASTE_CZAS_TICKOW, HASTE_AMPLIFIKATOR, false, false, false));
                 aktywniHaste.add(player.getUniqueId());
             } else if (aktywniHaste.remove(player.getUniqueId())) {
-                player.removePotionEffect(PotionEffectType.FAST_DIGGING);
+                player.removePotionEffect(PotionEffectType.HASTE);
             }
         }
     }
@@ -80,6 +80,7 @@ public class NiszczycielManager implements Listener {
     }
 
     @EventHandler
+    @SuppressWarnings("UnstableApiUsage") // konstruktor BlockBreakEvent(Block, Player) - patrz komentarz przy callEvent niżej
     public void onPPM(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
 
@@ -87,8 +88,8 @@ public class NiszczycielManager implements Listener {
         if (!jestNiszczycielem(player.getInventory().getItemInMainHand())) return;
 
         Block clicked = event.getClickedBlock();
+        if (clicked == null) return;
         BlockFace face = event.getBlockFace();
-        if (clicked == null || face == null) return;
 
         event.setCancelled(true);
 

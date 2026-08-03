@@ -437,9 +437,18 @@ public class ShopManager implements Listener {
             return;
         }
 
+        // Kliknięcie w DOLNY ekwipunek gracza, a nie w samo GUI sklepu - event.getSlot()
+        // poniżej liczy slot od 0 we WŁASNYM inwentarzu klikniętej strony (nie w widoku GUI),
+        // więc bez tego sprawdzenia numer slotu z ekwipunku gracza mógł się pokryć z numerem
+        // slotu jakiegoś przedmiotu w sklepie i wywołać kupno/sprzedaż zupełnie innego itemu
+        // niż ten, w który gracz realnie kliknął.
+        boolean klikniecieWGui = event.getClickedInventory() != null
+                && event.getClickedInventory().equals(event.getView().getTopInventory());
+
         // KLIKANIE W GŁÓWNYM SKLEPIE
         if (title.contains("Sklep Serwerowy")) {
             event.setCancelled(true);
+            if (!klikniecieWGui) return;
 
             if (clickedItem.getType() == Material.BARRIER) {
                 player.closeInventory();
@@ -467,6 +476,7 @@ public class ShopManager implements Listener {
         // KLIKANIE W PODKATEGORIACH SKLEPU
         if (title.contains("Sklep: ")) {
             event.setCancelled(true);
+            if (!klikniecieWGui) return;
 
             String catKey = playerCategory.get(player.getUniqueId());
             int currentPage = playerPage.getOrDefault(player.getUniqueId(), 0);

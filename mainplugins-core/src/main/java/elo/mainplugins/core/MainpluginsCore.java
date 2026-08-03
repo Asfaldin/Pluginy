@@ -4,6 +4,7 @@ import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.command.AdminHelpCommand;
 import elo.mainplugins.core.command.MoneyAddCommand;
 import elo.mainplugins.core.command.MoneyUndoCommand;
+import elo.mainplugins.core.command.PayCommand;
 import elo.mainplugins.core.command.PomocCommand;
 import elo.mainplugins.core.economy.EconomyManager;
 import org.bukkit.plugin.ServicePriority;
@@ -37,6 +38,9 @@ public final class MainpluginsCore extends JavaPlugin {
         }
         if (getCommand("moneyundo") != null) {
             getCommand("moneyundo").setExecutor(new MoneyUndoCommand(economyManager));
+        }
+        if (getCommand("pay") != null) {
+            getCommand("pay").setExecutor(new PayCommand(economyManager));
         }
 
         getLogger().info("MainpluginsCore włączony - EconomyService dostępny dla innych pluginów.");

@@ -17,6 +17,9 @@ commands:
     description: "[TEST] Wyzeruj kasę graczowi"
     permission: mainplugins.core.moneyadd
     usage: /<command> [gracz]
+  pay:
+    description: Przelej pieniądze innemu graczowi
+    usage: /<command> <gracz> <kwota>
 
 permissions:
   mainplugins.core.admin:

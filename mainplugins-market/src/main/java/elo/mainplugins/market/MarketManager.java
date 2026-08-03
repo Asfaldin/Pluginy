@@ -35,6 +35,11 @@ public class MarketManager implements Listener {
     private final Map<UUID, Boolean> otwartoZMenu = new HashMap<>();
     private final Map<UUID, Integer> stronaGracza = new HashMap<>();
 
+    // Klucz oferty oczekującej na potwierdzenie wycofania (drugi klik we własną,
+    // niesprzedaną ofertę) - ten sam wzorzec "kliknij ponownie", co usuwanie wyspy.
+    private final Map<UUID, String> pendingRetrieve = new HashMap<>();
+    private static final long TIMEOUT_WYCOFANIA_TICKS = 15 * 20L;
+
     // Zapamiętuje który slot w GUI odpowiada za który przedmiot w pliku
     private final Map<UUID, Map<Integer, String>> slotyRynku = new HashMap<>();
 
@@ -203,6 +208,20 @@ public class MarketManager implements Listener {
         player.openInventory(gui);
     }
 
+    /** Wycofuje niesprzedaną ofertę i zwraca przedmiot sprzedawcy (drugi klik po potwierdzeniu). */
+    private void wycofajOferte(Player player, String klucz, ItemStack item) {
+        configRynku.set("przedmioty." + klucz, null);
+        zapiszRynek();
+
+        Map<Integer, ItemStack> leftover = player.getInventory().addItem(item);
+        for (ItemStack lo : leftover.values()) {
+            player.getWorld().dropItemNaturally(player.getLocation(), lo);
+        }
+
+        player.sendMessage(Component.text("Wycofano ofertę i odebrano przedmiot z targu.", NamedTextColor.GREEN));
+        otworzTarg(player, stronaGracza.getOrDefault(player.getUniqueId(), 0), otwartoZMenu.getOrDefault(player.getUniqueId(), false));
+    }
+
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!event.getView().title().toString().contains("Rynek (Str.")) return;
@@ -252,7 +271,20 @@ public class MarketManager implements Listener {
             ItemStack doKupienia = configRynku.getItemStack("przedmioty." + klucz + ".item");
 
             if (player.getUniqueId().toString().equals(sprzedawcaUUID)) {
-                player.sendMessage(Component.text("Nie możesz kupić własnego przedmiotu!", NamedTextColor.RED));
+                if (klucz.equals(pendingRetrieve.get(player.getUniqueId()))) {
+                    pendingRetrieve.remove(player.getUniqueId());
+                    wycofajOferte(player, klucz, doKupienia);
+                } else {
+                    pendingRetrieve.put(player.getUniqueId(), klucz);
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> pendingRetrieve.remove(player.getUniqueId()), TIMEOUT_WYCOFANIA_TICKS);
+                    ItemMeta meta = clickedItem.getItemMeta();
+                    if (meta != null) {
+                        List<Component> lore = meta.hasLore() ? new ArrayList<>(meta.lore()) : new ArrayList<>();
+                        lore.add(Component.text("Kliknij ponownie, aby wycofać ofertę i odebrać przedmiot!", NamedTextColor.GOLD, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+                        meta.lore(lore);
+                        clickedItem.setItemMeta(meta);
+                    }
+                }
                 return;
             }
 

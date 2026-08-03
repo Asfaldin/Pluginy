@@ -766,91 +766,61 @@ public class IslandManager implements Listener, IslandService {
         dom.setItemMeta(mDom);
         gui.setItem(13, dom);
 
+        // 3. TOPKA WYSP - dostępna dla każdego mieszkańca wyspy, niezależnie od roli
+        ItemStack topka = new ItemStack(Material.GOLD_BLOCK);
+        ItemMeta mTopka = topka.getItemMeta();
+        mTopka.displayName(Component.text("Topka Wysp", NamedTextColor.GOLD, TextDecoration.BOLD));
+        mTopka.lore(List.of(Component.text("Ranking największych wysp na serwerze", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+        topka.setItemMeta(mTopka);
+        gui.setItem(15, topka);
+
         if (canManage) {
-            // 3. ULEPSZENIA
+            // 4. PERMISJE - PvP, budowanie dla gości, potwory
+            ItemStack permisje = new ItemStack(Material.LEVER);
+            ItemMeta mPermisje = permisje.getItemMeta();
+            mPermisje.displayName(Component.text("Permisje", NamedTextColor.RED, TextDecoration.BOLD));
+            mPermisje.lore(List.of(
+                    Component.text("PvP, budowanie dla gości, potwory", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                    Component.text("Kliknij, aby zarządzać", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+            ));
+            permisje.setItemMeta(mPermisje);
+            gui.setItem(20, permisje);
+
+            // 5. USTAWIENIA WYSPY - wizualny border, członkowie
+            ItemStack ustawienia = new ItemStack(Material.COMPARATOR);
+            ItemMeta mUstawienia = ustawienia.getItemMeta();
+            mUstawienia.displayName(Component.text("Ustawienia Wyspy", NamedTextColor.BLUE, TextDecoration.BOLD));
+            mUstawienia.lore(List.of(
+                    Component.text("Wizualny border, członkowie wyspy", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                    Component.text("Kliknij, aby zarządzać", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+            ));
+            ustawienia.setItemMeta(mUstawienia);
+            gui.setItem(22, ustawienia);
+
+            // 6. ULEPSZENIA WYSPY
             ItemStack upg = new ItemStack(Material.BEACON);
             ItemMeta mUpg = upg.getItemMeta();
             mUpg.displayName(Component.text("Ulepszenia Wyspy", NamedTextColor.GOLD, TextDecoration.BOLD));
             mUpg.lore(List.of(Component.text("Zwiększ rozmiar wyspy", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
             upg.setItemMeta(mUpg);
-            gui.setItem(15, upg);
-
-            // 4. BORDER WIZUALNY
-            boolean borderOn = data.isVisualBorder();
-            ItemStack border = new ItemStack(borderOn ? Material.BLUE_STAINED_GLASS : Material.RED_STAINED_GLASS);
-            ItemMeta mBorder = border.getItemMeta();
-            mBorder.displayName(Component.text("Wizualny Border", NamedTextColor.BLUE, TextDecoration.BOLD));
-            mBorder.lore(List.of(
-                    Component.text("Stan: " + (borderOn ? "Włączony" : "Wyłączony"), borderOn ? NamedTextColor.GREEN : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false),
-                    Component.text("Kliknij, aby przełączyć", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
-            ));
-            border.setItemMeta(mBorder);
-            gui.setItem(29, border);
-
-            // 4b. BUDOWANIE DLA GOŚCI
-            boolean breakOn = data.isAllowBreak();
-            ItemStack breakItem = new ItemStack(breakOn ? Material.GRASS_BLOCK : Material.BEDROCK);
-            ItemMeta mBreak = breakItem.getItemMeta();
-            mBreak.displayName(Component.text("Budowanie dla Gości", NamedTextColor.GREEN, TextDecoration.BOLD));
-            mBreak.lore(List.of(
-                    Component.text("Stan: " + (breakOn ? "Otwarte" : "Zamknięte"), breakOn ? NamedTextColor.GREEN : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false),
-                    Component.text("Właściciel i członkowie budują zawsze", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false),
-                    Component.text("Kliknij, aby przełączyć", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
-            ));
-            breakItem.setItemMeta(mBreak);
-            gui.setItem(20, breakItem);
-
-            // 4c. PVP NA WYSPIE
-            boolean pvpOn = data.isAllowPvP();
-            ItemStack pvpItem = new ItemStack(pvpOn ? Material.IRON_SWORD : Material.SHIELD);
-            ItemMeta mPvp = pvpItem.getItemMeta();
-            mPvp.displayName(Component.text("PvP na Wyspie", NamedTextColor.RED, TextDecoration.BOLD));
-            mPvp.lore(List.of(
-                    Component.text("Stan: " + (pvpOn ? "Włączone" : "Wyłączone"), pvpOn ? NamedTextColor.GREEN : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false),
-                    Component.text("Kliknij, aby przełączyć", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
-            ));
-            pvpItem.setItemMeta(mPvp);
-            gui.setItem(22, pvpItem);
-
-            // 4d. POTWORY NA WYSPIE
-            boolean mobyOn = data.isAllowMobs();
-            ItemStack mobyItem = new ItemStack(mobyOn ? Material.ZOMBIE_HEAD : Material.TOTEM_OF_UNDYING);
-            ItemMeta mMoby = mobyItem.getItemMeta();
-            mMoby.displayName(Component.text("Potwory na Wyspie", NamedTextColor.DARK_GREEN, TextDecoration.BOLD));
-            mMoby.lore(List.of(
-                    Component.text("Stan: " + (mobyOn ? "Mogą się pojawiać" : "Zablokowane"), mobyOn ? NamedTextColor.GREEN : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false),
-                    Component.text("Kliknij, aby przełączyć", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
-            ));
-            mobyItem.setItemMeta(mMoby);
-            gui.setItem(24, mobyItem);
-
-            // 5. CZŁONKOWIE / ZARZĄDZAJ
-            ItemStack dodaj = new ItemStack(Material.PLAYER_HEAD);
-            ItemMeta mDodaj = dodaj.getItemMeta();
-            mDodaj.displayName(Component.text("Członkowie Wyspy", NamedTextColor.YELLOW, TextDecoration.BOLD));
-            mDodaj.lore(List.of(
-                    Component.text("Aktualnie: " + data.getMembers().size() + " członków", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                    Component.text("Kliknij, aby zarządzać", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
-            ));
-            dodaj.setItemMeta(mDodaj);
-            gui.setItem(31, dodaj);
+            gui.setItem(24, upg);
         }
 
-        // 6. USUŃ WYSPĘ (właściciel) / OPUŚĆ WYSPĘ (reszta)
+        // 7. USUŃ WYSPĘ (właściciel) / OPUŚĆ WYSPĘ (reszta) - prawy dolny róg panelu
         if (isOwner) {
             ItemStack usun = new ItemStack(Material.TNT);
             ItemMeta mUsun = usun.getItemMeta();
             mUsun.displayName(Component.text("Usuń Wyspę", NamedTextColor.DARK_RED, TextDecoration.BOLD));
             mUsun.lore(List.of(Component.text("Ostrzeżenie: Wyspa zniknie bezpowrotnie!", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false)));
             usun.setItemMeta(mUsun);
-            gui.setItem(33, usun);
+            gui.setItem(53, usun);
         } else {
             ItemStack opusc = new ItemStack(Material.OAK_BOAT);
             ItemMeta mOpusc = opusc.getItemMeta();
             mOpusc.displayName(Component.text("Opuść Wyspę", NamedTextColor.RED, TextDecoration.BOLD));
             mOpusc.lore(List.of(Component.text("Samodzielnie zrezygnujesz z członkostwa", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
             opusc.setItemMeta(mOpusc);
-            gui.setItem(33, opusc);
+            gui.setItem(53, opusc);
         }
 
         // PRZYCISK POWROTU
@@ -859,6 +829,158 @@ public class IslandManager implements Listener, IslandService {
         mWyjscie.displayName(Component.text(zMenu ? "« Wróć do Menu głównego" : "Zamknij Panel", NamedTextColor.RED, TextDecoration.BOLD));
         wyjscie.setItemMeta(mWyjscie);
         gui.setItem(49, wyjscie);
+
+        player.openInventory(gui);
+    }
+
+    /** Podmenu "Permisje" - PvP, budowanie dla gości, potwory. Wyłącznie dla właściciela i adminów. */
+    public void otworzMenuPermisji(Player player) {
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
+        if (data == null) return;
+
+        Inventory gui = Bukkit.createInventory(null, 27, Component.text("Permisje Wyspy", NamedTextColor.RED, TextDecoration.BOLD));
+
+        ItemStack tlo = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        ItemMeta metaTlo = tlo.getItemMeta();
+        metaTlo.displayName(Component.empty());
+        tlo.setItemMeta(metaTlo);
+        for (int i = 0; i < 27; i++) gui.setItem(i, tlo);
+
+        // BUDOWANIE DLA GOŚCI
+        boolean breakOn = data.isAllowBreak();
+        ItemStack breakItem = new ItemStack(breakOn ? Material.GRASS_BLOCK : Material.BEDROCK);
+        ItemMeta mBreak = breakItem.getItemMeta();
+        mBreak.displayName(Component.text("Budowanie dla Gości", NamedTextColor.GREEN, TextDecoration.BOLD));
+        mBreak.lore(List.of(
+                Component.text("Stan: " + (breakOn ? "Otwarte" : "Zamknięte"), breakOn ? NamedTextColor.GREEN : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false),
+                Component.text("Właściciel i członkowie budują zawsze", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("Kliknij, aby przełączyć", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        breakItem.setItemMeta(mBreak);
+        gui.setItem(11, breakItem);
+
+        // PVP NA WYSPIE
+        boolean pvpOn = data.isAllowPvP();
+        ItemStack pvpItem = new ItemStack(pvpOn ? Material.IRON_SWORD : Material.SHIELD);
+        ItemMeta mPvp = pvpItem.getItemMeta();
+        mPvp.displayName(Component.text("PvP na Wyspie", NamedTextColor.RED, TextDecoration.BOLD));
+        mPvp.lore(List.of(
+                Component.text("Stan: " + (pvpOn ? "Włączone" : "Wyłączone"), pvpOn ? NamedTextColor.GREEN : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false),
+                Component.text("Kliknij, aby przełączyć", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        pvpItem.setItemMeta(mPvp);
+        gui.setItem(13, pvpItem);
+
+        // POTWORY NA WYSPIE
+        boolean mobyOn = data.isAllowMobs();
+        ItemStack mobyItem = new ItemStack(mobyOn ? Material.ZOMBIE_HEAD : Material.TOTEM_OF_UNDYING);
+        ItemMeta mMoby = mobyItem.getItemMeta();
+        mMoby.displayName(Component.text("Potwory na Wyspie", NamedTextColor.DARK_GREEN, TextDecoration.BOLD));
+        mMoby.lore(List.of(
+                Component.text("Stan: " + (mobyOn ? "Mogą się pojawiać" : "Zablokowane"), mobyOn ? NamedTextColor.GREEN : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false),
+                Component.text("Kliknij, aby przełączyć", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        mobyItem.setItemMeta(mMoby);
+        gui.setItem(15, mobyItem);
+
+        ItemStack itemBack = new ItemStack(Material.ARROW);
+        ItemMeta metaBack = itemBack.getItemMeta();
+        metaBack.displayName(Component.text("Powrót do Panelu Wyspy", NamedTextColor.RED, TextDecoration.BOLD));
+        itemBack.setItemMeta(metaBack);
+        gui.setItem(22, itemBack);
+
+        player.openInventory(gui);
+    }
+
+    /** Podmenu "Ustawienia Wyspy" - wizualny border, dostęp do zarządzania członkami. Wyłącznie dla właściciela i adminów. */
+    public void otworzMenuUstawienWyspy(Player player) {
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
+        if (data == null) return;
+
+        Inventory gui = Bukkit.createInventory(null, 27, Component.text("Ustawienia Wyspy", NamedTextColor.BLUE, TextDecoration.BOLD));
+
+        ItemStack tlo = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        ItemMeta metaTlo = tlo.getItemMeta();
+        metaTlo.displayName(Component.empty());
+        tlo.setItemMeta(metaTlo);
+        for (int i = 0; i < 27; i++) gui.setItem(i, tlo);
+
+        // BORDER WIZUALNY
+        boolean borderOn = data.isVisualBorder();
+        ItemStack border = new ItemStack(borderOn ? Material.BLUE_STAINED_GLASS : Material.RED_STAINED_GLASS);
+        ItemMeta mBorder = border.getItemMeta();
+        mBorder.displayName(Component.text("Wizualny Border", NamedTextColor.BLUE, TextDecoration.BOLD));
+        mBorder.lore(List.of(
+                Component.text("Stan: " + (borderOn ? "Włączony" : "Wyłączony"), borderOn ? NamedTextColor.GREEN : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false),
+                Component.text("Kliknij, aby przełączyć", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        border.setItemMeta(mBorder);
+        gui.setItem(11, border);
+
+        // CZŁONKOWIE / ZARZĄDZAJ
+        ItemStack dodaj = new ItemStack(Material.PLAYER_HEAD);
+        ItemMeta mDodaj = dodaj.getItemMeta();
+        mDodaj.displayName(Component.text("Członkowie Wyspy", NamedTextColor.YELLOW, TextDecoration.BOLD));
+        mDodaj.lore(List.of(
+                Component.text("Aktualnie: " + data.getMembers().size() + " członków", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("Kliknij, aby zarządzać", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        dodaj.setItemMeta(mDodaj);
+        gui.setItem(13, dodaj);
+
+        ItemStack itemBack = new ItemStack(Material.ARROW);
+        ItemMeta metaBack = itemBack.getItemMeta();
+        metaBack.displayName(Component.text("Powrót do Panelu Wyspy", NamedTextColor.RED, TextDecoration.BOLD));
+        itemBack.setItemMeta(metaBack);
+        gui.setItem(22, itemBack);
+
+        player.openInventory(gui);
+    }
+
+    private static final int TOPKA_WYSP_LIMIT = 10;
+    private static final int[] SLOTY_TOPKI_WYSP = {10, 11, 12, 13, 14, 15, 16, 19, 20, 21};
+
+    /** Ranking największych wysp na serwerze (po promieniu) - dostępny dla każdego mieszkańca wyspy, niezależnie od roli. */
+    public void otworzMenuTopkiWysp(Player player) {
+        Inventory gui = Bukkit.createInventory(null, 54, Component.text("Topka Wysp", NamedTextColor.GOLD, TextDecoration.BOLD));
+
+        ItemStack tlo = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        ItemMeta metaTlo = tlo.getItemMeta();
+        metaTlo.displayName(Component.empty());
+        tlo.setItemMeta(metaTlo);
+        for (int i = 0; i < 54; i++) gui.setItem(i, tlo);
+
+        List<IslandSummary> top = getTopIslands(TOPKA_WYSP_LIMIT);
+        for (int i = 0; i < top.size() && i < SLOTY_TOPKI_WYSP.length; i++) {
+            IslandSummary wyspa = top.get(i);
+            int miejsce = i + 1;
+
+            NamedTextColor kolorMiejsca = switch (miejsce) {
+                case 1 -> NamedTextColor.GOLD;
+                case 2 -> NamedTextColor.GRAY;
+                case 3 -> NamedTextColor.RED;
+                default -> NamedTextColor.YELLOW;
+            };
+
+            @SuppressWarnings("deprecation")
+            OfflinePlayer ownerOffline = Bukkit.getOfflinePlayer(wyspa.ownerUUID());
+            ItemStack glowa = new ItemStack(Material.PLAYER_HEAD);
+            SkullMeta meta = (SkullMeta) glowa.getItemMeta();
+            meta.setOwningPlayer(ownerOffline);
+            meta.displayName(Component.text("#" + miejsce + " - " + wyspa.ownerName(), kolorMiejsca, TextDecoration.BOLD));
+            meta.lore(List.of(
+                    Component.text("Rozmiar: " + wyspa.borderSize() + "x" + wyspa.borderSize(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                    Component.text("Członkowie: " + wyspa.memberCount(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+            ));
+            glowa.setItemMeta(meta);
+            gui.setItem(SLOTY_TOPKI_WYSP[i], glowa);
+        }
+
+        ItemStack itemBack = new ItemStack(Material.ARROW);
+        ItemMeta metaBack = itemBack.getItemMeta();
+        metaBack.displayName(Component.text("Powrót do Panelu Wyspy", NamedTextColor.RED, TextDecoration.BOLD));
+        itemBack.setItemMeta(metaBack);
+        gui.setItem(49, itemBack);
 
         player.openInventory(gui);
     }
@@ -1068,13 +1190,11 @@ public class IslandManager implements Listener, IslandService {
             boolean panelIsOwner = panelData != null && panelData.getOwnerUUID().equals(player.getUniqueId());
 
             if (slot == 13) { player.closeInventory(); teleportDoWyspy(player); } // Teleport
-            else if (slot == 15) { otworzMenuUlepszen(player); } // Ulepszenia
-            else if (slot == 31) { otworzMenuCzlonkow(player); } // Członkowie - lista + zarządzanie
-            else if (slot == 29) { przelaczWizualnyBorder(player); otworzMenuWyspy(player, zMenu); } // Border
-            else if (slot == 20) { przelaczBudowanieDlaGosci(player); otworzMenuWyspy(player, zMenu); }
-            else if (slot == 22) { przelaczPvP(player); otworzMenuWyspy(player, zMenu); }
-            else if (slot == 24) { przelaczPotwory(player); otworzMenuWyspy(player, zMenu); }
-            else if (slot == 33 && panelIsOwner) { // Kosz / Usunięcie - decyzja po serwerowym isOwner, nie po ikonie klienta
+            else if (slot == 15) { otworzMenuTopkiWysp(player); } // Topka Wysp
+            else if (slot == 20) { otworzMenuPermisji(player); } // Permisje
+            else if (slot == 22) { otworzMenuUstawienWyspy(player); } // Ustawienia Wyspy
+            else if (slot == 24) { otworzMenuUlepszen(player); } // Ulepszenia
+            else if (slot == 53 && panelIsOwner) { // Kosz / Usunięcie - decyzja po serwerowym isOwner, nie po ikonie klienta
                 if (oczekujeNaPotwierdzenie(player.getUniqueId())) {
                     player.closeInventory();
                     potwierdzUsuniecie(player);
@@ -1088,7 +1208,7 @@ public class IslandManager implements Listener, IslandService {
                     }
                 }
             }
-            else if (slot == 33) { // Opuść Wyspę (nie-właściciel)
+            else if (slot == 53) { // Opuść Wyspę (nie-właściciel)
                 if (pendingLeaveConfirmation.contains(player.getUniqueId())) {
                     player.closeInventory();
                     pendingLeaveConfirmation.remove(player.getUniqueId());
@@ -1112,6 +1232,26 @@ public class IslandManager implements Listener, IslandService {
                     player.closeInventory();
                 }
             }
+        }
+        else if (title.contains("Permisje Wyspy")) {
+            event.setCancelled(true);
+            int slot = event.getRawSlot();
+            if (slot == 11) { przelaczBudowanieDlaGosci(player); otworzMenuPermisji(player); }
+            else if (slot == 13) { przelaczPvP(player); otworzMenuPermisji(player); }
+            else if (slot == 15) { przelaczPotwory(player); otworzMenuPermisji(player); }
+            else if (slot == 22) { otworzMenuWyspy(player, zMenu); }
+        }
+        else if (title.contains("Ustawienia Wyspy")) {
+            event.setCancelled(true);
+            int slot = event.getRawSlot();
+            if (slot == 11) { przelaczWizualnyBorder(player); otworzMenuUstawienWyspy(player); }
+            else if (slot == 13) { otworzMenuCzlonkow(player); }
+            else if (slot == 22) { otworzMenuWyspy(player, zMenu); }
+        }
+        else if (title.contains("Topka Wysp")) {
+            event.setCancelled(true);
+            int slot = event.getRawSlot();
+            if (slot == 49) { otworzMenuWyspy(player, zMenu); }
         }
         else if (title.contains("Ulepszenia Wyspy")) {
             event.setCancelled(true);
@@ -1149,8 +1289,8 @@ public class IslandManager implements Listener, IslandService {
             ItemStack clicked = event.getCurrentItem();
             if (clicked == null || clicked.getType() == Material.GRAY_STAINED_GLASS_PANE) return;
 
-            if (slot == 49) { // Powrót do panelu wyspy
-                otworzMenuWyspy(player, zMenu);
+            if (slot == 49) { // Powrót do Ustawień Wyspy
+                otworzMenuUstawienWyspy(player);
             } else if (slot == 53) { // Zaproś gracza (przez czat)
                 player.closeInventory();
                 pendingInviteChat.add(player.getUniqueId());
@@ -1255,7 +1395,7 @@ public class IslandManager implements Listener, IslandService {
 
         ItemStack powrot = new ItemStack(Material.ARROW);
         ItemMeta mPowrot = powrot.getItemMeta();
-        mPowrot.displayName(Component.text("Powrót do Panelu Wyspy", NamedTextColor.RED, TextDecoration.BOLD));
+        mPowrot.displayName(Component.text("Powrót do Ustawień Wyspy", NamedTextColor.RED, TextDecoration.BOLD));
         powrot.setItemMeta(mPowrot);
         gui.setItem(49, powrot);
 

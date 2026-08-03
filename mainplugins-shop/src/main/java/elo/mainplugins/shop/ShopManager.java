@@ -425,6 +425,12 @@ public class ShopManager implements Listener {
         ItemStack clickedItem = event.getCurrentItem();
         if (clickedItem == null) return;
 
+        // Sloty dolnego inwentarza (ekwipunek gracza) są numerowane od zera tak samo
+        // jak sloty górnego GUI sklepu - bez tego sprawdzenia kliknięcie np. w slot 1
+        // swojego ekwipunku było traktowane tak samo jak kliknięcie w slot 1 sklepu,
+        // więc "kupowało"/otwierało kategorię wg tego, co akurat tam stało w konfiguracji.
+        if (!event.getView().getTopInventory().equals(event.getClickedInventory())) return;
+
         // Zabezpieczenie tła
         if (clickedItem.getType() == Material.GRAY_STAINED_GLASS_PANE) {
             event.setCancelled(true);

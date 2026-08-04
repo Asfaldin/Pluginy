@@ -14,5 +14,27 @@
     <packaging>jar</packaging>
     <name>Mainplugins - Quests</name>
 
-    <!-- Questy nie ruszają ekonomii ani żadnej usługi Core - zero zależności. -->
+    <!--
+        Do niedawna zero zależności (nie ruszało ekonomii ani żadnej usługi Core).
+        Kategoria "Główne zadania" (tutorial NPC) złamała to celowo:
+        - mainplugins-skyblock: żeby czytać stan wyspy (bank, ulepszenia, Sniffer) przez
+          nowe eventy w elo.mainplugins.skyblock.event - scope=provided z tego samego
+          powodu co Core w innych modułach (fizycznie osobny, wgrany na serwer plugin).
+        - citizens-main: silnik NPC (Citizens to ZEWNĘTRZNY plugin - admin musi go
+          doinstalować na serwerze osobno, stąd depend: [Citizens] w plugin.yml).
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>elo</groupId>
+            <artifactId>mainplugins-skyblock</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.citizensnpcs</groupId>
+            <artifactId>citizens-main</artifactId>
+            <version>2.0.43-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
 </project>

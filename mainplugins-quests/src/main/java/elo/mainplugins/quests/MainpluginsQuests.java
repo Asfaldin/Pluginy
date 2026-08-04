@@ -1,5 +1,6 @@
 package elo.mainplugins.quests;
 
+import elo.mainplugins.quests.glowne.GlowneZadaniaManager;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -7,8 +8,10 @@ public final class MainpluginsQuests extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        QuestManager questManager = new QuestManager();
+        GlowneZadaniaManager glowneZadania = new GlowneZadaniaManager(this);
+        QuestManager questManager = new QuestManager(glowneZadania);
         getServer().getPluginManager().registerEvents(questManager, this);
+        getServer().getPluginManager().registerEvents(glowneZadania, this);
 
         if (getCommand("quest") != null) {
             getCommand("quest").setExecutor((sender, command, label, args) -> {

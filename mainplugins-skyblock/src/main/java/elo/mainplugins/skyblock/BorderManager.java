@@ -19,20 +19,33 @@ import org.bukkit.plugin.Plugin;
  */
 public class BorderManager implements Listener {
 
+    private final Plugin plugin;
     private final IslandManager islandManager;
 
     public BorderManager(Plugin plugin, IslandManager islandManager) {
+        this.plugin = plugin;
         this.islandManager = islandManager;
     }
 
+    /**
+     * Ustawienie customowego WorldBordera W TYM SAMYM ticku co PlayerJoinEvent często
+     * jest po cichu ignorowane przez klienta - sekwencja pakietów logowania (w tym
+     * domyślny WorldBorder świata) jeszcze się nie ustabilizowała, więc nasz override
+     * bywa nadpisywany zaraz po wysłaniu. Stąd border "znikał" dopiero PO relogu, mimo
+     * że kod wyglądał na poprawny. Przesunięcie o 1 tick to standardowy obejście tego
+     * problemu w Bukkit/Paper.
+     */
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        if (islandManager.jestSwiatemWysp(player.getWorld())) {
-            islandManager.aplikujBorderDlaLokalizacji(player, player.getLocation());
-        } else {
-            wyczyscCzerwonyEkranBorderu(player);
-        }
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!player.isOnline()) return;
+            if (islandManager.jestSwiatemWysp(player.getWorld())) {
+                islandManager.aplikujBorderDlaLokalizacji(player, player.getLocation());
+            } else {
+                wyczyscCzerwonyEkranBorderu(player);
+            }
+        });
     }
 
     @EventHandler
@@ -61,6 +74,11 @@ public class BorderManager implements Listener {
     }
 
     public void wyczyscCzerwonyEkranBorderu(Player player) {
+        // Reset kosmetycznego efektu "Pogoda i Czas" (patrz IslandManager.aplikujPogodeICzas) -
+        // gracz opuszcza świat wysp, więc żaden island-owy override nie powinien się już trzymać.
+        player.resetPlayerTime();
+        player.resetPlayerWeather();
+
         WorldBorder worldBorder = player.getWorld().getWorldBorder();
 
         // Tworzymy osobną instancję borderu dla gracza, która kopiuje rozmiar świata,

@@ -2,6 +2,7 @@ name: MainpluginsQuests
 version: ${project.version}
 main: elo.mainplugins.quests.MainpluginsQuests
 api-version: '1.20'
+depend: [MainpluginsSkyblock, Citizens]
 
 commands:
   quest:

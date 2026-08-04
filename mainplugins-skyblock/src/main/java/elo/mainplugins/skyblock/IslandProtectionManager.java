@@ -3,20 +3,28 @@ package elo.mainplugins.skyblock;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.Tag;
 import org.bukkit.block.Block;
+import org.bukkit.block.Container;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.util.Vector;
 
@@ -69,6 +77,29 @@ public class IslandProtectionManager implements Listener {
             event.setCancelled(true);
             event.getPlayer().sendMessage(Component.text("Nie możesz stawiać bloków na cudzej wyspie!", NamedTextColor.RED));
         }
+    }
+
+    /**
+     * Przyrostowe śledzenie "wartości wyspy" (patrz IslandManager.WARTOSCI_BLOKOW) -
+     * MONITOR + ignoreCancelled, żeby liczyć TYLKO bloki, które faktycznie zostały
+     * złamane/postawione (po wszystkich innych pluginach i po ewentualnej blokadzie
+     * powyżej), a nie próby zablokowane ochroną wyspy. Celowo BEZ zapiszWyspy() -
+     * pełny zapis całego pliku wysp przy KAŻDYM złamanym bloku zabiłby TPS na
+     * ruchliwym serwerze; worth i tak zapisuje się przy najbliższej innej zmianie
+     * (toggle/ulepszenie) albo na wyłączeniu pluginu (zapiszWszystkieWyspy).
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onWorthTrackBreak(BlockBreakEvent event) {
+        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        if (data == null) return;
+        data.dodajDoWartosci(-IslandManager.wartoscBloku(event.getBlock().getType()));
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onWorthTrackPlace(BlockPlaceEvent event) {
+        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        if (data == null) return;
+        data.dodajDoWartosci(IslandManager.wartoscBloku(event.getBlock().getType()));
     }
 
     /**
@@ -169,6 +200,77 @@ public class IslandProtectionManager implements Listener {
         IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getLocation());
         if (data != null && !data.isAllowMobs()) {
             event.setCancelled(true);
+        }
+    }
+
+    /** Osobne od allowMobs (który dotyczy TYLKO spawnu) - kontroluje, kto może polować na już zaspawnowane moby. */
+    @EventHandler(ignoreCancelled = true)
+    public void onGuestMobKill(EntityDamageByEntityEvent event) {
+        if (!(event.getEntity() instanceof Monster)) return;
+
+        Player atakujacy = rozwiazAtakujacego(event.getDamager());
+        if (atakujacy == null) return;
+
+        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getEntity().getLocation());
+        if (data == null || jestWlascicielemLubCzlonkiem(data, atakujacy.getUniqueId())) return;
+
+        if (!data.isAllowGuestMobKill()) {
+            event.setCancelled(true);
+            atakujacy.sendMessage(Component.text("Nie możesz zabijać mobów na cudzej wyspie!", NamedTextColor.RED));
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onItemPickup(EntityPickupItemEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+
+        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getItem().getLocation());
+        if (data == null || jestWlascicielemLubCzlonkiem(data, player.getUniqueId())) return;
+
+        if (!data.isAllowItemPickup()) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onContainerOpen(InventoryOpenEvent event) {
+        if (!(event.getInventory().getHolder() instanceof Container)) return;
+        if (!(event.getPlayer() instanceof Player player)) return;
+
+        Location lokalizacja = event.getInventory().getLocation();
+        if (lokalizacja == null) return;
+
+        IslandManager.IslandData data = islandManager.znajdzWyspePod(lokalizacja);
+        if (data == null || jestWlascicielemLubCzlonkiem(data, player.getUniqueId())) return;
+
+        if (!data.isAllowContainerAccess()) {
+            event.setCancelled(true);
+            player.sendMessage(Component.text("Nie możesz otwierać skrzyń/kontenerów na cudzej wyspie!", NamedTextColor.RED));
+        }
+    }
+
+    // Celowo BEZ Tag.PRESSURE_PLATES - płytki naciskowe triggerują się wejściem na nie,
+    // nie prawym kliknięciem, więc PlayerInteractEvent i tak by ich nie złapał.
+    private boolean czyMechanizm(Material material) {
+        return Tag.DOORS.isTagged(material)
+                || Tag.TRAPDOORS.isTagged(material)
+                || Tag.FENCE_GATES.isTagged(material)
+                || Tag.BUTTONS.isTagged(material)
+                || material == Material.LEVER;
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onMechanismInteract(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+        Block block = event.getClickedBlock();
+        if (block == null || !czyMechanizm(block.getType())) return;
+
+        IslandManager.IslandData data = islandManager.znajdzWyspePod(block.getLocation());
+        if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
+
+        if (!data.isAllowInteract()) {
+            event.setCancelled(true);
+            event.getPlayer().sendMessage(Component.text("Nie możesz używać drzwi/mechanizmów na cudzej wyspie!", NamedTextColor.RED));
         }
     }
 

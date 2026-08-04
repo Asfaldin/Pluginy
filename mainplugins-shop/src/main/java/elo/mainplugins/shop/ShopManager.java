@@ -128,6 +128,25 @@ public class ShopManager implements Listener {
                 e.printStackTrace();
             }
         }
+
+        // Osobny, NIEZALEŻNY guard od bloku "specjalne" wyżej - na serwerach, gdzie
+        // categories.specjalne już istnieje (i powyższy blok się nie wykona), ten wpis
+        // i tak samoczynnie dogra się przy starcie, zamiast czekać na ręczną edycję sklep.yml.
+        if (!sklepConfig.contains("categories.specjalne.items.1")) {
+            try {
+                ustawSpecjalnyItemWSklepie(1, "SNIFFER_EGG", "SNIFFER_JAJKO", "Sniffer Farmera", 40000.0, List.of(
+                        "PPM na własnej wyspie stawia stacjonarnego",
+                        "Snifferaa, który automatycznie zbiera i",
+                        "sadzi dojrzałe uprawy w pobliżu",
+                        "Zebrane plony trafiają do najbliższej skrzyni",
+                        "(albo na ziemię, jeśli żadnej nie ma w zasięgu)",
+                        "Maksymalnie 1 Sniffer na wyspę"
+                ));
+                sklepConfig.save(sklepFile);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     private void ustawSpecjalnyItemWSklepie(int slot, String material, String customId, String displayName, double buyPrice, List<String> lore) {

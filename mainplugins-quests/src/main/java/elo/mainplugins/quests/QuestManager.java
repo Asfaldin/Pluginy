@@ -1,5 +1,6 @@
 package elo.mainplugins.quests;
 
+import elo.mainplugins.quests.glowne.GlowneZadaniaManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -33,7 +34,28 @@ public class QuestManager implements Listener {
             37, 38, 39, 40, 41, 42, 43
     };
 
-    public QuestManager() {
+    private static final int SLOT_CENTRUM_GWIAZDY = 22; // "Główne Zadania" - środek gwiazdy
+    private static final int SLOT_POWROT = 45; // wolny róg, poza wszystkimi ramionami gwiazdy
+
+    // 8 ramion od SLOT_CENTRUM_GWIAZDY na zewnątrz (N,S,E,W,NE,NW,SE,SW) - różnej długości,
+    // ograniczone geometrią 54-slotowego (6x9) GUI: pion mieści tylko 2 kroki w każdą stronę
+    // od centralnego rzędu bez wchodzenia na SLOT_POWROT, poziom/przekątne w dół mieszczą 3-4.
+    // Kolejność w tablicy = kolejność przypisywania kategorii z KATEGORIE_GWIAZDY niżej.
+    private static final int[] SLOTY_GWIAZDY = {
+            13, 4,           // N
+            31, 40, 49,      // S
+            23, 24, 25, 26,  // E
+            21, 20, 19, 18,  // W
+            14, 6,           // NE
+            12, 2,           // NW
+            32, 42, 52,      // SE
+            30, 38, 46       // SW
+    };
+
+    private final GlowneZadaniaManager glowneZadania;
+
+    public QuestManager(GlowneZadaniaManager glowneZadania) {
+        this.glowneZadania = glowneZadania;
         zaladujQuesty();
     }
 
@@ -59,13 +81,51 @@ public class QuestManager implements Listener {
                 new Quest(3, "Nocny Marek", Material.STRING, 10, new ItemStack(Material.EXPERIENCE_BOTTLE, 16), "16x Butelka EXP")
         ));
 
-        // Inicjalizacja pustych list dla nowych kategorii narzędziowych, aby nie rzucały błędem
+        // Inicjalizacja pustych list dla kategorii narzędziowych, aby nie rzucały błędem.
+        // "Mistrz Siekiery/Motyki/Łopaty" celowo usunięte z listy - to były czyste,
+        // nierozróżnialne puste duplikaty (patrz KATEGORIE_GWIAZDY: gwiazda w 54-slotowym
+        // GUI ma twardy geometryczny limit ~23 ramion bez zachodzenia na siebie/przycisk
+        // powrotu, więc trzeba było skonsolidować najbardziej redundantne puste kategorie).
         questyKategorii.put("Mistrz Kilofa", new ArrayList<>());
-        questyKategorii.put("Mistrz Siekiery", new ArrayList<>());
         questyKategorii.put("Mistrz Miecza", new ArrayList<>());
-        questyKategorii.put("Mistrz Motyki", new ArrayList<>());
-        questyKategorii.put("Mistrz Łopaty", new ArrayList<>());
     }
+
+    /** Ikona/nazwa/opis kategorii z siatki gwiazdy - kolejność MUSI się zgadzać z SLOTY_GWIAZDY. */
+    private record KategoriaGwiazdy(Material ikona, String nazwa, String opis) {}
+
+    private static final List<KategoriaGwiazdy> KATEGORIE_GWIAZDY = List.of(
+            // N
+            new KategoriaGwiazdy(Material.IRON_PICKAXE, "Górnictwo", "Zadania w kopalni"),
+            new KategoriaGwiazdy(Material.WHEAT, "Hodowla", "Zadania rolnicze"),
+            // S
+            new KategoriaGwiazdy(Material.BOW, "Łowca", "Zadania z potworami"),
+            new KategoriaGwiazdy(Material.OAK_LOG, "Drwal", "Zadania z drewnem"),
+            new KategoriaGwiazdy(Material.FISHING_ROD, "Rybak", "Zadania wędkarskie"),
+            // E
+            new KategoriaGwiazdy(Material.BREWING_STAND, "Alchemik", "Warzenie mikstur"),
+            new KategoriaGwiazdy(Material.ANVIL, "Kowal", "Tworzenie narzędzi"),
+            new KategoriaGwiazdy(Material.COOKED_BEEF, "Kucharz", "Zadania kulinarne"),
+            new KategoriaGwiazdy(Material.BRICKS, "Budowniczy", "Budowa wyspy"),
+            // W
+            new KategoriaGwiazdy(Material.ENCHANTING_TABLE, "Mag", "Zaklęcia"),
+            new KategoriaGwiazdy(Material.COMPASS, "Odkrywca", "Eksploracja mapy"),
+            new KategoriaGwiazdy(Material.PORKCHOP, "Rzeźnik", "Zdobywanie mięsa"),
+            new KategoriaGwiazdy(Material.OAK_SAPLING, "Ogrodnik", "Sadzenie drzew"),
+            // NE
+            new KategoriaGwiazdy(Material.DIAMOND, "Jubiler", "Cenne kruszce"),
+            new KategoriaGwiazdy(Material.GOLD_NUGGET, "Złodziej", "Kradzież (Zadania)"),
+            // NW
+            new KategoriaGwiazdy(Material.DIAMOND_SWORD, "Wojownik", "Walka PvP/PvE"),
+            new KategoriaGwiazdy(Material.EMERALD, "Handlarz", "Wymiana handlowa"),
+            // SE
+            new KategoriaGwiazdy(Material.REDSTONE, "Inżynier", "Mechanizmy"),
+            new KategoriaGwiazdy(Material.ZOMBIE_HEAD, "Zabójca", "Eliminacje"),
+            new KategoriaGwiazdy(Material.BONE_MEAL, "Zbieracz", "Zbieranie surowców"),
+            // SW
+            new KategoriaGwiazdy(Material.NETHER_STAR, "Mistrz", "Zadania elitarne"),
+            new KategoriaGwiazdy(Material.DIAMOND_PICKAXE, "Mistrz Kilofa", "Zadania dla kilofa"),
+            new KategoriaGwiazdy(Material.DIAMOND_SWORD, "Mistrz Miecza", "Zadania dla miecza")
+    );
 
     // Dodano obsługę argumentu zMenu
     public void otworzMenuQuestow(Player player, boolean zMenu) {
@@ -73,45 +133,24 @@ public class QuestManager implements Listener {
         Inventory gui = Bukkit.createInventory(null, 54, Component.text("Kategorie Zadań", NamedTextColor.DARK_GREEN, TextDecoration.BOLD));
         wypelnijTlo(gui);
 
-        // Rząd 2 (Sloty 10-16)
-        gui.setItem(10, stworzIkoneKategorii(Material.IRON_PICKAXE, "Górnictwo", "Zadania w kopalni"));
-        gui.setItem(11, stworzIkoneKategorii(Material.WHEAT, "Hodowla", "Zadania rolnicze"));
-        gui.setItem(12, stworzIkoneKategorii(Material.BOW, "Łowca", "Zadania z potworami"));
-        gui.setItem(13, stworzIkoneKategorii(Material.OAK_LOG, "Drwal", "Zadania z drewnem"));
-        gui.setItem(14, stworzIkoneKategorii(Material.FISHING_ROD, "Rybak", "Zadania wędkarskie"));
-        gui.setItem(15, stworzIkoneKategorii(Material.BREWING_STAND, "Alchemik", "Warzenie mikstur"));
-        gui.setItem(16, stworzIkoneKategorii(Material.ANVIL, "Kowal", "Tworzenie narzędzi"));
+        // "Główne Zadania" na SAMYM ŚRODKU gwiazdy - to punkt startowy dla nowych graczy,
+        // reszta kategorii promieniście dookoła (patrz SLOTY_GWIAZDY/KATEGORIE_GWIAZDY).
+        ItemStack glowneZadaniaIkona = stworzIkoneKategorii(Material.KNOWLEDGE_BOOK, "Główne Zadania", "Tutorial - zacznij tutaj!");
+        ItemMeta metaGlowne = glowneZadaniaIkona.getItemMeta();
+        metaGlowne.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
+        metaGlowne.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+        glowneZadaniaIkona.setItemMeta(metaGlowne);
+        gui.setItem(SLOT_CENTRUM_GWIAZDY, glowneZadaniaIkona);
 
-        // Rząd 3 (Sloty 19-25)
-        gui.setItem(19, stworzIkoneKategorii(Material.COOKED_BEEF, "Kucharz", "Zadania kulinarne"));
-        gui.setItem(20, stworzIkoneKategorii(Material.BRICKS, "Budowniczy", "Budowa wyspy"));
-        gui.setItem(21, stworzIkoneKategorii(Material.ENCHANTING_TABLE, "Mag", "Zaklęcia"));
-        gui.setItem(22, stworzIkoneKategorii(Material.COMPASS, "Odkrywca", "Eksploracja mapy"));
-        gui.setItem(23, stworzIkoneKategorii(Material.PORKCHOP, "Rzeźnik", "Zdobywanie mięsa"));
-        gui.setItem(24, stworzIkoneKategorii(Material.OAK_SAPLING, "Ogrodnik", "Sadzenie drzew"));
-        gui.setItem(25, stworzIkoneKategorii(Material.DIAMOND, "Jubiler", "Cenne kruszce"));
+        for (int i = 0; i < SLOTY_GWIAZDY.length && i < KATEGORIE_GWIAZDY.size(); i++) {
+            KategoriaGwiazdy k = KATEGORIE_GWIAZDY.get(i);
+            gui.setItem(SLOTY_GWIAZDY[i], stworzIkoneKategorii(k.ikona(), k.nazwa(), k.opis()));
+        }
 
-        // Rząd 4 (Sloty 28-34)
-        gui.setItem(28, stworzIkoneKategorii(Material.GOLD_NUGGET, "Złodziej", "Kradzież (Zadania)"));
-        gui.setItem(29, stworzIkoneKategorii(Material.DIAMOND_SWORD, "Wojownik", "Walka PvP/PvE"));
-        gui.setItem(30, stworzIkoneKategorii(Material.EMERALD, "Handlarz", "Wymiana handlowa"));
-        gui.setItem(31, stworzIkoneKategorii(Material.REDSTONE, "Inżynier", "Mechanizmy"));
-        gui.setItem(32, stworzIkoneKategorii(Material.ZOMBIE_HEAD, "Zabójca", "Eliminacje"));
-        gui.setItem(33, stworzIkoneKategorii(Material.BONE_MEAL, "Zbieracz", "Zbieranie surowców"));
-        gui.setItem(34, stworzIkoneKategorii(Material.NETHER_STAR, "Mistrz", "Zadania elitarne"));
-
-        // Rząd 5 (Przedostatnia linia) - KATEGORIE NARZĘDZIOWE (wyśrodkowane: 38, 39, 40, 41, 42)
-        gui.setItem(38, stworzIkoneKategorii(Material.DIAMOND_PICKAXE, "Mistrz Kilofa", "Zadania dla kilofa"));
-        gui.setItem(39, stworzIkoneKategorii(Material.DIAMOND_AXE, "Mistrz Siekiery", "Zadania dla siekiery"));
-        gui.setItem(40, stworzIkoneKategorii(Material.DIAMOND_SWORD, "Mistrz Miecza", "Zadania dla miecza"));
-        gui.setItem(41, stworzIkoneKategorii(Material.DIAMOND_HOE, "Mistrz Motyki", "Zadania dla motyki"));
-        gui.setItem(42, stworzIkoneKategorii(Material.DIAMOND_SHOVEL, "Mistrz Łopaty", "Zadania dla łopaty"));
-
-        // Rząd 6 (Przycisk wyjścia na środku) dostosowany pod menu
         if (zMenu) {
-            gui.setItem(49, stworzPrzycisk(Material.NETHER_STAR, "« Wróć do Menu głównego", NamedTextColor.RED));
+            gui.setItem(SLOT_POWROT, stworzPrzycisk(Material.NETHER_STAR, "« Wróć do Menu głównego", NamedTextColor.RED));
         } else {
-            gui.setItem(49, stworzPrzycisk(Material.BARRIER, "Zamknij Menu", NamedTextColor.RED));
+            gui.setItem(SLOT_POWROT, stworzPrzycisk(Material.BARRIER, "Zamknij Menu", NamedTextColor.RED));
         }
 
         player.openInventory(gui);
@@ -199,12 +238,16 @@ public class QuestManager implements Listener {
         int slot = event.getRawSlot();
 
         if (title.equals("Kategorie Zadań")) {
-            if (slot == 49) {
+            if (slot == SLOT_POWROT) {
                 player.closeInventory();
                 // Sprawdzamy czy gracz wszedł z menu, jeśli tak - cofamy go tam
                 if (otwartoZMenu.getOrDefault(player.getUniqueId(), false)) {
                     player.performCommand("menu");
                 }
+            }
+            else if (slot == SLOT_CENTRUM_GWIAZDY) {
+                // "Główne Zadania" (środek gwiazdy) - osobny, akcyjny system w GlowneZadaniaManager, nie w questyKategorii.
+                glowneZadania.otworzMenuGlownychZadan(player, 0, otwartoZMenu.getOrDefault(player.getUniqueId(), false));
             }
             else if (event.getCurrentItem() != null && event.getCurrentItem().getType() != Material.GRAY_STAINED_GLASS_PANE) {
                 String kategoria = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(event.getCurrentItem().getItemMeta().displayName());

@@ -17,6 +17,7 @@
         <module name="mainplugins-tools" />
         <module name="mainplugins-hud" />
         <module name="mainplugins-crates" />
+        <module name="mainplugins-spawn" />
         <module name="mainplugins-core" />
         <module name="mainplugins-shop" />
         <module name="mainplugins-spawners" />

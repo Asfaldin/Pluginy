@@ -11,12 +11,3 @@ commands:
     description: Zaakceptuj prośbę o teleportację
   tpdeny:
     description: Odrzuć prośbę o teleportację
-  spawn:
-    description: Teleportuj się na spawn
-  spawnset:
-    description: Ustawia spawn w miejscu, gdzie aktualnie stoisz (opowie)
-
-permissions:
-  mainplugins.teleport.spawnset:
-    description: Pozwala ustawiać spawn serwera
-    default: op

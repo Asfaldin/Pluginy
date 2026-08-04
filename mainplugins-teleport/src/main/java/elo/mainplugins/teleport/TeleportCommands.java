@@ -16,11 +16,9 @@ import org.jetbrains.annotations.NotNull;
 public class TeleportCommands implements CommandExecutor {
 
     private final TeleportManager teleportManager;
-    private final SpawnManager spawnManager;
 
-    public TeleportCommands(TeleportManager teleportManager, SpawnManager spawnManager) {
+    public TeleportCommands(TeleportManager teleportManager) {
         this.teleportManager = teleportManager;
-        this.spawnManager = spawnManager;
     }
 
     @Override
@@ -45,18 +43,6 @@ public class TeleportCommands implements CommandExecutor {
             }
             case "tpdeny" -> {
                 teleportManager.odrzucProsbe(player);
-                return true;
-            }
-            case "spawn" -> {
-                spawnManager.teleportujNaSpawn(player);
-                return true;
-            }
-            case "spawnset" -> {
-                if (!player.hasPermission("mainplugins.teleport.spawnset")) {
-                    player.sendMessage("Nie masz uprawnień do tej komendy.");
-                    return true;
-                }
-                spawnManager.ustawSpawn(player);
                 return true;
             }
         }

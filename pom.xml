@@ -41,6 +41,7 @@
         <module>mainplugins-crates</module>
         <module>mainplugins-farming</module>
         <module>mainplugins-spawners</module>
+        <module>mainplugins-spawn</module>
     </modules>
 
     <properties>

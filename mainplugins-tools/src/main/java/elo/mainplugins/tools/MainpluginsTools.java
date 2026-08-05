@@ -1,10 +1,12 @@
 package elo.mainplugins.tools;
 
 import elo.mainplugins.core.CoreAPI;
+import elo.mainplugins.core.api.ToolsService;
 import elo.mainplugins.tools.pickaxe.PickaxeSkillManager;
 import elo.mainplugins.tools.special.NiszczycielManager;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class MainpluginsTools extends JavaPlugin {
@@ -13,6 +15,9 @@ public final class MainpluginsTools extends JavaPlugin {
     public void onEnable() {
         LevelableToolsManager levelableToolsManager = new LevelableToolsManager(this);
         getServer().getPluginManager().registerEvents(levelableToolsManager, this);
+
+        // Opcjonalny serwis dla innych pluginów (np. mainplugins-quests, nagroda za pierwszego questa).
+        getServer().getServicesManager().register(ToolsService.class, levelableToolsManager, this, ServicePriority.Normal);
 
         PickaxeSkillManager pickaxeSkillManager = new PickaxeSkillManager(this, CoreAPI.getEconomyService());
         getServer().getPluginManager().registerEvents(pickaxeSkillManager, this);
@@ -65,5 +70,10 @@ public final class MainpluginsTools extends JavaPlugin {
                 return true;
             });
         }
+    }
+
+    @Override
+    public void onDisable() {
+        getServer().getServicesManager().unregisterAll(this);
     }
 }

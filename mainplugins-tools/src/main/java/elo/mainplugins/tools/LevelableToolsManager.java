@@ -1,5 +1,6 @@
 package elo.mainplugins.tools;
 
+import elo.mainplugins.core.api.ToolsService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -29,7 +30,7 @@ import org.bukkit.plugin.Plugin;
 import java.util.Iterator;
 import java.util.List;
 
-public class LevelableToolsManager implements Listener {
+public class LevelableToolsManager implements Listener, ToolsService {
 
     private final Plugin plugin;
     private final NamespacedKey keyType;
@@ -52,14 +53,24 @@ public class LevelableToolsManager implements Listener {
         this.keyReceived = new NamespacedKey(plugin, "received_start_tools");
     }
 
-    // Nowa publiczna metoda do dawania narzędzi (dla pierwszego wejścia i pod komendę)
+    // Nowa publiczna metoda do dawania narzędzi (dla pierwszego wejścia i pod komendę).
+    // Kilof CELOWO pominięty tutaj - to osobna nagroda za quest "Witaj na Wyspie"
+    // (Główna Ścieżka w mainplugins-quests, patrz dajEwoluujacyKilof/ToolsService),
+    // żeby gracz miał od razu jasny, konkretny powód, żeby zajrzeć do /quest.
     public void dajStartoweNarzedzia(Player player) {
-        player.getInventory().addItem(stworzNarzedzie(player, "pickaxe", 0));
         player.getInventory().addItem(stworzNarzedzie(player, "axe", 0));
         player.getInventory().addItem(stworzNarzedzie(player, "sword", 0));
         player.getInventory().addItem(stworzNarzedzie(player, "shovel", 0));
         player.getInventory().addItem(stworzNarzedzie(player, "hoe", 0));
         player.sendMessage(Component.text("Otrzymałeś startowe narzędzia przypisane do Twojej duszy!", NamedTextColor.GREEN, TextDecoration.BOLD));
+        player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
+    }
+
+    /** {@inheritDoc} Wołane przez QuestManager (mainplugins-quests) po ukończeniu questa "Witaj na Wyspie". */
+    @Override
+    public void dajEwoluujacyKilof(Player player) {
+        player.getInventory().addItem(stworzNarzedzie(player, "pickaxe", 0));
+        player.sendMessage(Component.text("Otrzymałeś swój pierwszy, ewoluujący kilof!", NamedTextColor.GREEN, TextDecoration.BOLD));
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
     }
 

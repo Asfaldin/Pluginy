@@ -2,6 +2,7 @@ package elo.mainplugins.core;
 
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.IslandService;
+import elo.mainplugins.core.api.ToolsService;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
@@ -33,6 +34,12 @@ public final class CoreAPI {
      */
     public static IslandService getIslandService() {
         RegisteredServiceProvider<IslandService> rsp = Bukkit.getServicesManager().getRegistration(IslandService.class);
+        return rsp != null ? rsp.getProvider() : null;
+    }
+
+    /** Opcjonalny jak {@link #getIslandService()} - zwraca null, jeśli mainplugins-tools nie jest wgrany/włączony. */
+    public static ToolsService getToolsService() {
+        RegisteredServiceProvider<ToolsService> rsp = Bukkit.getServicesManager().getRegistration(ToolsService.class);
         return rsp != null ? rsp.getProvider() : null;
     }
 }

@@ -14,6 +14,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockBurnEvent;
+import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockFertilizeEvent;
 import org.bukkit.event.block.BlockFormEvent;
@@ -85,11 +86,28 @@ public class ObszarProtectionManager implements Listener {
 
     // ==================================================== Blok/ciecz - klasyka ====
 
+    /**
+     * Łapiemy próbę zniszczenia już na SAMYM TAPNIĘCIU (BlockDamageEvent), zanim
+     * dojdzie do BlockBreakEvent - bez tego klient Minecrafta zdążał "przewidzieć"
+     * zniszczenie bloku (zwłaszcza tych łamanych natychmiast, jak trawa/kwiaty),
+     * a gdy serwer cofał to dopiero w BlockBreakEvent, gra sama wypisywała graczowi
+     * własny, brzydki komunikat o desynchronizacji z dokładnymi koordynatami bloku
+     * nad paskiem doświadczenia. Anulowanie tutaj w ogóle nie dopuszcza do tej
+     * sytuacji - blok nigdy nie zaczyna się "kruszyć" po stronie klienta.
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onBlockDamage(BlockDamageEvent event) {
+        if (obszarManager.znajdzObszarPod(event.getBlock().getLocation()) == null || mozeIngerowac(event.getPlayer())) return;
+        event.setCancelled(true);
+        odmowa(event.getPlayer(), "Nie możesz tego zniszczyć!");
+    }
+
+    /** Zapasowa siatka bezpieczeństwa na wypadek, gdyby coś ominęło onBlockDamage wyżej (np. zniszczenie bloku spoza normalnego klikania). */
     @EventHandler(ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         if (obszarManager.znajdzObszarPod(event.getBlock().getLocation()) == null || mozeIngerowac(event.getPlayer())) return;
         event.setCancelled(true);
-        event.getPlayer().sendMessage(Component.text("Nie możesz niszczyć bloków w tym miejscu!", NamedTextColor.RED));
+        odmowa(event.getPlayer(), "Nie możesz tego zniszczyć!");
     }
 
     @EventHandler(ignoreCancelled = true)

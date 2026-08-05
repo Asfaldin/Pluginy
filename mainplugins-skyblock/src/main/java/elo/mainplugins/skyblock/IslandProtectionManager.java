@@ -16,6 +16,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
@@ -57,6 +58,30 @@ public class IslandProtectionManager implements Listener {
         return null;
     }
 
+    private void odmowa(Player player, String komunikat) {
+        player.sendActionBar(Component.text(komunikat, NamedTextColor.RED));
+    }
+
+    /**
+     * Łapiemy próbę zniszczenia już na SAMYM TAPNIĘCIU (BlockDamageEvent), zanim
+     * dojdzie do BlockBreakEvent - bez tego klient Minecrafta zdążał "przewidzieć"
+     * zniszczenie bloku (zwłaszcza tych łamanych natychmiast), a gdy serwer cofał to
+     * dopiero w BlockBreakEvent, gra sama wypisywała graczowi własny, brzydki
+     * komunikat o desynchronizacji z dokładnymi koordynatami bloku nad paskiem
+     * doświadczenia (patrz ten sam fix w mainplugins-spawn/ObszarProtectionManager).
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onBlockDamage(BlockDamageEvent event) {
+        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
+
+        if (!data.isAllowBreak()) {
+            event.setCancelled(true);
+            odmowa(event.getPlayer(), "Nie możesz tego zniszczyć!");
+        }
+    }
+
+    /** Zapasowa siatka bezpieczeństwa na wypadek, gdyby coś ominęło onBlockDamage wyżej. */
     @EventHandler(ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
@@ -64,7 +89,7 @@ public class IslandProtectionManager implements Listener {
 
         if (!data.isAllowBreak()) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage(Component.text("Nie możesz niszczyć bloków na cudzej wyspie!", NamedTextColor.RED));
+            odmowa(event.getPlayer(), "Nie możesz tego zniszczyć!");
         }
     }
 

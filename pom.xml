@@ -34,6 +34,7 @@
         <module>mainplugins-market</module>
         <module>mainplugins-storage</module>
         <module>mainplugins-quests</module>
+        <module>mainplugins-ranks</module>
         <module>mainplugins-tools</module>
         <module>mainplugins-hud</module>
         <module>mainplugins-teleport</module>

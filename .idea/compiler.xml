@@ -18,6 +18,7 @@
         <module name="mainplugins-hud" />
         <module name="mainplugins-crates" />
         <module name="mainplugins-spawn" />
+        <module name="mainplugins-ranks" />
         <module name="mainplugins-core" />
         <module name="mainplugins-shop" />
         <module name="mainplugins-spawners" />

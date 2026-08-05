@@ -1,0 +1,19 @@
+name: MainpluginsRanks
+version: ${project.version}
+main: elo.mainplugins.ranks.MainpluginsRanks
+api-version: '1.20'
+depend: [MainpluginsCore]
+
+commands:
+  setranga:
+    description: Ustaw rangę graczowi (gracz/vip/admin)
+    usage: /<command> <gracz> <gracz|vip|admin>
+    permission: mainplugins.ranks.admin
+  ranga:
+    description: Sprawdź swoją rangę (lub innego gracza)
+    usage: /<command> [gracz]
+
+permissions:
+  mainplugins.ranks.admin:
+    description: Dostęp do nadawania/zmiany rang graczy
+    default: op

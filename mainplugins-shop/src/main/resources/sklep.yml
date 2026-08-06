@@ -1,0 +1,914 @@
+# ==========================================================================
+# sklep.yml - wygenerowany z cennika bazowego
+#
+# buy-price  = cena za CALY lot kupna (amount sztuk)
+# sell-price = cena za CALY lot sprzedazy (sell-amount sztuk)
+# Brak buy-price  = itemu nie da sie kupic.
+# Brak sell-price = itemu nie da sie sprzedac.
+# Wszystkie kwoty sa liczbami calkowitymi - zadnych ulamkow.
+# ==========================================================================
+
+sklep-v2-zaladowany: true
+sklep-v3-cennik: true
+
+categories:
+  rudy:
+    name: "Rudy i Mineraly"
+    icon: DIAMOND
+    slot: 22
+    items:
+      0:
+        material: COAL
+        slot: 0
+        amount: 64
+        sell-amount: 64
+        sell-price: 300
+      1:
+        material: RAW_IRON
+        slot: 1
+        amount: 64
+        sell-amount: 64
+        sell-price: 500
+      2:
+        material: IRON_INGOT
+        slot: 2
+        amount: 64
+        sell-amount: 64
+        sell-price: 600
+      3:
+        material: RAW_COPPER
+        slot: 3
+        amount: 64
+        sell-amount: 64
+        sell-price: 330
+      4:
+        material: COPPER_INGOT
+        slot: 4
+        amount: 64
+        sell-amount: 64
+        sell-price: 400
+      5:
+        material: RAW_GOLD
+        slot: 5
+        amount: 64
+        sell-amount: 64
+        sell-price: 1200
+      6:
+        material: GOLD_INGOT
+        slot: 6
+        amount: 64
+        sell-amount: 64
+        sell-price: 1300
+      7:
+        material: REDSTONE
+        slot: 7
+        amount: 64
+        sell-amount: 64
+        sell-price: 400
+      8:
+        material: LAPIS_LAZULI
+        slot: 8
+        amount: 64
+        sell-amount: 64
+        sell-price: 600
+      9:
+        material: DIAMOND
+        slot: 9
+        amount: 64
+        sell-amount: 64
+        sell-price: 12000
+      10:
+        material: EMERALD
+        slot: 10
+        amount: 64
+        sell-amount: 64
+        sell-price: 10000
+
+  startery:
+    name: "Startery Farm"
+    icon: CACTUS
+    slot: 13
+    items:
+      0:
+        material: CACTUS
+        slot: 0
+        amount: 16
+        buy-price: 300
+        sell-amount: 64
+        sell-price: 30
+      1:
+        material: SUGAR_CANE
+        slot: 1
+        amount: 16
+        buy-price: 200
+        sell-amount: 64
+        sell-price: 20
+      2:
+        material: BAMBOO
+        slot: 2
+        amount: 64
+        buy-price: 240
+        sell-amount: 64
+        sell-price: 6
+      3:
+        material: KELP
+        slot: 3
+        amount: 16
+        buy-price: 400
+        sell-amount: 64
+        sell-price: 40
+      4:
+        material: CARROT
+        slot: 4
+        amount: 4
+        buy-price: 600
+        sell-amount: 64
+        sell-price: 240
+      5:
+        material: POTATO
+        slot: 5
+        amount: 4
+        buy-price: 600
+        sell-amount: 64
+        sell-price: 240
+      6:
+        material: NETHER_WART
+        slot: 6
+        amount: 1
+        buy-price: 250
+        sell-amount: 64
+        sell-price: 400
+      7:
+        material: COCOA_BEANS
+        slot: 7
+        amount: 1
+        buy-price: 190
+        sell-amount: 64
+        sell-price: 300
+      8:
+        material: SWEET_BERRIES
+        slot: 8
+        amount: 1
+        buy-price: 190
+        sell-amount: 64
+        sell-price: 300
+      9:
+        material: GLOW_BERRIES
+        slot: 9
+        amount: 1
+        buy-price: 250
+        sell-amount: 64
+        sell-price: 400
+      10:
+        material: BROWN_MUSHROOM
+        slot: 10
+        amount: 1
+        buy-price: 250
+        sell-amount: 64
+        sell-price: 400
+      11:
+        material: RED_MUSHROOM
+        slot: 11
+        amount: 1
+        buy-price: 250
+        sell-amount: 64
+        sell-price: 400
+      12:
+        material: GOLDEN_CARROT
+        slot: 12
+        amount: 1
+        buy-price: 1900
+        sell-amount: 64
+        sell-price: 3000
+
+  plony:
+    name: "Plony"
+    icon: WHEAT
+    slot: 21
+    items:
+      0:
+        material: WHEAT
+        slot: 0
+        amount: 64
+        sell-amount: 64
+        sell-price: 240
+      1:
+        material: BEETROOT
+        slot: 1
+        amount: 64
+        sell-amount: 64
+        sell-price: 300
+      2:
+        material: MELON_SLICE
+        slot: 2
+        amount: 64
+        sell-amount: 64
+        sell-price: 65
+      3:
+        material: PUMPKIN
+        slot: 3
+        amount: 64
+        sell-amount: 64
+        sell-price: 210
+
+  nasiona:
+    name: "Nasiona i Sadzonki"
+    icon: WHEAT_SEEDS
+    slot: 20
+    items:
+      0:
+        material: WHEAT_SEEDS
+        slot: 0
+        amount: 16
+        buy-price: 500
+      1:
+        material: BEETROOT_SEEDS
+        slot: 1
+        amount: 16
+        buy-price: 500
+      2:
+        material: MELON_SEEDS
+        slot: 2
+        amount: 4
+        buy-price: 380
+      3:
+        material: PUMPKIN_SEEDS
+        slot: 3
+        amount: 4
+        buy-price: 380
+      4:
+        material: TORCHFLOWER_SEEDS
+        slot: 4
+        amount: 1
+        buy-price: 750
+      5:
+        material: PITCHER_POD
+        slot: 5
+        amount: 1
+        buy-price: 750
+      6:
+        material: OAK_SAPLING
+        slot: 6
+        amount: 1
+        buy-price: 160
+      7:
+        material: SPRUCE_SAPLING
+        slot: 7
+        amount: 1
+        buy-price: 160
+      8:
+        material: BIRCH_SAPLING
+        slot: 8
+        amount: 1
+        buy-price: 160
+      9:
+        material: JUNGLE_SAPLING
+        slot: 9
+        amount: 1
+        buy-price: 220
+      10:
+        material: ACACIA_SAPLING
+        slot: 10
+        amount: 1
+        buy-price: 160
+      11:
+        material: DARK_OAK_SAPLING
+        slot: 11
+        amount: 1
+        buy-price: 220
+      12:
+        material: CHERRY_SAPLING
+        slot: 12
+        amount: 1
+        buy-price: 280
+      13:
+        material: MANGROVE_PROPAGULE
+        slot: 13
+        amount: 1
+        buy-price: 220
+
+  drewno:
+    name: "Drewno"
+    icon: OAK_LOG
+    slot: 23
+    items:
+      0:
+        material: OAK_LOG
+        slot: 0
+        amount: 64
+        buy-price: 1200
+        sell-amount: 64
+        sell-price: 80
+      1:
+        material: SPRUCE_LOG
+        slot: 1
+        amount: 64
+        buy-price: 1200
+        sell-amount: 64
+        sell-price: 80
+      2:
+        material: BIRCH_LOG
+        slot: 2
+        amount: 64
+        buy-price: 1200
+        sell-amount: 64
+        sell-price: 80
+      3:
+        material: JUNGLE_LOG
+        slot: 3
+        amount: 64
+        buy-price: 1600
+        sell-amount: 64
+        sell-price: 110
+      4:
+        material: ACACIA_LOG
+        slot: 4
+        amount: 64
+        buy-price: 1600
+        sell-amount: 64
+        sell-price: 110
+      5:
+        material: DARK_OAK_LOG
+        slot: 5
+        amount: 64
+        buy-price: 1600
+        sell-amount: 64
+        sell-price: 110
+      6:
+        material: MANGROVE_LOG
+        slot: 6
+        amount: 64
+        buy-price: 1600
+        sell-amount: 64
+        sell-price: 110
+      7:
+        material: CHERRY_LOG
+        slot: 7
+        amount: 64
+        buy-price: 1900
+        sell-amount: 64
+        sell-price: 130
+
+  kamien:
+    name: "Kamien i Bloki"
+    icon: COBBLESTONE
+    slot: 24
+    items:
+      0:
+        material: COBBLESTONE
+        slot: 0
+        amount: 64
+        sell-amount: 64
+        sell-price: 10
+      1:
+        material: STONE
+        slot: 1
+        amount: 64
+        sell-amount: 64
+        sell-price: 10
+      2:
+        material: GRANITE
+        slot: 2
+        amount: 64
+        buy-price: 200
+        sell-amount: 64
+        sell-price: 15
+      3:
+        material: DIORITE
+        slot: 3
+        amount: 64
+        buy-price: 200
+        sell-amount: 64
+        sell-price: 15
+      4:
+        material: ANDESITE
+        slot: 4
+        amount: 64
+        buy-price: 200
+        sell-amount: 64
+        sell-price: 15
+      5:
+        material: COBBLED_DEEPSLATE
+        slot: 5
+        amount: 64
+        buy-price: 220
+        sell-amount: 64
+        sell-price: 15
+      6:
+        material: TUFF
+        slot: 6
+        amount: 64
+        buy-price: 600
+        sell-amount: 64
+        sell-price: 40
+      7:
+        material: CALCITE
+        slot: 7
+        amount: 64
+        buy-price: 900
+        sell-amount: 64
+        sell-price: 60
+      8:
+        material: DEEPSLATE
+        slot: 8
+        amount: 64
+        buy-price: 600
+      9:
+        material: BASALT
+        slot: 9
+        amount: 64
+        buy-price: 600
+
+  loot:
+    name: "Loot ze Spawnerow"
+    icon: MUTTON
+    slot: 31
+    items:
+      0:
+        material: GOLD_NUGGET
+        slot: 0
+        amount: 64
+        sell-amount: 64
+        sell-price: 210
+      1:
+        material: WHITE_WOOL
+        slot: 1
+        amount: 64
+        sell-amount: 64
+        sell-price: 320
+      2:
+        material: MUTTON
+        slot: 2
+        amount: 64
+        sell-amount: 64
+        sell-price: 270
+      3:
+        material: RABBIT
+        slot: 3
+        amount: 64
+        sell-amount: 64
+        sell-price: 320
+      4:
+        material: RABBIT_HIDE
+        slot: 4
+        amount: 64
+        sell-amount: 64
+        sell-price: 320
+      5:
+        material: RABBIT_FOOT
+        slot: 5
+        amount: 64
+        sell-amount: 64
+        sell-price: 8000
+      6:
+        material: BREEZE_ROD
+        slot: 6
+        amount: 64
+        sell-amount: 64
+        sell-price: 800
+      7:
+        material: GLOW_INK_SAC
+        slot: 7
+        amount: 64
+        sell-amount: 64
+        sell-price: 400
+
+  moby:
+    name: "Dropy z Mobow"
+    icon: BONE
+    slot: 40
+    items:
+      0:
+        material: ROTTEN_FLESH
+        slot: 0
+        amount: 64
+        sell-amount: 64
+        sell-price: 160
+      1:
+        material: BONE
+        slot: 1
+        amount: 64
+        sell-amount: 64
+        sell-price: 210
+      2:
+        material: STRING
+        slot: 2
+        amount: 64
+        sell-amount: 64
+        sell-price: 270
+      3:
+        material: SPIDER_EYE
+        slot: 3
+        amount: 64
+        sell-amount: 64
+        sell-price: 400
+      4:
+        material: GUNPOWDER
+        slot: 4
+        amount: 64
+        sell-amount: 64
+        sell-price: 400
+      5:
+        material: SLIME_BALL
+        slot: 5
+        amount: 64
+        sell-amount: 64
+        sell-price: 1000
+      6:
+        material: ENDER_PEARL
+        slot: 6
+        amount: 16
+        sell-amount: 16
+        sell-price: 1500
+      7:
+        material: PHANTOM_MEMBRANE
+        slot: 7
+        amount: 64
+        sell-amount: 64
+        sell-price: 6000
+      8:
+        material: LEATHER
+        slot: 8
+        amount: 64
+        sell-amount: 64
+        sell-price: 530
+      9:
+        material: BEEF
+        slot: 9
+        amount: 64
+        sell-amount: 64
+        sell-price: 400
+      10:
+        material: PORKCHOP
+        slot: 10
+        amount: 64
+        sell-amount: 64
+        sell-price: 400
+      11:
+        material: CHICKEN
+        slot: 11
+        amount: 64
+        sell-amount: 64
+        sell-price: 460
+      12:
+        material: FEATHER
+        slot: 12
+        amount: 64
+        sell-amount: 64
+        sell-price: 400
+      13:
+        material: EGG
+        slot: 13
+        amount: 16
+        sell-amount: 16
+        sell-price: 160
+
+  ryby:
+    name: "Ryby i Ocean"
+    icon: COD
+    slot: 12
+    items:
+      0:
+        material: COD
+        slot: 0
+        amount: 64
+        sell-amount: 64
+        sell-price: 750
+      1:
+        material: SALMON
+        slot: 1
+        amount: 64
+        sell-amount: 64
+        sell-price: 1000
+      2:
+        material: TROPICAL_FISH
+        slot: 2
+        amount: 64
+        sell-amount: 64
+        sell-price: 2000
+      3:
+        material: PUFFERFISH
+        slot: 3
+        amount: 64
+        sell-amount: 64
+        sell-price: 1500
+      4:
+        material: INK_SAC
+        slot: 4
+        amount: 64
+        sell-amount: 64
+        sell-price: 750
+      5:
+        material: NAUTILUS_SHELL
+        slot: 5
+        amount: 64
+        sell-amount: 64
+        sell-price: 20000
+      6:
+        material: PRISMARINE_SHARD
+        slot: 6
+        amount: 64
+        sell-amount: 64
+        sell-price: 1200
+      7:
+        material: PRISMARINE_CRYSTALS
+        slot: 7
+        amount: 64
+        sell-amount: 64
+        sell-price: 1500
+
+  infrastruktura:
+    name: "Infrastruktura"
+    icon: WATER_BUCKET
+    slot: 2
+    items:
+      0:
+        material: WATER_BUCKET
+        slot: 0
+        amount: 1
+        buy-price: 190
+      1:
+        material: LAVA_BUCKET
+        slot: 1
+        amount: 1
+        buy-price: 940
+      2:
+        material: DIRT
+        slot: 2
+        amount: 64
+        buy-price: 150
+        sell-amount: 64
+        sell-price: 10
+      3:
+        material: SAND
+        slot: 3
+        amount: 64
+        buy-price: 1600
+        sell-amount: 64
+        sell-price: 110
+      4:
+        material: RED_SAND
+        slot: 4
+        amount: 64
+        buy-price: 600
+      5:
+        material: GRAVEL
+        slot: 5
+        amount: 64
+        buy-price: 1600
+        sell-amount: 64
+        sell-price: 110
+      6:
+        material: CLAY_BALL
+        slot: 6
+        amount: 16
+        buy-price: 1100
+        sell-amount: 64
+        sell-price: 300
+      7:
+        material: OBSIDIAN
+        slot: 7
+        amount: 4
+        buy-price: 1400
+        sell-amount: 64
+        sell-price: 1500
+
+  import:
+    name: "Import"
+    icon: NETHERRACK
+    slot: 14
+    items:
+      0:
+        material: NETHERRACK
+        slot: 0
+        amount: 64
+        buy-price: 800
+      1:
+        material: SOUL_SAND
+        slot: 1
+        amount: 64
+        buy-price: 2000
+      2:
+        material: QUARTZ
+        slot: 2
+        amount: 16
+        buy-price: 800
+      3:
+        material: GLOWSTONE_DUST
+        slot: 3
+        amount: 64
+        buy-price: 2400
+      4:
+        material: BLAZE_ROD
+        slot: 4
+        amount: 4
+        buy-price: 1000
+      5:
+        material: GHAST_TEAR
+        slot: 5
+        amount: 1
+        buy-price: 940
+      6:
+        material: MAGMA_CREAM
+        slot: 6
+        amount: 4
+        buy-price: 750
+      7:
+        material: NETHERITE_SCRAP
+        slot: 7
+        amount: 1
+        buy-price: 5000
+      8:
+        material: END_STONE
+        slot: 8
+        amount: 64
+        buy-price: 800
+      9:
+        material: CHORUS_FRUIT
+        slot: 9
+        amount: 16
+        buy-price: 1000
+      10:
+        material: SHULKER_SHELL
+        slot: 10
+        amount: 1
+        buy-price: 7500
+      11:
+        material: ELYTRA
+        slot: 11
+        amount: 1
+        buy-price: 75000
+      12:
+        material: WITHER_SKELETON_SKULL
+        slot: 12
+        amount: 1
+        buy-price: 12500
+      13:
+        material: SULFUR
+        slot: 13
+        amount: 64
+        buy-price: 1200
+      14:
+        material: CINNABAR
+        slot: 14
+        amount: 64
+        buy-price: 1200
+
+  barwniki:
+    name: "Barwniki"
+    icon: RED_DYE
+    slot: 6
+    items:
+      0:
+        material: WHITE_DYE
+        slot: 0
+        amount: 64
+        buy-price: 1600
+      1:
+        material: ORANGE_DYE
+        slot: 1
+        amount: 64
+        buy-price: 1600
+      2:
+        material: MAGENTA_DYE
+        slot: 2
+        amount: 64
+        buy-price: 1600
+      3:
+        material: LIGHT_BLUE_DYE
+        slot: 3
+        amount: 64
+        buy-price: 1600
+      4:
+        material: YELLOW_DYE
+        slot: 4
+        amount: 64
+        buy-price: 1600
+      5:
+        material: LIME_DYE
+        slot: 5
+        amount: 64
+        buy-price: 1600
+      6:
+        material: PINK_DYE
+        slot: 6
+        amount: 64
+        buy-price: 1600
+      7:
+        material: GRAY_DYE
+        slot: 7
+        amount: 64
+        buy-price: 1600
+      8:
+        material: LIGHT_GRAY_DYE
+        slot: 8
+        amount: 64
+        buy-price: 1600
+      9:
+        material: CYAN_DYE
+        slot: 9
+        amount: 64
+        buy-price: 1600
+      10:
+        material: PURPLE_DYE
+        slot: 10
+        amount: 64
+        buy-price: 1600
+      11:
+        material: BLUE_DYE
+        slot: 11
+        amount: 64
+        buy-price: 1600
+      12:
+        material: BROWN_DYE
+        slot: 12
+        amount: 64
+        buy-price: 1600
+      13:
+        material: GREEN_DYE
+        slot: 13
+        amount: 64
+        buy-price: 1600
+      14:
+        material: RED_DYE
+        slot: 14
+        amount: 64
+        buy-price: 1600
+      15:
+        material: BLACK_DYE
+        slot: 15
+        amount: 64
+        buy-price: 1600
+
+  spawnery:
+    name: "Spawnery"
+    icon: SPAWNER
+    slot: 30
+    items:
+      0:
+        material: SPAWNER
+        slot: 0
+        custom-id: SHEEP
+        display-name: "Spawner: Owiec"
+        amount: 1
+        buy-price: 19000
+      1:
+        material: SPAWNER
+        slot: 1
+        custom-id: RABBIT
+        display-name: "Spawner: Krolikow"
+        amount: 1
+        buy-price: 28000
+      2:
+        material: SPAWNER
+        slot: 2
+        custom-id: GLOW_SQUID
+        display-name: "Spawner: Swietlistych Kalamarnic"
+        amount: 1
+        buy-price: 37500
+      3:
+        material: SPAWNER
+        slot: 3
+        custom-id: PIGLIN
+        display-name: "Spawner: Piglinow"
+        amount: 1
+        buy-price: 56000
+      4:
+        material: SPAWNER
+        slot: 4
+        custom-id: BREEZE
+        display-name: "Spawner: Breeze'ow"
+        amount: 1
+        buy-price: 100000
+
+  specjalne:
+    name: "Itemy Specjalne"
+    icon: NETHERITE_PICKAXE
+    slot: 32
+    items:
+      0:
+        material: NETHERITE_PICKAXE
+        slot: 0
+        custom-id: NISZCZYCIEL
+        display-name: "Niszczyciel"
+        lore:
+          - "Kilof z ultra szybkim kopaniem (Haste X)"
+          - "PPM: niszczy 3x3 blokow naraz"
+          - "Zawsze dropi wlasciwy blok (jak Silk Touch)"
+          - "Sluzy tylko do kopania - nic wiecej"
+        amount: 1
+        buy-price: 150000
+      1:
+        material: SNIFFER_EGG
+        slot: 1
+        custom-id: SNIFFER_JAJKO
+        display-name: "Sniffer Farmera"
+        lore:
+          - "PPM na wlasnej wyspie stawia stacjonarnego"
+          - "Snifferaa, ktory automatycznie zbiera i"
+          - "sadzi dojrzale uprawy w poblizu"
+          - "Zebrane plony trafiaja do najblizszej skrzyni"
+          - "Maksymalnie 1 Sniffer na wyspe"
+        amount: 1
+        buy-price: 100000
+

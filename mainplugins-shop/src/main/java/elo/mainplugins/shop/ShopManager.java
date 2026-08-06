@@ -16,27 +16,26 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 
 /**
  * Cała treść sklepu (kategorie, ceny, ikonki, ilości) żyje w sklep.yml, edytowalnym
  * na żywo przez /reloadsklep - ta klasa tylko RENDERUJE tę konfigurację i obsługuje
- * kliknięcia. Domyślna zawartość poniżej (zbudujPelnySklep i kategorie*()) to jednorazowy
- * seed nowej instalacji / jednorazowa migracja z v1 (patrz sklep-v2-zaladowany) - jeśli
- * admin już coś w sklep.yml zmienił, ten kod nigdy więcej tego nie nadpisze.
+ * kliknięcia. Sam plik jest generowany zewnętrznie (cennik) i dostarczany jako
+ * domyślny zasób w resources/sklep.yml - przy pierwszym uruchomieniu (brak pliku
+ * w data folderze) jest kopiowany 1:1 przez saveResource(); jeśli plik już istnieje
+ * (admin coś zmienił / serwer już działał), nic w nim nie ruszamy.
  *
- * Filozofia cenowa (patrz kategorie*()): cena sprzedaży to procent ceny kupna, malejący
- * z rzadkością - odnawialne surowce (uprawy, drewno, kamień) mają wysoki zwrot (~70%),
- * bo to ma być główne, uczciwe źródło dochodu z farmienia. Rzadkie/late-game przedmioty
- * mają niski zwrot (~20-35%) i wysoką cenę kupna (wg tabeli WARTOSCI_BLOKOW z
- * IslandManager jako punktu odniesienia) - są kupowalne jako "money sink" dla bogatych
- * graczy, ale zawsze bardziej opłaca się je zdobyć niż odkupić.
+ * buy-price/sell-price są CAŁKOWITE (cena za cały lot: amount przy kupnie, sell-amount
+ * przy sprzedaży) - patrz nagłówek resources/sklep.yml. Odczyt w tej klasie leci przez
+ * getInt(), więc ułamek wpisany ręcznie przez admina zostanie po cichu obcięty; stąd
+ * ostrzezZaNieCalkowiteCeny() przy każdym wczytaniu pliku.
  */
 public class ShopManager implements Listener {
 
@@ -62,429 +61,61 @@ public class ShopManager implements Listener {
      */
     public void przeladujKonfiguracje() {
         sklepConfig = YamlConfiguration.loadConfiguration(sklepFile);
+        ostrzezZaNieCalkowiteCeny();
     }
 
     private void stworzLubWczytajPlikSklepu() {
         sklepFile = new File(plugin.getDataFolder(), "sklep.yml");
         if (!sklepFile.exists()) {
-            sklepFile.getParentFile().mkdirs();
+            // Domyślny cennik żyje jako zasób pluginu (resources/sklep.yml) - kopiujemy
+            // go 1:1 tylko przy pierwszym uruchomieniu. Jeśli plik już istnieje, nic tu
+            // nie nadpisujemy - ewentualne ręczne zmiany admina zostają nietknięte.
+            plugin.saveResource("sklep.yml", false);
         }
         sklepConfig = YamlConfiguration.loadConfiguration(sklepFile);
-
-        // Spawnery/Itemy Specjalne - niezależny, per-wpis guard (jak od zawsze), żeby
-        // dołożyć brakujące pozycje nawet na serwerze, gdzie kategoria już istnieje.
-        dodajSpawneryJesliBrak();
-        dodajSpecjalneJesliBrak();
-
-        // v2: pełny sklep, 16 kategorii ułożonych w ramkę - JEDNORAZOWA migracja (nie
-        // rusza niczego, co admin już ręcznie zmienił po tym, jak raz się wykona).
-        if (!sklepConfig.getBoolean("sklep-v2-zaladowany", false)) {
-            zbudujPelnySklep();
-            sklepConfig.set("sklep-v2-zaladowany", true);
-        }
-
-        try {
-            sklepConfig.save(sklepFile);
-        } catch (IOException e) {
-            plugin.getLogger().warning("Nie można zapisać sklep.yml: " + e.getMessage());
-        }
+        ostrzezZaNieCalkowiteCeny();
     }
-
-    // ============================================== v2: pełny sklep, gwiazda jak w /quest ====
 
     /**
-     * 15 slotów ramion gwiazdy o tej samej geometrii co SLOTY_GWIAZDY w QuestManager
-     * (mainplugins-quests) - promienie N/S/E/W/NE/NW/SE/SW rozchodzące się z centrum
-     * (SLOT_CENTRUM_GWIAZDY, patrz niżej). Jedno ramię (N) ma tylko 1 punkt zamiast 2,
-     * żeby razem z centrum wyszło dokładnie 16 = liczba kategorii (środek gwiazdy trzyma
-     * realną kategorię, nie samą dekorację - stąd niepełna symetria w tym jednym miejscu).
-     * Sloty celowo NIE sięgają dolnego paska (45-53), bo tam w otworzSklep()/
-     * otworzKategorieStrona() stoją przyciski nawigacji. Kolejność w tablicy = kolejność
-     * przypisania kategorii z zbudujPelnySklep() (N, S, E, W, NE, NW, SE, SW).
+     * buy-price/sell-price mają być liczbami całkowitymi (cena za cały lot) - odczyt
+     * w tej klasie leci przez getInt(), który po cichu obcina ułamki bez żadnego błędu
+     * (np. 8.75 -> 8, więc gracz sprzedałby coś za grosze zamiast za pełną cenę). Ten
+     * check wyłapuje taki wpis w logu od razu przy starcie/reloadzie, zamiast przez
+     * skargę gracza, że sklep płaci mniej niż powinien.
      */
-    private static final int[] SLOTY_RAMKI = {
-            13,      // N
-            31, 40,  // S
-            23, 24,  // E
-            21, 20,  // W
-            14, 6,   // NE
-            12, 2,   // NW
-            32, 42,  // SE
-            30, 38   // SW
-    };
+    private void ostrzezZaNieCalkowiteCeny() {
+        ConfigurationSection catSection = sklepConfig.getConfigurationSection("categories");
+        if (catSection == null) return;
 
-    /** Środek gwiazdy - najbardziej efektowna kategoria (Klejnoty i Rzadkości) ląduje właśnie tu. */
-    private static final int SLOT_CENTRUM_GWIAZDY = 22;
+        for (String catKey : catSection.getKeys(false)) {
+            ConfigurationSection itemsSection = sklepConfig.getConfigurationSection("categories." + catKey + ".items");
+            if (itemsSection == null) continue;
+
+            for (String itemKey : itemsSection.getKeys(false)) {
+                String path = "categories." + catKey + ".items." + itemKey + ".";
+                ostrzezJesliNieCalkowita(path + "buy-price");
+                ostrzezJesliNieCalkowita(path + "sell-price");
+            }
+        }
+    }
+
+    private void ostrzezJesliNieCalkowita(String path) {
+        if (!sklepConfig.contains(path)) return;
+        double wartosc = sklepConfig.getDouble(path);
+        if (wartosc != Math.floor(wartosc)) {
+            plugin.getLogger().warning("sklep.yml: '" + path + "' = " + wartosc
+                    + " nie jest liczbą całkowitą - zostanie obcięta przy odczycie (getInt) do "
+                    + (int) wartosc + "!");
+        }
+    }
 
     /**
-     * SLOT_CENTRUM_GWIAZDY + wszystkie SLOTY_RAMKI razem (16 pozycji) - używane jako:
-     * (1) zestaw slotów do pomalowania żółtym akcentem w tle (wypelnijTloGwiazdy), tej
-     * samej gwiazdy na obu ekranach (kategorie i lista itemów w kategorii - patrz
-     * otworzKategorieStrona), (2) mapowanie "lokalny indeks itemu 0-15" -> "slot GUI"
-     * przy renderowaniu itemów kategorii tym samym kształtem.
+     * Zwykła siatka: kategorie/itemy wypełniają sloty 0..GRID_ROZMIAR-1 po kolei,
+     * od lewej górnej, rząd po rzędzie (5 rzędów po 9 = sloty 0-44). Dolny pasek
+     * (45-53) jest zawsze zarezerwowany na przyciski nawigacji - patrz otworzSklep()/
+     * otworzKategorieStrona().
      */
-    private static final int[] SLOTY_GWIAZDY_PELNA = buduSlotyGwiazdyPelna();
-
-    private static int[] buduSlotyGwiazdyPelna() {
-        int[] pelna = new int[SLOTY_RAMKI.length + 1];
-        pelna[0] = SLOT_CENTRUM_GWIAZDY;
-        System.arraycopy(SLOTY_RAMKI, 0, pelna, 1, SLOTY_RAMKI.length);
-        return pelna;
-    }
-
-    private void zbudujPelnySklep() {
-        // Placeholdery z v1 - zastąpione pełną treścią niżej pod nowymi kluczami.
-        sklepConfig.set("categories.surowce", null);
-        sklepConfig.set("categories.rolnictwo", null);
-
-        // Klejnoty i Rzadkości - najbardziej efektowna kategoria, na SAMYM środku gwiazdy.
-        dodajKategorieTowarowa("klejnoty", "Klejnoty i Rzadkości", "DIAMOND_BLOCK", SLOT_CENTRUM_GWIAZDY, kategoriaKlejnoty());
-
-        int i = 0;
-        dodajKategorieTowarowa("surowce_ziemi", "Surowce Ziemi", "GRASS_BLOCK", SLOTY_RAMKI[i++], kategoriaSurowceZiemi());
-        dodajKategorieTowarowa("drewno", "Drewno", "OAK_LOG", SLOTY_RAMKI[i++], kategoriaDrewno());
-        dodajKategorieTowarowa("rudy_sztabki", "Rudy i Sztabki", "RAW_GOLD", SLOTY_RAMKI[i++], kategoriaRudySztabki());
-        dodajKategorieTowarowa("redstone_mechanizmy", "Redstone i Mechanizmy", "REDSTONE_BLOCK", SLOTY_RAMKI[i++], kategoriaRedstoneMechanizmy());
-        dodajKategorieTowarowa("rolnictwo2", "Rolnictwo", "WHEAT", SLOTY_RAMKI[i++], kategoriaRolnictwo());
-        dodajKategorieTowarowa("hodowla", "Hodowla", "WHITE_WOOL", SLOTY_RAMKI[i++], kategoriaHodowla());
-        dodajKategorieTowarowa("lowca", "Łowca", "BONE", SLOTY_RAMKI[i++], kategoriaLowca());
-        dodajKategorieTowarowa("rybactwo", "Rybactwo", "COD", SLOTY_RAMKI[i++], kategoriaRybactwo());
-        dodajKategorieTowarowa("nether", "Nether", "MAGMA_BLOCK", SLOTY_RAMKI[i++], kategoriaNether());
-        dodajKategorieTowarowa("koniec_swiata", "End", "ELYTRA", SLOTY_RAMKI[i++], kategoriaEnd());
-        dodajKategorieTowarowa("barwniki", "Barwniki", "LIME_DYE", SLOTY_RAMKI[i++], kategoriaBarwniki());
-        dodajKategorieTowarowa("bloki_budowlane", "Bloki Budowlane", "BRICKS", SLOTY_RAMKI[i++], kategoriaBlokiBudowlane());
-        dodajKategorieTowarowa("alchemia", "Eliksiry i Alchemia", "BREWING_STAND", SLOTY_RAMKI[i++], kategoriaAlchemia());
-
-        // Spawnery i Itemy Specjalne już istnieją (dodajSpawneryJesliBrak/dodajSpecjalneJesliBrak) -
-        // tylko przenosimy je na ich miejsce w gwieździe.
-        sklepConfig.set("categories.spawnery.slot", SLOTY_RAMKI[i++]);
-        sklepConfig.set("categories.specjalne.slot", SLOTY_RAMKI[i]);
-    }
-
-    private record ItemDef(Material material, int amount, double buyPrice, double sellPrice) {
-        private ItemDef(Material material, int amount, double buyPrice) {
-            this(material, amount, buyPrice, -1); // buy-only (crafted/convenience - patrz komentarze przy kategoriach)
-        }
-    }
-
-    /** Zapisuje kategorię "towarową" (bez custom-id) - jedna pozycja na item, slot = kolejność na liście. */
-    private void dodajKategorieTowarowa(String key, String name, String icon, int catSlot, List<ItemDef> items) {
-        sklepConfig.set("categories." + key + ".name", name);
-        sklepConfig.set("categories." + key + ".icon", icon);
-        sklepConfig.set("categories." + key + ".slot", catSlot);
-        for (int i = 0; i < items.size(); i++) {
-            ItemDef it = items.get(i);
-            String path = "categories." + key + ".items." + i + ".";
-            sklepConfig.set(path + "material", it.material().name());
-            sklepConfig.set(path + "slot", i);
-            sklepConfig.set(path + "amount", it.amount());
-            sklepConfig.set(path + "buy-price", it.buyPrice());
-            if (it.sellPrice() >= 0) sklepConfig.set(path + "sell-price", it.sellPrice());
-        }
-    }
-
-    // ---- Kategorie: tier "odnawialne" (~70% zwrotu) - główne, uczciwe źródło dochodu ----
-
-    private List<ItemDef> kategoriaSurowceZiemi() {
-        return List.of(
-                new ItemDef(Material.DIRT, 64, 1.0, 0.7),
-                new ItemDef(Material.COBBLESTONE, 64, 1.0, 0.7),
-                new ItemDef(Material.STONE, 64, 1.5, 1.0),
-                new ItemDef(Material.GRAVEL, 64, 1.5, 1.0),
-                new ItemDef(Material.SAND, 64, 1.5, 1.0),
-                new ItemDef(Material.RED_SAND, 64, 2.0, 1.4),
-                new ItemDef(Material.CLAY_BALL, 64, 3.0, 2.0),
-                new ItemDef(Material.GRANITE, 64, 1.5, 1.0),
-                new ItemDef(Material.DIORITE, 64, 1.5, 1.0),
-                new ItemDef(Material.ANDESITE, 64, 1.5, 1.0),
-                new ItemDef(Material.DEEPSLATE, 64, 2.5, 1.7),
-                new ItemDef(Material.CALCITE, 64, 2.0, 1.4),
-                new ItemDef(Material.TUFF, 64, 2.0, 1.4)
-        );
-    }
-
-    private List<ItemDef> kategoriaDrewno() {
-        return List.of(
-                new ItemDef(Material.OAK_LOG, 64, 3.0, 2.1),
-                new ItemDef(Material.SPRUCE_LOG, 64, 3.0, 2.1),
-                new ItemDef(Material.BIRCH_LOG, 64, 3.0, 2.1),
-                new ItemDef(Material.JUNGLE_LOG, 64, 4.0, 2.8),
-                new ItemDef(Material.ACACIA_LOG, 64, 4.0, 2.8),
-                new ItemDef(Material.DARK_OAK_LOG, 64, 4.0, 2.8),
-                new ItemDef(Material.MANGROVE_LOG, 64, 4.0, 2.8),
-                new ItemDef(Material.CHERRY_LOG, 64, 5.0, 3.5),
-                new ItemDef(Material.CRIMSON_STEM, 64, 6.0, 4.2),
-                new ItemDef(Material.WARPED_STEM, 64, 6.0, 4.2),
-                new ItemDef(Material.BAMBOO, 64, 1.0, 0.7)
-        );
-    }
-
-    private List<ItemDef> kategoriaRolnictwo() {
-        return List.of(
-                new ItemDef(Material.WHEAT, 64, 2.0, 1.4),
-                new ItemDef(Material.WHEAT_SEEDS, 64, 1.0, 0.7),
-                new ItemDef(Material.CARROT, 64, 2.0, 1.4),
-                new ItemDef(Material.POTATO, 64, 2.0, 1.4),
-                new ItemDef(Material.BEETROOT, 64, 2.0, 1.4),
-                new ItemDef(Material.BEETROOT_SEEDS, 64, 1.0, 0.7),
-                new ItemDef(Material.MELON_SLICE, 64, 2.0, 1.4),
-                new ItemDef(Material.PUMPKIN, 64, 3.0, 2.1),
-                new ItemDef(Material.SUGAR_CANE, 64, 2.0, 1.4),
-                new ItemDef(Material.COCOA_BEANS, 64, 3.0, 2.1),
-                new ItemDef(Material.NETHER_WART, 64, 4.0, 2.8),
-                new ItemDef(Material.GOLDEN_CARROT, 64, 40.0, 12.0) // dawny demo-item v1, przeniesiony tu bez zmian ceny
-        );
-    }
-
-    // ---- Kategorie: tier "pospolite" (~60% zwrotu) - łatwe do zdobycia, ale wymagają walki/hodowli ----
-
-    private List<ItemDef> kategoriaHodowla() {
-        return List.of(
-                new ItemDef(Material.WHITE_WOOL, 64, 5.0, 3.0),
-                new ItemDef(Material.EGG, 64, 3.0, 1.8),
-                new ItemDef(Material.FEATHER, 64, 3.0, 1.8),
-                new ItemDef(Material.LEATHER, 64, 6.0, 3.6),
-                new ItemDef(Material.RABBIT_HIDE, 64, 4.0, 2.4),
-                new ItemDef(Material.HONEY_BOTTLE, 16, 8.0, 4.8),
-                new ItemDef(Material.MILK_BUCKET, 16, 10.0, 4.0),
-                new ItemDef(Material.BEEF, 64, 5.0, 3.0),
-                new ItemDef(Material.PORKCHOP, 64, 5.0, 3.0),
-                new ItemDef(Material.CHICKEN, 64, 4.0, 2.4),
-                new ItemDef(Material.MUTTON, 64, 4.0, 2.4),
-                new ItemDef(Material.RABBIT, 64, 4.0, 2.4)
-        );
-    }
-
-    private List<ItemDef> kategoriaLowca() {
-        return List.of(
-                new ItemDef(Material.ROTTEN_FLESH, 64, 1.0, 0.6),
-                new ItemDef(Material.BONE, 64, 3.0, 1.8),
-                new ItemDef(Material.STRING, 64, 3.0, 1.8),
-                new ItemDef(Material.SPIDER_EYE, 64, 3.0, 1.8),
-                new ItemDef(Material.GUNPOWDER, 64, 5.0, 3.0),
-                new ItemDef(Material.SLIME_BALL, 64, 4.0, 2.4),
-                new ItemDef(Material.PHANTOM_MEMBRANE, 64, 10.0, 6.0),
-                new ItemDef(Material.MAGMA_CREAM, 64, 8.0, 4.8),
-                new ItemDef(Material.BLAZE_ROD, 64, 20.0, 10.0), // tier "średnie" - patrz sekcja niżej, ale tematycznie łowieckie
-                new ItemDef(Material.GHAST_TEAR, 16, 25.0, 8.75), // tier "rzadkie"
-                new ItemDef(Material.WITHER_SKELETON_SKULL, 4, 400.0, 140.0) // tier "rzadkie"
-        );
-    }
-
-    private List<ItemDef> kategoriaRybactwo() {
-        return List.of(
-                new ItemDef(Material.COD, 64, 3.0, 1.8),
-                new ItemDef(Material.SALMON, 64, 4.0, 2.4),
-                new ItemDef(Material.TROPICAL_FISH, 64, 6.0, 3.6),
-                new ItemDef(Material.PUFFERFISH, 64, 5.0, 3.0),
-                new ItemDef(Material.PRISMARINE_SHARD, 64, 6.0, 3.6),
-                new ItemDef(Material.PRISMARINE_CRYSTALS, 64, 6.0, 3.6),
-                new ItemDef(Material.NAUTILUS_SHELL, 8, 60.0, 21.0), // tier "rzadkie"
-                new ItemDef(Material.HEART_OF_THE_SEA, 1, 1500.0, 300.0) // tier "endgame"
-        );
-    }
-
-    // ---- Kategorie: tier "średnie" (~50% zwrotu) - rudy/metale, główny trzon progresu ----
-
-    private List<ItemDef> kategoriaRudySztabki() {
-        return List.of(
-                new ItemDef(Material.COAL, 64, 6.0, 3.6), // pospolite (60%)
-                new ItemDef(Material.RAW_IRON, 64, 12.0, 7.2), // pospolite (60%)
-                new ItemDef(Material.IRON_INGOT, 64, 22.0, 11.0),
-                new ItemDef(Material.RAW_COPPER, 64, 5.0, 3.0), // pospolite (60%)
-                new ItemDef(Material.COPPER_INGOT, 64, 9.0, 4.5),
-                new ItemDef(Material.RAW_GOLD, 64, 30.0, 18.0), // pospolite (60%)
-                new ItemDef(Material.GOLD_INGOT, 64, 56.0, 28.0),
-                new ItemDef(Material.REDSTONE, 64, 13.0, 6.5),
-                new ItemDef(Material.LAPIS_LAZULI, 64, 18.0, 9.0),
-                new ItemDef(Material.DIAMOND, 4, 1000.0, 350.0), // tier "rzadkie" (35%)
-                new ItemDef(Material.EMERALD, 4, 750.0, 260.0), // tier "rzadkie" (35%)
-                new ItemDef(Material.NETHERITE_SCRAP, 4, 600.0, 120.0), // tier "endgame" (20%)
-                new ItemDef(Material.NETHERITE_INGOT, 1, 2800.0, 550.0) // tier "endgame" (20%)
-        );
-    }
-
-    private List<ItemDef> kategoriaNether() {
-        return List.of(
-                new ItemDef(Material.NETHERRACK, 64, 1.0, 0.7), // odnawialne (70%)
-                new ItemDef(Material.SOUL_SAND, 64, 3.0, 2.1), // odnawialne (70%)
-                new ItemDef(Material.SOUL_SOIL, 64, 3.0, 2.1), // odnawialne (70%)
-                new ItemDef(Material.BLAZE_POWDER, 64, 10.0, 6.0), // pospolite (60%)
-                new ItemDef(Material.GLOWSTONE_DUST, 64, 6.0, 3.6), // pospolite (60%)
-                new ItemDef(Material.QUARTZ, 64, 10.0, 5.0),
-                new ItemDef(Material.OBSIDIAN, 64, 15.0, 9.0),
-                new ItemDef(Material.CRYING_OBSIDIAN, 16, 25.0, 8.75), // tier "rzadkie" (35%)
-                new ItemDef(Material.ANCIENT_DEBRIS, 4, 350.0, 70.0) // tier "endgame" (20%)
-        );
-    }
-
-    // ---- Kategoria: End - mix "odnawialne" (rośliny Endu) i "rzadkie"/"endgame" (reszta) ----
-
-    private List<ItemDef> kategoriaEnd() {
-        return List.of(
-                new ItemDef(Material.END_STONE, 64, 5.0, 3.0), // pospolite (60%)
-                new ItemDef(Material.CHORUS_FRUIT, 64, 4.0, 2.8), // odnawialne, farma w Endzie (70%)
-                new ItemDef(Material.POPPED_CHORUS_FRUIT, 64, 6.0, 3.0),
-                new ItemDef(Material.PURPUR_BLOCK, 64, 8.0, 4.0),
-                new ItemDef(Material.END_ROD, 32, 10.0, 5.0),
-                new ItemDef(Material.ENDER_PEARL, 16, 20.0, 7.0), // tier "rzadkie" (35%)
-                new ItemDef(Material.ENDER_EYE, 8, 60.0, 18.0), // tier "rzadkie" (30%)
-                new ItemDef(Material.DRAGON_BREATH, 16, 80.0, 20.0), // tier "rzadkie" (25%)
-                new ItemDef(Material.SHULKER_SHELL, 4, 300.0, 75.0), // tier "endgame" (25%)
-                new ItemDef(Material.ELYTRA, 1, 8000.0, 1600.0) // tier "endgame" (20%)
-        );
-    }
-
-    // ---- Kategoria: Barwniki - tanie, jednolita cena, wszystkie 16 kolorów ----
-
-    private List<ItemDef> kategoriaBarwniki() {
-        Material[] kolory = {
-                Material.WHITE_DYE, Material.ORANGE_DYE, Material.MAGENTA_DYE, Material.LIGHT_BLUE_DYE,
-                Material.YELLOW_DYE, Material.LIME_DYE, Material.PINK_DYE, Material.GRAY_DYE,
-                Material.LIGHT_GRAY_DYE, Material.CYAN_DYE, Material.PURPLE_DYE, Material.BLUE_DYE,
-                Material.BROWN_DYE, Material.GREEN_DYE, Material.RED_DYE, Material.BLACK_DYE
-        };
-        List<ItemDef> lista = new ArrayList<>();
-        for (Material m : kolory) lista.add(new ItemDef(m, 64, 3.0, 2.0));
-        return lista;
-    }
-
-    // ---- Kategoria: Bloki Budowlane - crafted/dekoracyjne, celowo BEZ sprzedaży (patrz komentarz) ----
-
-    /**
-     * Wszystko tu jest crafted z surowców sprzedawanych gdzie indziej (piasek->szkło,
-     * glina->terakota, kwarc->blok) - celowo BEZ sell-price, żeby nie dało się kupić
-     * surowca, skraftować i odsprzedać z zyskiem jako "darmowe" pieniądze. To czysto
-     * wygodowa kategoria (budowa wyspy bez ręcznego craftingu), nie źródło dochodu.
-     */
-    private List<ItemDef> kategoriaBlokiBudowlane() {
-        return List.of(
-                new ItemDef(Material.BRICK, 64, 4.0),
-                new ItemDef(Material.NETHER_BRICK, 64, 4.0),
-                new ItemDef(Material.SANDSTONE, 64, 2.0),
-                new ItemDef(Material.RED_SANDSTONE, 64, 2.0),
-                new ItemDef(Material.TERRACOTTA, 64, 3.0),
-                new ItemDef(Material.WHITE_CONCRETE, 64, 5.0),
-                new ItemDef(Material.WHITE_CONCRETE_POWDER, 64, 4.0),
-                new ItemDef(Material.GLASS, 64, 2.0),
-                new ItemDef(Material.GLASS_PANE, 64, 1.0),
-                new ItemDef(Material.PRISMARINE, 64, 8.0),
-                new ItemDef(Material.SEA_LANTERN, 16, 20.0),
-                new ItemDef(Material.QUARTZ_BLOCK, 16, 90.0)
-        );
-    }
-
-    // ---- Kategoria: Klejnoty i Rzadkości - skompresowane bloki + unikaty, tier "endgame" (~20-25%) ----
-
-    private List<ItemDef> kategoriaKlejnoty() {
-        return List.of(
-                new ItemDef(Material.GOLD_BLOCK, 1, 500.0, 250.0), // 9x gold ingot, ~50%
-                new ItemDef(Material.DIAMOND_BLOCK, 1, 2250.0, 790.0), // 9x diamond, ~35%
-                new ItemDef(Material.EMERALD_BLOCK, 1, 1690.0, 585.0), // 9x emerald, ~35%
-                new ItemDef(Material.NETHERITE_BLOCK, 1, 25000.0, 5000.0), // 9x netherite ingot, ~20%
-                new ItemDef(Material.BEACON, 1, 15000.0, 3000.0),
-                new ItemDef(Material.NETHER_STAR, 1, 20000.0, 4000.0),
-                new ItemDef(Material.TOTEM_OF_UNDYING, 1, 12000.0, 2400.0),
-                new ItemDef(Material.ENCHANTED_GOLDEN_APPLE, 1, 8000.0, 1600.0)
-        );
-    }
-
-    // ---- Kategoria: Eliksiry i Alchemia - składniki, celowo BEZ sprzedaży (patrz Bloki Budowlane) ----
-
-    private List<ItemDef> kategoriaAlchemia() {
-        return List.of(
-                new ItemDef(Material.GLASS_BOTTLE, 16, 2.0),
-                new ItemDef(Material.SUGAR, 64, 2.0, 1.4), // odnawialne (70%) - proste, z trzciny cukrowej
-                new ItemDef(Material.FERMENTED_SPIDER_EYE, 16, 10.0),
-                new ItemDef(Material.GLISTERING_MELON_SLICE, 16, 8.0),
-                new ItemDef(Material.RABBIT_FOOT, 16, 20.0, 7.0), // tier "rzadkie" (35%) - rzadki drop
-                new ItemDef(Material.TURTLE_SCUTE, 8, 40.0, 14.0), // tier "rzadkie" (35%)
-                new ItemDef(Material.BREWING_STAND, 1, 80.0),
-                new ItemDef(Material.CAULDRON, 1, 40.0)
-        );
-    }
-
-    // ---- Redstone i Mechanizmy - crafted, celowo BEZ sprzedaży (patrz Bloki Budowlane) ----
-
-    private List<ItemDef> kategoriaRedstoneMechanizmy() {
-        return List.of(
-                new ItemDef(Material.PISTON, 16, 20.0),
-                new ItemDef(Material.STICKY_PISTON, 16, 30.0),
-                new ItemDef(Material.HOPPER, 8, 60.0),
-                new ItemDef(Material.DROPPER, 16, 15.0),
-                new ItemDef(Material.DISPENSER, 16, 25.0),
-                new ItemDef(Material.OBSERVER, 16, 25.0),
-                new ItemDef(Material.REDSTONE_LAMP, 16, 20.0),
-                new ItemDef(Material.REPEATER, 16, 10.0),
-                new ItemDef(Material.COMPARATOR, 16, 25.0),
-                new ItemDef(Material.TNT, 16, 40.0),
-                new ItemDef(Material.REDSTONE_BLOCK, 16, 110.0, 54.0) // 9x redstone, ~50%
-        );
-    }
-
-    // ============================================== v1: Spawnery / Specjalne (bez zmian logiki) ====
-
-    /** Spawnery: 5 itemów o tym samym Material.SPAWNER, rozróżnianych po custom-id (patrz mainplugins-spawners). */
-    private void dodajSpawneryJesliBrak() {
-        if (sklepConfig.contains("categories.spawnery")) return;
-        sklepConfig.set("categories.spawnery.name", "Spawnery");
-        sklepConfig.set("categories.spawnery.icon", "SPAWNER");
-        ustawSpawnerWSklepie(0, "PIGLIN", "Spawner: Piglinów", 5000.0);
-        ustawSpawnerWSklepie(1, "SHEEP", "Spawner: Owiec", 3000.0);
-        ustawSpawnerWSklepie(2, "RABBIT", "Spawner: Królików", 4000.0);
-        ustawSpawnerWSklepie(3, "BREEZE", "Spawner: Breeze'ów", 8000.0);
-        ustawSpawnerWSklepie(4, "GLOW_SQUID", "Spawner: Świetlistych Kałamarnic", 6000.0);
-    }
-
-    /** Itemy Specjalne: unikalne przedmioty z realną, customową logiką w innych modułach. */
-    private void dodajSpecjalneJesliBrak() {
-        if (!sklepConfig.contains("categories.specjalne")) {
-            sklepConfig.set("categories.specjalne.name", "Itemy Specjalne");
-            sklepConfig.set("categories.specjalne.icon", "NETHERITE_PICKAXE");
-            ustawSpecjalnyItemWSklepie(0, "NETHERITE_PICKAXE", "NISZCZYCIEL", "Niszczyciel", 50000.0, List.of(
-                    "Kilof z ultra szybkim kopaniem (Haste X)",
-                    "PPM: niszczy 3x3 bloków naraz",
-                    "Zawsze dropi właściwy blok (jak Silk Touch)",
-                    "Służy tylko do kopania - nic więcej"
-            ));
-        }
-        // Osobny, NIEZALEŻNY guard - na serwerach, gdzie categories.specjalne już istnieje
-        // (i blok wyżej się nie wykona), ten wpis i tak samoczynnie dogra się przy starcie.
-        if (!sklepConfig.contains("categories.specjalne.items.1")) {
-            ustawSpecjalnyItemWSklepie(1, "SNIFFER_EGG", "SNIFFER_JAJKO", "Sniffer Farmera", 40000.0, List.of(
-                    "PPM na własnej wyspie stawia stacjonarnego",
-                    "Snifferaa, który automatycznie zbiera i",
-                    "sadzi dojrzałe uprawy w pobliżu",
-                    "Zebrane plony trafiają do najbliższej skrzyni",
-                    "(albo na ziemię, jeśli żadnej nie ma w zasięgu)",
-                    "Maksymalnie 1 Sniffer na wyspę"
-            ));
-        }
-    }
-
-    private void ustawSpecjalnyItemWSklepie(int slot, String material, String customId, String displayName, double buyPrice, List<String> lore) {
-        String path = "categories.specjalne.items." + slot + ".";
-        sklepConfig.set(path + "material", material);
-        sklepConfig.set(path + "custom-id", customId);
-        sklepConfig.set(path + "display-name", displayName);
-        sklepConfig.set(path + "lore", lore);
-        sklepConfig.set(path + "slot", slot);
-        sklepConfig.set(path + "amount", 1);
-        sklepConfig.set(path + "buy-price", buyPrice);
-        // Celowo bez sell-price - patrz uwaga przy ustawSpawnerWSklepie.
-    }
-
-    private void ustawSpawnerWSklepie(int slot, String customId, String displayName, double buyPrice) {
-        String path = "categories.spawnery.items." + slot + ".";
-        sklepConfig.set(path + "material", "SPAWNER");
-        sklepConfig.set(path + "custom-id", customId);
-        sklepConfig.set(path + "display-name", displayName);
-        sklepConfig.set(path + "slot", slot);
-        sklepConfig.set(path + "amount", 1);
-        sklepConfig.set(path + "buy-price", buyPrice);
-        // Celowo bez sell-price - patrz uwaga przy odczycie w znajdzCeneSprzedazy/onInventoryClick,
-        // sprzedaż dopasowuje wyłącznie po Material, więc 5 itemów z tym samym SPAWNER byłoby niejednoznaczne.
-    }
+    private static final int GRID_ROZMIAR = 45;
 
     // ==================================================================== GUI ====
 
@@ -494,14 +125,15 @@ public class ShopManager implements Listener {
         playerPage.remove(player.getUniqueId());
 
         Inventory gui = Bukkit.createInventory(null, 54, Component.text("Sklep Serwerowy", NamedTextColor.GOLD, TextDecoration.BOLD));
-        wypelnijTloGwiazdy(gui);
 
         ConfigurationSection catSection = sklepConfig.getConfigurationSection("categories");
         if (catSection != null) {
+            int slot = 0;
             for (String catKey : catSection.getKeys(false)) {
+                if (slot >= GRID_ROZMIAR) break; // więcej kategorii niż miejsca w siatce - reszta się nie zmieści
+
                 String catName = sklepConfig.getString("categories." + catKey + ".name", "Kategoria");
                 String iconName = sklepConfig.getString("categories." + catKey + ".icon", "CHEST");
-                int slot = sklepConfig.getInt("categories." + catKey + ".slot", 0);
 
                 Material mat = Material.matchMaterial(iconName);
                 if (mat == null) mat = Material.CHEST;
@@ -517,9 +149,8 @@ public class ShopManager implements Listener {
                 meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
                 item.setItemMeta(meta);
 
-                if (slot >= 0 && slot < 45) {
-                    gui.setItem(slot, item);
-                }
+                gui.setItem(slot, item);
+                slot++;
             }
         }
 
@@ -539,15 +170,13 @@ public class ShopManager implements Listener {
 
         String catName = sklepConfig.getString("categories." + catKey + ".name", "Kategoria");
         ConfigurationSection itemsSection = sklepConfig.getConfigurationSection("categories." + catKey + ".items");
+        // Kolejność w sklep.yml (klucze "0","1","2"...) = kolejność wypełniania siatki -
+        // ta lista jest jedynym źródłem prawdy o tym, co ląduje w którym slocie GUI,
+        // więc render (niżej) i rozpoznawanie kliknięcia (onInventoryClick) muszą liczyć
+        // po niej identycznie.
+        List<String> itemKeys = itemsSection != null ? new ArrayList<>(itemsSection.getKeys(false)) : List.of();
 
-        int maxSlotFound = 0;
-        if (itemsSection != null) {
-            for (String itemKey : itemsSection.getKeys(false)) {
-                int s = sklepConfig.getInt("categories." + catKey + ".items." + itemKey + ".slot", 0);
-                if (s > maxSlotFound) maxSlotFound = s;
-            }
-        }
-        int totalPages = Math.max(1, (int) Math.ceil((double) (maxSlotFound + 1) / SLOTY_GWIAZDY_PELNA.length));
+        int totalPages = Math.max(1, (int) Math.ceil((double) itemKeys.size() / GRID_ROZMIAR));
         if (page >= totalPages) page = totalPages - 1;
         if (page < 0) page = 0;
 
@@ -556,50 +185,67 @@ public class ShopManager implements Listener {
                 : Component.text("Sklep: " + catName, NamedTextColor.DARK_GREEN, TextDecoration.BOLD);
 
         Inventory gui = Bukkit.createInventory(null, 54, guiTitle);
-        wypelnijTloGwiazdy(gui);
 
-        if (itemsSection != null) {
-            int pageStartSlot = page * SLOTY_GWIAZDY_PELNA.length;
-            int pageEndSlot = pageStartSlot + SLOTY_GWIAZDY_PELNA.length - 1;
+        int pageStart = page * GRID_ROZMIAR;
+        int pageEnd = Math.min(pageStart + GRID_ROZMIAR, itemKeys.size());
 
-            for (String itemKey : itemsSection.getKeys(false)) {
-                String path = "categories." + catKey + ".items." + itemKey + ".";
-                int slot = sklepConfig.getInt(path + "slot", 0);
+        for (int i = pageStart; i < pageEnd; i++) {
+            String path = "categories." + catKey + ".items." + itemKeys.get(i) + ".";
+            String matName = sklepConfig.getString(path + "material", "STONE");
+            int amount = sklepConfig.getInt(path + "amount", 1);
+            // Lot sprzedaży bywa inny niż lot kupna — patrz sell-amount w sklep.yml.
+            int sellAmount = sklepConfig.getInt(path + "sell-amount", amount);
+            int buyPrice = sklepConfig.getInt(path + "buy-price", -1);
+            int sellPrice = sklepConfig.getInt(path + "sell-price", -1);
+            String customDisplayName = sklepConfig.getString(path + "display-name", null);
+            List<String> customLore = sklepConfig.getStringList(path + "lore");
 
-                if (slot >= pageStartSlot && slot <= pageEndSlot) {
-                    String matName = sklepConfig.getString(path + "material", "STONE");
-                    int amount = sklepConfig.getInt(path + "amount", 1);
-                    double buyPrice = sklepConfig.getDouble(path + "buy-price", -1);
-                    double sellPrice = sklepConfig.getDouble(path + "sell-price", -1);
-                    String customDisplayName = sklepConfig.getString(path + "display-name", null);
-                    List<String> customLore = sklepConfig.getStringList(path + "lore");
+            Material material = Material.matchMaterial(matName);
+            if (material == null) material = Material.STONE;
 
-                    Material material = Material.matchMaterial(matName);
-                    if (material == null) material = Material.STONE;
+            ItemStack item = new ItemStack(material, Math.min(Math.max(amount, 1), 64));
+            ItemMeta meta = item.getItemMeta();
+            meta.displayName(customDisplayName != null
+                    ? Component.text(customDisplayName, NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD)
+                    : Component.text(material.name(), NamedTextColor.YELLOW, TextDecoration.BOLD));
 
-                    ItemStack item = new ItemStack(material, Math.min(Math.max(amount, 1), 64));
-                    ItemMeta meta = item.getItemMeta();
-                    meta.displayName(customDisplayName != null
-                            ? Component.text(customDisplayName, NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD)
-                            : Component.text(amount + "x " + material.name(), NamedTextColor.YELLOW, TextDecoration.BOLD));
-
-                    List<Component> lore = new ArrayList<>();
-                    for (String linia : customLore) {
-                        lore.add(Component.text(linia, NamedTextColor.LIGHT_PURPLE).decoration(TextDecoration.ITALIC, false));
-                    }
-                    if (!customLore.isEmpty()) lore.add(Component.empty());
-                    if (buyPrice >= 0) lore.add(Component.text("Cena kupna: " + buyPrice + " $", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
-                    if (sellPrice >= 0) lore.add(Component.text("Cena sprzedaży: " + sellPrice + " $", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
-                    lore.add(Component.empty());
-                    lore.add(Component.text("LPM - Kup paczkę (" + amount + " szt.)", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
-                    lore.add(Component.text("PPM - Sprzedaj paczkę (" + amount + " szt.)", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
-
-                    meta.lore(lore);
-                    item.setItemMeta(meta);
-
-                    gui.setItem(SLOTY_GWIAZDY_PELNA[slot - pageStartSlot], item);
-                }
+            List<Component> lore = new ArrayList<>();
+            for (String linia : customLore) {
+                lore.add(Component.text(linia, NamedTextColor.LIGHT_PURPLE).decoration(TextDecoration.ITALIC, false));
             }
+            if (!customLore.isEmpty()) lore.add(Component.empty());
+
+            if (buyPrice >= 0) {
+                lore.add(Component.text("Kupno: " + buyPrice + " $ za " + amount + " szt.",
+                        NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
+            }
+            if (sellPrice >= 0) {
+                lore.add(Component.text("Skup: " + sellPrice + " $ za " + sellAmount + " szt.",
+                        NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
+            }
+            lore.add(Component.empty());
+
+            if (buyPrice >= 0) {
+                lore.add(Component.text("LPM — kup " + amount + " szt.",
+                        NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+            } else {
+                lore.add(Component.text("Tego nie da się kupić",
+                        NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
+            }
+            if (sellPrice >= 0) {
+                lore.add(Component.text("PPM — sprzedaj cały stack (po " + sellAmount + " szt.)",
+                        NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+                lore.add(Component.text("Shift+PPM — sprzedaj cały ekwipunek",
+                        NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+            } else {
+                lore.add(Component.text("Tego nie da się sprzedać",
+                        NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
+            }
+
+            meta.lore(lore);
+            item.setItemMeta(meta);
+
+            gui.setItem(i - pageStart, item);
         }
 
         // Pasek Nawigacyjny na Dole (Sloty 45-53)
@@ -637,95 +283,6 @@ public class ShopManager implements Listener {
         player.openInventory(gui);
     }
 
-    /** Odwrotność SLOTY_GWIAZDY_PELNA[localIndex] - który lokalny indeks (0-15) odpowiada danemu slotowi GUI, albo -1. */
-    private int indeksWGwiezdzie(int guiSlot) {
-        for (int idx = 0; idx < SLOTY_GWIAZDY_PELNA.length; idx++) {
-            if (SLOTY_GWIAZDY_PELNA[idx] == guiSlot) return idx;
-        }
-        return -1;
-    }
-
-    /**
-     * Tło gwiazdy - wspólne dla obu ekranów (kategorie w otworzSklep, itemy w
-     * otworzKategorieStrona): szare szkło wszędzie, żółty akcent na SLOTY_GWIAZDY_PELNA
-     * (te same 16 pozycji, którymi rysowane są realne ikony) - dzięki temu kształt
-     * gwiazdy jest czytelny nawet tam, gdzie akurat nie ma kategorii/itemu (np. mniej
-     * niż 16 itemów w danej kategorii).
-     */
-    private void wypelnijTloGwiazdy(Inventory gui) {
-        ItemStack szare = pane(Material.GRAY_STAINED_GLASS_PANE);
-        for (int i = 0; i < 54; i++) gui.setItem(i, szare);
-
-        ItemStack akcent = pane(Material.YELLOW_STAINED_GLASS_PANE);
-        for (int slot : SLOTY_GWIAZDY_PELNA) gui.setItem(slot, akcent);
-    }
-
-    private ItemStack pane(Material material) {
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.empty());
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    public void handleSellCommand(Player player) {
-        ItemStack itemInHand = player.getInventory().getItemInMainHand();
-        if (itemInHand.getType().isAir()) {
-            player.sendMessage(Component.text("Nie trzymasz żadnego przedmiotu w ręce!", NamedTextColor.RED));
-            return;
-        }
-
-        Material targetMat = itemInHand.getType();
-        double sellPricePerUnit = znajdzCeneSprzedazy(targetMat);
-
-        if (sellPricePerUnit < 0) {
-            player.sendMessage(Component.text("Tego przedmiotu nie można sprzedać w sklepie!", NamedTextColor.RED));
-            return;
-        }
-
-        int amount = itemInHand.getAmount();
-        double totalEarned = sellPricePerUnit * amount;
-
-        player.getInventory().setItemInMainHand(null);
-        economyManager.dodajKase(player.getUniqueId(), totalEarned);
-        player.sendMessage(Component.text("Sprzedano " + amount + "x " + targetMat.name() + " za " + totalEarned + " $!", NamedTextColor.AQUA));
-    }
-
-    public void handleSellAllCommand(Player player) {
-        ItemStack itemInHand = player.getInventory().getItemInMainHand();
-        if (itemInHand.getType().isAir()) {
-            player.sendMessage(Component.text("Przytrzymaj w ręce przedmiot, który chcesz masowo sprzedać!", NamedTextColor.RED));
-            return;
-        }
-
-        Material targetMat = itemInHand.getType();
-        double sellPricePerUnit = znajdzCeneSprzedazy(targetMat);
-
-        if (sellPricePerUnit < 0) {
-            player.sendMessage(Component.text("Tego przedmiotu nie można sprzedać w sklepie!", NamedTextColor.RED));
-            return;
-        }
-
-        int totalCount = 0;
-        org.bukkit.inventory.PlayerInventory inv = player.getInventory();
-
-        for (ItemStack content : inv.getContents()) {
-            if (content != null && content.getType() == targetMat) {
-                totalCount += content.getAmount();
-            }
-        }
-
-        if (totalCount == 0) {
-            player.sendMessage(Component.text("Nie masz tego przedmiotu w ekwipunku!", NamedTextColor.RED));
-            return;
-        }
-
-        inv.remove(targetMat);
-        double totalEarned = sellPricePerUnit * totalCount;
-        economyManager.dodajKase(player.getUniqueId(), totalEarned);
-        player.sendMessage(Component.text("Sprzedano wszystkie (" + totalCount + "x) " + targetMat.name() + " za " + totalEarned + " $!", NamedTextColor.AQUA));
-    }
-
     /** Buduje kupiony item; jeśli wpis ma custom-id, doczepia PDC tag + display-name + lore (patrz kategorie "spawnery"/"specjalne"). */
     private ItemStack stworzKupionyItem(Material material, int amount, String configPath) {
         ItemStack item = new ItemStack(material, amount);
@@ -754,25 +311,164 @@ public class ShopManager implements Listener {
         return item;
     }
 
-    private double znajdzCeneSprzedazy(Material material) {
+    /** Ile sztuk idzie w jednej transakcji skupu i ile sklep za taki lot płaci. */
+    private record OfertaSkupu(int lot, int cenaZaLot) {}
+
+    /** Skąd sprzedajLoty() ma brać sprzedawane sztuki. */
+    private enum TrybSkupu { REKA, JEDEN_STOS, CALY_EKWIPUNEK }
+
+    /**
+     * Szuka w sklep.yml pierwszego wpisu o danym materiale, który ma ustawione
+     * sell-price. Zwraca null, jeśli itemu nie da się sprzedać.
+     *
+     * Wpisy z custom-id są pomijane celowo: kilka różnych itemów dzieli ten sam
+     * Material (5 spawnerów to jeden SPAWNER), więc dopasowanie po samym materiale
+     * byłoby niejednoznaczne — dokładnie ten sam powód, dla którego nie mają sell-price.
+     */
+    private OfertaSkupu znajdzOferteSkupu(Material material) {
         ConfigurationSection catSection = sklepConfig.getConfigurationSection("categories");
-        if (catSection == null) return -1.0;
+        if (catSection == null) return null;
 
         for (String catKey : catSection.getKeys(false)) {
-            ConfigurationSection itemsSection = sklepConfig.getConfigurationSection("categories." + catKey + ".items");
-            if (itemsSection != null) {
-                for (String itemKey : itemsSection.getKeys(false)) {
-                    String path = "categories." + catKey + ".items." + itemKey + ".";
-                    String matName = sklepConfig.getString(path + "material");
-                    if (matName != null && Material.matchMaterial(matName) == material) {
-                        double price = sklepConfig.getDouble(path + "sell-price", -1.0);
-                        int amount = sklepConfig.getInt(path + "amount", 1);
-                        if (price >= 0 && amount > 0) return price / amount;
-                    }
-                }
+            ConfigurationSection itemsSection =
+                    sklepConfig.getConfigurationSection("categories." + catKey + ".items");
+            if (itemsSection == null) continue;
+
+            for (String itemKey : itemsSection.getKeys(false)) {
+                String path = "categories." + catKey + ".items." + itemKey + ".";
+                String matName = sklepConfig.getString(path + "material");
+                if (matName == null || Material.matchMaterial(matName) != material) continue;
+                if (sklepConfig.getString(path + "custom-id", null) != null) continue;
+
+                int cena = sklepConfig.getInt(path + "sell-price", -1);
+                if (cena < 0) continue;
+
+                // sell-amount to lot skupu; gdy go nie ma, spada na amount (lot kupna)
+                int lot = sklepConfig.getInt(path + "sell-amount",
+                          sklepConfig.getInt(path + "amount", 1));
+                if (lot > 0) return new OfertaSkupu(lot, cena);
             }
         }
-        return -1.0;
+        return null;
+    }
+
+    /** Itemy z PDC (kupione spawnery, Niszczyciel, Sniffer) nigdy nie idą do skupu masowego. */
+    private boolean maCustomId(ItemStack stack) {
+        if (stack == null || !stack.hasItemMeta()) return false;
+        return stack.getItemMeta().getPersistentDataContainer()
+                .has(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING);
+    }
+
+    public void handleSellCommand(Player player) {
+        ItemStack wRece = player.getInventory().getItemInMainHand();
+        if (wRece.getType().isAir()) {
+            player.sendMessage(Component.text("Nie trzymasz żadnego przedmiotu w ręce!", NamedTextColor.RED));
+            return;
+        }
+        if (maCustomId(wRece)) {
+            player.sendMessage(Component.text("Tego przedmiotu nie można sprzedać!", NamedTextColor.RED));
+            return;
+        }
+        sprzedajLoty(player, wRece.getType(), TrybSkupu.REKA);
+    }
+
+    public void handleSellAllCommand(Player player) {
+        ItemStack wRece = player.getInventory().getItemInMainHand();
+        if (wRece.getType().isAir()) {
+            player.sendMessage(Component.text("Przytrzymaj w ręce przedmiot, który chcesz masowo sprzedać!", NamedTextColor.RED));
+            return;
+        }
+        sprzedajLoty(player, wRece.getType(), TrybSkupu.CALY_EKWIPUNEK);
+    }
+
+    /**
+     * Skupuje przedmiot wyłącznie pełnymi lotami. Reszta poniżej jednego lotu
+     * zostaje graczowi w ekwipunku — nic nie przepada, ale też nic się nie zaokrągla.
+     *
+     * @param tryb REKA = tylko stack z ręki (/sell), JEDEN_STOS = pierwszy napotkany
+     *             stos w ekwipunku (PPM w GUI), CALY_EKWIPUNEK = wszystkie sztuki
+     *             w całym ekwipunku (/sellall, Shift+PPM w GUI)
+     */
+    private void sprzedajLoty(Player player, Material material, TrybSkupu tryb) {
+        OfertaSkupu oferta = znajdzOferteSkupu(material);
+        if (oferta == null) {
+            player.sendMessage(Component.text("Tego przedmiotu nie można sprzedać w sklepie!", NamedTextColor.RED));
+            return;
+        }
+
+        PlayerInventory inv = player.getInventory();
+        int posiadane = switch (tryb) {
+            case CALY_EKWIPUNEK -> policzWEkwipunku(inv, material);
+            case JEDEN_STOS -> pierwszyStosIlosc(inv, material);
+            case REKA -> inv.getItemInMainHand().getType() == material ? inv.getItemInMainHand().getAmount() : 0;
+        };
+
+        int loty = posiadane / oferta.lot();
+        if (loty == 0) {
+            player.sendMessage(Component.text(
+                    "Sklep skupuje ten przedmiot po " + oferta.lot() + " szt. — masz " + posiadane + ".",
+                    NamedTextColor.RED));
+            return;
+        }
+
+        int doZabrania = loty * oferta.lot();
+        long zarobek = (long) loty * oferta.cenaZaLot();
+
+        if (tryb == TrybSkupu.REKA) {
+            ItemStack wRece = inv.getItemInMainHand();
+            wRece.setAmount(wRece.getAmount() - doZabrania);
+            inv.setItemInMainHand(wRece.getAmount() > 0 ? wRece : null);
+        } else {
+            // Dla JEDEN_STOS "posiadane" to ilość w pierwszym napotkanym stosie, więc
+            // doZabrania <= ten jeden stos - usunZEkwipunku i tak nie tknie kolejnych.
+            usunZEkwipunku(inv, material, doZabrania);
+        }
+
+        economyManager.dodajKase(player.getUniqueId(), zarobek);
+
+        int reszta = posiadane - doZabrania;
+        Component msg = Component.text("Sprzedano " + doZabrania + "x " + material.name()
+                + " za " + zarobek + " $!", NamedTextColor.AQUA);
+        if (reszta > 0) {
+            msg = msg.append(Component.text(" (zostało " + reszta + " szt. — za mało na kolejny lot)",
+                    NamedTextColor.GRAY));
+        }
+        player.sendMessage(msg);
+    }
+
+    private int policzWEkwipunku(PlayerInventory inv, Material material) {
+        int suma = 0;
+        for (ItemStack is : inv.getStorageContents()) {
+            if (is != null && is.getType() == material && !maCustomId(is)) suma += is.getAmount();
+        }
+        return suma;
+    }
+
+    /** Ilość w PIERWSZYM napotkanym stosie danego materiału (bez custom-id) - do sprzedaży "jednym klikiem" PPM w GUI. */
+    private int pierwszyStosIlosc(PlayerInventory inv, Material material) {
+        for (ItemStack is : inv.getStorageContents()) {
+            if (is != null && is.getType() == material && !maCustomId(is)) return is.getAmount();
+        }
+        return 0;
+    }
+
+    /**
+     * Zabiera dokładnie tyle sztuk, ile trzeba — nie używamy inv.remove(Material),
+     * bo ono czyści cały ekwipunek z danego materiału, także resztę poniżej lotu
+     * i itemy z custom-id.
+     */
+    private void usunZEkwipunku(PlayerInventory inv, Material material, int ile) {
+        ItemStack[] zawartosc = inv.getStorageContents();
+        for (int i = 0; i < zawartosc.length && ile > 0; i++) {
+            ItemStack is = zawartosc[i];
+            if (is == null || is.getType() != material || maCustomId(is)) continue;
+
+            int zabierz = Math.min(is.getAmount(), ile);
+            is.setAmount(is.getAmount() - zabierz);
+            ile -= zabierz;
+            if (is.getAmount() <= 0) zawartosc[i] = null;
+        }
+        inv.setStorageContents(zawartosc);
     }
 
     @EventHandler
@@ -788,12 +484,6 @@ public class ShopManager implements Listener {
         // swojego ekwipunku było traktowane tak samo jak kliknięcie w slot 1 sklepu,
         // więc "kupowało"/otwierało kategorię wg tego, co akurat tam stało w konfiguracji.
         if (!event.getView().getTopInventory().equals(event.getClickedInventory())) return;
-
-        // Zabezpieczenie tła
-        if (clickedItem.getType() == Material.GRAY_STAINED_GLASS_PANE || clickedItem.getType() == Material.YELLOW_STAINED_GLASS_PANE) {
-            event.setCancelled(true);
-            return;
-        }
 
         // Kliknięcie w DOLNY ekwipunek gracza, a nie w samo GUI sklepu - event.getSlot()
         // poniżej liczy slot od 0 we WŁASNYM inwentarzu klikniętej strony (nie w widoku GUI),
@@ -861,55 +551,48 @@ public class ShopManager implements Listener {
                 return;
             }
 
-            if (slotKlikniecia >= 45) return; // Zabezpieczenie przed błędem z dolnym paskiem
+            if (slotKlikniecia >= GRID_ROZMIAR) return; // Zabezpieczenie przed błędem z dolnym paskiem
 
-            int localIndex = indeksWGwiezdzie(slotKlikniecia);
-            if (localIndex == -1) return; // kliknięcie w tło gwiazdy poza jej 16 pozycjami
-
-            int absoluteTargetSlot = (currentPage * SLOTY_GWIAZDY_PELNA.length) + localIndex;
             ConfigurationSection itemsSection = sklepConfig.getConfigurationSection("categories." + catKey + ".items");
             if (itemsSection == null) return;
 
-            for (String itemKey : itemsSection.getKeys(false)) {
-                String path = "categories." + catKey + ".items." + itemKey + ".";
-                if (sklepConfig.getInt(path + "slot", -1) == absoluteTargetSlot) {
-                    String matName = sklepConfig.getString(path + "material");
-                    if (matName == null) return;
-                    Material cfgMaterial = Material.matchMaterial(matName);
-                    if (cfgMaterial == null) return;
+            // Ta sama arytmetyka co przy renderowaniu w otworzKategorieStrona() - kolejność
+            // w sklep.yml + numer strony + slot w siatce muszą się zgadzać 1:1, inaczej
+            // klik trafi w zupełnie inny item niż ten widoczny na ekranie.
+            List<String> itemKeys = new ArrayList<>(itemsSection.getKeys(false));
+            int absoluteIndex = currentPage * GRID_ROZMIAR + slotKlikniecia;
+            if (absoluteIndex < 0 || absoluteIndex >= itemKeys.size()) return;
 
-                    int amount = sklepConfig.getInt(path + "amount", 1);
-                    double buyPrice = sklepConfig.getDouble(path + "buy-price", -1);
-                    double sellPrice = sklepConfig.getDouble(path + "sell-price", -1);
+            String path = "categories." + catKey + ".items." + itemKeys.get(absoluteIndex) + ".";
+            String matName = sklepConfig.getString(path + "material");
+            if (matName == null) return;
+            Material cfgMaterial = Material.matchMaterial(matName);
+            if (cfgMaterial == null) return;
 
-                    if (event.isLeftClick()) {
-                        if (buyPrice < 0) {
-                            player.sendMessage(Component.text("Tego przedmiotu nie można kupić!", NamedTextColor.RED));
-                            return;
-                        }
-                        if (economyManager.maWystarczajaco(player.getUniqueId(), buyPrice)) {
-                            economyManager.odejmijKase(player.getUniqueId(), buyPrice);
-                            player.getInventory().addItem(stworzKupionyItem(cfgMaterial, amount, path));
-                            player.sendMessage(Component.text("Kupiono " + amount + "x za " + buyPrice + " $!", NamedTextColor.GREEN));
-                        } else {
-                            player.sendMessage(Component.text("Brak pieniędzy!", NamedTextColor.RED));
-                        }
-                    } else if (event.isRightClick()) {
-                        if (sellPrice < 0) {
-                            player.sendMessage(Component.text("Tego przedmiotu nie można sprzedać!", NamedTextColor.RED));
-                            return;
-                        }
-                        ItemStack targetStack = new ItemStack(cfgMaterial, amount);
-                        if (player.getInventory().containsAtLeast(targetStack, amount)) {
-                            player.getInventory().removeItem(targetStack);
-                            economyManager.dodajKase(player.getUniqueId(), sellPrice);
-                            player.sendMessage(Component.text("Sprzedano " + amount + "x za " + sellPrice + " $!", NamedTextColor.AQUA));
-                        } else {
-                            player.sendMessage(Component.text("Brak wystarczającej ilości sztuk w ekwipunku!", NamedTextColor.RED));
-                        }
-                    }
-                    break;
+            int amount = sklepConfig.getInt(path + "amount", 1);
+            int buyPrice = sklepConfig.getInt(path + "buy-price", -1);
+
+            if (event.isLeftClick()) {
+                if (buyPrice < 0) {
+                    player.sendMessage(Component.text("Tego przedmiotu nie można kupić!", NamedTextColor.RED));
+                    return;
                 }
+                if (economyManager.maWystarczajaco(player.getUniqueId(), buyPrice)) {
+                    economyManager.odejmijKase(player.getUniqueId(), buyPrice);
+                    player.getInventory().addItem(stworzKupionyItem(cfgMaterial, amount, path));
+                    player.sendMessage(Component.text("Kupiono " + amount + "x za " + buyPrice + " $!", NamedTextColor.GREEN));
+                } else {
+                    player.sendMessage(Component.text("Brak pieniędzy!", NamedTextColor.RED));
+                }
+            } else if (event.isRightClick()) {
+                if (sklepConfig.getInt(path + "sell-price", -1) < 0) {
+                    player.sendMessage(Component.text("Tego przedmiotu nie można sprzedać!", NamedTextColor.RED));
+                    return;
+                }
+                // Jedna ścieżka sprzedaży dla GUI i komend — inaczej reguła lotów
+                // rozjedzie się między /sell a klikaniem w sklepie. PPM = jeden stos,
+                // Shift+PPM = cały ekwipunek (jak /sellall).
+                sprzedajLoty(player, cfgMaterial, event.isShiftClick() ? TrybSkupu.CALY_EKWIPUNEK : TrybSkupu.JEDEN_STOS);
             }
         }
     }

@@ -19,11 +19,11 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemDamageEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 
@@ -38,7 +38,7 @@ public class LevelableToolsManager implements Listener, ToolsService {
     private final NamespacedKey keyLevel;
     private final NamespacedKey keyExp;
     private final NamespacedKey keyOwner;
-    private final NamespacedKey keyReceived;
+    private final NamespacedKey pkLevel; // klucz PDC "pk_level" - własność PickaxeSkillManager, kilof poziomuje się osobno (patrz poziomKilofa)
 
     private final int EXP_PER_LEVEL = 50;
     private final int MAX_LEVEL = 5;
@@ -50,14 +50,17 @@ public class LevelableToolsManager implements Listener, ToolsService {
         this.keyLevel = new NamespacedKey(plugin, "tool_level");
         this.keyExp = new NamespacedKey(plugin, "tool_exp");
         this.keyOwner = new NamespacedKey(plugin, "tool_owner");
-        this.keyReceived = new NamespacedKey(plugin, "received_start_tools");
+        this.pkLevel = new NamespacedKey(plugin, "pk_level");
     }
 
-    // Nowa publiczna metoda do dawania narzędzi (dla pierwszego wejścia i pod komendę).
-    // Kilof CELOWO pominięty tutaj - to osobna nagroda za quest "Witaj na Wyspie"
-    // (Główna Ścieżka w mainplugins-quests, patrz dajEwoluujacyKilof/ToolsService),
-    // żeby gracz miał od razu jasny, konkretny powód, żeby zajrzeć do /quest.
+    /**
+     * Awaryjne/administracyjne danie kompletu narzędzi pod komendę /narzedzia (np. gracz
+     * zgubił postęp, testy). NIE jest już wołane automatycznie przy pierwszym wejściu -
+     * wszystkie 5 ewolujących narzędzi (włącznie z kilofem) to teraz w głównej mierze
+     * nagrody z Głównej Ścieżki (mainplugins-quests), a nie start dawany za darmo.
+     */
     public void dajStartoweNarzedzia(Player player) {
+        player.getInventory().addItem(stworzNarzedzie(player, "pickaxe", 0));
         player.getInventory().addItem(stworzNarzedzie(player, "axe", 0));
         player.getInventory().addItem(stworzNarzedzie(player, "sword", 0));
         player.getInventory().addItem(stworzNarzedzie(player, "shovel", 0));
@@ -74,13 +77,53 @@ public class LevelableToolsManager implements Listener, ToolsService {
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
     }
 
-    @EventHandler
-    public void onPlayerJoin(PlayerJoinEvent event) {
-        Player player = event.getPlayer();
-        if (!player.getPersistentDataContainer().has(keyReceived, PersistentDataType.BYTE)) {
-            dajStartoweNarzedzia(player);
-            player.getPersistentDataContainer().set(keyReceived, PersistentDataType.BYTE, (byte) 1);
+    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Timberman". */
+    @Override
+    public void dajEwoluujacaSiekiere(Player player) {
+        player.getInventory().addItem(stworzNarzedzie(player, "axe", 0));
+        player.sendMessage(Component.text("Otrzymałeś swoją pierwszą, ewoluującą siekierę!", NamedTextColor.GREEN, TextDecoration.BOLD));
+        player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
+    }
+
+    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Farmimy dalej". */
+    @Override
+    public void dajEwoluujacaMotyke(Player player) {
+        player.getInventory().addItem(stworzNarzedzie(player, "hoe", 0));
+        player.sendMessage(Component.text("Otrzymałeś swoją pierwszą, ewoluującą motykę!", NamedTextColor.GREEN, TextDecoration.BOLD));
+        player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
+    }
+
+    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Pierwsza Krew". */
+    @Override
+    public void dajEwoluujacyMiecz(Player player) {
+        player.getInventory().addItem(stworzNarzedzie(player, "sword", 0));
+        player.sendMessage(Component.text("Otrzymałeś swój pierwszy, ewoluujący miecz!", NamedTextColor.GREEN, TextDecoration.BOLD));
+        player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
+    }
+
+    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Zaczynamy". */
+    @Override
+    public void dajEwoluujacaLopate(Player player) {
+        player.getInventory().addItem(stworzNarzedzie(player, "shovel", 0));
+        player.sendMessage(Component.text("Otrzymałeś swoją pierwszą, ewoluującą łopatę!", NamedTextColor.GREEN, TextDecoration.BOLD));
+        player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
+    }
+
+    /**
+     * {@inheritDoc} Kilof NIE trzyma poziomu pod keyLevel jak reszta narzędzi - ma
+     * osobny system (PickaxeSkillManager, klucz PDC "pk_level"). Czytamy tu ten sam
+     * klucz (ten sam plugin => ten sam NamespacedKey) zamiast dublować logikę.
+     */
+    @Override
+    public int poziomKilofa(Player player) {
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item == null || !item.hasItemMeta()) continue;
+            PersistentDataContainer pdc = item.getItemMeta().getPersistentDataContainer();
+            if ("pickaxe".equals(pdc.get(keyType, PersistentDataType.STRING))) {
+                return pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
+            }
         }
+        return 0;
     }
 
     @EventHandler

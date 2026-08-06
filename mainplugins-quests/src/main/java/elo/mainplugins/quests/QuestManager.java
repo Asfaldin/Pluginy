@@ -40,7 +40,68 @@ import java.util.*;
  */
 public class QuestManager implements Listener {
 
-    private record Quest(int id, String tytul, List<String> opis, Material wymaganyMaterial, int wymaganaIlosc, ItemStack nagroda, String nazwaNagrody) {}
+    /**
+     * PRZEDMIOT - klasyczne "przynieś N sztuk materiału (jednego lub kilku naraz), zostaje
+     * zabrane" (domyślne, większość questów).
+     * DARMOWY - brak wymogu, kliknięcie od razu zdaje quest (np. "sprawdź spawn").
+     * MONETY - zamiast przedmiotów, prog to koszt w monetach (EconomyService).
+     * NARZEDZIE - jak PRZEDMIOT, ale NIE zabiera przedmiotu po zdaniu. Wyłącznie do
+     * questów "awansuj narzędzie na tier X" - ewoluujące narzędzia z mainplugins-tools
+     * zmieniają realny Material przy awansie tieru (LevelableToolsManager.pobierzMaterial),
+     * więc containsAtLeast(DIAMOND_PICKAXE, 1) wystarcza do weryfikacji tieru. Zwykłe
+     * removeItem() by tu ZABRAŁO graczowi jego jedyny, prawdziwy (nie placeholder)
+     * ewoluujący kilof/siekierę/miecz jako "zapłatę" za quest - stąd osobny typ.
+     * POZIOM_KILOFA - prog to minimalny poziom kilofa (ToolsService.poziomKilofa) - kilof
+     * ma osobny system poziomowania (PickaxeSkillManager) niż reszta narzędzi.
+     */
+    private enum TypWymogu { PRZEDMIOT, DARMOWY, MONETY, NARZEDZIE, POZIOM_KILOFA }
+
+    /** Pojedynczy wymagany materiał + ilość - quest może mieć ich kilka naraz (np. "16x dąb + 16x brzoza"). */
+    private record Wymog(Material material, int ilosc) {}
+
+    private record Quest(int id, String tytul, List<String> opis, TypWymogu typWymogu, List<Wymog> wymogi,
+                          double prog, List<ItemStack> nagrody, String nazwaNagrody, double monetyNagrody) {
+
+        /** Zwykły quest "przynieś N sztuk materiału X, dostań przedmiot" - większość ścieżki. */
+        static Quest przedmiot(int id, String tytul, List<String> opis, Material material, int ilosc, ItemStack nagroda, String nazwaNagrody) {
+            return new Quest(id, tytul, opis, TypWymogu.PRZEDMIOT, List.of(new Wymog(material, ilosc)), 0, List.of(nagroda), nazwaNagrody, 0);
+        }
+
+        /** Jak wyżej, ale kilka różnych materiałów naraz (np. dwa rodzaje drewna) i/lub kilka przedmiotów nagrody. */
+        static Quest przedmioty(int id, String tytul, List<String> opis, List<Wymog> wymogi, List<ItemStack> nagrody, String nazwaNagrody) {
+            return new Quest(id, tytul, opis, TypWymogu.PRZEDMIOT, wymogi, 0, nagrody, nazwaNagrody, 0);
+        }
+
+        /** Wiele materiałów wymaganych naraz, ale pojedyncza nagroda. */
+        static Quest przedmioty(int id, String tytul, List<String> opis, List<Wymog> wymogi, ItemStack nagroda, String nazwaNagrody) {
+            return przedmioty(id, tytul, opis, wymogi, List.of(nagroda), nazwaNagrody);
+        }
+
+        /** Quest bez żadnego wymogu - kliknięcie od razu zdaje zadanie i wręcza nagrodę. */
+        static Quest darmowy(int id, String tytul, List<String> opis, ItemStack nagroda, String nazwaNagrody) {
+            return new Quest(id, tytul, opis, TypWymogu.DARMOWY, List.of(), 0, List.of(nagroda), nazwaNagrody, 0);
+        }
+
+        /** Quest płatny w monetach (koszt), nagroda zwykłym przedmiotem. */
+        static Quest zaMonety(int id, String tytul, List<String> opis, double kosztMonet, ItemStack nagroda, String nazwaNagrody) {
+            return new Quest(id, tytul, opis, TypWymogu.MONETY, List.of(), kosztMonet, List.of(nagroda), nazwaNagrody, 0);
+        }
+
+        /** Zwykły quest przedmiotowy, ale nagrodą są monety zamiast itemu. */
+        static Quest nagrodaMonety(int id, String tytul, List<String> opis, Material material, int ilosc, double monetyNagrody) {
+            return new Quest(id, tytul, opis, TypWymogu.PRZEDMIOT, List.of(new Wymog(material, ilosc)), 0, List.of(), monetyNagrody + " Monet", monetyNagrody);
+        }
+
+        /** Quest "awansuj narzędzie na tier X" - sprawdza posiadanie, NIE zabiera przedmiotu (patrz TypWymogu.NARZEDZIE). */
+        static Quest narzedzie(int id, String tytul, List<String> opis, Material wymaganeNarzedzie, ItemStack nagroda, String nazwaNagrody) {
+            return new Quest(id, tytul, opis, TypWymogu.NARZEDZIE, List.of(new Wymog(wymaganeNarzedzie, 1)), 0, List.of(nagroda), nazwaNagrody, 0);
+        }
+
+        /** Quest "wbij kilofowi X poziom" - patrz TypWymogu.POZIOM_KILOFA. Może dawać kilka przedmiotów naraz. */
+        static Quest poziomKilofa(int id, String tytul, List<String> opis, int minPoziom, List<ItemStack> nagrody, String nazwaNagrody) {
+            return new Quest(id, tytul, opis, TypWymogu.POZIOM_KILOFA, List.of(), minPoziom, nagrody, nazwaNagrody, 0);
+        }
+    }
 
     private enum StanQuestu { ZABLOKOWANY, DOSTEPNY, UKONCZONY }
 
@@ -106,123 +167,139 @@ public class QuestManager implements Listener {
 
     private void zaladujQuesty() {
         // GŁÓWNA ŚCIEŻKA - centrum gwiazdy, 40 zadań PO KOLEI (patrz ustalStan), od
-        // pierwszego dnia na wyspie aż po pokonanie Enderdragona. Quest 1 to jedyny
-        // z całego sklepu/questów, którego nagroda NIE jest zwykłym ItemStackiem z
-        // tej listy - "nagroda" tutaj to tylko placeholder do wyświetlenia w GUI,
-        // realne wręczenie (prawdziwy, działający ewoluujący kilof z mainplugins-tools
-        // przez ToolsService) dzieje się w wreczNagrode(). Treść/balans do dograni
-        // w przyszłości - to pierwsza, kompletna wersja całej ścieżki.
+        // pierwszego dnia na wyspie aż po pokonanie Enderdragona. Quest 40 dorzuca do
+        // swojej zwykłej nagrody (trofeum) jeszcze Beacon w wreczNagrode() - jedyny
+        // wyjątek w całej ścieżce, gdzie nagroda to więcej niż lista q.nagrody().
+        //
+        // Kilof/siekiera/miecz/motyka/łopata NIE są już dawane automatycznie przy
+        // pierwszym wejściu - są w głównej mierze nagrodami z Głównej Ścieżki (questy
+        // 1/3/5/8/9 niżej), realne wręczenie w wreczNagrode() przez ToolsService.
+        // ItemStack w tych questach to tylko placeholder do wyświetlenia w GUI, zanim
+        // gracz je ukończy. Quest 2 to WYJĄTEK od wyjątku - sprawdza faktyczny POZIOM
+        // kilofa (TypWymogu.POZIOM_KILOFA, ToolsService.poziomKilofa), a nagrodą są
+        // zwykłe przedmioty (mączka + sadzonka), nie kolejne narzędzie.
+        //
+        // Późniejsze questy tych narzędzi (12, 21, 30, 31) NIE dają ich ponownie -
+        // weryfikują AWANS TIERU (np. "STONE_PICKAXE x1" = kilof faktycznie doszedł do
+        // tieru Kamień), bo ewoluujące narzędzia zmieniają realny Material przy awansie
+        // tieru (patrz LevelableToolsManager.pobierzMaterial) - żadnego nowego
+        // mechanizmu nie trzeba, to ten sam containsAtLeast() co reszta questów.
         questyKategorii.put(KATEGORIA_GLOWNA_SCIEZKA, List.of(
-                new Quest(1, "Witaj na Wyspie", List.of("Zasadź swoją pierwszą sadzonkę - to Twój nowy dom."),
-                        Material.OAK_SAPLING, 1, new ItemStack(Material.WOODEN_PICKAXE, 1), "1x Ewoluujący Kilof"),
-                new Quest(2, "Pierwsze Cięcie", List.of("Zbierz drewno, by postawić bazę na wyspie."),
-                        Material.OAK_LOG, 16, new ItemStack(Material.CHEST, 1), "1x Skrzynia"),
-                new Quest(3, "Fundamenty", List.of("Nakop kamienia pod pierwsze budowle."),
-                        Material.COBBLESTONE, 32, new ItemStack(Material.FURNACE, 1), "1x Piec"),
-                new Quest(4, "Rolnik Wyspy", List.of("Załóż pole i zbierz pierwsze plony."),
-                        Material.WHEAT, 16, new ItemStack(Material.BREAD, 8), "8x Chleb"),
-                new Quest(5, "Do Kopalni", List.of("Wykop pierwszą rudę żelaza."),
-                        Material.RAW_IRON, 16, new ItemStack(Material.IRON_PICKAXE, 1), "1x Żelazny Kilof"),
-                new Quest(6, "Skarbiec", List.of("Zbierz złoto na dalszą rozbudowę."),
-                        Material.GOLD_INGOT, 10, new ItemStack(Material.GOLDEN_APPLE, 2), "2x Złote Jabłko"),
-                new Quest(7, "Odkrywca", List.of("Skrafcuj kompas i wyrusz na zwiedzanie."),
-                        Material.COMPASS, 1, new ItemStack(Material.ENDER_PEARL, 4), "4x Perła Endermana"),
-                new Quest(8, "Pierwszy Pancerz", List.of("Wykop diamenty na swój pierwszy porządny sprzęt."),
-                        Material.DIAMOND, 8, new ItemStack(Material.DIAMOND_CHESTPLATE, 1), "1x Diamentowy Napierśnik"),
-                new Quest(9, "Hodowca", List.of("Zasiej pole pod przyszłą fermę zwierząt."),
-                        Material.WHEAT_SEEDS, 16, new ItemStack(Material.EGG, 4), "4x Jajko"),
-                new Quest(10, "Wędkarz", List.of("Złów pierwsze ryby w okolicznych wodach.")   ,
-                        Material.COD, 16, new ItemStack(Material.FISHING_ROD, 1), "1x Wędka"),
-                new Quest(11, "Kowal", List.of("Przetop żelazo pod pierwsze kowadło."),
-                        Material.IRON_INGOT, 8, new ItemStack(Material.ANVIL, 1), "1x Kowadło"),
-                new Quest(12, "Alchemik", List.of("Zbierz szklane butelki pod stół alchemika."),
-                        Material.GLASS_BOTTLE, 8, new ItemStack(Material.BREWING_STAND, 1), "1x Stół Alchemika"),
-                new Quest(13, "Zbieracz Szmaragdów", List.of("Zgromadź szmaragdy - cenną walutę wyspy."),
-                        Material.EMERALD, 16, new ItemStack(Material.EMERALD_BLOCK, 1), "1x Blok Szmaragdu"),
-                new Quest(14, "Redstone Mistrz", List.of("Wykop redstone pod pierwsze mechanizmy."),
-                        Material.REDSTONE, 32, new ItemStack(Material.PISTON, 4), "4x Tłok"),
-                new Quest(15, "Budowniczy", List.of("Wypal cegły na porządniejsze budowle."),
-                        Material.BRICK, 32, new ItemStack(Material.BRICKS, 16), "16x Cegły"),
-                new Quest(16, "Rozbudowa Wyspy", List.of("Zgromadź diamenty na powiększenie wyspy."),
-                        Material.DIAMOND, 16, new ItemStack(Material.DIAMOND_BLOCK, 1), "1x Blok Diamentu"),
-                new Quest(17, "Górnik Głębin", List.of("Wykop miedź w głębszych warstwach wyspy."),
-                        Material.RAW_COPPER, 32, new ItemStack(Material.COPPER_INGOT, 8), "8x Sztabka Miedzi"),
-                new Quest(18, "Owczarz", List.of("Zbierz wełnę ze swojej hodowli owiec."),
-                        Material.WHITE_WOOL, 32, new ItemStack(Material.SHEARS, 1), "1x Nożyce"),
-                new Quest(19, "Piekarz", List.of("Upiecz coś więcej niż zwykły chleb.")   ,
-                        Material.WHEAT, 32, new ItemStack(Material.PUMPKIN_PIE, 4), "4x Placek Dyniowy"),
-                new Quest(20, "Kopacz Lapisu", List.of("Zbierz lapis lazuli pod zaklęcia."),
+                Quest.darmowy(1, "Witaj na Wyspie", List.of("Twoja przygoda właśnie się zaczyna - odbierz swój pierwszy, ewoluujący kilof."),
+                        new ItemStack(Material.WOODEN_PICKAXE, 1), "1x Ewoluujący Kilof"),
+                Quest.poziomKilofa(2, "Zaczynamy", List.of("Wykop kilofem wystarczająco dużo, by zdobyć swój pierwszy poziom."),
+                        2, List.of(new ItemStack(Material.BONE_MEAL, 10), new ItemStack(Material.BIRCH_SAPLING, 1)), "10x Mączka Kostna + Sadzonka Brzozy"),
+                Quest.przedmioty(3, "Timberman", List.of("Zbierz drewno dębowe i brzozowe na rozbudowę bazy."),
+                        List.of(new Wymog(Material.OAK_LOG, 16), new Wymog(Material.BIRCH_LOG, 16)),
+                        new ItemStack(Material.WOODEN_AXE, 1), "1x Ewoluująca Siekiera"),
+                Quest.nagrodaMonety(4, "Może zaczniemy zarabiać?", List.of("Sprzedaj nadwyżkę sadzonek dębu."),
+                        Material.OAK_SAPLING, 32, 200),
+                Quest.przedmioty(5, "Farmimy dalej", List.of("Kup sadzonki siana i marchewki pod przyszłe pole."),
+                        List.of(new Wymog(Material.WHEAT_SEEDS, 5), new Wymog(Material.CARROT, 5)),
+                        new ItemStack(Material.WOODEN_HOE, 1), "1x Ewoluująca Motyka"),
+                Quest.przedmiot(6, "Plon czas zebrać", List.of("Zasadź ziarna pszenicy na swoim polu."),
+                        Material.WHEAT_SEEDS, 30, new ItemStack(Material.MELON_SEEDS, 8), "8x Nasiona Arbuza"),
+                Quest.nagrodaMonety(7, "Słodki Zysk", List.of("Zbierz i sprzedaj plasterki arbuza."),
+                        Material.MELON_SLICE, 16, 150),
+                Quest.przedmiot(8, "Pierwsza Krew", List.of("Stocz walkę z nieumarłymi i przynieś na to dowód."),
+                        Material.ROTTEN_FLESH, 20, new ItemStack(Material.WOODEN_SWORD, 1), "1x Ewoluujący Miecz"),
+                Quest.narzedzie(9, "Kopacz spod Ziemi", List.of("Ulepsz kilof do tieru Kamień (jeśli jeszcze nie awansował) - przyda Ci się też coś do kopania ziemi."),
+                        Material.STONE_PICKAXE, new ItemStack(Material.WOODEN_SHOVEL, 1), "1x Ewoluująca Łopata"),
+                Quest.zaMonety(10, "Fundamenty Wyspy", List.of("Wpłać pierwsze oszczędności do banku wyspy.", "Kamień milowy - pierwszy etap za Tobą!"),
+                        500, trofeum(Material.PLAYER_HEAD, "Głowa Osadnika", "Za pierwsze kroki na wyspie."), "Trofeum: Głowa Osadnika"),
+
+                Quest.przedmiot(11, "Żelazna Gorączka", List.of("Wykop surowe żelazo w kopalni."),
+                        Material.RAW_IRON, 24, new ItemStack(Material.IRON_BLOCK, 2), "2x Blok Żelaza"),
+                Quest.narzedzie(12, "Zbrojmistrz", List.of("Ulepsz siekierę do tieru Żelazo."),
+                        Material.IRON_AXE, new ItemStack(Material.IRON_CHESTPLATE, 1), "1x Żelazny Napierśnik"),
+                Quest.przedmiot(13, "Sniffer na Etacie", List.of("Zdobądź jajo sniffera i uruchom automatyczną farmę."),
+                        Material.SNIFFER_EGG, 1, new ItemStack(Material.TORCHFLOWER_SEEDS, 8), "8x Nasiona Kwiatu Pochodni"),
+                Quest.przedmiot(14, "Pierwsze Zakupy", List.of("Zgromadź szmaragdy na zakupy w sklepie w gwieździe."),
+                        Material.EMERALD, 10, new ItemStack(Material.EXPERIENCE_BOTTLE, 10), "10x Butelka Doświadczenia"),
+                Quest.przedmiot(15, "Prąd w Ścianach", List.of("Zbierz redstone pod pierwsze mechanizmy."),
+                        Material.REDSTONE, 32, new ItemStack(Material.PISTON, 8), "8x Tłok"),
+                Quest.przedmiot(16, "Zaklinacz", List.of("Zbierz lapis lazuli pod stół zaklęć."),
                         Material.LAPIS_LAZULI, 32, new ItemStack(Material.ENCHANTING_TABLE, 1), "1x Stół Zaklęć"),
-                new Quest(21, "Poszukiwacz Złota", List.of("Zgromadź spory zapas złota."),
-                        Material.GOLD_INGOT, 24, new ItemStack(Material.GOLDEN_APPLE, 4), "4x Złote Jabłko"),
-                new Quest(22, "Łowca Pająków", List.of("Zbierz sznurek po nocnych polowaniach."),
-                        Material.STRING, 32, new ItemStack(Material.BOW, 1), "1x Łuk"),
-                new Quest(23, "Kolekcjoner Kości", List.of("Zbierz kości ze szkieletów."),
-                        Material.BONE, 32, new ItemStack(Material.BONE_MEAL, 16), "16x Mączka Kostna"),
-                new Quest(24, "Prochowy Handlarz", List.of("Zbierz proch strzelniczy z creeperów."),
-                        Material.GUNPOWDER, 32, new ItemStack(Material.TNT, 4), "4x TNT"),
-                new Quest(25, "Brama do Netheru", List.of("Zbierz netherrack na budowę portalu."),
-                        Material.NETHERRACK, 16, new ItemStack(Material.OBSIDIAN, 4), "4x Obsydian"),
-                new Quest(26, "Łowca Blaze'ów", List.of("Zapoluj na blaze w Netherowej twierdzy."),
+                Quest.zaMonety(17, "Skarbnik", List.of("Wpłać spory depozyt do banku wyspy."),
+                        1000, new ItemStack(Material.GOLD_INGOT, 10), "10x Sztabka Złota (odsetki)"),
+                Quest.darmowy(18, "Strażnik Wyspy", List.of("Odwiedź /spawn i poznaj chronione tereny wyspy."),
+                        new ItemStack(Material.COMPASS, 1), "1x Kompas"),
+                Quest.darmowy(19, "Czytelnik", List.of("Otwórz Poradnik Wyspiarza i poznaj resztę systemów wyspy."),
+                        new ItemStack(Material.BOOK, 3), "3x Książka"),
+                Quest.przedmiot(20, "Filar Wyspy", List.of("Udowodnij, że Twoja wyspa stoi na solidnych fundamentach.", "Kamień milowy - połowa ścieżki za Tobą!"),
+                        Material.DIAMOND, 32, trofeum(Material.PLAYER_HEAD, "Głowa Górnika", "Za setki wykopanych bloków."), "Trofeum: Głowa Górnika"),
+
+                Quest.narzedzie(21, "Diamentowa Żyła", List.of("Ulepsz kilof do tieru Diament."),
+                        Material.DIAMOND_PICKAXE, new ItemStack(Material.DIAMOND_BLOCK, 1), "1x Blok Diamentu"),
+                Quest.przedmiot(22, "Obsydianowy Mur", List.of("Zbierz obsydian pod portal do Netheru."),
+                        Material.OBSIDIAN, 10, new ItemStack(Material.FLINT_AND_STEEL, 1), "1x Krzesiwo"),
+                Quest.przedmiot(23, "Za Bramą", List.of("Wejdź do Netheru i zbierz netherrack."),
+                        Material.NETHERRACK, 16, new ItemStack(Material.SOUL_TORCH, 16), "16x Duszowa Pochodnia"),
+                Quest.przedmiot(24, "Łowca Blaze'ów", List.of("Zapoluj na blaze w Netherowej twierdzy."),
                         Material.BLAZE_ROD, 8, new ItemStack(Material.BLAZE_POWDER, 16), "16x Proch Blaze'a"),
-                new Quest(27, "Duszowy Piach", List.of("Zbierz duszowy piasek z Netheru."),
+                Quest.przedmiot(25, "Dusza Netheru", List.of("Zbierz duszowy piasek z Netheru."),
                         Material.SOUL_SAND, 32, new ItemStack(Material.SOUL_LANTERN, 1), "1x Duszowa Latarnia"),
-                new Quest(28, "Kwarcowy Górnik", List.of("Wydobądź kwarc netherowy."),
+                Quest.przedmiot(26, "Kwarcowy Górnik", List.of("Wydobądź kwarc netherowy."),
                         Material.QUARTZ, 32, new ItemStack(Material.QUARTZ_BLOCK, 8), "8x Blok Kwarcu"),
-                new Quest(29, "Pogromca Ghastów", List.of("Zapoluj na ghasty i zbierz ich łzy."),
+                Quest.przedmiot(27, "Pogromca Ghastów", List.of("Zapoluj na ghasty i zbierz ich łzy."),
                         Material.GHAST_TEAR, 4, new ItemStack(Material.FIRE_CHARGE, 8), "8x Ognista Kula"),
-                new Quest(30, "Netherytowy Traker", List.of("Znajdź złom netherytu w głębi Netheru."),
+                Quest.przedmiot(28, "Netherytowy Traker", List.of("Znajdź złom netherytu w głębi Netheru."),
                         Material.NETHERITE_SCRAP, 4, new ItemStack(Material.GOLD_INGOT, 4), "4x Sztabka Złota"),
-                new Quest(31, "Kowal Netherytu", List.of("Wykuj pierwszą sztabkę netherytu."),
+                Quest.przedmiot(29, "Kowal Netherytu", List.of("Wykuj pierwszą sztabkę netherytu w kuźni."),
                         Material.NETHERITE_INGOT, 1, new ItemStack(Material.NETHERITE_UPGRADE_SMITHING_TEMPLATE, 1), "1x Szablon Kowalski"),
-                new Quest(32, "Wojownik Netheru", List.of("Pokonaj wither skeletony i zbierz ich czaszki."),
-                        Material.WITHER_SKELETON_SKULL, 4, new ItemStack(Material.TOTEM_OF_UNDYING, 1), "1x Totem Nieśmiertelności"),
-                new Quest(33, "Brama do Endu", List.of("Zgromadź perły endermana na oczy endera."),
+                Quest.narzedzie(30, "Pogromca Netheru", List.of("Wróć żywy z Netheru z mieczem gotowym na diamentowy tier walki.", "Kamień milowy - Nether zdobyty!"),
+                        Material.DIAMOND_SWORD, trofeum(Material.WITHER_SKELETON_SKULL, "Głowa Wojownika Netheru", "Za przetrwanie Netheru."), "Trofeum: Głowa Wojownika Netheru"),
+
+                Quest.narzedzie(31, "Netherytowy Rycerz", List.of("Ulepsz kilof do tieru Netheryt."),
+                        Material.NETHERITE_PICKAXE, new ItemStack(Material.PHANTOM_MEMBRANE, 4), "4x Błona Fantoma"),
+                Quest.przedmiot(32, "Brama do Endu", List.of("Zgromadź perły endermana na oczy endera."),
                         Material.ENDER_PEARL, 12, new ItemStack(Material.ENDER_EYE, 4), "4x Oko Endera"),
-                new Quest(34, "Purpurowy Architekt", List.of("Zbierz purpurowe bloki z miast Endu."),
+                Quest.przedmiot(33, "Purpurowy Architekt", List.of("Zbierz purpurowe bloki z miast Endu."),
                         Material.PURPUR_BLOCK, 32, new ItemStack(Material.END_ROD, 8), "8x Pręt Endu"),
-                new Quest(35, "Owoc Chorusu", List.of("Zbierz owoce chorusu w Endzie."),
+                Quest.przedmiot(34, "Owoc Chorusu", List.of("Zbierz owoce chorusu w Endzie."),
                         Material.CHORUS_FRUIT, 32, new ItemStack(Material.POPPED_CHORUS_FRUIT, 16), "16x Prażony Owoc Chorusu"),
-                new Quest(36, "Łowca Shulkerów", List.of("Pokonaj shulkery w miastach Endu."),
+                Quest.przedmiot(35, "Łowca Shulkerów", List.of("Pokonaj shulkery w miastach Endu."),
                         Material.SHULKER_SHELL, 4, new ItemStack(Material.SHULKER_BOX, 1), "1x Shulker Box"),
-                new Quest(37, "Smoczy Oddech", List.of("Zbierz oddech smoka podczas walki z Enderdragonem."),
-                        Material.DRAGON_BREATH, 8, new ItemStack(Material.NETHER_STAR, 1), "1x Gwiazda Netheru"),
-                new Quest(38, "Skrzydła Wolności", List.of("Zbierz błony fantomów na coś specjalnego."),
+                Quest.przedmiot(36, "Skrzydła Wolności", List.of("Zbierz błony fantomów na coś specjalnego."),
                         Material.PHANTOM_MEMBRANE, 4, new ItemStack(Material.ELYTRA, 1), "1x Elytra"),
-                new Quest(39, "Mistrz Farmera", List.of("Udowodnij, że Twoja farma stoi na najwyższym poziomie."),
+                Quest.przedmiot(37, "Ostatni Krok", List.of("Przygotuj się na finałową walkę - zbierz złote marchewki."),
+                        Material.GOLDEN_CARROT, 16, new ItemStack(Material.GOLDEN_APPLE, 4), "4x Złote Jabłko"),
+                Quest.przedmiot(38, "Smoczy Oddech", List.of("Zbierz oddech smoka podczas walki z Enderdragonem."),
+                        Material.DRAGON_BREATH, 8, new ItemStack(Material.NETHER_STAR, 1), "1x Gwiazda Netheru"),
+                Quest.przedmiot(39, "Mistrz Farmera", List.of("Udowodnij, że Twoja farma stoi na najwyższym poziomie."),
                         Material.MELON_SLICE, 64, new ItemStack(Material.GOLDEN_HOE, 1), "1x Złota Motyka"),
-                new Quest(40, "Mistrz Wyspy", List.of("Oddaj zdobytą Gwiazdę Netheru i ukończ ścieżkę!"),
-                        Material.NETHER_STAR, 1, new ItemStack(Material.BEACON, 1), "1x Beacon")
+                Quest.przedmiot(40, "Mistrz Wyspy", List.of("Oddaj zdobytą Gwiazdę Netheru i ukończ ścieżkę!"),
+                        Material.NETHER_STAR, 1, trofeum(Material.PLAYER_HEAD, "Głowa Smoka", "Za pokonanie Enderdragona.", "Otrzymujesz też Beacon!"), "Trofeum: Głowa Smoka + Beacon")
         ));
 
         // GÓRNICTWO - 40 questów (pokazuje paginację)
         List<Quest> gornictwo = new ArrayList<>();
         for (int i = 1; i <= 40; i++) {
-            gornictwo.add(new Quest(i, "Górnik " + i, List.of(), Material.COBBLESTONE, 64, new ItemStack(Material.DIAMOND, 1), "1x Diament"));
+            gornictwo.add(Quest.przedmiot(i, "Górnik " + i, List.of(), Material.COBBLESTONE, 64, new ItemStack(Material.DIAMOND, 1), "1x Diament"));
         }
         questyKategorii.put("Górnictwo", gornictwo);
 
         // HODOWLA
         questyKategorii.put("Hodowla", List.of(
-                new Quest(1, "Zbiory 1", List.of(), Material.CARROT, 32, new ItemStack(Material.EMERALD, 5), "5x Szmaragd"),
-                new Quest(2, "Zbiory 2", List.of(), Material.WHEAT, 64, new ItemStack(Material.GOLD_INGOT, 10), "10x Złoto"),
-                new Quest(3, "Zbiory 3", List.of(), Material.POTATO, 64, new ItemStack(Material.IRON_INGOT, 32), "32x Żelazo")
+                Quest.przedmiot(1, "Zbiory 1", List.of(), Material.CARROT, 32, new ItemStack(Material.EMERALD, 5), "5x Szmaragd"),
+                Quest.przedmiot(2, "Zbiory 2", List.of(), Material.WHEAT, 64, new ItemStack(Material.GOLD_INGOT, 10), "10x Złoto"),
+                Quest.przedmiot(3, "Zbiory 3", List.of(), Material.POTATO, 64, new ItemStack(Material.IRON_INGOT, 32), "32x Żelazo")
         ));
 
         // ŁOWCA
         questyKategorii.put("Łowca", List.of(
-                new Quest(1, "Początkujący", List.of(), Material.ROTTEN_FLESH, 32, new ItemStack(Material.COOKED_BEEF, 16), "16x Pieczona Wołowina"),
-                new Quest(2, "Strzelec", List.of(), Material.BONE, 16, new ItemStack(Material.BOW, 1), "1x Łuk"),
-                new Quest(3, "Nocny Marek", List.of(), Material.STRING, 10, new ItemStack(Material.EXPERIENCE_BOTTLE, 16), "16x Butelka EXP")
+                Quest.przedmiot(1, "Początkujący", List.of(), Material.ROTTEN_FLESH, 32, new ItemStack(Material.COOKED_BEEF, 16), "16x Pieczona Wołowina"),
+                Quest.przedmiot(2, "Strzelec", List.of(), Material.BONE, 16, new ItemStack(Material.BOW, 1), "1x Łuk"),
+                Quest.przedmiot(3, "Nocny Marek", List.of(), Material.STRING, 10, new ItemStack(Material.EXPERIENCE_BOTTLE, 16), "16x Butelka EXP")
         ));
 
         // QUESTY SPECJALNE (dawniej "Mistrz") - trudne, kosztowne zadania dla weteranów.
         questyKategorii.put("Questy Specjalne", List.of(
-                new Quest(1, "Górski Kolos", List.of("Dla prawdziwych weteranów kopalni."),
+                Quest.przedmiot(1, "Górski Kolos", List.of("Dla prawdziwych weteranów kopalni."),
                         Material.DIAMOND, 64, new ItemStack(Material.NETHERITE_INGOT, 1), "1x Sztabka Netherytu"),
-                new Quest(2, "Wojownik Otchłani", List.of("Poluj na eliksir mocy w Netherze."),
+                Quest.przedmiot(2, "Wojownik Otchłani", List.of("Poluj na eliksir mocy w Netherze."),
                         Material.WITHER_SKELETON_SKULL, 4, new ItemStack(Material.TOTEM_OF_UNDYING, 1), "1x Totem Nieśmiertelności"),
-                new Quest(3, "Skarb Smoka", List.of("Pokonaj Smoka Endera."),
+                Quest.przedmiot(3, "Skarb Smoka", List.of("Pokonaj Smoka Endera."),
                         Material.DRAGON_BREATH, 16, new ItemStack(Material.NETHER_STAR, 1), "1x Gwiazda Netheru")
         ));
 
@@ -417,6 +494,30 @@ public class QuestManager implements Listener {
         return item;
     }
 
+    /** Nagroda-trofeum za kamień milowy Głównej Ścieżki (id 10/20/30/40) - nazwana głowa z lore. */
+    private static ItemStack trofeum(Material material, String nazwa, String... loreLinie) {
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.text(nazwa, NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
+        List<Component> lore = new ArrayList<>();
+        for (String linia : loreLinie) {
+            lore.add(Component.text(linia, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        }
+        meta.lore(lore);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    /** "16x OAK_LOG, 16x BIRCH_LOG" - łączy kilka wymaganych materiałów w jeden czytelny tekst do lore. */
+    private String opisWymogow(List<Wymog> wymogi) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < wymogi.size(); i++) {
+            if (i > 0) sb.append(", ");
+            sb.append(wymogi.get(i).ilosc()).append("x ").append(wymogi.get(i).material().name());
+        }
+        return sb.toString();
+    }
+
     /** Czerwony barwnik = dostępne, zielony (lime) = ukończone, szary = zablokowane (tylko Główna Ścieżka). */
     private ItemStack stworzIkoneQuesta(Quest q, StanQuestu stan) {
         Material material = switch (stan) {
@@ -443,7 +544,14 @@ public class QuestManager implements Listener {
             for (String linia : q.opis()) {
                 lore.add(Component.text(linia, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
             }
-            lore.add(Component.text("Wymaga: " + q.wymaganaIlosc() + "x " + q.wymaganyMaterial().name(), NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+            String wymogTekst = switch (q.typWymogu()) {
+                case DARMOWY -> "Wymaga: nic - kliknij, by odebrać!";
+                case MONETY -> "Wymaga: " + (int) q.prog() + " monet";
+                case POZIOM_KILOFA -> "Wymaga: kilofa na poziomie " + (int) q.prog();
+                case PRZEDMIOT -> "Wymaga: " + opisWymogow(q.wymogi());
+                case NARZEDZIE -> "Wymaga: posiadania " + opisWymogow(q.wymogi()) + " (zostaje przy Tobie)";
+            };
+            lore.add(Component.text(wymogTekst, NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
             lore.add(stan == StanQuestu.UKONCZONY
                     ? Component.text("Nagroda: " + q.nazwaNagrody(), NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false)
                     : Component.text("Nagroda: ???", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
@@ -531,8 +639,23 @@ public class QuestManager implements Listener {
             return;
         }
 
-        if (player.getInventory().containsAtLeast(new ItemStack(q.wymaganyMaterial()), q.wymaganaIlosc())) {
-            player.getInventory().removeItem(new ItemStack(q.wymaganyMaterial(), q.wymaganaIlosc()));
+        boolean spelnionyWymog = switch (q.typWymogu()) {
+            case DARMOWY -> true;
+            case MONETY -> CoreAPI.getEconomyService().maWystarczajaco(player.getUniqueId(), q.prog());
+            case POZIOM_KILOFA -> {
+                ToolsService tools = CoreAPI.getToolsService();
+                yield tools != null && tools.poziomKilofa(player) >= q.prog();
+            }
+            case PRZEDMIOT, NARZEDZIE -> q.wymogi().stream()
+                    .allMatch(w -> player.getInventory().containsAtLeast(new ItemStack(w.material()), w.ilosc()));
+        };
+
+        if (spelnionyWymog) {
+            switch (q.typWymogu()) {
+                case DARMOWY, NARZEDZIE, POZIOM_KILOFA -> {} // te typy tylko sprawdzają - nic nie zabierają graczowi
+                case MONETY -> CoreAPI.getEconomyService().odejmijKase(player.getUniqueId(), q.prog());
+                case PRZEDMIOT -> q.wymogi().forEach(w -> player.getInventory().removeItem(new ItemStack(w.material(), w.ilosc())));
+            }
             postepy.add(q.id());
             zapiszPostep();
 
@@ -546,29 +669,49 @@ public class QuestManager implements Listener {
             player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
             otworzKategorie(player, kategoria, strona);
         } else {
-            player.sendMessage(Component.text("Nie masz wymaganych przedmiotów!", NamedTextColor.RED));
+            String powod = switch (q.typWymogu()) {
+                case MONETY -> "Nie masz wystarczająco monet!";
+                case NARZEDZIE -> "Twoje narzędzie nie jest jeszcze na wymaganym tierze!";
+                case POZIOM_KILOFA -> "Twój kilof nie jest jeszcze na wymaganym poziomie!";
+                case PRZEDMIOT, DARMOWY -> "Nie masz wymaganych przedmiotów!";
+            };
+            player.sendMessage(Component.text(powod, NamedTextColor.RED));
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
         }
     }
 
     /**
-     * Wręcza nagrodę za quest. Jedyny wyjątek od "zwykłego ItemStacka z configu listy" -
-     * quest 1 Głównej Ścieżki ("Witaj na Wyspie"), gdzie zamiast placeholdera z
-     * zaladujQuesty() gracz dostaje PRAWDZIWY, działający ewoluujący kilof z
-     * mainplugins-tools (patrz ToolsService/CoreAPI - ten sam mechanizm poziomowania,
-     * ochrony przed wyrzuceniem itd. co reszta narzędzi). Jeśli mainplugins-tools nie
-     * jest akurat wgrany, spadamy z powrotem na placeholder, żeby gracz nie stracił
+     * Wręcza nagrodę za quest. Wyjątek od "zwykłego ItemStacka z configu listy" - questy
+     * 1/3/5/8/9 Głównej Ścieżki (kilof/siekiera/motyka/miecz/łopata), gdzie zamiast
+     * placeholdera z zaladujQuesty() gracz dostaje PRAWDZIWE, działające ewoluujące
+     * narzędzie z mainplugins-tools (patrz ToolsService/CoreAPI - ten sam mechanizm
+     * poziomowania, ochrony przed wyrzuceniem itd.). Jeśli mainplugins-tools nie jest
+     * akurat wgrany, spadamy z powrotem na placeholder, żeby gracz nie stracił
      * przedmiotów za quest bez żadnej nagrody.
      */
     private void wreczNagrode(Player player, String kategoria, Quest q) {
-        if (kategoria.equals(KATEGORIA_GLOWNA_SCIEZKA) && q.id() == 1) {
+        if (kategoria.equals(KATEGORIA_GLOWNA_SCIEZKA)) {
             ToolsService tools = CoreAPI.getToolsService();
             if (tools != null) {
-                tools.dajEwoluujacyKilof(player);
-                return;
+                switch (q.id()) {
+                    case 1 -> { tools.dajEwoluujacyKilof(player); return; }
+                    case 3 -> { tools.dajEwoluujacaSiekiere(player); return; }
+                    case 5 -> { tools.dajEwoluujacaMotyke(player); return; }
+                    case 8 -> { tools.dajEwoluujacyMiecz(player); return; }
+                    case 9 -> { tools.dajEwoluujacaLopate(player); return; }
+                }
             }
         }
-        player.getInventory().addItem(q.nagroda());
+        if (q.monetyNagrody() > 0) {
+            CoreAPI.getEconomyService().dodajKase(player.getUniqueId(), q.monetyNagrody());
+        } else {
+            q.nagrody().forEach(item -> player.getInventory().addItem(item));
+        }
+        // Quest 40 ("Mistrz Wyspy") dorzuca Beacon do trofeum - jedyny wyjątek, gdzie
+        // ścieżka wręcza dwa przedmioty naraz, patrz komentarz w zaladujQuesty().
+        if (kategoria.equals(KATEGORIA_GLOWNA_SCIEZKA) && q.id() == 40) {
+            player.getInventory().addItem(new ItemStack(Material.BEACON, 1));
+        }
     }
 
     /**

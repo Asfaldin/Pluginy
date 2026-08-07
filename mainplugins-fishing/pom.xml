@@ -10,16 +10,15 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>mainplugins-crates</artifactId>
+    <artifactId>mainplugins-fishing</artifactId>
     <packaging>jar</packaging>
-    <name>Mainplugins - Crates</name>
+    <name>Mainplugins - Fishing</name>
 
     <!--
-        Skrzynki i klucze same w sobie to zwykłe przedmioty oznaczone PersistentDataContainer,
-        ale moduł rejestruje teraz CrateService w Core (patrz CoreAPI.getCrateService()), żeby
-        inne pluginy (np. mainplugins-fishing) mogły wręczać skrzynki jako nagrodę bez
-        znajomości wewnętrznych tagów PDC tego modułu - stąd zależność od Core (provided,
-        core ląduje na serwerze jako osobny jar, patrz komentarz w pom.xml rodzica).
+        Łowienie: własne gatunki ryb (custom PDC, sprzedawane przez mainplugins-shop po
+        custom-id), tiery wędek i ich upgrade w kowadle, opcjonalny bonusowy drop skrzynek
+        z mainplugins-crates przez CoreAPI.getCrateService() - stąd zależność od Core
+        (provided, core ląduje na serwerze jako osobny jar, patrz komentarz w pom.xml rodzica).
     -->
     <dependencies>
         <dependency>

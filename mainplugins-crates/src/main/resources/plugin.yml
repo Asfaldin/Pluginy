@@ -2,16 +2,26 @@ name: MainpluginsCrates
 version: ${project.version}
 main: elo.mainplugins.crates.MainpluginsCrates
 api-version: '1.20'
+depend: [MainpluginsCore]
 
 commands:
   dajklucz:
     description: "[TEST] Daj sobie klucz do skrzynki"
     permission: mainplugins.crates.admin
   dajskrzynia:
-    description: "[TEST] Daj sobie tajemniczą skrzynkę"
+    description: "[TEST] Daj sobie tajemniczą skrzynkę (tier 1)"
+    permission: mainplugins.crates.admin
+  dajskrzynie1:
+    description: "[TEST] Daj sobie Tajemniczą Skrzynkę (tier 1)"
+    permission: mainplugins.crates.admin
+  dajskrzynie2:
+    description: "[TEST] Daj sobie Otchłanną Skrzynkę (tier 2, rzadsza)"
+    permission: mainplugins.crates.admin
+  dajskrzynie3:
+    description: "[TEST] Daj sobie Skrzynkę DARKSTAR (tier 3, najrzadsza)"
     permission: mainplugins.crates.admin
   reloadcrates:
-    description: Wczytaj crate-rewards.yml na nowo, bez restartu serwera
+    description: Wczytaj pule nagród wszystkich tierów na nowo, bez restartu serwera
     permission: mainplugins.crates.admin
 
 permissions:

@@ -43,6 +43,7 @@
         <module>mainplugins-farming</module>
         <module>mainplugins-spawners</module>
         <module>mainplugins-spawn</module>
+        <module>mainplugins-fishing</module>
     </modules>
 
     <properties>

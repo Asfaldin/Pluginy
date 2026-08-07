@@ -319,13 +319,17 @@ public class ShopManager implements Listener {
 
     /**
      * Szuka w sklep.yml pierwszego wpisu o danym materiale, który ma ustawione
-     * sell-price. Zwraca null, jeśli itemu nie da się sprzedać.
+     * sell-price - i którego custom-id DOKŁADNIE pasuje do podanego (null = wpis
+     * bez custom-id, czyli zwykły wanilijski item). Zwraca null, jeśli itemu nie
+     * da się sprzedać.
      *
-     * Wpisy z custom-id są pomijane celowo: kilka różnych itemów dzieli ten sam
-     * Material (5 spawnerów to jeden SPAWNER), więc dopasowanie po samym materiale
-     * byłoby niejednoznaczne — dokładnie ten sam powód, dla którego nie mają sell-price.
+     * Custom-id musi się zgadzać dokładnie, bo kilka różnych itemów potrafi dzielić
+     * ten sam Material (5 spawnerów to jeden SPAWNER, 10 gatunków ryb z mainplugins-fishing
+     * to góra 4 wanilijskie materiały ryb) - dopasowanie po samym materiale byłoby
+     * niejednoznaczne. Stąd też wpisy z custom-id muszą mieć custom-id ustawione
+     * jawnie w sklep.yml, żeby w ogóle wziąć udział w skupie.
      */
-    private OfertaSkupu znajdzOferteSkupu(Material material) {
+    private OfertaSkupu znajdzOferteSkupu(Material material, String customId) {
         ConfigurationSection catSection = sklepConfig.getConfigurationSection("categories");
         if (catSection == null) return null;
 
@@ -338,7 +342,7 @@ public class ShopManager implements Listener {
                 String path = "categories." + catKey + ".items." + itemKey + ".";
                 String matName = sklepConfig.getString(path + "material");
                 if (matName == null || Material.matchMaterial(matName) != material) continue;
-                if (sklepConfig.getString(path + "custom-id", null) != null) continue;
+                if (!Objects.equals(sklepConfig.getString(path + "custom-id", null), customId)) continue;
 
                 int cena = sklepConfig.getInt(path + "sell-price", -1);
                 if (cena < 0) continue;
@@ -352,11 +356,16 @@ public class ShopManager implements Listener {
         return null;
     }
 
-    /** Itemy z PDC (kupione spawnery, Niszczyciel, Sniffer) nigdy nie idą do skupu masowego. */
-    private boolean maCustomId(ItemStack stack) {
-        if (stack == null || !stack.hasItemMeta()) return false;
+    /** Wartość custom-id z PDC itemu, albo null, jeśli to zwykły wanilijski item. */
+    private String pobierzCustomId(ItemStack stack) {
+        if (stack == null || !stack.hasItemMeta()) return null;
         return stack.getItemMeta().getPersistentDataContainer()
-                .has(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING);
+                .get(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING);
+    }
+
+    /** Czy dany stos w ekwipunku dokładnie pasuje do oferty (materiał + ten sam custom-id, null-safe). */
+    private boolean pasujeDoOferty(ItemStack is, Material material, String customId) {
+        return is != null && is.getType() == material && Objects.equals(pobierzCustomId(is), customId);
     }
 
     public void handleSellCommand(Player player) {
@@ -365,11 +374,7 @@ public class ShopManager implements Listener {
             player.sendMessage(Component.text("Nie trzymasz żadnego przedmiotu w ręce!", NamedTextColor.RED));
             return;
         }
-        if (maCustomId(wRece)) {
-            player.sendMessage(Component.text("Tego przedmiotu nie można sprzedać!", NamedTextColor.RED));
-            return;
-        }
-        sprzedajLoty(player, wRece.getType(), TrybSkupu.REKA);
+        sprzedajLoty(player, wRece.getType(), pobierzCustomId(wRece), TrybSkupu.REKA);
     }
 
     public void handleSellAllCommand(Player player) {
@@ -378,7 +383,7 @@ public class ShopManager implements Listener {
             player.sendMessage(Component.text("Przytrzymaj w ręce przedmiot, który chcesz masowo sprzedać!", NamedTextColor.RED));
             return;
         }
-        sprzedajLoty(player, wRece.getType(), TrybSkupu.CALY_EKWIPUNEK);
+        sprzedajLoty(player, wRece.getType(), pobierzCustomId(wRece), TrybSkupu.CALY_EKWIPUNEK);
     }
 
     /**
@@ -389,8 +394,8 @@ public class ShopManager implements Listener {
      *             stos w ekwipunku (PPM w GUI), CALY_EKWIPUNEK = wszystkie sztuki
      *             w całym ekwipunku (/sellall, Shift+PPM w GUI)
      */
-    private void sprzedajLoty(Player player, Material material, TrybSkupu tryb) {
-        OfertaSkupu oferta = znajdzOferteSkupu(material);
+    private void sprzedajLoty(Player player, Material material, String customId, TrybSkupu tryb) {
+        OfertaSkupu oferta = znajdzOferteSkupu(material, customId);
         if (oferta == null) {
             player.sendMessage(Component.text("Tego przedmiotu nie można sprzedać w sklepie!", NamedTextColor.RED));
             return;
@@ -398,9 +403,9 @@ public class ShopManager implements Listener {
 
         PlayerInventory inv = player.getInventory();
         int posiadane = switch (tryb) {
-            case CALY_EKWIPUNEK -> policzWEkwipunku(inv, material);
-            case JEDEN_STOS -> pierwszyStosIlosc(inv, material);
-            case REKA -> inv.getItemInMainHand().getType() == material ? inv.getItemInMainHand().getAmount() : 0;
+            case CALY_EKWIPUNEK -> policzWEkwipunku(inv, material, customId);
+            case JEDEN_STOS -> pierwszyStosIlosc(inv, material, customId);
+            case REKA -> pasujeDoOferty(inv.getItemInMainHand(), material, customId) ? inv.getItemInMainHand().getAmount() : 0;
         };
 
         int loty = posiadane / oferta.lot();
@@ -421,7 +426,7 @@ public class ShopManager implements Listener {
         } else {
             // Dla JEDEN_STOS "posiadane" to ilość w pierwszym napotkanym stosie, więc
             // doZabrania <= ten jeden stos - usunZEkwipunku i tak nie tknie kolejnych.
-            usunZEkwipunku(inv, material, doZabrania);
+            usunZEkwipunku(inv, material, customId, doZabrania);
         }
 
         economyManager.dodajKase(player.getUniqueId(), zarobek);
@@ -436,18 +441,18 @@ public class ShopManager implements Listener {
         player.sendMessage(msg);
     }
 
-    private int policzWEkwipunku(PlayerInventory inv, Material material) {
+    private int policzWEkwipunku(PlayerInventory inv, Material material, String customId) {
         int suma = 0;
         for (ItemStack is : inv.getStorageContents()) {
-            if (is != null && is.getType() == material && !maCustomId(is)) suma += is.getAmount();
+            if (pasujeDoOferty(is, material, customId)) suma += is.getAmount();
         }
         return suma;
     }
 
-    /** Ilość w PIERWSZYM napotkanym stosie danego materiału (bez custom-id) - do sprzedaży "jednym klikiem" PPM w GUI. */
-    private int pierwszyStosIlosc(PlayerInventory inv, Material material) {
+    /** Ilość w PIERWSZYM napotkanym pasującym stosie - do sprzedaży "jednym klikiem" PPM w GUI. */
+    private int pierwszyStosIlosc(PlayerInventory inv, Material material, String customId) {
         for (ItemStack is : inv.getStorageContents()) {
-            if (is != null && is.getType() == material && !maCustomId(is)) return is.getAmount();
+            if (pasujeDoOferty(is, material, customId)) return is.getAmount();
         }
         return 0;
     }
@@ -455,13 +460,13 @@ public class ShopManager implements Listener {
     /**
      * Zabiera dokładnie tyle sztuk, ile trzeba — nie używamy inv.remove(Material),
      * bo ono czyści cały ekwipunek z danego materiału, także resztę poniżej lotu
-     * i itemy z custom-id.
+     * i itemy o innym custom-id (albo bez niego), które akurat dzielą ten sam materiał.
      */
-    private void usunZEkwipunku(PlayerInventory inv, Material material, int ile) {
+    private void usunZEkwipunku(PlayerInventory inv, Material material, String customId, int ile) {
         ItemStack[] zawartosc = inv.getStorageContents();
         for (int i = 0; i < zawartosc.length && ile > 0; i++) {
             ItemStack is = zawartosc[i];
-            if (is == null || is.getType() != material || maCustomId(is)) continue;
+            if (!pasujeDoOferty(is, material, customId)) continue;
 
             int zabierz = Math.min(is.getAmount(), ile);
             is.setAmount(is.getAmount() - zabierz);
@@ -591,8 +596,10 @@ public class ShopManager implements Listener {
                 }
                 // Jedna ścieżka sprzedaży dla GUI i komend — inaczej reguła lotów
                 // rozjedzie się między /sell a klikaniem w sklepie. PPM = jeden stos,
-                // Shift+PPM = cały ekwipunek (jak /sellall).
-                sprzedajLoty(player, cfgMaterial, event.isShiftClick() ? TrybSkupu.CALY_EKWIPUNEK : TrybSkupu.JEDEN_STOS);
+                // Shift+PPM = cały ekwipunek (jak /sellall). custom-id (jeśli wpis go ma,
+                // np. gatunek ryby) musi iść razem z materiałem - patrz znajdzOferteSkupu.
+                String customId = sklepConfig.getString(path + "custom-id", null);
+                sprzedajLoty(player, cfgMaterial, customId, event.isShiftClick() ? TrybSkupu.CALY_EKWIPUNEK : TrybSkupu.JEDEN_STOS);
             }
         }
     }

@@ -1,5 +1,6 @@
 package elo.mainplugins.crates;
 
+import elo.mainplugins.core.api.CrateService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -39,14 +40,26 @@ import java.util.concurrent.ThreadLocalRandom;
  * w standardowym inwentarzu Minecrafta: szybka podmiana przedmiotów w rzędzie 9
  * slotów, z narastającym opóźnieniem między klatkami (efekt zwalniania), aż
  * "wyląduje" na wcześniej wylosowanej nagrodzie na środkowym slocie.
+ *
+ * Trzy tiery skrzynek (1 = zwykła, 2/3 = coraz rzadsze) współdzielą klucz i całą
+ * animację - różni je tylko wygląd przedmiotu (materiał/nazwa) i WŁASNA pula
+ * nagród (osobny plik na tier), rozpoznawana po numerze zapisanym w PDC.
  */
-public class CrateManager implements Listener {
+public class CrateManager implements Listener, CrateService {
+
+    private record TierWyglad(Material material, String nazwa, NamedTextColor kolor, String plikNagrod) {}
+
+    private static final Map<Integer, TierWyglad> WYGLAD_TIERU = Map.of(
+            1, new TierWyglad(Material.ENDER_CHEST, "Tajemnicza Skrzynka", NamedTextColor.GOLD, "crate-rewards.yml"),
+            2, new TierWyglad(Material.SHULKER_BOX, "Otchłanna Skrzynka", NamedTextColor.LIGHT_PURPLE, "crate-rewards-2.yml"),
+            3, new TierWyglad(Material.BEACON, "Skrzynka DARKSTAR", NamedTextColor.AQUA, "crate-rewards-3.yml")
+    );
 
     private final Plugin plugin;
     private final NamespacedKey kluczTag;
     private final NamespacedKey skrzynkaTag;
-    private final File plikNagrod;
-    private final List<Nagroda> nagrody = new ArrayList<>();
+    private final NamespacedKey tierTag;
+    private final Map<Integer, List<Nagroda>> nagrodyTieru = new LinkedHashMap<>();
     private final Set<UUID> otwierajacy = new java.util.HashSet<>();
 
     // Harmonogram opóźnień (w tickach) między kolejnymi klatkami animacji -
@@ -61,34 +74,35 @@ public class CrateManager implements Listener {
         this.plugin = plugin;
         this.kluczTag = new NamespacedKey(plugin, "crate_key");
         this.skrzynkaTag = new NamespacedKey(plugin, "crate_box");
-        this.plikNagrod = new File(plugin.getDataFolder(), "crate-rewards.yml");
-        wczytajNagrody();
+        this.tierTag = new NamespacedKey(plugin, "crate_tier");
+        wczytajWszystkieNagrody();
     }
 
     public void przeladujNagrody() {
-        wczytajNagrody();
+        wczytajWszystkieNagrody();
     }
 
-    private void wczytajNagrody() {
+    private void wczytajWszystkieNagrody() {
+        for (int tier : WYGLAD_TIERU.keySet()) {
+            wczytajNagrody(tier);
+        }
+    }
+
+    private void wczytajNagrody(int tier) {
+        File plikNagrod = new File(plugin.getDataFolder(), WYGLAD_TIERU.get(tier).plikNagrod());
         if (!plikNagrod.exists()) {
             plikNagrod.getParentFile().mkdirs();
             FileConfiguration domyslny = new YamlConfiguration();
-            List<Map<String, Object>> lista = new ArrayList<>();
-            lista.add(wpisDomyslny("DIRT", 16, 40, "Zwykła Nagroda", "GRAY", false));
-            lista.add(wpisDomyslny("IRON_INGOT", 8, 30, "Żelazna Nagroda", "WHITE", false));
-            lista.add(wpisDomyslny("DIAMOND", 4, 20, "Diamentowa Nagroda", "AQUA", false));
-            lista.add(wpisDomyslny("NETHERITE_INGOT", 1, 9, "Netherytowa Nagroda", "LIGHT_PURPLE", false));
-            lista.add(wpisDomyslny("NETHER_STAR", 1, 1, "★ LEGENDARNA NAGRODA ★", "GOLD", true));
-            domyslny.set("rewards", lista);
+            domyslny.set("rewards", domyslnaPula(tier));
             try {
                 domyslny.save(plikNagrod);
             } catch (IOException e) {
-                plugin.getLogger().warning("Nie można zapisać crate-rewards.yml: " + e.getMessage());
+                plugin.getLogger().warning("Nie można zapisać " + plikNagrod.getName() + ": " + e.getMessage());
             }
         }
 
         FileConfiguration config = YamlConfiguration.loadConfiguration(plikNagrod);
-        nagrody.clear();
+        List<Nagroda> nagrody = new ArrayList<>();
         for (Map<?, ?> wpis : config.getMapList("rewards")) {
             try {
                 Material material = Material.valueOf(String.valueOf(wpis.get("material")));
@@ -100,13 +114,44 @@ public class CrateManager implements Listener {
                 boolean broadcast = broadcastRaw != null && Boolean.parseBoolean(String.valueOf(broadcastRaw));
                 nagrody.add(new Nagroda(material, Math.max(1, amount), Math.max(1, waga), nazwa, kolor, broadcast));
             } catch (Exception e) {
-                plugin.getLogger().warning("Zły wpis w crate-rewards.yml, pomijam: " + e.getMessage());
+                plugin.getLogger().warning("Zły wpis w " + plikNagrod.getName() + ", pomijam: " + e.getMessage());
             }
         }
 
         if (nagrody.isEmpty()) {
             nagrody.add(new Nagroda(Material.DIRT, 1, 1, "Nagroda", NamedTextColor.WHITE, false));
         }
+        nagrodyTieru.put(tier, nagrody);
+    }
+
+    private List<Map<String, Object>> domyslnaPula(int tier) {
+        List<Map<String, Object>> lista = new ArrayList<>();
+        switch (tier) {
+            case 2 -> {
+                lista.add(wpisDomyslny("IRON_BLOCK", 2, 30, "Żelazna Nagroda", "WHITE", false));
+                lista.add(wpisDomyslny("DIAMOND", 4, 25, "Diamentowa Nagroda", "AQUA", false));
+                lista.add(wpisDomyslny("EXPERIENCE_BOTTLE", 32, 20, "Butelki Doświadczenia", "GREEN", false));
+                lista.add(wpisDomyslny("NETHERITE_SCRAP", 2, 15, "Złom Netherytu", "LIGHT_PURPLE", false));
+                lista.add(wpisDomyslny("ELYTRA", 1, 6, "★ ELYTRA ★", "GOLD", true));
+                lista.add(wpisDomyslny("NETHER_STAR", 1, 4, "★ GWIAZDA NETHERU ★", "GOLD", true));
+            }
+            case 3 -> {
+                lista.add(wpisDomyslny("NETHERITE_INGOT", 2, 30, "Sztabki Netherytu", "LIGHT_PURPLE", false));
+                lista.add(wpisDomyslny("ENCHANTED_GOLDEN_APPLE", 2, 20, "Złote Jabłka", "GOLD", false));
+                lista.add(wpisDomyslny("TOTEM_OF_UNDYING", 1, 20, "★ TOTEM NIEŚMIERTELNOŚCI ★", "LIGHT_PURPLE", true));
+                lista.add(wpisDomyslny("ELYTRA", 1, 15, "★ ELYTRA ★", "GOLD", true));
+                lista.add(wpisDomyslny("NETHER_STAR", 2, 10, "★ GWIAZDY NETHERU ★", "GOLD", true));
+                lista.add(wpisDomyslny("BEACON", 1, 5, "★★ BEACON ★★", "AQUA", true));
+            }
+            default -> {
+                lista.add(wpisDomyslny("DIRT", 16, 40, "Zwykła Nagroda", "GRAY", false));
+                lista.add(wpisDomyslny("IRON_INGOT", 8, 30, "Żelazna Nagroda", "WHITE", false));
+                lista.add(wpisDomyslny("DIAMOND", 4, 20, "Diamentowa Nagroda", "AQUA", false));
+                lista.add(wpisDomyslny("NETHERITE_INGOT", 1, 9, "Netherytowa Nagroda", "LIGHT_PURPLE", false));
+                lista.add(wpisDomyslny("NETHER_STAR", 1, 1, "★ LEGENDARNA NAGRODA ★", "GOLD", true));
+            }
+        }
+        return lista;
     }
 
     private Map<String, Object> wpisDomyslny(String material, int amount, int weight, String nazwa, String kolor, boolean broadcast) {
@@ -125,7 +170,8 @@ public class CrateManager implements Listener {
         return kolor != null ? kolor : NamedTextColor.WHITE;
     }
 
-    private Nagroda losujNagrode() {
+    private Nagroda losujNagrode(int tier) {
+        List<Nagroda> nagrody = nagrodyTieru.getOrDefault(tier, nagrodyTieru.get(1));
         int sumaWag = nagrody.stream().mapToInt(Nagroda::waga).sum();
         int los = ThreadLocalRandom.current().nextInt(sumaWag);
         int akumulator = 0;
@@ -138,31 +184,42 @@ public class CrateManager implements Listener {
 
     // ---- Przedmioty ----
 
+    @Override
     public ItemStack stworzKlucz() {
         ItemStack item = new ItemStack(Material.TRIPWIRE_HOOK);
         ItemMeta meta = item.getItemMeta();
         meta.displayName(Component.text("Klucz do Skrzynki", NamedTextColor.YELLOW, TextDecoration.BOLD));
-        meta.lore(List.of(Component.text("Otwiera Tajemniczą Skrzynkę", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+        meta.lore(List.of(Component.text("Otwiera Skrzynkę dowolnego tieru", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
         meta.getPersistentDataContainer().set(kluczTag, PersistentDataType.BYTE, (byte) 1);
         item.setItemMeta(meta);
         return item;
     }
 
-    public ItemStack stworzSkrzynke() {
-        ItemStack item = new ItemStack(Material.ENDER_CHEST);
+    @Override
+    public ItemStack stworzSkrzynke(int tier) {
+        TierWyglad wyglad = WYGLAD_TIERU.getOrDefault(tier, WYGLAD_TIERU.get(1));
+        int tierRzeczywisty = WYGLAD_TIERU.containsKey(tier) ? tier : 1;
+
+        ItemStack item = new ItemStack(wyglad.material());
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text("Tajemnicza Skrzynka", NamedTextColor.GOLD, TextDecoration.BOLD));
+        meta.displayName(Component.text(wyglad.nazwa(), wyglad.kolor(), TextDecoration.BOLD));
         meta.lore(List.of(
                 Component.text("Kliknij PPM trzymając ją w ręce,", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
                 Component.text("mając klucz gdziekolwiek w ekwipunku!", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
         ));
         meta.getPersistentDataContainer().set(skrzynkaTag, PersistentDataType.BYTE, (byte) 1);
+        meta.getPersistentDataContainer().set(tierTag, PersistentDataType.INTEGER, tierRzeczywisty);
         item.setItemMeta(meta);
         return item;
     }
 
-    private boolean jestSkrzynka(ItemStack item) {
-        return item != null && item.hasItemMeta() && item.getItemMeta().getPersistentDataContainer().has(skrzynkaTag, PersistentDataType.BYTE);
+    /** Zwraca tier skrzynki (1-3) albo -1, jeśli item nie jest skrzynką. */
+    private int pobierzTierSkrzynki(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return -1;
+        var pdc = item.getItemMeta().getPersistentDataContainer();
+        if (!pdc.has(skrzynkaTag, PersistentDataType.BYTE)) return -1;
+        Integer tier = pdc.get(tierTag, PersistentDataType.INTEGER);
+        return tier != null ? tier : 1; // skrzynki sprzed wprowadzenia tierów = tier 1
     }
 
     private boolean jestKluczem(ItemStack item) {
@@ -177,9 +234,10 @@ public class CrateManager implements Listener {
 
         Player player = event.getPlayer();
         ItemStack wRece = player.getInventory().getItemInMainHand();
-        if (!jestSkrzynka(wRece)) return;
+        int tier = pobierzTierSkrzynki(wRece);
+        if (tier == -1) return;
 
-        // Zawsze anulujemy - inaczej ENDER_CHEST w ręku próbowałby się postawić jako blok.
+        // Zawsze anulujemy - inaczej ENDER_CHEST/SHULKER_BOX w ręku próbowałby się postawić jako blok.
         event.setCancelled(true);
 
         if (otwierajacy.contains(player.getUniqueId())) {
@@ -196,7 +254,7 @@ public class CrateManager implements Listener {
         zmniejszWGlownejRece(player, wRece);
         zmniejszWSlocie(player, slotKlucza);
 
-        rozpocznijAnimacje(player);
+        rozpocznijAnimacje(player, tier);
     }
 
     private int znajdzSlotKlucza(Player player) {
@@ -225,19 +283,20 @@ public class CrateManager implements Listener {
         }
     }
 
-    private void rozpocznijAnimacje(Player player) {
+    private void rozpocznijAnimacje(Player player, int tier) {
         otwierajacy.add(player.getUniqueId());
-        Nagroda wygrana = losujNagrode();
+        Nagroda wygrana = losujNagrode(tier);
 
         int liczbaKlatek = OPOZNIENIA_TICK.length;
         List<ItemStack> pasek = new ArrayList<>(liczbaKlatek + SZEROKOSC_OKNA);
         for (int i = 0; i < liczbaKlatek + SZEROKOSC_OKNA; i++) {
-            pasek.add(stworzWyswietlacz(losujNagrode()));
+            pasek.add(stworzWyswietlacz(losujNagrode(tier)));
         }
         int indeksWygranej = (liczbaKlatek - 1) + 4; // środkowy slot okna przy ostatniej klatce
         pasek.set(indeksWygranej, stworzWyswietlacz(wygrana));
 
-        Inventory gui = Bukkit.createInventory(null, 27, Component.text("Otwieranie Skrzynki...", NamedTextColor.GOLD, TextDecoration.BOLD));
+        String tytul = WYGLAD_TIERU.getOrDefault(tier, WYGLAD_TIERU.get(1)).nazwa();
+        Inventory gui = Bukkit.createInventory(null, 27, Component.text("Otwieranie: " + tytul, NamedTextColor.GOLD, TextDecoration.BOLD));
         wypelnijTlo(gui);
         gui.setItem(4, wskaznik("▼"));
         gui.setItem(22, wskaznik("▲"));
@@ -290,7 +349,7 @@ public class CrateManager implements Listener {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        if (event.getView().title().toString().contains("Otwieranie Skrzynki")) {
+        if (event.getView().title().toString().contains("Otwieranie:")) {
             event.setCancelled(true);
         }
     }

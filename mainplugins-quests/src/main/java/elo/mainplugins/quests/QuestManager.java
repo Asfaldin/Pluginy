@@ -2,6 +2,8 @@ package elo.mainplugins.quests;
 
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.ToolsService;
+import elo.mainplugins.core.util.CustomItemKeys;
+import org.bukkit.persistence.PersistentDataType;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -56,15 +58,24 @@ public class QuestManager implements Listener {
      */
     private enum TypWymogu { PRZEDMIOT, DARMOWY, MONETY, NARZEDZIE, POZIOM_KILOFA }
 
-    /** Pojedynczy wymagany materiał + ilość - quest może mieć ich kilka naraz (np. "16x dąb + 16x brzoza"). */
-    private record Wymog(Material material, int ilosc) {}
+    /**
+     * Pojedynczy wymagany materiał + ilość - quest może mieć ich kilka naraz (np. "16x dąb + 16x brzoza").
+     * customId/nazwaWyswietlana są null dla zwykłych wanilijskich wymogów (patrz Wymog.zwykly) - ustawione,
+     * gdy quest musi rozróżnić konkretny custom-tagowany item (np. gatunek ryby z mainplugins-fishing) od
+     * innych itemów dzielących ten sam wanilijski Material (patrz CustomItemKeys w mainplugins-core).
+     */
+    private record Wymog(Material material, int ilosc, String customId, String nazwaWyswietlana) {
+        static Wymog zwykly(Material material, int ilosc) {
+            return new Wymog(material, ilosc, null, null);
+        }
+    }
 
     private record Quest(int id, String tytul, List<String> opis, TypWymogu typWymogu, List<Wymog> wymogi,
                           double prog, List<ItemStack> nagrody, String nazwaNagrody, double monetyNagrody) {
 
         /** Zwykły quest "przynieś N sztuk materiału X, dostań przedmiot" - większość ścieżki. */
         static Quest przedmiot(int id, String tytul, List<String> opis, Material material, int ilosc, ItemStack nagroda, String nazwaNagrody) {
-            return new Quest(id, tytul, opis, TypWymogu.PRZEDMIOT, List.of(new Wymog(material, ilosc)), 0, List.of(nagroda), nazwaNagrody, 0);
+            return new Quest(id, tytul, opis, TypWymogu.PRZEDMIOT, List.of(Wymog.zwykly(material, ilosc)), 0, List.of(nagroda), nazwaNagrody, 0);
         }
 
         /** Jak wyżej, ale kilka różnych materiałów naraz (np. dwa rodzaje drewna) i/lub kilka przedmiotów nagrody. */
@@ -75,6 +86,12 @@ public class QuestManager implements Listener {
         /** Wiele materiałów wymaganych naraz, ale pojedyncza nagroda. */
         static Quest przedmioty(int id, String tytul, List<String> opis, List<Wymog> wymogi, ItemStack nagroda, String nazwaNagrody) {
             return przedmioty(id, tytul, opis, wymogi, List.of(nagroda), nazwaNagrody);
+        }
+
+        /** Jak {@link #przedmiot}, ale wymóg to konkretny custom-tagowany item (np. gatunek ryby), nie dowolny o tym materiale. */
+        static Quest przedmiotCustom(int id, String tytul, List<String> opis, Material material, int ilosc,
+                                      String customId, String nazwaWyswietlana, ItemStack nagroda, String nazwaNagrody) {
+            return new Quest(id, tytul, opis, TypWymogu.PRZEDMIOT, List.of(new Wymog(material, ilosc, customId, nazwaWyswietlana)), 0, List.of(nagroda), nazwaNagrody, 0);
         }
 
         /** Quest bez żadnego wymogu - kliknięcie od razu zdaje zadanie i wręcza nagrodę. */
@@ -89,12 +106,18 @@ public class QuestManager implements Listener {
 
         /** Zwykły quest przedmiotowy, ale nagrodą są monety zamiast itemu. */
         static Quest nagrodaMonety(int id, String tytul, List<String> opis, Material material, int ilosc, double monetyNagrody) {
-            return new Quest(id, tytul, opis, TypWymogu.PRZEDMIOT, List.of(new Wymog(material, ilosc)), 0, List.of(), monetyNagrody + " Monet", monetyNagrody);
+            return new Quest(id, tytul, opis, TypWymogu.PRZEDMIOT, List.of(Wymog.zwykly(material, ilosc)), 0, List.of(), monetyNagrody + " Monet", monetyNagrody);
+        }
+
+        /** Jak {@link #nagrodaMonety}, ale wymóg to konkretny custom-tagowany item (patrz {@link #przedmiotCustom}). */
+        static Quest nagrodaMonetyCustom(int id, String tytul, List<String> opis, Material material, int ilosc,
+                                          String customId, String nazwaWyswietlana, double monetyNagrody) {
+            return new Quest(id, tytul, opis, TypWymogu.PRZEDMIOT, List.of(new Wymog(material, ilosc, customId, nazwaWyswietlana)), 0, List.of(), monetyNagrody + " Monet", monetyNagrody);
         }
 
         /** Quest "awansuj narzędzie na tier X" - sprawdza posiadanie, NIE zabiera przedmiotu (patrz TypWymogu.NARZEDZIE). */
         static Quest narzedzie(int id, String tytul, List<String> opis, Material wymaganeNarzedzie, ItemStack nagroda, String nazwaNagrody) {
-            return new Quest(id, tytul, opis, TypWymogu.NARZEDZIE, List.of(new Wymog(wymaganeNarzedzie, 1)), 0, List.of(nagroda), nazwaNagrody, 0);
+            return new Quest(id, tytul, opis, TypWymogu.NARZEDZIE, List.of(Wymog.zwykly(wymaganeNarzedzie, 1)), 0, List.of(nagroda), nazwaNagrody, 0);
         }
 
         /** Quest "wbij kilofowi X poziom" - patrz TypWymogu.POZIOM_KILOFA. Może dawać kilka przedmiotów naraz. */
@@ -190,12 +213,12 @@ public class QuestManager implements Listener {
                 Quest.poziomKilofa(2, "Zaczynamy", List.of("Wykop kilofem wystarczająco dużo, by zdobyć swój pierwszy poziom."),
                         2, List.of(new ItemStack(Material.BONE_MEAL, 10), new ItemStack(Material.BIRCH_SAPLING, 1)), "10x Mączka Kostna + Sadzonka Brzozy"),
                 Quest.przedmioty(3, "Timberman", List.of("Zbierz drewno dębowe i brzozowe na rozbudowę bazy."),
-                        List.of(new Wymog(Material.OAK_LOG, 16), new Wymog(Material.BIRCH_LOG, 16)),
+                        List.of(Wymog.zwykly(Material.OAK_LOG, 16), Wymog.zwykly(Material.BIRCH_LOG, 16)),
                         new ItemStack(Material.WOODEN_AXE, 1), "1x Ewoluująca Siekiera"),
                 Quest.nagrodaMonety(4, "Może zaczniemy zarabiać?", List.of("Sprzedaj nadwyżkę sadzonek dębu."),
                         Material.OAK_SAPLING, 32, 200),
                 Quest.przedmioty(5, "Farmimy dalej", List.of("Kup sadzonki siana i marchewki pod przyszłe pole."),
-                        List.of(new Wymog(Material.WHEAT_SEEDS, 5), new Wymog(Material.CARROT, 5)),
+                        List.of(Wymog.zwykly(Material.WHEAT_SEEDS, 5), Wymog.zwykly(Material.CARROT, 5)),
                         new ItemStack(Material.WOODEN_HOE, 1), "1x Ewoluująca Motyka"),
                 Quest.przedmiot(6, "Plon czas zebrać", List.of("Zasadź ziarna pszenicy na swoim polu."),
                         Material.WHEAT_SEEDS, 30, new ItemStack(Material.MELON_SEEDS, 8), "8x Nasiona Arbuza"),
@@ -291,6 +314,46 @@ public class QuestManager implements Listener {
                 Quest.przedmiot(1, "Początkujący", List.of(), Material.ROTTEN_FLESH, 32, new ItemStack(Material.COOKED_BEEF, 16), "16x Pieczona Wołowina"),
                 Quest.przedmiot(2, "Strzelec", List.of(), Material.BONE, 16, new ItemStack(Material.BOW, 1), "1x Łuk"),
                 Quest.przedmiot(3, "Nocny Marek", List.of(), Material.STRING, 10, new ItemStack(Material.EXPERIENCE_BOTTLE, 16), "16x Butelka EXP")
+        ));
+
+        // RYBAK - ikona w gwieździe istniała od dawna, ale kategoria była pusta (patrz
+        // getOrDefault w otworzKategorie). Ścieżka wędkarska mainplugins-fishing: gracz
+        // zaczyna zwykłą (wanilijską, craftowalną) wędką, questy 1/2/3 uczą podstaw łowienia
+        // w wodzie, quest 4 (darmowy) daje recepturę - połączona w kowadle ze zwykłą wędką
+        // daje Niebiańską Wędkę (łowienie w powietrzu, patrz mainplugins-fishing), questy 5/6
+        // wymuszają realne użycie nowej wędki (te gatunki łapie się WYŁĄCZNIE w powietrzu),
+        // quest 7 (darmowy) daje drugą recepturę na Wędkę Kosmiczną DARKSTAR, quest 8 to
+        // finałowe złowienie najrzadszej ryby w grze. Zero zależności od mainplugins-fishing -
+        // receptury to zwykłe tagowane papiery (patrz receptura()), fishing plugin rozpoznaje
+        // je przez współdzielony CustomItemKeys.CUSTOM_ITEM_ID, tak samo jak gatunki ryb niżej.
+        questyKategorii.put("Rybak", List.of(
+                Quest.przedmiotCustom(1, "Pierwszy Połów", List.of("Złów i przynieś swoje pierwsze ryby zwykłą wędką."),
+                        Material.COD, 5, "FISH_KARP_MIELIZNY", "Karp Mielizny",
+                        new ItemStack(Material.EMERALD, 5), "5x Szmaragd"),
+                Quest.nagrodaMonetyCustom(2, "W Głąb Wody", List.of("Łów dalej - tym razem srebrne leszcze."),
+                        Material.SALMON, 8, "FISH_SREBRNY_LESZCZ", "Srebrny Leszcz", 500),
+                Quest.nagrodaMonetyCustom(3, "Kolekcjoner Łusek", List.of("Złów coś rzadszego niż zwykłe ryby."),
+                        Material.TROPICAL_FISH, 1, "FISH_TECZOWY_SKRZELACZ", "Tęczowy Skrzelacz", 350),
+                Quest.darmowy(4, "Sekret Kowala", List.of("Miejscowy kowal zna sekret wędek, których nie da się kupić.",
+                                "Połącz tę recepturę ze zwykłą wędką w kowadle."),
+                        receptura("FISHING_RECIPE_NIEBIANSKA", "Receptura: Niebiańska Wędka",
+                                "Połącz z Zwykłą Wędką w kowadle,", "by otrzymać Niebiańską Wędkę."),
+                        "Receptura: Niebiańska Wędka"),
+                Quest.przedmiotCustom(5, "Rybak Niebios", List.of("Wykuj Niebiańską Wędkę i złów nią coś,",
+                                "czego nie da się złowić w wodzie."),
+                        Material.SALMON, 3, "FISH_OBLOCZNY_LATAWIEC", "Obłoczny Latawiec",
+                        new ItemStack(Material.EXPERIENCE_BOTTLE, 32), "32x Butelka Doświadczenia"),
+                Quest.nagrodaMonetyCustom(6, "Więcej niż Ryby", List.of("Łów dalej w powietrzu - trafiają się coraz ciekawsze gatunki."),
+                        Material.TROPICAL_FISH, 2, "FISH_GWIEZDNY_PROMYK", "Gwiezdny Promyk", 1200),
+                Quest.darmowy(7, "Szept Kosmosu", List.of("Wśród gwiazd krąży plotka o wędce, która przyciąga jeszcze rzadsze ryby."),
+                        receptura("FISHING_RECIPE_KOSMICZNA", "Receptura: Wędka Kosmiczna DARKSTAR",
+                                "Połącz z Niebiańską Wędką w kowadle,", "by otrzymać Wędkę Kosmiczną DARKSTAR."),
+                        "Receptura: Wędka Kosmiczna DARKSTAR"),
+                Quest.przedmiotCustom(8, "Mistrz Wędki", List.of("Złów legendarną Iskrę Ciemnej Gwiazdy Wędką Kosmiczną DARKSTAR.",
+                                "Ostatni krok ścieżki wędkarskiej!"),
+                        Material.COD, 1, "FISH_DARKSTAR_ISKRA", "Iskra Ciemnej Gwiazdy",
+                        trofeum(Material.PLAYER_HEAD, "Głowa Rybaka Otchłani", "Za złowienie tego, czego nie da się złowić."),
+                        "Trofeum: Głowa Rybaka Otchłani")
         ));
 
         // QUESTY SPECJALNE (dawniej "Mistrz") - trudne, kosztowne zadania dla weteranów.
@@ -513,9 +576,30 @@ public class QuestManager implements Listener {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < wymogi.size(); i++) {
             if (i > 0) sb.append(", ");
-            sb.append(wymogi.get(i).ilosc()).append("x ").append(wymogi.get(i).material().name());
+            Wymog w = wymogi.get(i);
+            sb.append(w.ilosc()).append("x ").append(w.nazwaWyswietlana() != null ? w.nazwaWyswietlana() : w.material().name());
         }
         return sb.toString();
+    }
+
+    /**
+     * Papier-receptura wręczany jako nagroda za darmowy quest (np. "Sekret Kowala") - tagowany
+     * współdzielonym CustomItemKeys.CUSTOM_ITEM_ID, żeby mainplugins-fishing (osobny plugin,
+     * bez żadnej zależności między modułami) rozpoznał go w kowadle i podmienił na lepszą wędkę.
+     */
+    private static ItemStack receptura(String customId, String nazwa, String... loreLinie) {
+        ItemStack item = new ItemStack(Material.PAPER);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.text(nazwa, NamedTextColor.AQUA, TextDecoration.BOLD));
+        List<Component> lore = new ArrayList<>();
+        for (String linia : loreLinie) {
+            lore.add(Component.text(linia, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        }
+        meta.lore(lore);
+        meta.getPersistentDataContainer().set(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING, customId);
+        meta.setEnchantmentGlintOverride(true);
+        item.setItemMeta(meta);
+        return item;
     }
 
     /** Czerwony barwnik = dostępne, zielony (lime) = ukończone, szary = zablokowane (tylko Główna Ścieżka). */
@@ -618,6 +702,42 @@ public class QuestManager implements Listener {
         }
     }
 
+    /** Zwykły wymóg (customId null) -> zwykłe containsAtLeast po materiale. Custom (np. gatunek ryby) -> liczy tylko itemy z pasującym PDC tagiem. */
+    private boolean posiadaWymaganaIlosc(Player player, Wymog w) {
+        if (w.customId() == null) {
+            return player.getInventory().containsAtLeast(new ItemStack(w.material()), w.ilosc());
+        }
+        int suma = 0;
+        for (ItemStack is : player.getInventory().getContents()) {
+            if (is == null || is.getType() != w.material() || !is.hasItemMeta()) continue;
+            if (w.customId().equals(is.getItemMeta().getPersistentDataContainer().get(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING))) {
+                suma += is.getAmount();
+            }
+        }
+        return suma >= w.ilosc();
+    }
+
+    /** Odpowiednik {@link #posiadaWymaganaIlosc} przy zabieraniu - zwykły removeItem po materiale, albo precyzyjne zdjęcie tylko pasujących custom itemów. */
+    private void zabierzWymog(Player player, Wymog w) {
+        if (w.customId() == null) {
+            player.getInventory().removeItem(new ItemStack(w.material(), w.ilosc()));
+            return;
+        }
+        int doZabrania = w.ilosc();
+        ItemStack[] zawartosc = player.getInventory().getContents();
+        for (int i = 0; i < zawartosc.length && doZabrania > 0; i++) {
+            ItemStack is = zawartosc[i];
+            if (is == null || is.getType() != w.material() || !is.hasItemMeta()) continue;
+            if (!w.customId().equals(is.getItemMeta().getPersistentDataContainer().get(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING))) continue;
+
+            int zabierz = Math.min(is.getAmount(), doZabrania);
+            is.setAmount(is.getAmount() - zabierz);
+            doZabrania -= zabierz;
+            if (is.getAmount() <= 0) zawartosc[i] = null;
+        }
+        player.getInventory().setContents(zawartosc);
+    }
+
     private void zrealizujQuest(Player player, String kategoria, List<Quest> questy, int questIndex, int strona) {
         Quest q = questy.get(questIndex);
         Set<Integer> postepy = postepyDlaKategorii(player, kategoria);
@@ -646,15 +766,14 @@ public class QuestManager implements Listener {
                 ToolsService tools = CoreAPI.getToolsService();
                 yield tools != null && tools.poziomKilofa(player) >= q.prog();
             }
-            case PRZEDMIOT, NARZEDZIE -> q.wymogi().stream()
-                    .allMatch(w -> player.getInventory().containsAtLeast(new ItemStack(w.material()), w.ilosc()));
+            case PRZEDMIOT, NARZEDZIE -> q.wymogi().stream().allMatch(w -> posiadaWymaganaIlosc(player, w));
         };
 
         if (spelnionyWymog) {
             switch (q.typWymogu()) {
                 case DARMOWY, NARZEDZIE, POZIOM_KILOFA -> {} // te typy tylko sprawdzają - nic nie zabierają graczowi
                 case MONETY -> CoreAPI.getEconomyService().odejmijKase(player.getUniqueId(), q.prog());
-                case PRZEDMIOT -> q.wymogi().forEach(w -> player.getInventory().removeItem(new ItemStack(w.material(), w.ilosc())));
+                case PRZEDMIOT -> q.wymogi().forEach(w -> zabierzWymog(player, w));
             }
             postepy.add(q.id());
             zapiszPostep();

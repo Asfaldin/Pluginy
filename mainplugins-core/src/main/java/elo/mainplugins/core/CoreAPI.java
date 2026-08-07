@@ -1,5 +1,6 @@
 package elo.mainplugins.core;
 
+import elo.mainplugins.core.api.CrateService;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.IslandService;
 import elo.mainplugins.core.api.RankService;
@@ -47,6 +48,12 @@ public final class CoreAPI {
     /** Opcjonalny jak {@link #getIslandService()} - zwraca null, jeśli mainplugins-ranks nie jest wgrany/włączony. */
     public static RankService getRankService() {
         RegisteredServiceProvider<RankService> rsp = Bukkit.getServicesManager().getRegistration(RankService.class);
+        return rsp != null ? rsp.getProvider() : null;
+    }
+
+    /** Opcjonalny jak {@link #getIslandService()} - zwraca null, jeśli mainplugins-crates nie jest wgrany/włączony. */
+    public static CrateService getCrateService() {
+        RegisteredServiceProvider<CrateService> rsp = Bukkit.getServicesManager().getRegistration(CrateService.class);
         return rsp != null ? rsp.getProvider() : null;
     }
 }

@@ -1,374 +1,43 @@
 # ==========================================================================
-# sklep.yml - wygenerowany z cennika bazowego
+# sklep.yml v4 — 12 kategorii, układ siatki 7x4 (28 pozycji na stronę)
 #
-# buy-price  = cena za CALY lot kupna (amount sztuk)
-# sell-price = cena za CALY lot sprzedazy (sell-amount sztuk)
-# Brak buy-price  = itemu nie da sie kupic.
-# Brak sell-price = itemu nie da sie sprzedac.
-# Wszystkie kwoty sa liczbami calkowitymi - zadnych ulamkow.
+# buy-price  = cena za CAŁY lot kupna (amount sztuk)
+# sell-price = cena za CAŁY lot sprzedaży (sell-amount sztuk)
+# Brak buy-price = nie do kupienia. Brak sell-price = nie do sprzedania.
+#
+# UWAGA: SULFUR_BLOCK i CINNABAR_BLOCK to nowości z 26.2 — sprawdźcie
+# dokładne nazwy w API, bo przy złej nazwie kod podstawia STONE bez błędu.
 # ==========================================================================
 
 sklep-v2-zaladowany: true
-sklep-v3-cennik: true
+sklep-v4-uklad: true
 
 categories:
-  rudy:
-    name: "Rudy i Mineraly"
-    icon: DIAMOND
-    slot: 22
-    items:
-      0:
-        material: COAL
-        slot: 0
-        amount: 64
-        sell-amount: 64
-        sell-price: 300
-      1:
-        material: RAW_IRON
-        slot: 1
-        amount: 64
-        sell-amount: 64
-        sell-price: 500
-      2:
-        material: IRON_INGOT
-        slot: 2
-        amount: 64
-        sell-amount: 64
-        sell-price: 600
-      3:
-        material: RAW_COPPER
-        slot: 3
-        amount: 64
-        sell-amount: 64
-        sell-price: 330
-      4:
-        material: COPPER_INGOT
-        slot: 4
-        amount: 64
-        sell-amount: 64
-        sell-price: 400
-      5:
-        material: RAW_GOLD
-        slot: 5
-        amount: 64
-        sell-amount: 64
-        sell-price: 1200
-      6:
-        material: GOLD_INGOT
-        slot: 6
-        amount: 64
-        sell-amount: 64
-        sell-price: 1300
-      7:
-        material: REDSTONE
-        slot: 7
-        amount: 64
-        sell-amount: 64
-        sell-price: 400
-      8:
-        material: LAPIS_LAZULI
-        slot: 8
-        amount: 64
-        sell-amount: 64
-        sell-price: 600
-      9:
-        material: DIAMOND
-        slot: 9
-        amount: 64
-        sell-amount: 64
-        sell-price: 12000
-      10:
-        material: EMERALD
-        slot: 10
-        amount: 64
-        sell-amount: 64
-        sell-price: 10000
-
-  startery:
-    name: "Startery Farm"
-    icon: CACTUS
-    slot: 13
-    items:
-      0:
-        material: CACTUS
-        slot: 0
-        amount: 16
-        buy-price: 300
-        sell-amount: 64
-        sell-price: 30
-      1:
-        material: SUGAR_CANE
-        slot: 1
-        amount: 16
-        buy-price: 200
-        sell-amount: 64
-        sell-price: 20
-      2:
-        material: BAMBOO
-        slot: 2
-        amount: 64
-        buy-price: 240
-        sell-amount: 64
-        sell-price: 6
-      3:
-        material: KELP
-        slot: 3
-        amount: 16
-        buy-price: 400
-        sell-amount: 64
-        sell-price: 40
-      4:
-        material: CARROT
-        slot: 4
-        amount: 4
-        buy-price: 600
-        sell-amount: 64
-        sell-price: 240
-      5:
-        material: POTATO
-        slot: 5
-        amount: 4
-        buy-price: 600
-        sell-amount: 64
-        sell-price: 240
-      6:
-        material: NETHER_WART
-        slot: 6
-        amount: 1
-        buy-price: 250
-        sell-amount: 64
-        sell-price: 400
-      7:
-        material: COCOA_BEANS
-        slot: 7
-        amount: 1
-        buy-price: 190
-        sell-amount: 64
-        sell-price: 300
-      8:
-        material: SWEET_BERRIES
-        slot: 8
-        amount: 1
-        buy-price: 190
-        sell-amount: 64
-        sell-price: 300
-      9:
-        material: GLOW_BERRIES
-        slot: 9
-        amount: 1
-        buy-price: 250
-        sell-amount: 64
-        sell-price: 400
-      10:
-        material: BROWN_MUSHROOM
-        slot: 10
-        amount: 1
-        buy-price: 250
-        sell-amount: 64
-        sell-price: 400
-      11:
-        material: RED_MUSHROOM
-        slot: 11
-        amount: 1
-        buy-price: 250
-        sell-amount: 64
-        sell-price: 400
-      12:
-        material: GOLDEN_CARROT
-        slot: 12
-        amount: 1
-        buy-price: 1900
-        sell-amount: 64
-        sell-price: 3000
-
-  plony:
-    name: "Plony"
-    icon: WHEAT
-    slot: 21
-    items:
-      0:
-        material: WHEAT
-        slot: 0
-        amount: 64
-        sell-amount: 64
-        sell-price: 240
-      1:
-        material: BEETROOT
-        slot: 1
-        amount: 64
-        sell-amount: 64
-        sell-price: 300
-      2:
-        material: MELON_SLICE
-        slot: 2
-        amount: 64
-        sell-amount: 64
-        sell-price: 65
-      3:
-        material: PUMPKIN
-        slot: 3
-        amount: 64
-        sell-amount: 64
-        sell-price: 210
-
-  nasiona:
-    name: "Nasiona i Sadzonki"
-    icon: WHEAT_SEEDS
-    slot: 20
-    items:
-      0:
-        material: WHEAT_SEEDS
-        slot: 0
-        amount: 16
-        buy-price: 500
-      1:
-        material: BEETROOT_SEEDS
-        slot: 1
-        amount: 16
-        buy-price: 500
-      2:
-        material: MELON_SEEDS
-        slot: 2
-        amount: 4
-        buy-price: 380
-      3:
-        material: PUMPKIN_SEEDS
-        slot: 3
-        amount: 4
-        buy-price: 380
-      4:
-        material: TORCHFLOWER_SEEDS
-        slot: 4
-        amount: 1
-        buy-price: 750
-      5:
-        material: PITCHER_POD
-        slot: 5
-        amount: 1
-        buy-price: 750
-      6:
-        material: OAK_SAPLING
-        slot: 6
-        amount: 1
-        buy-price: 160
-      7:
-        material: SPRUCE_SAPLING
-        slot: 7
-        amount: 1
-        buy-price: 160
-      8:
-        material: BIRCH_SAPLING
-        slot: 8
-        amount: 1
-        buy-price: 160
-      9:
-        material: JUNGLE_SAPLING
-        slot: 9
-        amount: 1
-        buy-price: 220
-      10:
-        material: ACACIA_SAPLING
-        slot: 10
-        amount: 1
-        buy-price: 160
-      11:
-        material: DARK_OAK_SAPLING
-        slot: 11
-        amount: 1
-        buy-price: 220
-      12:
-        material: CHERRY_SAPLING
-        slot: 12
-        amount: 1
-        buy-price: 280
-      13:
-        material: MANGROVE_PROPAGULE
-        slot: 13
-        amount: 1
-        buy-price: 220
-
-  drewno:
-    name: "Drewno"
-    icon: OAK_LOG
-    slot: 23
-    items:
-      0:
-        material: OAK_LOG
-        slot: 0
-        amount: 64
-        buy-price: 1200
-        sell-amount: 64
-        sell-price: 80
-      1:
-        material: SPRUCE_LOG
-        slot: 1
-        amount: 64
-        buy-price: 1200
-        sell-amount: 64
-        sell-price: 80
-      2:
-        material: BIRCH_LOG
-        slot: 2
-        amount: 64
-        buy-price: 1200
-        sell-amount: 64
-        sell-price: 80
-      3:
-        material: JUNGLE_LOG
-        slot: 3
-        amount: 64
-        buy-price: 1600
-        sell-amount: 64
-        sell-price: 110
-      4:
-        material: ACACIA_LOG
-        slot: 4
-        amount: 64
-        buy-price: 1600
-        sell-amount: 64
-        sell-price: 110
-      5:
-        material: DARK_OAK_LOG
-        slot: 5
-        amount: 64
-        buy-price: 1600
-        sell-amount: 64
-        sell-price: 110
-      6:
-        material: MANGROVE_LOG
-        slot: 6
-        amount: 64
-        buy-price: 1600
-        sell-amount: 64
-        sell-price: 110
-      7:
-        material: CHERRY_LOG
-        slot: 7
-        amount: 64
-        buy-price: 1900
-        sell-amount: 64
-        sell-price: 130
-
-  kamien:
-    name: "Kamien i Bloki"
-    icon: COBBLESTONE
-    slot: 24
+  bloki:
+    name: "Bloki"
+    icon: STONE_BRICKS
+    slot: 10
     items:
       0:
         material: COBBLESTONE
         slot: 0
+        display-name: "Bruk"
         amount: 64
+        buy-price: 150
         sell-amount: 64
         sell-price: 10
       1:
         material: STONE
         slot: 1
+        display-name: "Kamień"
         amount: 64
+        buy-price: 180
         sell-amount: 64
         sell-price: 10
       2:
         material: GRANITE
         slot: 2
+        display-name: "Granit"
         amount: 64
         buy-price: 200
         sell-amount: 64
@@ -376,6 +45,7 @@ categories:
       3:
         material: DIORITE
         slot: 3
+        display-name: "Dioryt"
         amount: 64
         buy-price: 200
         sell-amount: 64
@@ -383,6 +53,7 @@ categories:
       4:
         material: ANDESITE
         slot: 4
+        display-name: "Andezyt"
         amount: 64
         buy-price: 200
         sell-amount: 64
@@ -390,6 +61,7 @@ categories:
       5:
         material: COBBLED_DEEPSLATE
         slot: 5
+        display-name: "Bruk Głębinowy"
         amount: 64
         buy-price: 220
         sell-amount: 64
@@ -397,6 +69,7 @@ categories:
       6:
         material: TUFF
         slot: 6
+        display-name: "Tuf"
         amount: 64
         buy-price: 600
         sell-amount: 64
@@ -404,6 +77,7 @@ categories:
       7:
         material: CALCITE
         slot: 7
+        display-name: "Kalcyt"
         amount: 64
         buy-price: 900
         sell-amount: 64
@@ -411,439 +85,1172 @@ categories:
       8:
         material: DEEPSLATE
         slot: 8
+        display-name: "Łupek Głębinowy"
         amount: 64
-        buy-price: 600
+        buy-price: 580
       9:
         material: BASALT
         slot: 9
+        display-name: "Bazalt"
         amount: 64
-        buy-price: 600
+        buy-price: 580
+      10:
+        material: SMOOTH_BASALT
+        slot: 10
+        display-name: "Gładki Bazalt"
+        amount: 64
+        buy-price: 700
+      11:
+        material: BLACKSTONE
+        slot: 11
+        display-name: "Czarny Kamień"
+        amount: 64
+        buy-price: 700
+      12:
+        material: DRIPSTONE_BLOCK
+        slot: 12
+        display-name: "Blok Nacieku"
+        amount: 64
+        buy-price: 510
+      13:
+        material: DIRT
+        slot: 13
+        display-name: "Ziemia"
+        amount: 64
+        buy-price: 150
+        sell-amount: 64
+        sell-price: 10
+      14:
+        material: SAND
+        slot: 14
+        display-name: "Piasek"
+        amount: 64
+        buy-price: 1600
+        sell-amount: 64
+        sell-price: 110
+      15:
+        material: GRAVEL
+        slot: 15
+        display-name: "Żwir"
+        amount: 64
+        buy-price: 1600
+        sell-amount: 64
+        sell-price: 110
+      16:
+        material: OBSIDIAN
+        slot: 16
+        display-name: "Obsydian"
+        amount: 16
+        buy-price: 960
+        sell-amount: 64
+        sell-price: 1500
+      17:
+        material: RED_SAND
+        slot: 17
+        display-name: "Czerwony Piasek"
+        amount: 64
+        buy-price: 190
+      18:
+        material: COARSE_DIRT
+        slot: 18
+        display-name: "Zbita Ziemia"
+        amount: 64
+        buy-price: 190
+      19:
+        material: ROOTED_DIRT
+        slot: 19
+        display-name: "Ziemia z Korzeniami"
+        amount: 64
+        buy-price: 320
+      20:
+        material: GRASS_BLOCK
+        slot: 20
+        display-name: "Blok Trawy"
+        amount: 64
+        buy-price: 510
+      21:
+        material: PODZOL
+        slot: 21
+        display-name: "Bielica"
+        amount: 64
+        buy-price: 580
+      22:
+        material: MYCELIUM
+        slot: 22
+        display-name: "Grzybnia"
+        amount: 64
+        buy-price: 830
+      23:
+        material: MUD
+        slot: 23
+        display-name: "Błoto"
+        amount: 64
+        buy-price: 320
+      24:
+        material: CLAY
+        slot: 24
+        display-name: "Blok Gliny"
+        amount: 64
+        buy-price: 380
+      25:
+        material: NETHERRACK
+        slot: 25
+        display-name: "Netherrack"
+        amount: 64
+        buy-price: 320
+      26:
+        material: MAGMA_BLOCK
+        slot: 26
+        display-name: "Blok Magmy"
+        amount: 64
+        buy-price: 830
+      27:
+        material: SOUL_SAND
+        slot: 27
+        display-name: "Piasek Dusz"
+        amount: 64
+        buy-price: 510
+      28:
+        material: SOUL_SOIL
+        slot: 28
+        display-name: "Gleba Dusz"
+        amount: 64
+        buy-price: 510
+      29:
+        material: CRIMSON_NYLIUM
+        slot: 29
+        display-name: "Szkarłatne Nylium"
+        amount: 64
+        buy-price: 900
+      30:
+        material: WARPED_NYLIUM
+        slot: 30
+        display-name: "Spaczone Nylium"
+        amount: 64
+        buy-price: 900
+      31:
+        material: NETHER_WART_BLOCK
+        slot: 31
+        display-name: "Blok Brodawki"
+        amount: 64
+        buy-price: 1000
+      32:
+        material: GLOWSTONE
+        slot: 32
+        display-name: "Jasnogłaz"
+        amount: 64
+        buy-price: 1200
+      33:
+        material: SHROOMLIGHT
+        slot: 33
+        display-name: "Grzyboświetlik"
+        amount: 64
+        buy-price: 1500
+      34:
+        material: END_STONE
+        slot: 34
+        display-name: "Kamień Endu"
+        amount: 64
+        buy-price: 380
+      35:
+        material: CRYING_OBSIDIAN
+        slot: 35
+        display-name: "Płaczący Obsydian"
+        amount: 16
+        buy-price: 2400
+      36:
+        material: PURPUR_BLOCK
+        slot: 36
+        display-name: "Blok Purpuru"
+        amount: 64
+        buy-price: 1000
+      37:
+        material: PRISMARINE
+        slot: 37
+        display-name: "Pryzmaryn"
+        amount: 64
+        buy-price: 900
+      38:
+        material: DARK_PRISMARINE
+        slot: 38
+        display-name: "Ciemny Pryzmaryn"
+        amount: 64
+        buy-price: 1000
+      39:
+        material: SEA_LANTERN
+        slot: 39
+        display-name: "Morska Latarnia"
+        amount: 64
+        buy-price: 1500
+      40:
+        material: SPONGE
+        slot: 40
+        display-name: "Gąbka"
+        amount: 16
+        buy-price: 1000
+      41:
+        material: SNOW_BLOCK
+        slot: 41
+        display-name: "Blok Śniegu"
+        amount: 64
+        buy-price: 190
+      42:
+        material: ICE
+        slot: 42
+        display-name: "Lód"
+        amount: 64
+        buy-price: 320
+      43:
+        material: PACKED_ICE
+        slot: 43
+        display-name: "Zbity Lód"
+        amount: 64
+        buy-price: 580
+      44:
+        material: BLUE_ICE
+        slot: 44
+        display-name: "Błękitny Lód"
+        amount: 64
+        buy-price: 1200
+      45:
+        material: TERRACOTTA
+        slot: 45
+        display-name: "Terakota"
+        amount: 64
+        buy-price: 380
+      46:
+        material: AMETHYST_BLOCK
+        slot: 46
+        display-name: "Blok Ametystu"
+        amount: 64
+        buy-price: 1500
+      47:
+        material: MOSS_BLOCK
+        slot: 47
+        display-name: "Blok Mchu"
+        amount: 64
+        buy-price: 580
+      48:
+        material: BONE_BLOCK
+        slot: 48
+        display-name: "Blok Kości"
+        amount: 64
+        buy-price: 830
+      49:
+        material: QUARTZ_BLOCK
+        slot: 49
+        display-name: "Blok Kwarcu"
+        amount: 64
+        buy-price: 1200
+      50:
+        material: SULFUR
+        slot: 50
+        display-name: "Blok Siarki"
+        amount: 64
+        buy-price: 380
+      51:
+        material: CINNABAR
+        slot: 51
+        display-name: "Blok Cynobru"
+        amount: 64
+        buy-price: 380
+      52:
+        material: WHITE_GLAZED_TERRACOTTA
+        slot: 52
+        display-name: "Glazurowana Terakota Biała"
+        amount: 64
+        buy-price: 1000
+      53:
+        material: ORANGE_GLAZED_TERRACOTTA
+        slot: 53
+        display-name: "Glazurowana Terakota Pomarańczowa"
+        amount: 64
+        buy-price: 1000
+      54:
+        material: MAGENTA_GLAZED_TERRACOTTA
+        slot: 54
+        display-name: "Glazurowana Terakota Karmazynowa"
+        amount: 64
+        buy-price: 1000
+      55:
+        material: LIGHT_BLUE_GLAZED_TERRACOTTA
+        slot: 55
+        display-name: "Glazurowana Terakota Jasnoniebieska"
+        amount: 64
+        buy-price: 1000
+      56:
+        material: YELLOW_GLAZED_TERRACOTTA
+        slot: 56
+        display-name: "Glazurowana Terakota Żółta"
+        amount: 64
+        buy-price: 1000
+      57:
+        material: LIME_GLAZED_TERRACOTTA
+        slot: 57
+        display-name: "Glazurowana Terakota Jasnozielona"
+        amount: 64
+        buy-price: 1000
+      58:
+        material: PINK_GLAZED_TERRACOTTA
+        slot: 58
+        display-name: "Glazurowana Terakota Różowa"
+        amount: 64
+        buy-price: 1000
+      59:
+        material: GRAY_GLAZED_TERRACOTTA
+        slot: 59
+        display-name: "Glazurowana Terakota Szara"
+        amount: 64
+        buy-price: 1000
+      60:
+        material: LIGHT_GRAY_GLAZED_TERRACOTTA
+        slot: 60
+        display-name: "Glazurowana Terakota Jasnoszara"
+        amount: 64
+        buy-price: 1000
+      61:
+        material: CYAN_GLAZED_TERRACOTTA
+        slot: 61
+        display-name: "Glazurowana Terakota Turkusowa"
+        amount: 64
+        buy-price: 1000
+      62:
+        material: PURPLE_GLAZED_TERRACOTTA
+        slot: 62
+        display-name: "Glazurowana Terakota Fioletowa"
+        amount: 64
+        buy-price: 1000
+      63:
+        material: BLUE_GLAZED_TERRACOTTA
+        slot: 63
+        display-name: "Glazurowana Terakota Niebieska"
+        amount: 64
+        buy-price: 1000
+      64:
+        material: BROWN_GLAZED_TERRACOTTA
+        slot: 64
+        display-name: "Glazurowana Terakota Brązowa"
+        amount: 64
+        buy-price: 1000
+      65:
+        material: GREEN_GLAZED_TERRACOTTA
+        slot: 65
+        display-name: "Glazurowana Terakota Zielona"
+        amount: 64
+        buy-price: 1000
+      66:
+        material: RED_GLAZED_TERRACOTTA
+        slot: 66
+        display-name: "Glazurowana Terakota Czerwona"
+        amount: 64
+        buy-price: 1000
+      67:
+        material: BLACK_GLAZED_TERRACOTTA
+        slot: 67
+        display-name: "Glazurowana Terakota Czarna"
+        amount: 64
+        buy-price: 1000
 
-  loot:
-    name: "Loot ze Spawnerow"
-    icon: MUTTON
-    slot: 31
+  nasiona:
+    name: "Nasiona i Sadzonki"
+    icon: WHEAT_SEEDS
+    slot: 11
     items:
       0:
-        material: GOLD_NUGGET
+        material: WHEAT_SEEDS
         slot: 0
+        display-name: "Nasiona Pszenicy"
+        amount: 16
+        buy-price: 500
+      1:
+        material: BEETROOT_SEEDS
+        slot: 1
+        display-name: "Nasiona Buraka"
+        amount: 16
+        buy-price: 500
+      2:
+        material: MELON_SEEDS
+        slot: 2
+        display-name: "Nasiona Arbuza"
+        amount: 4
+        buy-price: 380
+      3:
+        material: PUMPKIN_SEEDS
+        slot: 3
+        display-name: "Nasiona Dyni"
+        amount: 4
+        buy-price: 380
+      4:
+        material: TORCHFLOWER_SEEDS
+        slot: 4
+        display-name: "Nasiona Pochodnika"
+        amount: 1
+        buy-price: 750
+      5:
+        material: PITCHER_POD
+        slot: 5
+        display-name: "Strąk Dzbanecznika"
+        amount: 1
+        buy-price: 750
+      6:
+        material: OAK_SAPLING
+        slot: 6
+        display-name: "Sadzonka Dębu"
+        amount: 1
+        buy-price: 160
+      7:
+        material: SPRUCE_SAPLING
+        slot: 7
+        display-name: "Sadzonka Świerku"
+        amount: 1
+        buy-price: 160
+      8:
+        material: BIRCH_SAPLING
+        slot: 8
+        display-name: "Sadzonka Brzozy"
+        amount: 1
+        buy-price: 160
+      9:
+        material: JUNGLE_SAPLING
+        slot: 9
+        display-name: "Sadzonka Tropikalna"
+        amount: 1
+        buy-price: 220
+      10:
+        material: ACACIA_SAPLING
+        slot: 10
+        display-name: "Sadzonka Akacji"
+        amount: 1
+        buy-price: 160
+      11:
+        material: DARK_OAK_SAPLING
+        slot: 11
+        display-name: "Sadzonka Ciemnego Dębu"
+        amount: 1
+        buy-price: 220
+      12:
+        material: CHERRY_SAPLING
+        slot: 12
+        display-name: "Sadzonka Wiśni"
+        amount: 1
+        buy-price: 280
+      13:
+        material: MANGROVE_PROPAGULE
+        slot: 13
+        display-name: "Kiełek Mangrowca"
+        amount: 1
+        buy-price: 220
+
+  startery:
+    name: "Startery Farm"
+    icon: CACTUS
+    slot: 12
+    items:
+      0:
+        material: CACTUS
+        slot: 0
+        display-name: "Kaktus"
+        amount: 16
+        buy-price: 300
+        sell-amount: 64
+        sell-price: 30
+      1:
+        material: SUGAR_CANE
+        slot: 1
+        display-name: "Trzcina Cukrowa"
+        amount: 16
+        buy-price: 200
+        sell-amount: 64
+        sell-price: 20
+      2:
+        material: BAMBOO
+        slot: 2
+        display-name: "Bambus"
+        amount: 64
+        buy-price: 240
+        sell-amount: 64
+        sell-price: 6
+      3:
+        material: KELP
+        slot: 3
+        display-name: "Wodorosty"
+        amount: 16
+        buy-price: 400
+        sell-amount: 64
+        sell-price: 40
+      4:
+        material: CARROT
+        slot: 4
+        display-name: "Marchewka"
+        amount: 4
+        buy-price: 600
+        sell-amount: 64
+        sell-price: 240
+      5:
+        material: POTATO
+        slot: 5
+        display-name: "Ziemniak"
+        amount: 4
+        buy-price: 600
+        sell-amount: 64
+        sell-price: 240
+      6:
+        material: NETHER_WART
+        slot: 6
+        display-name: "Netherowa Brodawka"
+        amount: 1
+        buy-price: 250
+        sell-amount: 64
+        sell-price: 400
+      7:
+        material: COCOA_BEANS
+        slot: 7
+        display-name: "Ziarna Kakao"
+        amount: 1
+        buy-price: 190
+        sell-amount: 64
+        sell-price: 300
+      8:
+        material: SWEET_BERRIES
+        slot: 8
+        display-name: "Słodkie Jagody"
+        amount: 1
+        buy-price: 190
+        sell-amount: 64
+        sell-price: 300
+      9:
+        material: GLOW_BERRIES
+        slot: 9
+        display-name: "Świecące Jagody"
+        amount: 1
+        buy-price: 250
+        sell-amount: 64
+        sell-price: 400
+      10:
+        material: BROWN_MUSHROOM
+        slot: 10
+        display-name: "Brązowy Grzyb"
+        amount: 1
+        buy-price: 250
+        sell-amount: 64
+        sell-price: 400
+      11:
+        material: RED_MUSHROOM
+        slot: 11
+        display-name: "Czerwony Grzyb"
+        amount: 1
+        buy-price: 250
+        sell-amount: 64
+        sell-price: 400
+      12:
+        material: GOLDEN_CARROT
+        slot: 12
+        display-name: "Złota Marchewka"
+        amount: 1
+        buy-price: 1900
+        sell-amount: 64
+        sell-price: 3000
+      13:
+        material: WATER_BUCKET
+        slot: 13
+        display-name: "Wiadro Wody"
+        amount: 1
+        buy-price: 190
+      14:
+        material: LAVA_BUCKET
+        slot: 14
+        display-name: "Wiadro Lawy"
+        amount: 1
+        buy-price: 940
+
+  plony:
+    name: "Plony"
+    icon: WHEAT
+    slot: 13
+    items:
+      0:
+        material: WHEAT
+        slot: 0
+        display-name: "Pszenica"
+        amount: 64
+        sell-amount: 64
+        sell-price: 240
+      1:
+        material: BEETROOT
+        slot: 1
+        display-name: "Burak"
+        amount: 64
+        sell-amount: 64
+        sell-price: 300
+      2:
+        material: MELON_SLICE
+        slot: 2
+        display-name: "Kawałek Arbuza"
+        amount: 64
+        sell-amount: 64
+        sell-price: 65
+      3:
+        material: PUMPKIN
+        slot: 3
+        display-name: "Dynia"
         amount: 64
         sell-amount: 64
         sell-price: 210
+
+  drewno:
+    name: "Drewno"
+    icon: OAK_LOG
+    slot: 14
+    items:
+      0:
+        material: OAK_LOG
+        slot: 0
+        display-name: "Kłoda Dębu"
+        amount: 64
+        buy-price: 1200
+        sell-amount: 64
+        sell-price: 80
       1:
-        material: WHITE_WOOL
+        material: SPRUCE_LOG
         slot: 1
+        display-name: "Kłoda Świerku"
         amount: 64
+        buy-price: 1200
         sell-amount: 64
-        sell-price: 320
+        sell-price: 80
       2:
-        material: MUTTON
+        material: BIRCH_LOG
         slot: 2
+        display-name: "Kłoda Brzozy"
         amount: 64
+        buy-price: 1200
         sell-amount: 64
-        sell-price: 270
+        sell-price: 80
       3:
-        material: RABBIT
+        material: JUNGLE_LOG
         slot: 3
+        display-name: "Kłoda Tropikalna"
         amount: 64
+        buy-price: 1600
         sell-amount: 64
-        sell-price: 320
+        sell-price: 110
       4:
-        material: RABBIT_HIDE
+        material: ACACIA_LOG
         slot: 4
+        display-name: "Kłoda Akacji"
         amount: 64
+        buy-price: 1600
         sell-amount: 64
-        sell-price: 320
+        sell-price: 110
       5:
-        material: RABBIT_FOOT
+        material: DARK_OAK_LOG
         slot: 5
+        display-name: "Kłoda Ciemnego Dębu"
         amount: 64
+        buy-price: 1600
         sell-amount: 64
-        sell-price: 8000
+        sell-price: 110
       6:
-        material: BREEZE_ROD
+        material: MANGROVE_LOG
         slot: 6
+        display-name: "Kłoda Mangrowca"
+        amount: 64
+        buy-price: 1600
+        sell-amount: 64
+        sell-price: 110
+      7:
+        material: CHERRY_LOG
+        slot: 7
+        display-name: "Kłoda Wiśni"
+        amount: 64
+        buy-price: 1900
+        sell-amount: 64
+        sell-price: 130
+
+  rudy:
+    name: "Rudy i Minerały"
+    icon: DIAMOND
+    slot: 15
+    items:
+      0:
+        material: COAL
+        slot: 0
+        display-name: "Węgiel"
         amount: 64
         sell-amount: 64
-        sell-price: 800
-      7:
-        material: GLOW_INK_SAC
-        slot: 7
+        sell-price: 300
+      1:
+        material: RAW_IRON
+        slot: 1
+        display-name: "Surowe Żelazo"
+        amount: 64
+        sell-amount: 64
+        sell-price: 500
+      2:
+        material: IRON_INGOT
+        slot: 2
+        display-name: "Sztabka Żelaza"
+        amount: 64
+        sell-amount: 64
+        sell-price: 600
+      3:
+        material: RAW_COPPER
+        slot: 3
+        display-name: "Surowa Miedź"
+        amount: 64
+        sell-amount: 64
+        sell-price: 330
+      4:
+        material: COPPER_INGOT
+        slot: 4
+        display-name: "Sztabka Miedzi"
         amount: 64
         sell-amount: 64
         sell-price: 400
+      5:
+        material: RAW_GOLD
+        slot: 5
+        display-name: "Surowe Złoto"
+        amount: 64
+        sell-amount: 64
+        sell-price: 1200
+      6:
+        material: GOLD_INGOT
+        slot: 6
+        display-name: "Sztabka Złota"
+        amount: 64
+        sell-amount: 64
+        sell-price: 1300
+      7:
+        material: REDSTONE
+        slot: 7
+        display-name: "Redstone"
+        amount: 64
+        sell-amount: 64
+        sell-price: 400
+      8:
+        material: LAPIS_LAZULI
+        slot: 8
+        display-name: "Lazuryt"
+        amount: 64
+        sell-amount: 64
+        sell-price: 600
+      9:
+        material: DIAMOND
+        slot: 9
+        display-name: "Diament"
+        amount: 64
+        sell-amount: 64
+        sell-price: 12000
+      10:
+        material: EMERALD
+        slot: 10
+        display-name: "Szmaragd"
+        amount: 64
+        sell-amount: 64
+        sell-price: 10000
+      11:
+        material: CLAY_BALL
+        slot: 11
+        display-name: "Glinka"
+        amount: 64
+        sell-amount: 64
+        sell-price: 300
 
   moby:
-    name: "Dropy z Mobow"
+    name: "Dropy z Mobów"
     icon: BONE
-    slot: 40
+    slot: 16
     items:
       0:
         material: ROTTEN_FLESH
         slot: 0
+        display-name: "Zgniłe Mięso"
         amount: 64
         sell-amount: 64
         sell-price: 160
       1:
         material: BONE
         slot: 1
+        display-name: "Kość"
         amount: 64
         sell-amount: 64
         sell-price: 210
       2:
         material: STRING
         slot: 2
+        display-name: "Nić"
         amount: 64
         sell-amount: 64
         sell-price: 270
       3:
         material: SPIDER_EYE
         slot: 3
+        display-name: "Pajęcze Oko"
         amount: 64
         sell-amount: 64
         sell-price: 400
       4:
         material: GUNPOWDER
         slot: 4
+        display-name: "Proch"
         amount: 64
         sell-amount: 64
         sell-price: 400
       5:
         material: SLIME_BALL
         slot: 5
+        display-name: "Kula Szlamu"
         amount: 64
         sell-amount: 64
         sell-price: 1000
       6:
         material: ENDER_PEARL
         slot: 6
+        display-name: "Perła Endu"
         amount: 16
         sell-amount: 16
         sell-price: 1500
       7:
         material: PHANTOM_MEMBRANE
         slot: 7
+        display-name: "Błona Fantoma"
         amount: 64
         sell-amount: 64
         sell-price: 6000
       8:
         material: LEATHER
         slot: 8
+        display-name: "Skóra"
         amount: 64
         sell-amount: 64
         sell-price: 530
       9:
         material: BEEF
         slot: 9
+        display-name: "Surowa Wołowina"
         amount: 64
         sell-amount: 64
         sell-price: 400
       10:
         material: PORKCHOP
         slot: 10
+        display-name: "Surowa Wieprzowina"
         amount: 64
         sell-amount: 64
         sell-price: 400
       11:
         material: CHICKEN
         slot: 11
+        display-name: "Surowy Kurczak"
         amount: 64
         sell-amount: 64
         sell-price: 460
       12:
         material: FEATHER
         slot: 12
+        display-name: "Pióro"
         amount: 64
         sell-amount: 64
         sell-price: 400
       13:
         material: EGG
         slot: 13
+        display-name: "Jajko"
         amount: 16
         sell-amount: 16
         sell-price: 160
+      14:
+        material: GOLD_NUGGET
+        slot: 14
+        display-name: "Bryłka Złota"
+        amount: 64
+        sell-amount: 64
+        sell-price: 210
+      15:
+        material: WHITE_WOOL
+        slot: 15
+        display-name: "Biała Wełna"
+        amount: 64
+        sell-amount: 64
+        sell-price: 320
+      16:
+        material: MUTTON
+        slot: 16
+        display-name: "Surowa Baranina"
+        amount: 64
+        sell-amount: 64
+        sell-price: 270
+      17:
+        material: RABBIT
+        slot: 17
+        display-name: "Surowy Królik"
+        amount: 64
+        sell-amount: 64
+        sell-price: 320
+      18:
+        material: RABBIT_HIDE
+        slot: 18
+        display-name: "Królicza Skórka"
+        amount: 64
+        sell-amount: 64
+        sell-price: 320
+      19:
+        material: RABBIT_FOOT
+        slot: 19
+        display-name: "Królicza Łapka"
+        amount: 64
+        sell-amount: 64
+        sell-price: 8000
+      20:
+        material: BREEZE_ROD
+        slot: 20
+        display-name: "Różdżka Powiewu"
+        amount: 64
+        sell-amount: 64
+        sell-price: 800
+      21:
+        material: GLOW_INK_SAC
+        slot: 21
+        display-name: "Świecący Woreczek"
+        amount: 64
+        sell-amount: 64
+        sell-price: 400
 
   ryby:
     name: "Ryby i Ocean"
     icon: COD
-    slot: 12
+    slot: 19
     items:
       0:
         material: COD
         slot: 0
+        display-name: "Dorsz"
         amount: 64
         sell-amount: 64
         sell-price: 750
       1:
         material: SALMON
         slot: 1
+        display-name: "Łosoś"
         amount: 64
         sell-amount: 64
         sell-price: 1000
       2:
         material: TROPICAL_FISH
         slot: 2
+        display-name: "Ryba Tropikalna"
         amount: 64
         sell-amount: 64
         sell-price: 2000
       3:
         material: PUFFERFISH
         slot: 3
+        display-name: "Rozdymka"
         amount: 64
         sell-amount: 64
         sell-price: 1500
       4:
         material: INK_SAC
         slot: 4
+        display-name: "Woreczek Atramentu"
         amount: 64
         sell-amount: 64
         sell-price: 750
       5:
         material: NAUTILUS_SHELL
         slot: 5
+        display-name: "Muszla Łodzika"
         amount: 64
         sell-amount: 64
         sell-price: 20000
       6:
         material: PRISMARINE_SHARD
         slot: 6
+        display-name: "Odłamek Pryzmarynu"
         amount: 64
         sell-amount: 64
         sell-price: 1200
       7:
         material: PRISMARINE_CRYSTALS
         slot: 7
+        display-name: "Kryształy Pryzmarynu"
         amount: 64
-        sell-amount: 64
-        sell-price: 1500
-
-  infrastruktura:
-    name: "Infrastruktura"
-    icon: WATER_BUCKET
-    slot: 2
-    items:
-      0:
-        material: WATER_BUCKET
-        slot: 0
-        amount: 1
-        buy-price: 190
-      1:
-        material: LAVA_BUCKET
-        slot: 1
-        amount: 1
-        buy-price: 940
-      2:
-        material: DIRT
-        slot: 2
-        amount: 64
-        buy-price: 150
-        sell-amount: 64
-        sell-price: 10
-      3:
-        material: SAND
-        slot: 3
-        amount: 64
-        buy-price: 1600
-        sell-amount: 64
-        sell-price: 110
-      4:
-        material: RED_SAND
-        slot: 4
-        amount: 64
-        buy-price: 600
-      5:
-        material: GRAVEL
-        slot: 5
-        amount: 64
-        buy-price: 1600
-        sell-amount: 64
-        sell-price: 110
-      6:
-        material: CLAY_BALL
-        slot: 6
-        amount: 16
-        buy-price: 1100
-        sell-amount: 64
-        sell-price: 300
-      7:
-        material: OBSIDIAN
-        slot: 7
-        amount: 4
-        buy-price: 1400
         sell-amount: 64
         sell-price: 1500
 
   import:
     name: "Import"
-    icon: NETHERRACK
-    slot: 14
+    icon: BLAZE_ROD
+    slot: 20
     items:
       0:
-        material: NETHERRACK
+        material: QUARTZ
         slot: 0
-        amount: 64
+        display-name: "Kwarc"
+        amount: 16
         buy-price: 800
       1:
-        material: SOUL_SAND
-        slot: 1
-        amount: 64
-        buy-price: 2000
-      2:
-        material: QUARTZ
-        slot: 2
-        amount: 16
-        buy-price: 800
-      3:
         material: GLOWSTONE_DUST
-        slot: 3
+        slot: 1
+        display-name: "Pył Jasnogłazu"
         amount: 64
         buy-price: 2400
-      4:
+      2:
         material: BLAZE_ROD
-        slot: 4
+        slot: 2
+        display-name: "Różdżka Płomyka"
         amount: 4
         buy-price: 1000
-      5:
+      3:
         material: GHAST_TEAR
-        slot: 5
+        slot: 3
+        display-name: "Łza Ghasta"
         amount: 1
         buy-price: 940
-      6:
+      4:
         material: MAGMA_CREAM
-        slot: 6
+        slot: 4
+        display-name: "Magmowy Krem"
         amount: 4
         buy-price: 750
-      7:
+      5:
         material: NETHERITE_SCRAP
-        slot: 7
+        slot: 5
+        display-name: "Złom Netherytu"
         amount: 1
         buy-price: 5000
-      8:
-        material: END_STONE
-        slot: 8
-        amount: 64
-        buy-price: 800
-      9:
+      6:
         material: CHORUS_FRUIT
-        slot: 9
+        slot: 6
+        display-name: "Owoc Chorusa"
         amount: 16
         buy-price: 1000
-      10:
+      7:
         material: SHULKER_SHELL
-        slot: 10
+        slot: 7
+        display-name: "Skorupa Shulkera"
         amount: 1
         buy-price: 7500
-      11:
+      8:
         material: ELYTRA
-        slot: 11
+        slot: 8
+        display-name: "Elytra"
         amount: 1
         buy-price: 75000
-      12:
+      9:
         material: WITHER_SKELETON_SKULL
-        slot: 12
+        slot: 9
+        display-name: "Czaszka Witherowego Szkieletu"
         amount: 1
         buy-price: 12500
-      13:
-        material: SULFUR
-        slot: 13
-        amount: 64
-        buy-price: 1200
-      14:
-        material: CINNABAR
-        slot: 14
-        amount: 64
-        buy-price: 1200
 
   barwniki:
     name: "Barwniki"
     icon: RED_DYE
-    slot: 6
+    slot: 21
     items:
       0:
         material: WHITE_DYE
         slot: 0
+        display-name: "Barwnik Biały"
         amount: 64
         buy-price: 1600
       1:
         material: ORANGE_DYE
         slot: 1
+        display-name: "Barwnik Pomarańczowy"
         amount: 64
         buy-price: 1600
       2:
         material: MAGENTA_DYE
         slot: 2
+        display-name: "Barwnik Karmazynowy"
         amount: 64
         buy-price: 1600
       3:
         material: LIGHT_BLUE_DYE
         slot: 3
+        display-name: "Barwnik Jasnoniebieski"
         amount: 64
         buy-price: 1600
       4:
         material: YELLOW_DYE
         slot: 4
+        display-name: "Barwnik Żółty"
         amount: 64
         buy-price: 1600
       5:
         material: LIME_DYE
         slot: 5
+        display-name: "Barwnik Jasnozielony"
         amount: 64
         buy-price: 1600
       6:
         material: PINK_DYE
         slot: 6
+        display-name: "Barwnik Różowy"
         amount: 64
         buy-price: 1600
       7:
         material: GRAY_DYE
         slot: 7
+        display-name: "Barwnik Szary"
         amount: 64
         buy-price: 1600
       8:
         material: LIGHT_GRAY_DYE
         slot: 8
+        display-name: "Barwnik Jasnoszary"
         amount: 64
         buy-price: 1600
       9:
         material: CYAN_DYE
         slot: 9
+        display-name: "Barwnik Turkusowy"
         amount: 64
         buy-price: 1600
       10:
         material: PURPLE_DYE
         slot: 10
+        display-name: "Barwnik Fioletowy"
         amount: 64
         buy-price: 1600
       11:
         material: BLUE_DYE
         slot: 11
+        display-name: "Barwnik Niebieski"
         amount: 64
         buy-price: 1600
       12:
         material: BROWN_DYE
         slot: 12
+        display-name: "Barwnik Brązowy"
         amount: 64
         buy-price: 1600
       13:
         material: GREEN_DYE
         slot: 13
+        display-name: "Barwnik Zielony"
         amount: 64
         buy-price: 1600
       14:
         material: RED_DYE
         slot: 14
+        display-name: "Barwnik Czerwony"
         amount: 64
         buy-price: 1600
       15:
         material: BLACK_DYE
         slot: 15
+        display-name: "Barwnik Czarny"
         amount: 64
         buy-price: 1600
 
   spawnery:
     name: "Spawnery"
     icon: SPAWNER
-    slot: 30
+    slot: 22
     items:
       0:
         material: SPAWNER
@@ -851,66 +1258,66 @@ categories:
         custom-id: SHEEP
         display-name: "Spawner: Owiec"
         amount: 1
-        buy-price: 19000
+        buy-price: 18750
       1:
         material: SPAWNER
         slot: 1
         custom-id: RABBIT
-        display-name: "Spawner: Krolikow"
+        display-name: "Spawner: Królików"
         amount: 1
-        buy-price: 28000
+        buy-price: 28125
       2:
         material: SPAWNER
         slot: 2
         custom-id: GLOW_SQUID
-        display-name: "Spawner: Swietlistych Kalamarnic"
+        display-name: "Spawner: Świetlistych Kałamarnic"
         amount: 1
         buy-price: 37500
       3:
         material: SPAWNER
         slot: 3
         custom-id: PIGLIN
-        display-name: "Spawner: Piglinow"
+        display-name: "Spawner: Piglinów"
         amount: 1
-        buy-price: 56000
+        buy-price: 56250
       4:
         material: SPAWNER
         slot: 4
         custom-id: BREEZE
-        display-name: "Spawner: Breeze'ow"
+        display-name: "Spawner: Breeze'ów"
         amount: 1
         buy-price: 100000
 
   specjalne:
     name: "Itemy Specjalne"
     icon: NETHERITE_PICKAXE
-    slot: 32
+    slot: 23
     items:
       0:
         material: NETHERITE_PICKAXE
         slot: 0
         custom-id: NISZCZYCIEL
         display-name: "Niszczyciel"
-        lore:
-          - "Kilof z ultra szybkim kopaniem (Haste X)"
-          - "PPM: niszczy 3x3 blokow naraz"
-          - "Zawsze dropi wlasciwy blok (jak Silk Touch)"
-          - "Sluzy tylko do kopania - nic wiecej"
         amount: 1
         buy-price: 150000
+        lore:
+          - "Kilof z ultra szybkim kopaniem (Haste X)"
+          - "PPM: niszczy 3x3 bloków naraz"
+          - "Zawsze dropi właściwy blok (jak Silk Touch)"
+          - "Służy tylko do kopania - nic więcej"
       1:
         material: SNIFFER_EGG
         slot: 1
         custom-id: SNIFFER_JAJKO
         display-name: "Sniffer Farmera"
-        lore:
-          - "PPM na wlasnej wyspie stawia stacjonarnego"
-          - "Snifferaa, ktory automatycznie zbiera i"
-          - "sadzi dojrzale uprawy w poblizu"
-          - "Zebrane plony trafiaja do najblizszej skrzyni"
-          - "Maksymalnie 1 Sniffer na wyspe"
         amount: 1
         buy-price: 100000
+        lore:
+          - "PPM na własnej wyspie stawia stacjonarnego"
+          - "Sniffera, który automatycznie zbiera i"
+          - "sadzi dojrzałe uprawy w pobliżu"
+          - "Zebrane plony trafiają do najbliższej skrzyni"
+          - "Maksymalnie 1 Sniffer na wyspę"
 
   ryby_wedkarskie:
     name: "Ryby z Wedki"

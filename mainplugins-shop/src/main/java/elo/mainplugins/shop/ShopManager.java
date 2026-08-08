@@ -7,6 +7,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -14,6 +15,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
@@ -47,6 +49,14 @@ public class ShopManager implements Listener {
     private final Map<UUID, String> playerCategory = new HashMap<>();
     private final Map<UUID, Integer> playerPage = new HashMap<>();
     private final Map<UUID, Boolean> otwartoZMenu = new HashMap<>();
+
+    /** Do jakiej pozycji sklepu (klucz "kategoria:itemKey") odnosi się otwarty ekran wyboru ilości. */
+    private final Map<UUID, String> otwartyWyborIlosci = new HashMap<>();
+
+    private static final String TYTUL_WYBOR_ILOSCI = "Ile sztuk?";
+    private static final int[] ILOSCI_DO_WYBORU = {1, 8, 16, 32, 64};
+    /** Sloty, w których lądują opcje ilości — wyśrodkowane w środkowym rzędzie okna 3x9. */
+    private static final int[] SLOTY_WYBORU = {11, 12, 13, 14, 15};
 
     public ShopManager(Plugin plugin, EconomyService economyManager) {
         this.plugin = plugin;
@@ -110,12 +120,28 @@ public class ShopManager implements Listener {
     }
 
     /**
-     * Zwykła siatka: kategorie/itemy wypełniają sloty 0..GRID_ROZMIAR-1 po kolei,
-     * od lewej górnej, rząd po rzędzie (5 rzędów po 9 = sloty 0-44). Dolny pasek
-     * (45-53) jest zawsze zarezerwowany na przyciski nawigacji - patrz otworzSklep()/
-     * otworzKategorieStrona().
+     * Układ zawartości kategorii: prostokąt 7x4 wyśrodkowany w oknie 6x9.
+     * Rzędy 2-5, kolumny 2-8. Dolny pasek (45-53) zostaje wolny na nawigację
+     * (patrz otworzSklep()/otworzKategorieStrona()).
+     *
+     * Ta tablica wyznacza JEDNOCZEŚNIE:
+     *  - ile pozycji mieści się na stronie kategorii (28),
+     *  - gdzie ląduje item o danym lokalnym indeksie.
      */
-    private static final int GRID_ROZMIAR = 45;
+    private static final int[] SLOTY_SIATKI = {
+            10, 11, 12, 13, 14, 15, 16,
+            19, 20, 21, 22, 23, 24, 25,
+            28, 29, 30, 31, 32, 33, 34,
+            37, 38, 39, 40, 41, 42, 43
+    };
+
+    /** Odwrotność SLOTY_SIATKI[localIndex] - który lokalny indeks odpowiada danemu slotowi GUI, albo -1 (np. tło/nawigacja). */
+    private int lokalnyIndexDlaSlotu(int guiSlot) {
+        for (int idx = 0; idx < SLOTY_SIATKI.length; idx++) {
+            if (SLOTY_SIATKI[idx] == guiSlot) return idx;
+        }
+        return -1;
+    }
 
     /**
      * Układ ekranu głównego: siatka 7x2 wyśrodkowana w oknie 6x9 (rzędy 3-4,
@@ -203,7 +229,7 @@ public class ShopManager implements Listener {
         // po niej identycznie.
         List<String> itemKeys = itemsSection != null ? new ArrayList<>(itemsSection.getKeys(false)) : List.of();
 
-        int totalPages = Math.max(1, (int) Math.ceil((double) itemKeys.size() / GRID_ROZMIAR));
+        int totalPages = Math.max(1, (int) Math.ceil((double) itemKeys.size() / SLOTY_SIATKI.length));
         if (page >= totalPages) page = totalPages - 1;
         if (page < 0) page = 0;
 
@@ -212,9 +238,10 @@ public class ShopManager implements Listener {
                 : Component.text("Sklep: " + catName, NamedTextColor.DARK_GREEN, TextDecoration.BOLD);
 
         Inventory gui = Bukkit.createInventory(null, 54, guiTitle);
+        wypelnijTloSzare(gui);
 
-        int pageStart = page * GRID_ROZMIAR;
-        int pageEnd = Math.min(pageStart + GRID_ROZMIAR, itemKeys.size());
+        int pageStart = page * SLOTY_SIATKI.length;
+        int pageEnd = Math.min(pageStart + SLOTY_SIATKI.length, itemKeys.size());
 
         for (int i = pageStart; i < pageEnd; i++) {
             String path = "categories." + catKey + ".items." + itemKeys.get(i) + ".";
@@ -230,7 +257,10 @@ public class ShopManager implements Listener {
             Material material = Material.matchMaterial(matName);
             if (material == null) material = Material.STONE;
 
-            ItemStack item = new ItemStack(material, Math.min(Math.max(amount, 1), 64));
+            // Ikona w siatce to zawsze pojedynczy blok - stack "amount" mylił graczy sugerując
+            // natychmiastowe kupno całego lota. Realną ilość (lot / wybór 1-8-16-32-64) widać
+            // dopiero w lore i po kliknięciu.
+            ItemStack item = new ItemStack(material, 1);
             ItemMeta meta = item.getItemMeta();
             meta.displayName(customDisplayName != null
                     ? Component.text(customDisplayName, NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD)
@@ -243,7 +273,10 @@ public class ShopManager implements Listener {
             if (!customLore.isEmpty()) lore.add(Component.empty());
 
             if (buyPrice >= 0) {
-                lore.add(Component.text("Kupno: " + buyPrice + " $ za " + amount + " szt.",
+                // Cena za POJEDYNCZĄ sztukę (ten sam wzór co w otworzWyborIlosci/policzCene) -
+                // sam lot (amount) już nie jest tym, co realnie ląduje w koszyku jednym klikiem.
+                long cenaZaSztuke = policzCene(1, buyPrice, amount);
+                lore.add(Component.text("Kupno: " + cenaZaSztuke + " $ za szt.",
                         NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
             }
             if (sellPrice >= 0) {
@@ -253,7 +286,9 @@ public class ShopManager implements Listener {
             lore.add(Component.empty());
 
             if (buyPrice >= 0) {
-                lore.add(Component.text("LPM — kup " + amount + " szt.",
+                // Bez konkretnej ilości - LPM teraz otwiera wybór ilości (patrz otworzWyborIlosci),
+                // nie kupuje od razu całego lota, więc "kup 64 szt." tutaj byłoby mylące.
+                lore.add(Component.text("LPM — kupno",
                         NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
             } else {
                 lore.add(Component.text("Tego nie da się kupić",
@@ -272,7 +307,7 @@ public class ShopManager implements Listener {
             meta.lore(lore);
             item.setItemMeta(meta);
 
-            gui.setItem(i - pageStart, item);
+            gui.setItem(SLOTY_SIATKI[i - pageStart], item);
         }
 
         // Pasek Nawigacyjny na Dole (Sloty 45-53)
@@ -308,6 +343,189 @@ public class ShopManager implements Listener {
         gui.setItem(50, zamknijSklep);
 
         player.openInventory(gui);
+    }
+
+    /** Ile kosztuje dokładnie {@code ilosc} sztuk, gdy lot {@code lot} kosztuje {@code cenaLotu}. Zaokrąglenie
+     *  W GÓRĘ gwarantuje, że nigdy nie wyjdzie ułamek ani zero — nawet przy kupnie jednej sztuki taniego bloku. */
+    private long policzCene(int ilosc, int cenaLotu, int lot) {
+        if (lot <= 0) lot = 1;
+        return Math.max(1L, (long) Math.ceil((double) ilosc * cenaLotu / lot));
+    }
+
+    /**
+     * Ekran wyboru ilości przy kupnie (1/8/16/32/64 szt.) - otwierany zamiast
+     * od razu kupować lot z sklep.yml. Cena liczy się wzorem policzCene(): kupno na
+     * sztuki jest odrobinę droższe niż hurtem, co samo w sobie zachęca do brania stacków.
+     *
+     * @param ref klucz pozycji w configu, np. "bloki:3"
+     */
+    private void otworzWyborIlosci(Player player, String ref) {
+        String[] czesci = ref.split(":");
+        String path = "categories." + czesci[0] + ".items." + czesci[1] + ".";
+
+        String matName = sklepConfig.getString(path + "material");
+        Material material = matName != null ? Material.matchMaterial(matName) : null;
+        if (material == null) return;
+
+        int lot = sklepConfig.getInt(path + "amount", 1);
+        int cenaLotu = sklepConfig.getInt(path + "buy-price", -1);
+        if (cenaLotu < 0) {
+            player.sendMessage(Component.text("Tego przedmiotu nie można kupić!", NamedTextColor.RED));
+            return;
+        }
+        String nazwa = sklepConfig.getString(path + "display-name", material.name());
+
+        Inventory gui = Bukkit.createInventory(null, 27,
+                Component.text(TYTUL_WYBOR_ILOSCI + " " + nazwa, NamedTextColor.DARK_GRAY, TextDecoration.BOLD));
+        wypelnijTloSzare(gui);
+
+        double saldo = economyManager.getKasa(player.getUniqueId());
+        for (int i = 0; i < ILOSCI_DO_WYBORU.length; i++) {
+            int ilosc = ILOSCI_DO_WYBORU[i];
+            long cena = policzCene(ilosc, cenaLotu, lot);
+            boolean stac = saldo >= cena;
+
+            // Podgląd pokazuje realny materiał, ale stos w GUI nie może przekroczyć 64.
+            ItemStack opcja = new ItemStack(material, Math.min(ilosc, 64));
+            ItemMeta meta = opcja.getItemMeta();
+            meta.displayName(Component.text(ilosc + " szt.",
+                    stac ? NamedTextColor.GREEN : NamedTextColor.RED, TextDecoration.BOLD)
+                    .decoration(TextDecoration.ITALIC, false));
+
+            List<Component> lore = new ArrayList<>();
+            lore.add(Component.text("Cena: " + cena + " $", NamedTextColor.GOLD)
+                    .decoration(TextDecoration.ITALIC, false));
+            if (ilosc > 1) {
+                lore.add(Component.text("(" + policzCene(1, cenaLotu, lot) + " $ za sztukę przy zakupie po 1)",
+                        NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
+            }
+            lore.add(Component.empty());
+            lore.add(Component.text(stac ? "LPM — kliknij, aby kupić" : "Za mało pieniędzy",
+                    stac ? NamedTextColor.YELLOW : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Shift+LPM — kup maksimum (kasa + miejsce w ekwipunku)",
+                    NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+            meta.lore(lore);
+            opcja.setItemMeta(meta);
+            gui.setItem(SLOTY_WYBORU[i], opcja);
+        }
+
+        ItemStack powrot = new ItemStack(Material.ARROW);
+        ItemMeta pm = powrot.getItemMeta();
+        pm.displayName(Component.text("Powrót", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        powrot.setItemMeta(pm);
+        gui.setItem(22, powrot);
+
+        // UWAGA: put() MUSI iść PO openInventory(), nie przed. Jeśli gracz ma już otwarte
+        // jakieś okno (kategorię albo poprzedni ekran wyboru ilości - patrz odświeżanie
+        // w onInventoryClick), openInventory() samo w sobie najpierw ZAMYKA tamto okno,
+        // co synchronicznie odpala onInventoryClose() i czyści wpis z mapy. Ustawiony
+        // wcześniej wpis zostałby więc wyzerowany, zanim nowe okno w ogóle się otworzy.
+        player.openInventory(gui);
+        otwartyWyborIlosci.put(player.getUniqueId(), ref);
+    }
+
+    /** Wydaje towar i pobiera kasę za zakup z ekranu wyboru ilości. Zwraca false, gdy transakcja się nie powiodła. */
+    private boolean kupIlosc(Player player, String ref, int ilosc) {
+        String[] czesci = ref.split(":");
+        String path = "categories." + czesci[0] + ".items." + czesci[1] + ".";
+
+        String matName = sklepConfig.getString(path + "material");
+        Material material = matName != null ? Material.matchMaterial(matName) : null;
+        if (material == null) return false;
+
+        int lot = sklepConfig.getInt(path + "amount", 1);
+        int cenaLotu = sklepConfig.getInt(path + "buy-price", -1);
+        if (cenaLotu < 0) return false;
+
+        long cena = policzCene(ilosc, cenaLotu, lot);
+        if (!economyManager.maWystarczajaco(player.getUniqueId(), cena)) {
+            player.sendMessage(Component.text("Nie stać Cię! Potrzebujesz " + cena + " $.", NamedTextColor.RED));
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+            return false;
+        }
+
+        // Miejsce sprawdzamy PRZED pobraniem kasy — inaczej gracz płaci za towar,
+        // który wypadnie na ziemię albo zniknie.
+        int wolneMiejsce = wolneMiejsceNa(player, material);
+        if (wolneMiejsce < ilosc) {
+            player.sendMessage(Component.text("Nie masz tyle miejsca w ekwipunku!", NamedTextColor.RED));
+            return false;
+        }
+
+        economyManager.odejmijKase(player.getUniqueId(), cena);
+
+        int zostalo = ilosc;
+        int maxStack = material.getMaxStackSize();
+        while (zostalo > 0) {
+            int paczka = Math.min(zostalo, maxStack);
+            player.getInventory().addItem(new ItemStack(material, paczka));
+            zostalo -= paczka;
+        }
+
+        String nazwa = sklepConfig.getString(path + "display-name", material.name());
+        player.sendMessage(Component.text("Kupiono " + ilosc + "x " + nazwa + " za " + cena + " $!",
+                NamedTextColor.GREEN));
+        return true;
+    }
+
+    /** Ile sztuk danego materiału zmieści się jeszcze w ekwipunku gracza (wolne sloty + luka w niepełnych stosach). */
+    private int wolneMiejsceNa(Player player, Material material) {
+        int wolne = 0;
+        int maxStack = material.getMaxStackSize();
+        for (ItemStack is : player.getInventory().getStorageContents()) {
+            if (is == null || is.getType().isAir()) wolne += maxStack;
+            else if (is.getType() == material) wolne += Math.max(0, maxStack - is.getAmount());
+        }
+        return wolne;
+    }
+
+    /**
+     * Kupuje maksymalną ilość, na jaką gracza stać I która zmieści się w ekwipunku -
+     * Shift+LPM na dowolnej opcji w ekranie wyboru ilości ("kup ile się da" zamiast
+     * konkretnej liczby z przycisku).
+     */
+    private void kupMaksymalnaIlosc(Player player, String ref) {
+        String[] czesci = ref.split(":");
+        String path = "categories." + czesci[0] + ".items." + czesci[1] + ".";
+
+        String matName = sklepConfig.getString(path + "material");
+        Material material = matName != null ? Material.matchMaterial(matName) : null;
+        if (material == null) return;
+
+        int lot = sklepConfig.getInt(path + "amount", 1);
+        int cenaLotu = sklepConfig.getInt(path + "buy-price", -1);
+        if (cenaLotu < 0) {
+            player.sendMessage(Component.text("Tego przedmiotu nie można kupić!", NamedTextColor.RED));
+            return;
+        }
+
+        int wolneMiejsce = wolneMiejsceNa(player, material);
+        if (wolneMiejsce <= 0) {
+            player.sendMessage(Component.text("Nie masz miejsca w ekwipunku!", NamedTextColor.RED));
+            return;
+        }
+
+        int ileStac;
+        if (cenaLotu == 0) {
+            ileStac = wolneMiejsce; // za darmo - ogranicza wyłącznie miejsce w ekwipunku
+        } else {
+            double saldo = economyManager.getKasa(player.getUniqueId());
+            // Przybliżenie z floor, potem doszlifowane w pętli (max kilka kroków, bo ceil
+            // w policzCene() może się różnić od przybliżenia o pojedyncze sztuki).
+            long przyblizenie = (long) Math.floor(saldo * lot / cenaLotu);
+            ileStac = (int) Math.max(0, Math.min(przyblizenie, wolneMiejsce));
+            while (ileStac > 0 && policzCene(ileStac, cenaLotu, lot) > saldo) ileStac--;
+            while (ileStac < wolneMiejsce && policzCene(ileStac + 1, cenaLotu, lot) <= saldo) ileStac++;
+        }
+
+        int ilosc = Math.min(wolneMiejsce, ileStac);
+        if (ilosc <= 0) {
+            player.sendMessage(Component.text("Nie stać Cię na ani jedną sztukę!", NamedTextColor.RED));
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+            return;
+        }
+
+        kupIlosc(player, ref, ilosc);
     }
 
     /** Buduje kupiony item; jeśli wpis ma custom-id, doczepia PDC tag + display-name + lore (patrz kategorie "spawnery"/"specjalne"). */
@@ -525,6 +743,36 @@ public class ShopManager implements Listener {
         boolean klikniecieWGui = event.getClickedInventory() != null
                 && event.getClickedInventory().equals(event.getView().getTopInventory());
 
+        // KLIKANIE W EKRANIE WYBORU ILOŚCI
+        if (title.contains(TYTUL_WYBOR_ILOSCI)) {
+            event.setCancelled(true);
+            if (!klikniecieWGui) return;
+
+            String ref = otwartyWyborIlosci.get(player.getUniqueId());
+            if (ref == null) { player.closeInventory(); return; }
+
+            if (event.getSlot() == 22) {                       // strzałka "Powrót"
+                otwartyWyborIlosci.remove(player.getUniqueId());
+                otworzKategorieStrona(player, ref.split(":")[0],
+                        playerPage.getOrDefault(player.getUniqueId(), 0));
+                return;
+            }
+            for (int i = 0; i < SLOTY_WYBORU.length; i++) {
+                if (event.getSlot() == SLOTY_WYBORU[i]) {
+                    // Shift+LPM na dowolnej opcji ignoruje konkretną liczbę z przycisku
+                    // i kupuje maksimum, na jakie gracza stać i które zmieści się w ekwipunku.
+                    if (event.isShiftClick() && event.isLeftClick()) {
+                        kupMaksymalnaIlosc(player, ref);
+                    } else {
+                        kupIlosc(player, ref, ILOSCI_DO_WYBORU[i]);
+                    }
+                    otworzWyborIlosci(player, ref);            // odśwież ceny i saldo
+                    return;
+                }
+            }
+            return;
+        }
+
         // KLIKANIE W GŁÓWNYM SKLEPIE
         if (title.contains("Sklep Serwerowy")) {
             event.setCancelled(true);
@@ -583,7 +831,8 @@ public class ShopManager implements Listener {
                 return;
             }
 
-            if (slotKlikniecia >= GRID_ROZMIAR) return; // Zabezpieczenie przed błędem z dolnym paskiem
+            int localIndex = lokalnyIndexDlaSlotu(slotKlikniecia);
+            if (localIndex < 0) return; // Kliknięcie w tło/poza siatkę - nie ma tam żadnego itemu
 
             ConfigurationSection itemsSection = sklepConfig.getConfigurationSection("categories." + catKey + ".items");
             if (itemsSection == null) return;
@@ -592,7 +841,7 @@ public class ShopManager implements Listener {
             // w sklep.yml + numer strony + slot w siatce muszą się zgadzać 1:1, inaczej
             // klik trafi w zupełnie inny item niż ten widoczny na ekranie.
             List<String> itemKeys = new ArrayList<>(itemsSection.getKeys(false));
-            int absoluteIndex = currentPage * GRID_ROZMIAR + slotKlikniecia;
+            int absoluteIndex = currentPage * SLOTY_SIATKI.length + localIndex;
             if (absoluteIndex < 0 || absoluteIndex >= itemKeys.size()) return;
 
             String path = "categories." + catKey + ".items." + itemKeys.get(absoluteIndex) + ".";
@@ -609,13 +858,19 @@ public class ShopManager implements Listener {
                     player.sendMessage(Component.text("Tego przedmiotu nie można kupić!", NamedTextColor.RED));
                     return;
                 }
-                if (economyManager.maWystarczajaco(player.getUniqueId(), buyPrice)) {
-                    economyManager.odejmijKase(player.getUniqueId(), buyPrice);
-                    player.getInventory().addItem(stworzKupionyItem(cfgMaterial, amount, path));
-                    player.sendMessage(Component.text("Kupiono " + amount + "x za " + buyPrice + " $!", NamedTextColor.GREEN));
-                } else {
-                    player.sendMessage(Component.text("Brak pieniędzy!", NamedTextColor.RED));
+                // Pozycje z custom-id (spawnery, itemy specjalne) kupuje się po sztuce starą
+                // ścieżką - mają własną logikę nadawania NBT, ekran wyboru ilości ich nie obsługuje.
+                if (sklepConfig.getString(path + "custom-id", null) != null) {
+                    if (economyManager.maWystarczajaco(player.getUniqueId(), buyPrice)) {
+                        economyManager.odejmijKase(player.getUniqueId(), buyPrice);
+                        player.getInventory().addItem(stworzKupionyItem(cfgMaterial, amount, path));
+                        player.sendMessage(Component.text("Kupiono " + amount + "x za " + buyPrice + " $!", NamedTextColor.GREEN));
+                    } else {
+                        player.sendMessage(Component.text("Brak pieniędzy!", NamedTextColor.RED));
+                    }
+                    return;
                 }
+                otworzWyborIlosci(player, catKey + ":" + itemKeys.get(absoluteIndex));
             } else if (event.isRightClick()) {
                 if (sklepConfig.getInt(path + "sell-price", -1) < 0) {
                     player.sendMessage(Component.text("Tego przedmiotu nie można sprzedać!", NamedTextColor.RED));
@@ -628,6 +883,13 @@ public class ShopManager implements Listener {
                 String customId = sklepConfig.getString(path + "custom-id", null);
                 sprzedajLoty(player, cfgMaterial, customId, event.isShiftClick() ? TrybSkupu.CALY_EKWIPUNEK : TrybSkupu.JEDEN_STOS);
             }
+        }
+    }
+
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (event.getPlayer() instanceof Player player) {
+            otwartyWyborIlosci.remove(player.getUniqueId());
         }
     }
 }

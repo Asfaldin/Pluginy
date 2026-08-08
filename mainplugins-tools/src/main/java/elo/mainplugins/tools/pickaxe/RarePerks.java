@@ -17,7 +17,7 @@ public final class RarePerks {
 
     public static final List<RarePerk> WSZYSTKIE = List.of(
             new RarePerk("RARE_FORT4", "Fortuna IV", Material.NETHER_STAR, "Rzadka: Fortuna ponad zwykły limit drzewa Precyzji."),
-            new RarePerk("RARE_EFF5", "Wydajność V", Material.NETHER_STAR, "Rzadka: Wydajność ponad zwykły limit drzewa Wydajności."),
+            new RarePerk("RARE_EFFICIENCY", "Wydajność I", Material.NETHER_STAR, "Rzadka: nadaje kilofowi prawdziwą Wydajność I, niezależnie od bonusów % z drzewka."),
             new RarePerk("RARE_MIDAS", "Dotyk Midasa", Material.GOLD_INGOT, "3% szansy na bonus $ przy DOWOLNYM kopanym bloku."),
             new RarePerk("RARE_MAGNET", "Magnes Górnika", Material.MAGMA_CREAM, "Pobliskie plony są delikatnie przyciągane do Ciebie."),
             new RarePerk("RARE_SECOND_CHANCE", "Druga Szansa", Material.ECHO_SHARD, "5% szansy na całkowite zdublowanie plonu."),

@@ -10,8 +10,9 @@ import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
-import org.bukkit.entity.Item;
+import org.bukkit.entity.FishHook;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -27,20 +28,22 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.RayTraceResult;
+import org.bukkit.util.Vector;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Całe łowienie: gatunki ryb, tiery wędek (zwykła -> Niebiańska -> Kosmiczna DARKSTAR),
- * łowienie w wodzie (nadpisuje wanilijski PlayerFishEvent), łowienie w powietrzu/nad
- * pustką (własna, uproszczona minigra - wanilijski hak wymaga wody, więc nic tu nie
- * da się "podpiąć" pod PlayerFishEvent) oraz upgrade wędki w kowadle receptura+wędka.
+ * łowienie w wodzie (przejmuje wanilijski PlayerFishEvent od BITE), łowienie w
+ * powietrzu/nad pustką (własna symulacja - wanilijski hak wymaga wody), wspólna
+ * minigra "pasek" w stylu Stardew Valley (FishingMinigame - rytmiczne PPM podbija
+ * suwak, trzeba nałożyć go na błądzącą rybkę), zamrażanie haka lecącego nad krawędzią
+ * wyspy w otwartą pustkę (zamiast cichego zniknięcia) oraz upgrade wędki w kowadle
+ * receptura+wędka.
  *
  * Zero zależności od mainplugins-quests/mainplugins-shop: receptury i gatunki ryb są
  * rozpoznawane wyłącznie po współdzielonym CustomItemKeys.CUSTOM_ITEM_ID (patrz
@@ -71,9 +74,18 @@ public class FishingManager implements Listener {
     private static final String RECEPTURA_NIEBIANSKA = "FISHING_RECIPE_NIEBIANSKA";
     private static final String RECEPTURA_KOSMICZNA = "FISHING_RECIPE_KOSMICZNA";
 
-    // Stan minigry łowienia w powietrzu - patrz onInteract/celujeWPustke niżej.
+    // Stan oczekiwania na branie w powietrzu - patrz onInteract/celujeWPustke niżej.
     private final Map<UUID, BukkitTask> oczekujacyNaBranie = new HashMap<>();
-    private final Set<UUID> gotowyDoPodciagniecia = new HashSet<>();
+
+    // Aktywna minigra "pasek Stardew" (woda po BITE albo powietrze po braniu) - patrz rozpocznijMinigre.
+    private final Map<UUID, FishingMinigame> aktywneMinigry = new HashMap<>();
+
+    // Prawdziwy wanilijski hak, który poleciał w otwartą pustkę i został zamrożony - patrz zamrozHaczykWVoid.
+    private final Map<UUID, BukkitTask> monitorVoidTasks = new HashMap<>();
+    private final Map<UUID, BukkitTask> particleVoidTasks = new HashMap<>();
+    private final Map<UUID, FishHook> zamrozoneWVoidzie = new HashMap<>();
+
+    private static final double VOID_BUFOR = 8.0;
 
     public FishingManager(Plugin plugin) {
         this.plugin = plugin;
@@ -232,31 +244,147 @@ public class FishingManager implements Listener {
     // ==================================================================== Łowienie w wodzie ====
 
     /**
-     * Nadpisuje wanilijski loot na CAUGHT_FISH - stąd żadna wędka (nawet zupełnie
-     * wanilijska, nietagowana) nie łapie już nic poza naszymi gatunkami. Tier wędki
-     * wpływa tylko na boost rzadkich+ (DARKSTAR), nie na dostęp do samej wody.
+     * Wanilijski hak tylko sygnalizuje branie (BITE) - od razu go usuwamy i przejmujemy
+     * całość ręcznie przez minigrę "pasek" (FishingMinigame), więc CAUGHT_FISH nigdy
+     * już nie następuje (nie ma czym go wywołać). Tier wędki wpływa tylko na boost
+     * rzadkich+ gatunków (DARKSTAR), nie na dostęp do samej wody.
+     *
+     * Stan FISHING (zarzucenie) uruchamia dodatkowo nadzór nad hakiem lecącym w pustkę
+     * nad krawędzią wyspy - patrz rozpocznijMonitorVoid/zamrozHaczykWVoid niżej; każdy
+     * inny stan kończy ten nadzór (branie już się odbyło albo hak wrócił bez połowu).
      */
     @EventHandler
     public void onFish(PlayerFishEvent event) {
-        if (event.getState() != PlayerFishEvent.State.CAUGHT_FISH) return;
-        if (!(event.getCaught() instanceof Item itemEntity)) return;
-
         Player player = event.getPlayer();
-        int rodTier = pobierzTierWedki(wedkaGracza(player));
+        UUID uuid = player.getUniqueId();
 
-        RybaGatunek zlowiona = losujRybe(GATUNKI_WODA, rodTier >= 3);
-        itemEntity.setItemStack(stworzRybe(zlowiona));
+        if (event.getState() == PlayerFishEvent.State.FISHING) {
+            if (event.getHook() != null) rozpocznijMonitorVoid(player, event.getHook());
+            return;
+        }
+
+        if (event.getState() == PlayerFishEvent.State.BITE) {
+            zatrzymajMonitorVoid(uuid);
+            event.setCancelled(true);
+            if (event.getHook() != null) event.getHook().remove();
+
+            int rodTier = pobierzTierWedki(wedkaGracza(player));
+            RybaGatunek zlowiona = losujRybe(GATUNKI_WODA, rodTier >= 3);
+            rozpocznijMinigre(player, zlowiona, rodTier);
+            return;
+        }
+
+        zatrzymajMonitorVoid(uuid);
+    }
+
+    // ==================================================================== Minigra "pasek" ====
+
+    /** Wspólny start minigry dla wody (po BITE) i powietrza (po braniu w onInteract). */
+    private void rozpocznijMinigre(Player player, RybaGatunek gatunek, int rodTier) {
+        UUID uuid = player.getUniqueId();
+        player.playSound(player.getLocation(), Sound.ENTITY_FISHING_BOBBER_SPLASH, 1.0f, 1.0f);
+
+        FishingMinigame gra = new FishingMinigame(plugin, player, gatunek,
+                () -> {
+                    aktywneMinigry.remove(uuid);
+                    nagrodaZaPolow(player, gatunek, rodTier);
+                },
+                () -> {
+                    aktywneMinigry.remove(uuid);
+                    player.sendMessage(Component.text("Ryba się wyrwała...", NamedTextColor.GRAY));
+                });
+        aktywneMinigry.put(uuid, gra);
+    }
+
+    private void nagrodaZaPolow(Player player, RybaGatunek zlowiona, int rodTier) {
+        ItemStack ryba = stworzRybe(zlowiona);
+        var nieZmieszczone = player.getInventory().addItem(ryba);
+        nieZmieszczone.values().forEach(i -> player.getWorld().dropItemNaturally(player.getLocation(), i));
+
+        player.sendMessage(Component.text("Złowiłeś: ", NamedTextColor.GREEN)
+                .append(Component.text(zlowiona.nazwa(), zlowiona.kolor(), TextDecoration.BOLD)));
+        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
 
         rzucBonusowaSkrzynke(player, rodTier);
+    }
+
+    // ==================================================================== Hak w pustce (void) ====
+
+    /** Co 10 ticków sprawdza, czy prawdziwy hak nie poleciał nad krawędzią wyspy w otwartą pustkę. */
+    private void rozpocznijMonitorVoid(Player player, FishHook hook) {
+        UUID uuid = player.getUniqueId();
+        zatrzymajMonitorVoid(uuid);
+
+        BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (!hook.isValid()) {
+                zatrzymajMonitorVoid(uuid);
+                return;
+            }
+            if (hook.getLocation().getY() < hook.getWorld().getMinHeight() - VOID_BUFOR) {
+                zamrozHaczykWVoid(player, hook);
+            }
+        }, 10L, 10L);
+        monitorVoidTasks.put(uuid, task);
+    }
+
+    private void zatrzymajMonitorVoid(UUID uuid) {
+        BukkitTask task = monitorVoidTasks.remove(uuid);
+        if (task != null) task.cancel();
+    }
+
+    /**
+     * Zamiast pozwolić hakowi spadać w nieskończoność aż silnik po cichu go usunie
+     * (domyślne zachowanie poza granicami świata), zatrzymujemy go w miejscu (zerowa
+     * grawitacja i prędkość) z cząsteczkami jako sygnałem "utknął". Wisi tak bez
+     * limitu czasu - gracz musi ręcznie zwinąć wędkę kolejnym PPM (patrz onInteract
+     * i zwinWedkeZVoidu).
+     */
+    private void zamrozHaczykWVoid(Player player, FishHook hook) {
+        UUID uuid = player.getUniqueId();
+        zatrzymajMonitorVoid(uuid);
+
+        hook.setGravity(false);
+        hook.setVelocity(new Vector(0, 0, 0));
+        zamrozoneWVoidzie.put(uuid, hook);
+
+        player.sendMessage(Component.text("Haczyk wpadł w otchłań i tam utknął... kliknij PPM, by zwinąć wędkę.", NamedTextColor.GRAY));
+        player.playSound(player.getLocation(), Sound.ENTITY_FISHING_BOBBER_SPLASH, 0.6f, 0.6f);
+
+        BukkitTask particleTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (!hook.isValid()) {
+                BukkitTask t = particleVoidTasks.remove(uuid);
+                if (t != null) t.cancel();
+                zamrozoneWVoidzie.remove(uuid);
+                return;
+            }
+            hook.getWorld().spawnParticle(Particle.PORTAL, hook.getLocation(), 6, 0.15, 0.15, 0.15, 0.02);
+        }, 0L, 8L);
+        particleVoidTasks.put(uuid, particleTask);
+    }
+
+    private void zwinWedkeZVoidu(Player player) {
+        UUID uuid = player.getUniqueId();
+        FishHook hook = zamrozoneWVoidzie.remove(uuid);
+        if (hook == null) return;
+
+        BukkitTask particleTask = particleVoidTasks.remove(uuid);
+        if (particleTask != null) particleTask.cancel();
+
+        hook.remove();
+        player.sendMessage(Component.text("Zwinąłeś wędkę.", NamedTextColor.GRAY));
+        player.playSound(player.getLocation(), Sound.ENTITY_FISHING_BOBBER_RETRIEVE, 1.0f, 1.0f);
     }
 
     // ==================================================================== Łowienie w powietrzu ====
 
     /**
      * Wanilijski hak wymaga otwartej wody, więc nie da się pod niego podpiąć łowienia
-     * "nad pustką" - własna, uproszczona minigra: PPM nad czystą pustką (raytrace bez
-     * trafienia w blok) startuje losowe oczekiwanie (jak wanilijskie 5-25s), potem
-     * krótkie okno na "podcięcie" drugim PPM, inaczej ryba ucieka.
+     * "nad pustką" - własna, uproszczona symulacja: PPM nad czystą pustką (raytrace bez
+     * trafienia w blok) startuje losowe oczekiwanie (jak wanilijskie 5-25s), a branie
+     * od razu uruchamia tę samą minigrę "pasek" co przy łowieniu w wodzie.
+     *
+     * Ta sama metoda obsługuje też PPM podczas aktywnej minigry (przekazywane jako
+     * "podbicie" suwaka) oraz PPM zwijające hak zamrożony w pustce.
      */
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
@@ -264,19 +392,27 @@ public class FishingManager implements Listener {
         if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
 
         Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
+
+        FishingMinigame gra = aktywneMinigry.get(uuid);
+        if (gra != null) {
+            event.setCancelled(true);
+            gra.kliknij();
+            return;
+        }
+
+        if (zamrozoneWVoidzie.containsKey(uuid)) {
+            event.setCancelled(true);
+            zwinWedkeZVoidu(player);
+            return;
+        }
+
         ItemStack wRece = player.getInventory().getItemInMainHand();
         if (wRece.getType() != Material.FISHING_ROD) return;
 
         int tier = pobierzTierWedki(wRece);
         if (tier < 2) return; // Zwykła Wędka - tylko woda (PlayerFishEvent wyżej)
 
-        UUID uuid = player.getUniqueId();
-
-        if (gotowyDoPodciagniecia.remove(uuid)) {
-            event.setCancelled(true);
-            zakonczPodciaganie(player, tier);
-            return;
-        }
         if (oczekujacyNaBranie.containsKey(uuid)) return; // już zarzucone - czekamy na branie
 
         if (!celujeWPustke(player)) return; // nie stoi nad krawędzią/pustką - zostaw zdarzenie wanilii (np. woda)
@@ -290,31 +426,12 @@ public class FishingManager implements Listener {
             oczekujacyNaBranie.remove(uuid);
             if (!player.isOnline()) return;
 
-            gotowyDoPodciagniecia.add(uuid);
-            player.sendMessage(Component.text("Coś złapało haczyk! Kliknij PPM, by podciągnąć!", NamedTextColor.GOLD, TextDecoration.BOLD));
-            player.playSound(player.getLocation(), Sound.ENTITY_FISHING_BOBBER_SPLASH, 1.0f, 1.0f);
-
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (gotowyDoPodciagniecia.remove(uuid) && player.isOnline()) {
-                    player.sendMessage(Component.text("Ryba się wyrwała...", NamedTextColor.GRAY));
-                }
-            }, 20L * 3);
+            player.sendMessage(Component.text("Coś złapało haczyk!", NamedTextColor.GOLD, TextDecoration.BOLD));
+            RybaGatunek zlowiona = losujRybe(GATUNKI_POWIETRZE, tier >= 3);
+            rozpocznijMinigre(player, zlowiona, tier);
         }, opoznienie);
 
         oczekujacyNaBranie.put(uuid, task);
-    }
-
-    private void zakonczPodciaganie(Player player, int rodTier) {
-        RybaGatunek zlowiona = losujRybe(GATUNKI_POWIETRZE, rodTier >= 3);
-        ItemStack ryba = stworzRybe(zlowiona);
-        var nieZmieszczone = player.getInventory().addItem(ryba);
-        nieZmieszczone.values().forEach(i -> player.getWorld().dropItemNaturally(player.getLocation(), i));
-
-        player.sendMessage(Component.text("Złowiłeś: ", NamedTextColor.GREEN)
-                .append(Component.text(zlowiona.nazwa(), zlowiona.kolor(), TextDecoration.BOLD)));
-        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
-
-        rzucBonusowaSkrzynke(player, rodTier);
     }
 
     /** "Otwarta pustka" = brak jakiegokolwiek bloku w linii wzroku w rozsądnym zasięgu - krawędź wyspy/nad urwiskiem. */
@@ -327,9 +444,17 @@ public class FishingManager implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
+
         BukkitTask task = oczekujacyNaBranie.remove(uuid);
         if (task != null) task.cancel();
-        gotowyDoPodciagniecia.remove(uuid);
+
+        FishingMinigame gra = aktywneMinigry.remove(uuid);
+        if (gra != null) gra.przerwij();
+
+        zatrzymajMonitorVoid(uuid);
+        BukkitTask particleTask = particleVoidTasks.remove(uuid);
+        if (particleTask != null) particleTask.cancel();
+        zamrozoneWVoidzie.remove(uuid);
     }
 
     // ==================================================================== Upgrade w kowadle ====

@@ -2,6 +2,7 @@ package elo.mainplugins.tools;
 
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.ToolsService;
+import elo.mainplugins.tools.pickaxe.BrukSurowceManager;
 import elo.mainplugins.tools.pickaxe.PickaxeSkillManager;
 import elo.mainplugins.tools.special.NiszczycielManager;
 import org.bukkit.entity.Player;
@@ -19,7 +20,10 @@ public final class MainpluginsTools extends JavaPlugin {
         // Opcjonalny serwis dla innych pluginów (np. mainplugins-quests, nagroda za pierwszego questa).
         getServer().getServicesManager().register(ToolsService.class, levelableToolsManager, this, ServicePriority.Normal);
 
-        PickaxeSkillManager pickaxeSkillManager = new PickaxeSkillManager(this, CoreAPI.getEconomyService());
+        BrukSurowceManager brukSurowceManager = new BrukSurowceManager(this);
+        getServer().getPluginManager().registerEvents(brukSurowceManager, this);
+
+        PickaxeSkillManager pickaxeSkillManager = new PickaxeSkillManager(this, CoreAPI.getEconomyService(), brukSurowceManager);
         getServer().getPluginManager().registerEvents(pickaxeSkillManager, this);
 
         NiszczycielManager niszczycielManager = new NiszczycielManager(this);

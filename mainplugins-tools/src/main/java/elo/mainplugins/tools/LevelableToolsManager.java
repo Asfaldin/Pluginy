@@ -212,8 +212,8 @@ public class LevelableToolsManager implements Listener, ToolsService {
         if (item.getType() == Material.AIR || item.getItemMeta() == null) return;
 
         String type = item.getItemMeta().getPersistentDataContainer().get(keyType, PersistentDataType.STRING);
-        // Kilof ma własny hub (PickaxeSkillManager, reaguje na zwykły PPM bez kucania) -
-        // to stare menu zostaje tylko dla pozostałych narzędzi.
+        // Kilof ma własny hub (PickaxeSkillManager, też Shift+PPM) - to stare menu
+        // zostaje tylko dla pozostałych narzędzi.
         if (type != null && !type.equals("pickaxe")) {
             if (sprawdzWlasciciela(player, item)) {
                 otworzMenuUlepszen(player, item);

@@ -89,7 +89,7 @@ public class PoradnikManager implements Listener {
                 strona("NARZĘDZIA",
                         "/narzedzia daje Ci zestaw ewoluujących narzędzi - " +
                         "levelują się same, gdy ich używasz.\n\n" +
-                        "Kilof ma WŁASNE drzewko umiejętności - kliknij nim PPM, " +
+                        "Kilof ma WŁASNE drzewko umiejętności - kliknij nim Shift + PPM, " +
                         "żeby je otworzyć."),
 
                 strona("SPAWNERY",

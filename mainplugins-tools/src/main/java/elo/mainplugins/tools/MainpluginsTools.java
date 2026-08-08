@@ -2,6 +2,7 @@ package elo.mainplugins.tools;
 
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.ToolsService;
+import elo.mainplugins.tools.axe.AxeSkillManager;
 import elo.mainplugins.tools.pickaxe.BrukSurowceManager;
 import elo.mainplugins.tools.pickaxe.PickaxeSkillManager;
 import elo.mainplugins.tools.special.NiszczycielManager;
@@ -25,6 +26,9 @@ public final class MainpluginsTools extends JavaPlugin {
 
         PickaxeSkillManager pickaxeSkillManager = new PickaxeSkillManager(this, CoreAPI.getEconomyService(), brukSurowceManager);
         getServer().getPluginManager().registerEvents(pickaxeSkillManager, this);
+
+        AxeSkillManager axeSkillManager = new AxeSkillManager(this, CoreAPI.getEconomyService());
+        getServer().getPluginManager().registerEvents(axeSkillManager, this);
 
         NiszczycielManager niszczycielManager = new NiszczycielManager(this);
         getServer().getPluginManager().registerEvents(niszczycielManager, this);
@@ -67,6 +71,8 @@ public final class MainpluginsTools extends JavaPlugin {
 
                 if (type.equals("pickaxe")) {
                     pickaxeSkillManager.debugAddLevels(player, item, amount);
+                } else if (type.equals("axe")) {
+                    axeSkillManager.debugAddLevels(player, item, amount);
                 } else {
                     levelableToolsManager.debugAddLevels(player, item, amount);
                 }

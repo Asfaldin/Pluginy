@@ -5,7 +5,7 @@ import org.bukkit.Material;
 import java.util.List;
 
 /**
- * Pula rzadkich perków losowanych co 5 poziomów kilofa (3 z puli do wyboru, bez
+ * Pula rzadkich perków losowanych co 10 poziomów kilofa (3 z puli do wyboru, bez
  * powtórek na cały czas życia przedmiotu). Jak w PickaxeSkillTrees - dane osobno,
  * efekt działania po id() przełącza PickaxeSkillManager.
  */

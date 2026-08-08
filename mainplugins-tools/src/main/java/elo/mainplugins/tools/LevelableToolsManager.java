@@ -56,14 +56,13 @@ public class LevelableToolsManager implements Listener, ToolsService {
     /**
      * Awaryjne/administracyjne danie kompletu narzędzi pod komendę /narzedzia (np. gracz
      * zgubił postęp, testy). NIE jest już wołane automatycznie przy pierwszym wejściu -
-     * wszystkie 5 ewolujących narzędzi (włącznie z kilofem) to teraz w głównej mierze
+     * wszystkie 4 ewolujące narzędzia (włącznie z kilofem) to teraz w głównej mierze
      * nagrody z Głównej Ścieżki (mainplugins-quests), a nie start dawany za darmo.
      */
     public void dajStartoweNarzedzia(Player player) {
         player.getInventory().addItem(stworzNarzedzie(player, "pickaxe", 0));
         player.getInventory().addItem(stworzNarzedzie(player, "axe", 0));
         player.getInventory().addItem(stworzNarzedzie(player, "sword", 0));
-        player.getInventory().addItem(stworzNarzedzie(player, "shovel", 0));
         player.getInventory().addItem(stworzNarzedzie(player, "hoe", 0));
         player.sendMessage(Component.text("Otrzymałeś startowe narzędzia przypisane do Twojej duszy!", NamedTextColor.GREEN, TextDecoration.BOLD));
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
@@ -98,14 +97,6 @@ public class LevelableToolsManager implements Listener, ToolsService {
     public void dajEwoluujacyMiecz(Player player) {
         player.getInventory().addItem(stworzNarzedzie(player, "sword", 0));
         player.sendMessage(Component.text("Otrzymałeś swój pierwszy, ewoluujący miecz!", NamedTextColor.GREEN, TextDecoration.BOLD));
-        player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
-    }
-
-    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Zaczynamy". */
-    @Override
-    public void dajEwoluujacaLopate(Player player) {
-        player.getInventory().addItem(stworzNarzedzie(player, "shovel", 0));
-        player.sendMessage(Component.text("Otrzymałeś swoją pierwszą, ewoluującą łopatę!", NamedTextColor.GREEN, TextDecoration.BOLD));
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
     }
 
@@ -167,9 +158,10 @@ public class LevelableToolsManager implements Listener, ToolsService {
                 event.setCancelled(true);
                 return;
             }
-            // Kilof ma od teraz własny system progresji (drzewko umiejętności) w PickaxeSkillManager -
-            // ochrona właściciela wyżej dalej obowiązuje, ale exp/tier liczy się tam, nie tutaj.
-            if (!type.equals("pickaxe")) {
+            // Kilof i siekiera mają od teraz własny system progresji (drzewko umiejętności,
+            // patrz PickaxeSkillManager/AxeSkillManager) - ochrona właściciela wyżej dalej
+            // obowiązuje, ale exp/tier liczy się tam, nie tutaj.
+            if (!type.equals("pickaxe") && !type.equals("axe")) {
                 dodajExp(player, item);
             }
         }
@@ -212,9 +204,9 @@ public class LevelableToolsManager implements Listener, ToolsService {
         if (item.getType() == Material.AIR || item.getItemMeta() == null) return;
 
         String type = item.getItemMeta().getPersistentDataContainer().get(keyType, PersistentDataType.STRING);
-        // Kilof ma własny hub (PickaxeSkillManager, też Shift+PPM) - to stare menu
-        // zostaje tylko dla pozostałych narzędzi.
-        if (type != null && !type.equals("pickaxe")) {
+        // Kilof i siekiera mają własny hub (Shift+PPM) - to stare menu zostaje tylko dla
+        // pozostałych narzędzi.
+        if (type != null && !type.equals("pickaxe") && !type.equals("axe")) {
             if (sprawdzWlasciciela(player, item)) {
                 otworzMenuUlepszen(player, item);
             }
@@ -227,7 +219,7 @@ public class LevelableToolsManager implements Listener, ToolsService {
         return item.getItemMeta().getPersistentDataContainer().get(keyType, PersistentDataType.STRING);
     }
 
-    /** [DEBUG] Dodaje `levels` poziomów trzymanemu narzędziu (poza kilofem - patrz PickaxeSkillManager). */
+    /** [DEBUG] Dodaje `levels` poziomów trzymanemu narzędziu (poza kilofem/siekierą - patrz PickaxeSkillManager/AxeSkillManager). */
     public void debugAddLevels(Player player, ItemStack item, int levels) {
         for (int i = 0; i < levels * EXP_PER_LEVEL; i++) {
             dodajExp(player, item);
@@ -276,7 +268,6 @@ public class LevelableToolsManager implements Listener, ToolsService {
             case "pickaxe" -> "Ewoluujący Kilof";
             case "axe" -> "Ewoluująca Siekiera";
             case "sword" -> "Ewoluujący Miecz";
-            case "shovel" -> "Ewoluująca Łopata";
             case "hoe" -> "Ewoluująca Motyka";
             default -> "Narzędzie";
         };
@@ -321,15 +312,15 @@ public class LevelableToolsManager implements Listener, ToolsService {
 
     private Material pobierzMaterial(String type, int tier) {
         if (tier == 0) {
-            return switch(type) { case "pickaxe" -> Material.WOODEN_PICKAXE; case "axe" -> Material.WOODEN_AXE; case "sword" -> Material.WOODEN_SWORD; case "shovel" -> Material.WOODEN_SHOVEL; case "hoe" -> Material.WOODEN_HOE; default -> Material.STICK; };
+            return switch(type) { case "pickaxe" -> Material.WOODEN_PICKAXE; case "axe" -> Material.WOODEN_AXE; case "sword" -> Material.WOODEN_SWORD; case "hoe" -> Material.WOODEN_HOE; default -> Material.STICK; };
         } else if (tier == 1) {
-            return switch(type) { case "pickaxe" -> Material.STONE_PICKAXE; case "axe" -> Material.STONE_AXE; case "sword" -> Material.STONE_SWORD; case "shovel" -> Material.STONE_SHOVEL; case "hoe" -> Material.STONE_HOE; default -> Material.STICK; };
+            return switch(type) { case "pickaxe" -> Material.STONE_PICKAXE; case "axe" -> Material.STONE_AXE; case "sword" -> Material.STONE_SWORD; case "hoe" -> Material.STONE_HOE; default -> Material.STICK; };
         } else if (tier == 2) {
-            return switch(type) { case "pickaxe" -> Material.IRON_PICKAXE; case "axe" -> Material.IRON_AXE; case "sword" -> Material.IRON_SWORD; case "shovel" -> Material.IRON_SHOVEL; case "hoe" -> Material.IRON_HOE; default -> Material.STICK; };
+            return switch(type) { case "pickaxe" -> Material.IRON_PICKAXE; case "axe" -> Material.IRON_AXE; case "sword" -> Material.IRON_SWORD; case "hoe" -> Material.IRON_HOE; default -> Material.STICK; };
         } else if (tier == 3) {
-            return switch(type) { case "pickaxe" -> Material.DIAMOND_PICKAXE; case "axe" -> Material.DIAMOND_AXE; case "sword" -> Material.DIAMOND_SWORD; case "shovel" -> Material.DIAMOND_SHOVEL; case "hoe" -> Material.DIAMOND_HOE; default -> Material.STICK; };
+            return switch(type) { case "pickaxe" -> Material.DIAMOND_PICKAXE; case "axe" -> Material.DIAMOND_AXE; case "sword" -> Material.DIAMOND_SWORD; case "hoe" -> Material.DIAMOND_HOE; default -> Material.STICK; };
         } else {
-            return switch(type) { case "pickaxe" -> Material.NETHERITE_PICKAXE; case "axe" -> Material.NETHERITE_AXE; case "sword" -> Material.NETHERITE_SWORD; case "shovel" -> Material.NETHERITE_SHOVEL; case "hoe" -> Material.NETHERITE_HOE; default -> Material.STICK; };
+            return switch(type) { case "pickaxe" -> Material.NETHERITE_PICKAXE; case "axe" -> Material.NETHERITE_AXE; case "sword" -> Material.NETHERITE_SWORD; case "hoe" -> Material.NETHERITE_HOE; default -> Material.STICK; };
         }
     }
 

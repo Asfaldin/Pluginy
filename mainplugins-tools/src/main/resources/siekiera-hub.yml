@@ -1,0 +1,28 @@
+# ==========================================================================
+# siekiera-hub.yml - uklad menu "Siekiera - Umiejetnosci" (Shift + PPM siekiera).
+# Ten sam schemat co kilof-hub.yml - mozna zmienic tu rozmiar okna oraz pozycje
+# (sloty) kazdej ikonki bez przebudowy pluginu, wystarczy zmienic plik i
+# zrestartowac serwer.
+#
+# rozmiar: liczba slotow. Musi byc wielokrotnoscia 9 (Bukkit dzieli okno na
+# rzedy po 9) w zakresie 9-54 - inna wartosc zostanie zaokraglona w gore do
+# najblizszej wielokrotnosci 9 i przycieta do 54.
+#
+# sloty: numeracja od 0 (lewy gorny rog) do rozmiar-1 (prawy dolny rog),
+# rzedami po 9. Kazdy slot powinien byc unikalny.
+#
+# galaz1/galaz2/galaz3 - trzy galezie drzewka (kolejnosc zgodna z lista branches
+# przekazana do AxeSkillManager), klikniecie otwiera ich osobne podmenu.
+# ==========================================================================
+
+rozmiar: 27
+
+sloty:
+  narzedzie: 4
+  galaz1: 10
+  galaz2: 13
+  galaz3: 16
+  rzadki_wybor: 18
+  statystyki: 20
+  wyjdz: 22
+  ulepszenia: 24

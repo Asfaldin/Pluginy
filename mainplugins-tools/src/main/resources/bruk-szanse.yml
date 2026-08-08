@@ -1,9 +1,9 @@
 # ==========================================================================
-# bruk-szanse.yml - szansa % na to, ze po skopaniu bruku (COBBLESTONE) w tym samym
-# miejscu pojawi sie blok surowca do dobicia. Kazdy tier kilofa ma WLASNA, niezalezna
-# wartosc - im wyzszy tier, tym wieksza pula mozliwych surowcow (kumulatywnie, patrz
-# BrukSurowce.java w kodzie), ale sama szansa % edytowana jest tylko tutaj, na zywo
-# (wystarczy zmienic plik i zrestartowac serwer - nie trzeba przebudowywac pluginu).
+# bruk-szanse.yml - szansa % na to, ze skopanie bruku (COBBLESTONE) doda do wypadajacych
+# przedmiotow bonusowy surowiec. Kazdy tier kilofa ma WLASNA, niezalezna wartosc - im
+# wyzszy tier, tym wieksza pula mozliwych surowcow (kumulatywnie, patrz BrukSurowce.java
+# w kodzie), ale sama szansa % edytowana jest tylko tutaj, na zywo (wystarczy zmienic
+# plik i zrestartowac serwer - nie trzeba przebudowywac pluginu).
 #
 # Tiery kilofa: 0=Drewniany 1=Kamienny 2=Zelazny 3=Diamentowy 4=Netherytowy
 # Wartosci sa w procentach (np. 8.0 = 8%). Na razie wszystkie rowne - do wywazenia.

@@ -194,13 +194,15 @@ public class QuestManager implements Listener {
         // swojej zwykłej nagrody (trofeum) jeszcze Beacon w wreczNagrode() - jedyny
         // wyjątek w całej ścieżce, gdzie nagroda to więcej niż lista q.nagrody().
         //
-        // Kilof/siekiera/miecz/motyka/łopata NIE są już dawane automatycznie przy
-        // pierwszym wejściu - są w głównej mierze nagrodami z Głównej Ścieżki (questy
-        // 1/3/5/8/9 niżej), realne wręczenie w wreczNagrode() przez ToolsService.
-        // ItemStack w tych questach to tylko placeholder do wyświetlenia w GUI, zanim
-        // gracz je ukończy. Quest 2 to WYJĄTEK od wyjątku - sprawdza faktyczny POZIOM
-        // kilofa (TypWymogu.POZIOM_KILOFA, ToolsService.poziomKilofa), a nagrodą są
-        // zwykłe przedmioty (mączka + sadzonka), nie kolejne narzędzie.
+        // Kilof/siekiera/miecz/motyka NIE są już dawane automatycznie przy pierwszym
+        // wejściu - są w głównej mierze nagrodami z Głównej Ścieżki (questy 1/3/5/8
+        // niżej), realne wręczenie w wreczNagrode() przez ToolsService. ItemStack w tych
+        // questach to tylko placeholder do wyświetlenia w GUI, zanim gracz je ukończy.
+        // Quest 2 to WYJĄTEK od wyjątku - sprawdza faktyczny POZIOM kilofa
+        // (TypWymogu.POZIOM_KILOFA, ToolsService.poziomKilofa), a nagrodą są zwykłe
+        // przedmioty (mączka + sadzonka), nie kolejne narzędzie. Quest 9 ("Kopacz spod
+        // Ziemi") sprawdza awans kilofa do tieru Kamień, ale nagrodą jest zwykły
+        // przedmiot (pochodnie) - łopata jako narzędzie została usunięta z gry.
         //
         // Późniejsze questy tych narzędzi (12, 21, 30, 31) NIE dają ich ponownie -
         // weryfikują AWANS TIERU (np. "STONE_PICKAXE x1" = kilof faktycznie doszedł do
@@ -226,8 +228,8 @@ public class QuestManager implements Listener {
                         Material.MELON_SLICE, 16, 150),
                 Quest.przedmiot(8, "Pierwsza Krew", List.of("Stocz walkę z nieumarłymi i przynieś na to dowód."),
                         Material.ROTTEN_FLESH, 20, new ItemStack(Material.WOODEN_SWORD, 1), "1x Ewoluujący Miecz"),
-                Quest.narzedzie(9, "Kopacz spod Ziemi", List.of("Ulepsz kilof do tieru Kamień (jeśli jeszcze nie awansował) - przyda Ci się też coś do kopania ziemi."),
-                        Material.STONE_PICKAXE, new ItemStack(Material.WOODEN_SHOVEL, 1), "1x Ewoluująca Łopata"),
+                Quest.narzedzie(9, "Kopacz spod Ziemi", List.of("Ulepsz kilof do tieru Kamień (jeśli jeszcze nie awansował) - przyda Ci się światło w kopalni."),
+                        Material.STONE_PICKAXE, new ItemStack(Material.TORCH, 32), "32x Pochodnia"),
                 Quest.zaMonety(10, "Fundamenty Wyspy", List.of("Wpłać pierwsze oszczędności do banku wyspy.", "Kamień milowy - pierwszy etap za Tobą!"),
                         500, trofeum(Material.PLAYER_HEAD, "Głowa Osadnika", "Za pierwsze kroki na wyspie."), "Trofeum: Głowa Osadnika"),
 
@@ -801,12 +803,12 @@ public class QuestManager implements Listener {
 
     /**
      * Wręcza nagrodę za quest. Wyjątek od "zwykłego ItemStacka z configu listy" - questy
-     * 1/3/5/8/9 Głównej Ścieżki (kilof/siekiera/motyka/miecz/łopata), gdzie zamiast
-     * placeholdera z zaladujQuesty() gracz dostaje PRAWDZIWE, działające ewoluujące
-     * narzędzie z mainplugins-tools (patrz ToolsService/CoreAPI - ten sam mechanizm
-     * poziomowania, ochrony przed wyrzuceniem itd.). Jeśli mainplugins-tools nie jest
-     * akurat wgrany, spadamy z powrotem na placeholder, żeby gracz nie stracił
-     * przedmiotów za quest bez żadnej nagrody.
+     * 1/3/5/8 Głównej Ścieżki (kilof/siekiera/motyka/miecz), gdzie zamiast placeholdera
+     * z zaladujQuesty() gracz dostaje PRAWDZIWE, działające ewoluujące narzędzie z
+     * mainplugins-tools (patrz ToolsService/CoreAPI - ten sam mechanizm poziomowania,
+     * ochrony przed wyrzuceniem itd.). Jeśli mainplugins-tools nie jest akurat wgrany,
+     * spadamy z powrotem na placeholder, żeby gracz nie stracił przedmiotów za quest bez
+     * żadnej nagrody.
      */
     private void wreczNagrode(Player player, String kategoria, Quest q) {
         if (kategoria.equals(KATEGORIA_GLOWNA_SCIEZKA)) {
@@ -817,7 +819,6 @@ public class QuestManager implements Listener {
                     case 3 -> { tools.dajEwoluujacaSiekiere(player); return; }
                     case 5 -> { tools.dajEwoluujacaMotyke(player); return; }
                     case 8 -> { tools.dajEwoluujacyMiecz(player); return; }
-                    case 9 -> { tools.dajEwoluujacaLopate(player); return; }
                 }
             }
         }

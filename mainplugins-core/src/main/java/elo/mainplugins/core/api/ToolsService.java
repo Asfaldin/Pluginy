@@ -23,9 +23,6 @@ public interface ToolsService {
     /** Jak {@link #dajEwoluujacyKilof(Player)}, ale miecz - nagroda za quest "Pierwsza Krew" Głównej Ścieżki. */
     void dajEwoluujacyMiecz(Player player);
 
-    /** Jak {@link #dajEwoluujacyKilof(Player)}, ale łopata - nagroda za quest "Zaczynamy" Głównej Ścieżki. */
-    void dajEwoluujacaLopate(Player player);
-
     /**
      * Poziom (globalny, rośnie 1,2,3...) ewoluującego kilofa gracza, gdziekolwiek w
      * ekwipunku - 0, jeśli gracz w ogóle go nie ma. Kilof ma OSOBNY system poziomowania

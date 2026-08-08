@@ -117,6 +117,32 @@ public class ShopManager implements Listener {
      */
     private static final int GRID_ROZMIAR = 45;
 
+    /**
+     * Układ ekranu głównego: siatka 7x2 wyśrodkowana w oknie 6x9 (rzędy 3-4,
+     * kolumny 2-8). Dokładnie 14 pozycji = tyle, ile kategorii w sklep.yml.
+     */
+    private static final int[] SLOTY_MENU_KATEGORII = {
+            19, 20, 21, 22, 23, 24, 25,
+            28, 29, 30, 31, 32, 33, 34
+    };
+
+    /** Puste, bezimienne szkło do wypełniania tła GUI. */
+    private ItemStack pane(Material material) {
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.text(" "));
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    /** Jednolite szare tło na całym oknie ekranu głównego sklepu. */
+    private void wypelnijTloSzare(Inventory gui) {
+        ItemStack szare = pane(Material.GRAY_STAINED_GLASS_PANE);
+        for (int i = 0; i < gui.getSize(); i++) {
+            gui.setItem(i, szare);
+        }
+    }
+
     // ==================================================================== GUI ====
 
     public void otworzSklep(Player player, boolean zMenu) {
@@ -125,12 +151,13 @@ public class ShopManager implements Listener {
         playerPage.remove(player.getUniqueId());
 
         Inventory gui = Bukkit.createInventory(null, 54, Component.text("Sklep Serwerowy", NamedTextColor.GOLD, TextDecoration.BOLD));
+        wypelnijTloSzare(gui);
 
         ConfigurationSection catSection = sklepConfig.getConfigurationSection("categories");
         if (catSection != null) {
-            int slot = 0;
+            int idx = 0;
             for (String catKey : catSection.getKeys(false)) {
-                if (slot >= GRID_ROZMIAR) break; // więcej kategorii niż miejsca w siatce - reszta się nie zmieści
+                if (idx >= SLOTY_MENU_KATEGORII.length) break; // więcej kategorii niż miejsc w siatce - reszta się nie zmieści
 
                 String catName = sklepConfig.getString("categories." + catKey + ".name", "Kategoria");
                 String iconName = sklepConfig.getString("categories." + catKey + ".icon", "CHEST");
@@ -149,8 +176,8 @@ public class ShopManager implements Listener {
                 meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
                 item.setItemMeta(meta);
 
-                gui.setItem(slot, item);
-                slot++;
+                gui.setItem(SLOTY_MENU_KATEGORII[idx], item);
+                idx++;
             }
         }
 

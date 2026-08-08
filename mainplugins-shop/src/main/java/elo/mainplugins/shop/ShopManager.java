@@ -181,9 +181,22 @@ public class ShopManager implements Listener {
 
         ConfigurationSection catSection = sklepConfig.getConfigurationSection("categories");
         if (catSection != null) {
+            // SLOTY_MENU_KATEGORII to dwa rzędy po 7. Niepełny rząd (np. 12 kategorii = 7+5)
+            // ma być WYŚRODKOWANY w tych 7 kolumnach, a nie doklejony do lewej krawędzi -
+            // stąd offset wyliczany per rząd zamiast wypełniania po kolei od indeksu 0.
+            final int SZEROKOSC_RZEDU = 7;
+            int total = Math.min(catSection.getKeys(false).size(), SLOTY_MENU_KATEGORII.length);
+            int liczbaRzedow = (int) Math.ceil((double) total / SZEROKOSC_RZEDU);
+
             int idx = 0;
             for (String catKey : catSection.getKeys(false)) {
-                if (idx >= SLOTY_MENU_KATEGORII.length) break; // więcej kategorii niż miejsc w siatce - reszta się nie zmieści
+                if (idx >= total) break; // więcej kategorii niż miejsc w siatce - reszta się nie zmieści
+
+                int rzad = idx / SZEROKOSC_RZEDU;
+                int kolumna = idx % SZEROKOSC_RZEDU;
+                boolean ostatniRzad = (rzad == liczbaRzedow - 1);
+                int itemowWTymRzedzie = ostatniRzad ? (total - rzad * SZEROKOSC_RZEDU) : SZEROKOSC_RZEDU;
+                int offset = (SZEROKOSC_RZEDU - itemowWTymRzedzie) / 2;
 
                 String catName = sklepConfig.getString("categories." + catKey + ".name", "Kategoria");
                 String iconName = sklepConfig.getString("categories." + catKey + ".icon", "CHEST");
@@ -202,7 +215,7 @@ public class ShopManager implements Listener {
                 meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
                 item.setItemMeta(meta);
 
-                gui.setItem(SLOTY_MENU_KATEGORII[idx], item);
+                gui.setItem(SLOTY_MENU_KATEGORII[rzad * SZEROKOSC_RZEDU + kolumna + offset], item);
                 idx++;
             }
         }

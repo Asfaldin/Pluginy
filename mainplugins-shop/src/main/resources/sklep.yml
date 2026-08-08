@@ -10,7 +10,7 @@ sklep-v7-uklad: true
 categories:
   bloki:
     name: "Bloki"
-    icon: STONE_BRICKS
+    icon: GRASS_BLOCK
     slot: 10
     items:
       0:
@@ -347,6 +347,72 @@ categories:
         material: CINNABAR
         slot: 51
         display-name: "Cynober"
+        amount: 64
+        buy-price: 380
+      52:
+        material: MOSSY_COBBLESTONE
+        slot: 52
+        display-name: "Zamszony Bruk"
+        amount: 64
+        buy-price: 320
+      53:
+        material: SMOOTH_STONE
+        slot: 53
+        display-name: "Gładki Kamień"
+        amount: 64
+        buy-price: 320
+      54:
+        material: STONE_BRICKS
+        slot: 54
+        display-name: "Kamienne Cegły"
+        amount: 64
+        buy-price: 320
+      55:
+        material: RESIN_BRICKS
+        slot: 55
+        display-name: "Żywicowe Cegły"
+        amount: 64
+        buy-price: 580
+      56:
+        material: BRICKS
+        slot: 56
+        display-name: "Cegły"
+        amount: 64
+        buy-price: 510
+      57:
+        material: NETHER_BRICKS
+        slot: 57
+        display-name: "Netherowe Cegły"
+        amount: 64
+        buy-price: 510
+      58:
+        material: WHITE_CONCRETE
+        slot: 58
+        display-name: "Biały Cement"
+        amount: 64
+        buy-price: 380
+      59:
+        material: GLASS
+        slot: 59
+        display-name: "Szkło"
+        amount: 64
+        buy-price: 320
+      60:
+        material: PALE_MOSS_BLOCK
+        slot: 60
+        display-name: "Blok Bladego Mchu"
+        amount: 64
+        buy-price: 580
+      61:
+        material: MANGROVE_ROOTS
+        slot: 61
+        display-name: "Namorzynowe Korzenie"
+        amount: 64
+        buy-price: 380
+      62:
+        material: MUDDY_MANGROVE_ROOTS
+        slot: 62
+        display-name: "Zabłocone Namorzynowe Korzenie"
         amount: 64
         buy-price: 380
 
@@ -799,6 +865,108 @@ categories:
         display-name: "Wachlarz Koralowca Rogowego"
         amount: 1
         buy-price: 250
+      69:
+        material: PALE_HANGING_MOSS
+        slot: 69
+        display-name: "Zwisający Blady Mech"
+        amount: 4
+        buy-price: 400
+      70:
+        material: PALE_OAK_SAPLING
+        slot: 70
+        display-name: "Sadzonka Bladego Dębu"
+        amount: 1
+        buy-price: 400
+      71:
+        material: TORCHFLOWER
+        slot: 71
+        display-name: "Ognisty Kwiat"
+        amount: 1
+        buy-price: 300
+      72:
+        material: CACTUS_FLOWER
+        slot: 72
+        display-name: "Kwiat Kaktusa"
+        amount: 1
+        buy-price: 200
+      73:
+        material: CLOSED_EYEBLOSSOM
+        slot: 73
+        display-name: "Zamknięta Okrotka"
+        amount: 1
+        buy-price: 250
+      74:
+        material: OPEN_EYEBLOSSOM
+        slot: 74
+        display-name: "Otwarta Okrotka"
+        amount: 1
+        buy-price: 250
+      75:
+        material: PINK_PETALS
+        slot: 75
+        display-name: "Różowe Kwiatki"
+        amount: 4
+        buy-price: 400
+      76:
+        material: WILDFLOWERS
+        slot: 76
+        display-name: "Polne Kwiaty"
+        amount: 4
+        buy-price: 400
+      77:
+        material: LEAF_LITTER
+        slot: 77
+        display-name: "Ściółka"
+        amount: 4
+        buy-price: 320
+      78:
+        material: FIREFLY_BUSH
+        slot: 78
+        display-name: "Krzew Świetlików"
+        amount: 1
+        buy-price: 300
+      79:
+        material: PITCHER_PLANT
+        slot: 79
+        display-name: "Dzbanecznik"
+        amount: 1
+        buy-price: 400
+      80:
+        material: BIG_DRIPLEAF
+        slot: 80
+        display-name: "Wielki Spadoliść"
+        amount: 4
+        buy-price: 600
+      81:
+        material: SMALL_DRIPLEAF
+        slot: 81
+        display-name: "Mały Spadoliść"
+        amount: 4
+        buy-price: 400
+      82:
+        material: GLOW_LICHEN
+        slot: 82
+        display-name: "Świecący Porost"
+        amount: 4
+        buy-price: 600
+      83:
+        material: HANGING_ROOTS
+        slot: 83
+        display-name: "Zwisające Korzenie"
+        amount: 4
+        buy-price: 320
+      84:
+        material: SEAGRASS
+        slot: 84
+        display-name: "Trawa Morska"
+        amount: 4
+        buy-price: 200
+      85:
+        material: WARPED_ROOTS
+        slot: 85
+        display-name: "Spaczone Korzenie"
+        amount: 4
+        buy-price: 320
 
   drewno:
     name: "Drewno"
@@ -931,6 +1099,42 @@ categories:
         display-name: "Bladodębowe Deski"
         amount: 64
         buy-price: 1200
+      18:
+        material: BAMBOO_BLOCK
+        slot: 18
+        display-name: "Blok Bambusa"
+        amount: 64
+        buy-price: 900
+      19:
+        material: BAMBOO_PLANKS
+        slot: 19
+        display-name: "Bambusowe Deski"
+        amount: 64
+        buy-price: 450
+      20:
+        material: CRIMSON_STEM
+        slot: 20
+        display-name: "Szkarłatny Trzon"
+        amount: 64
+        buy-price: 1600
+      21:
+        material: CRIMSON_PLANKS
+        slot: 21
+        display-name: "Szkarłatne Deski"
+        amount: 64
+        buy-price: 830
+      22:
+        material: WARPED_STEM
+        slot: 22
+        display-name: "Spaczony Trzon"
+        amount: 64
+        buy-price: 1600
+      23:
+        material: WARPED_PLANKS
+        slot: 23
+        display-name: "Spaczone Deski"
+        amount: 64
+        buy-price: 830
 
   mineraly:
     name: "Rudy i Minerały"
@@ -1089,6 +1293,18 @@ categories:
         amount: 64
         sell-amount: 64
         sell-price: 20000
+      22:
+        material: RESIN_CLUMP
+        slot: 22
+        display-name: "Gruda Żywicy"
+        amount: 64
+        buy-price: 380
+      23:
+        material: TURTLE_SCUTE
+        slot: 23
+        display-name: "Tarczka Żółwia"
+        amount: 16
+        buy-price: 800
 
   moby:
     name: "Dropy z Mobów"
@@ -1239,6 +1455,37 @@ categories:
         display-name: "Magmowy Krem"
         amount: 4
         buy-price: 750
+      21:
+        material: ARROW
+        slot: 21
+        display-name: "Strzała"
+        amount: 64
+        sell-amount: 64
+        sell-price: 320
+      22:
+        material: FROGSPAWN
+        slot: 22
+        display-name: "Żabi Skrzek"
+        amount: 4
+        buy-price: 800
+      23:
+        material: OCHRE_FROGLIGHT
+        slot: 23
+        display-name: "Ochrowa Żabia Lampa"
+        amount: 64
+        buy-price: 1600
+      24:
+        material: VERDANT_FROGLIGHT
+        slot: 24
+        display-name: "Zielona Żabia Lampa"
+        amount: 64
+        buy-price: 1600
+      25:
+        material: PEARLESCENT_FROGLIGHT
+        slot: 25
+        display-name: "Perłowa Żabia Lampa"
+        amount: 64
+        buy-price: 1600
 
   mechanizmy:
     name: "Mechanizmy"
@@ -1614,7 +1861,7 @@ categories:
 
   jedzenie:
     name: "Jedzenie"
-    icon: BREAD
+    icon: COOKED_CHICKEN
     slot: 20
     items:
       0:
@@ -1625,69 +1872,69 @@ categories:
         sell-amount: 64
         sell-price: 400
       1:
-        material: PORKCHOP
+        material: COOKED_BEEF
         slot: 1
+        display-name: "Stek"
+        amount: 16
+        buy-price: 1300
+      2:
+        material: PORKCHOP
+        slot: 2
         display-name: "Surowa Wieprzowina"
         amount: 64
         sell-amount: 64
         sell-price: 400
-      2:
+      3:
+        material: COOKED_PORKCHOP
+        slot: 3
+        display-name: "Pieczona Wieprzowina"
+        amount: 16
+        buy-price: 1300
+      4:
         material: CHICKEN
-        slot: 2
+        slot: 4
         display-name: "Surowy Kurczak"
         amount: 64
         sell-amount: 64
         sell-price: 460
-      3:
+      5:
+        material: COOKED_CHICKEN
+        slot: 5
+        display-name: "Pieczony Kurczak"
+        amount: 16
+        buy-price: 960
+      6:
         material: MUTTON
-        slot: 3
+        slot: 6
         display-name: "Surowa Baranina"
         amount: 64
         sell-amount: 64
         sell-price: 270
-      4:
+      7:
+        material: COOKED_MUTTON
+        slot: 7
+        display-name: "Pieczona Baranina"
+        amount: 16
+        buy-price: 1100
+      8:
         material: RABBIT
-        slot: 4
+        slot: 8
         display-name: "Surowy Królik"
         amount: 64
         sell-amount: 64
         sell-price: 320
-      5:
-        material: BREAD
-        slot: 5
-        display-name: "Chleb"
-        amount: 16
-        buy-price: 960
-      6:
-        material: COOKED_BEEF
-        slot: 6
-        display-name: "Stek"
-        amount: 16
-        buy-price: 1300
-      7:
-        material: COOKED_PORKCHOP
-        slot: 7
-        display-name: "Pieczona Wieprzowina"
-        amount: 16
-        buy-price: 1300
-      8:
-        material: COOKED_CHICKEN
-        slot: 8
-        display-name: "Pieczony Kurczak"
-        amount: 16
-        buy-price: 960
       9:
-        material: COOKED_MUTTON
-        slot: 9
-        display-name: "Pieczona Baranina"
-        amount: 16
-        buy-price: 1100
-      10:
         material: COOKED_RABBIT
-        slot: 10
+        slot: 9
         display-name: "Pieczony Królik"
         amount: 16
         buy-price: 1100
+      10:
+        material: BREAD
+        slot: 10
+        display-name: "Chleb"
+        amount: 16
+        buy-price: 960
       11:
         material: BAKED_POTATO
         slot: 11
@@ -1911,194 +2158,206 @@ categories:
         amount: 1
         buy-price: 50000
       23:
-        material: WHITE_DYE
+        material: POINTED_DRIPSTONE
         slot: 23
+        display-name: "Spiczasty Naciek"
+        amount: 16
+        buy-price: 1600
+      24:
+        material: SULFUR_SPIKE
+        slot: 24
+        display-name: "Siarkowe Kolce"
+        amount: 16
+        buy-price: 2400
+      25:
+        material: WHITE_DYE
+        slot: 25
         display-name: "Barwnik Biały"
         amount: 64
         buy-price: 1600
-      24:
+      26:
         material: ORANGE_DYE
-        slot: 24
+        slot: 26
         display-name: "Barwnik Pomarańczowy"
         amount: 64
         buy-price: 1600
-      25:
+      27:
         material: MAGENTA_DYE
-        slot: 25
+        slot: 27
         display-name: "Barwnik Karmazynowy"
         amount: 64
         buy-price: 1600
-      26:
+      28:
         material: LIGHT_BLUE_DYE
-        slot: 26
+        slot: 28
         display-name: "Barwnik Jasnoniebieski"
         amount: 64
         buy-price: 1600
-      27:
+      29:
         material: YELLOW_DYE
-        slot: 27
+        slot: 29
         display-name: "Barwnik Żółty"
         amount: 64
         buy-price: 1600
-      28:
+      30:
         material: LIME_DYE
-        slot: 28
+        slot: 30
         display-name: "Barwnik Jasnozielony"
         amount: 64
         buy-price: 1600
-      29:
+      31:
         material: PINK_DYE
-        slot: 29
+        slot: 31
         display-name: "Barwnik Różowy"
         amount: 64
         buy-price: 1600
-      30:
+      32:
         material: GRAY_DYE
-        slot: 30
+        slot: 32
         display-name: "Barwnik Szary"
         amount: 64
         buy-price: 1600
-      31:
+      33:
         material: LIGHT_GRAY_DYE
-        slot: 31
+        slot: 33
         display-name: "Barwnik Jasnoszary"
         amount: 64
         buy-price: 1600
-      32:
+      34:
         material: CYAN_DYE
-        slot: 32
+        slot: 34
         display-name: "Barwnik Turkusowy"
         amount: 64
         buy-price: 1600
-      33:
+      35:
         material: PURPLE_DYE
-        slot: 33
+        slot: 35
         display-name: "Barwnik Fioletowy"
         amount: 64
         buy-price: 1600
-      34:
+      36:
         material: BLUE_DYE
-        slot: 34
+        slot: 36
         display-name: "Barwnik Niebieski"
         amount: 64
         buy-price: 1600
-      35:
+      37:
         material: BROWN_DYE
-        slot: 35
+        slot: 37
         display-name: "Barwnik Brązowy"
         amount: 64
         buy-price: 1600
-      36:
+      38:
         material: GREEN_DYE
-        slot: 36
+        slot: 38
         display-name: "Barwnik Zielony"
         amount: 64
         buy-price: 1600
-      37:
+      39:
         material: RED_DYE
-        slot: 37
+        slot: 39
         display-name: "Barwnik Czerwony"
         amount: 64
         buy-price: 1600
-      38:
+      40:
         material: BLACK_DYE
-        slot: 38
+        slot: 40
         display-name: "Barwnik Czarny"
         amount: 64
         buy-price: 1600
-      39:
+      41:
         material: WHITE_GLAZED_TERRACOTTA
-        slot: 39
+        slot: 41
         display-name: "Glazurowana Terakota Biały"
         amount: 64
         buy-price: 1000
-      40:
+      42:
         material: ORANGE_GLAZED_TERRACOTTA
-        slot: 40
+        slot: 42
         display-name: "Glazurowana Terakota Pomarańczowy"
         amount: 64
         buy-price: 1000
-      41:
+      43:
         material: MAGENTA_GLAZED_TERRACOTTA
-        slot: 41
+        slot: 43
         display-name: "Glazurowana Terakota Karmazynowy"
         amount: 64
         buy-price: 1000
-      42:
+      44:
         material: LIGHT_BLUE_GLAZED_TERRACOTTA
-        slot: 42
+        slot: 44
         display-name: "Glazurowana Terakota Jasnoniebieski"
         amount: 64
         buy-price: 1000
-      43:
+      45:
         material: YELLOW_GLAZED_TERRACOTTA
-        slot: 43
+        slot: 45
         display-name: "Glazurowana Terakota Żółty"
         amount: 64
         buy-price: 1000
-      44:
+      46:
         material: LIME_GLAZED_TERRACOTTA
-        slot: 44
+        slot: 46
         display-name: "Glazurowana Terakota Jasnozielony"
         amount: 64
         buy-price: 1000
-      45:
+      47:
         material: PINK_GLAZED_TERRACOTTA
-        slot: 45
+        slot: 47
         display-name: "Glazurowana Terakota Różowy"
         amount: 64
         buy-price: 1000
-      46:
+      48:
         material: GRAY_GLAZED_TERRACOTTA
-        slot: 46
+        slot: 48
         display-name: "Glazurowana Terakota Szary"
         amount: 64
         buy-price: 1000
-      47:
+      49:
         material: LIGHT_GRAY_GLAZED_TERRACOTTA
-        slot: 47
+        slot: 49
         display-name: "Glazurowana Terakota Jasnoszary"
         amount: 64
         buy-price: 1000
-      48:
+      50:
         material: CYAN_GLAZED_TERRACOTTA
-        slot: 48
+        slot: 50
         display-name: "Glazurowana Terakota Turkusowy"
         amount: 64
         buy-price: 1000
-      49:
+      51:
         material: PURPLE_GLAZED_TERRACOTTA
-        slot: 49
+        slot: 51
         display-name: "Glazurowana Terakota Fioletowy"
         amount: 64
         buy-price: 1000
-      50:
+      52:
         material: BLUE_GLAZED_TERRACOTTA
-        slot: 50
+        slot: 52
         display-name: "Glazurowana Terakota Niebieski"
         amount: 64
         buy-price: 1000
-      51:
+      53:
         material: BROWN_GLAZED_TERRACOTTA
-        slot: 51
+        slot: 53
         display-name: "Glazurowana Terakota Brązowy"
         amount: 64
         buy-price: 1000
-      52:
+      54:
         material: GREEN_GLAZED_TERRACOTTA
-        slot: 52
+        slot: 54
         display-name: "Glazurowana Terakota Zielony"
         amount: 64
         buy-price: 1000
-      53:
+      55:
         material: RED_GLAZED_TERRACOTTA
-        slot: 53
+        slot: 55
         display-name: "Glazurowana Terakota Czerwony"
         amount: 64
         buy-price: 1000
-      54:
+      56:
         material: BLACK_GLAZED_TERRACOTTA
-        slot: 54
+        slot: 56
         display-name: "Glazurowana Terakota Czarny"
         amount: 64
         buy-price: 1000

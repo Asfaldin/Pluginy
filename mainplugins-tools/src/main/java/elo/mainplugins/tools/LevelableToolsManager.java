@@ -158,10 +158,10 @@ public class LevelableToolsManager implements Listener, ToolsService {
                 event.setCancelled(true);
                 return;
             }
-            // Kilof i siekiera mają od teraz własny system progresji (drzewko umiejętności,
-            // patrz PickaxeSkillManager/AxeSkillManager) - ochrona właściciela wyżej dalej
-            // obowiązuje, ale exp/tier liczy się tam, nie tutaj.
-            if (!type.equals("pickaxe") && !type.equals("axe")) {
+            // Kilof/siekiera/motyka mają od teraz własny system progresji (drzewko
+            // umiejętności, patrz PickaxeSkillManager/AxeSkillManager/HoeSkillManager) -
+            // ochrona właściciela wyżej dalej obowiązuje, ale exp/tier liczy się tam, nie tutaj.
+            if (!type.equals("pickaxe") && !type.equals("axe") && !type.equals("hoe")) {
                 dodajExp(player, item);
             }
         }
@@ -174,12 +174,13 @@ public class LevelableToolsManager implements Listener, ToolsService {
             if (item.getType() == Material.AIR || item.getItemMeta() == null) return;
 
             String type = item.getItemMeta().getPersistentDataContainer().get(keyType, PersistentDataType.STRING);
+            // Miecz ma od teraz własny system progresji (drzewko umiejętności, patrz
+            // SwordSkillManager) - ochrona właściciela dalej obowiązuje tutaj, ale exp
+            // liczy się tam, nie tutaj.
             if ("sword".equals(type)) {
                 if (!sprawdzWlasciciela(player, item)) {
                     event.setCancelled(true);
-                    return;
                 }
-                dodajExp(player, item);
             }
         }
     }
@@ -204,9 +205,9 @@ public class LevelableToolsManager implements Listener, ToolsService {
         if (item.getType() == Material.AIR || item.getItemMeta() == null) return;
 
         String type = item.getItemMeta().getPersistentDataContainer().get(keyType, PersistentDataType.STRING);
-        // Kilof i siekiera mają własny hub (Shift+PPM) - to stare menu zostaje tylko dla
-        // pozostałych narzędzi.
-        if (type != null && !type.equals("pickaxe") && !type.equals("axe")) {
+        // Kilof/siekiera/motyka/miecz mają własny hub (Shift+PPM) - to stare menu zostaje
+        // tylko dla pozostałych narzędzi.
+        if (type != null && !type.equals("pickaxe") && !type.equals("axe") && !type.equals("hoe") && !type.equals("sword")) {
             if (sprawdzWlasciciela(player, item)) {
                 otworzMenuUlepszen(player, item);
             }

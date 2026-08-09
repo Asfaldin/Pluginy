@@ -1,4 +1,4 @@
-package elo.mainplugins.tools.axe;
+package elo.mainplugins.tools.hoe;
 
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.tools.skilltree.ToolSkillManager;
@@ -36,13 +36,17 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Siekiera na silniku ToolSkillManager (model kart). Mechaniki niezmienione względem
+ * Motyka na silniku ToolSkillManager (model kart). Mechaniki niezmienione względem
  * poprzedniej, węzłowej wersji - tylko czytane z liczników kart (cardCountOf) zamiast
- * pętli po bitmaskowych węzłach. Patrz AxeSkillTrees dla treści/rzadkości kart.
+ * pętli po bitmaskowych węzłach. Patrz HoeSkillTrees dla treści/rzadkości kart.
  */
-public class AxeSkillManager extends ToolSkillManager {
+public class HoeSkillManager extends ToolSkillManager {
 
-    private static final double[] DUCH_DRZEWA_CHANCE = {0.06, 0.12, 0.16, 0.20, 0.24};
+    private static final double[] URODZAJ_CHANCE = {0.06, 0.12, 0.16, 0.20, 0.24};
+
+    private static final Set<Material> UPRAWY = Set.of(
+            Material.WHEAT, Material.CARROTS, Material.POTATOES, Material.BEETROOTS, Material.NETHER_WART
+    );
 
     private final NamespacedKey pkSpeedModifierKey;
     private final NamespacedKey pkSpeedPassiveModifierKey;
@@ -50,13 +54,13 @@ public class AxeSkillManager extends ToolSkillManager {
     private final Map<UUID, Long> streakLastBreak = new HashMap<>();
     private final Map<UUID, Integer> streakCount = new HashMap<>();
 
-    public AxeSkillManager(Plugin plugin, EconomyService economyService) {
-        super(plugin, economyService, "axe", "Siekiera", AxeSkillTrees.BRANCHES, AxeRarePerks.WSZYSTKIE, "siekiera-hub.yml");
-        this.pkSpeedModifierKey = new NamespacedKey(plugin, "pk_axe_speed_bonus");
-        this.pkSpeedPassiveModifierKey = new NamespacedKey(plugin, "pk_axe_speed_passive");
+    public HoeSkillManager(Plugin plugin, EconomyService economyService) {
+        super(plugin, economyService, "hoe", "Motyka", HoeSkillTrees.BRANCHES, HoeRarePerks.WSZYSTKIE, "motyka-hub.yml");
+        this.pkSpeedModifierKey = new NamespacedKey(plugin, "pk_hoe_speed_bonus");
+        this.pkSpeedPassiveModifierKey = new NamespacedKey(plugin, "pk_hoe_speed_passive");
     }
 
-    // ============================================================ Rąbanie ====
+    // ============================================================ Zbiory ====
 
     @EventHandler(ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
@@ -65,25 +69,25 @@ public class AxeSkillManager extends ToolSkillManager {
         if (!isOwnedTool(item, player)) return;
 
         ensureInitialized(item);
-        applyChoppingPerks(player, event.getBlock(), item);
+        applyHarvestPerks(player, event.getBlock(), item);
         addExp(player, item);
     }
 
-    private boolean isLog(Material m) {
-        return m.name().endsWith("_LOG") || m.name().endsWith("_STEM");
+    private boolean isUprawa(Material m) {
+        return UPRAWY.contains(m);
     }
 
-    private void applyChoppingPerks(Player player, Block block, ItemStack item) {
+    private void applyHarvestPerks(Player player, Block block, ItemStack item) {
         Material mat = block.getType();
-        if (!isLog(mat)) return;
+        if (!isUprawa(mat)) return;
 
         ItemMeta meta = item.getItemMeta();
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
 
-        // Duch Drzewa - podmienia plon rąbanego drewna na cenny surowiec
-        int duchDrzewa = cardCountOf(pdc, "NAT_DUCHDRZEWA");
-        if (duchDrzewa > 0 && rnd.nextDouble() < DUCH_DRZEWA_CHANCE[duchDrzewa - 1]) {
+        // Błogosławieństwo Urodzaju - podmienia plon zbieranej uprawy na cenny surowiec
+        int urodzaj = cardCountOf(pdc, "NAT_URODZAJ");
+        if (urodzaj > 0 && rnd.nextDouble() < URODZAJ_CHANCE[urodzaj - 1]) {
             if (rnd.nextBoolean()) {
                 ItemStack reward = rnd.nextBoolean() ? new ItemStack(Material.IRON_INGOT) : new ItemStack(Material.GOLD_NUGGET, 3);
                 block.getWorld().dropItemNaturally(block.getLocation(), reward);
@@ -92,105 +96,104 @@ public class AxeSkillManager extends ToolSkillManager {
             }
         }
 
-        // Ostre Ostrze / Precyzyjny Cios / Podwójny Pień / Mistrzostwo (x3) / Druga Szansa -
+        // Obfity Zbiór / Celny Zbiór / Podwójne Żniwo / Mistrzostwo (x3) / Druga Szansa -
         // dodatkowa kopia plonu (wszystko sumuje się w jedną wspólną szansę)
-        double bonusDropChance = cardCountOf(pdc, "CIECIE_OSTRZE") * 0.10
-                + cardCountOf(pdc, "LES_CIOS") * 0.15
-                + cardCountOf(pdc, "NAT_PIEN") * 0.10
-                + (cardCountOf(pdc, "CIECIE_MISTRZOSTWO") > 0 ? 0.15 : 0)
-                + (cardCountOf(pdc, "LES_MISTRZOSTWO") > 0 ? 0.20 : 0)
+        double bonusDropChance = cardCountOf(pdc, "PLON_ZBIOR") * 0.10
+                + cardCountOf(pdc, "AGRO_CELNY") * 0.15
+                + cardCountOf(pdc, "NAT_OBFITOSC") * 0.10
+                + (cardCountOf(pdc, "PLON_MISTRZOSTWO") > 0 ? 0.15 : 0)
+                + (cardCountOf(pdc, "AGRO_MISTRZOSTWO") > 0 ? 0.20 : 0)
                 + (cardCountOf(pdc, "NAT_MISTRZOSTWO") > 0 ? 0.10 : 0)
-                + (hasRare(pdc, "RARE_SIEK_SECOND_CHANCE") ? 0.05 : 0);
+                + (hasRare(pdc, "RARE_MOT_SECOND_CHANCE") ? 0.05 : 0);
         if (bonusDropChance > 0 && rnd.nextDouble() < bonusDropChance) {
             dropCopy(block, item);
         }
 
-        // Trzask Konarów - sąsiednie bloki drewna pękają razem z rąbanym
-        int trzaskLevel = cardCountOf(pdc, "CIECIE_TRZASK");
-        if (trzaskLevel > 0 && rnd.nextDouble() < 0.15 + trzaskLevel * 0.05) {
-            breakRandomNeighbors(block, item, mat, trzaskLevel);
+        // Żniwo Pola - sąsiednie dojrzałe uprawy tego samego typu zbierają się razem
+        int zniwoLevel = cardCountOf(pdc, "PLON_ZNIWO");
+        if (zniwoLevel > 0 && rnd.nextDouble() < 0.15 + zniwoLevel * 0.05) {
+            breakRandomNeighbors(block, item, mat, zniwoLevel);
         }
 
-        // Rdzeń Chaosu (rzadka) - do 3 sąsiednich bloków drewna naraz
-        if (hasRare(pdc, "RARE_SIEK_CHAOS_CORE") && rnd.nextDouble() < 0.05) {
+        // Rdzeń Chaosu (rzadka) - do 3 sąsiednich upraw naraz
+        if (hasRare(pdc, "RARE_MOT_CHAOS_CORE") && rnd.nextDouble() < 0.05) {
             breakRandomNeighbors(block, item, null, 3);
         }
 
-        // Zielony Kciuk - dodatkowa sadzonka/jabłko, każdy poziom karty to niezależny rzut
-        int zielonyKciuk = cardCountOf(pdc, "LES_ZLOTYKCIUK");
-        for (int i = 0; i < zielonyKciuk; i++) {
+        // Bogate Ziarno - dodatkowe nasiona, każdy poziom karty to niezależny rzut
+        int bogateZiarno = cardCountOf(pdc, "AGRO_ZIARNO");
+        for (int i = 0; i < bogateZiarno; i++) {
             if (rnd.nextDouble() < 0.05) {
-                block.getWorld().dropItemNaturally(block.getLocation(),
-                        new ItemStack(rnd.nextBoolean() ? Material.APPLE : Material.OAK_SAPLING));
+                block.getWorld().dropItemNaturally(block.getLocation(), new ItemStack(Material.WHEAT_SEEDS));
             }
         }
 
-        // Oko Handlarza / Ręka Tracza / Dotyk Midasa - bonusowa wypłata
-        int okoHandlarza = cardCountOf(pdc, "LES_OKO");
-        for (int i = 0; i < okoHandlarza; i++) {
+        // Oko Farmera / Ręka Kupca / Dotyk Midasa - bonusowa wypłata
+        int okoFarmera = cardCountOf(pdc, "AGRO_OKO");
+        for (int i = 0; i < okoFarmera; i++) {
             if (rnd.nextDouble() < 0.05) payBonus(player, 4 + tierOf(pdc) * 2);
         }
-        int rekaTracza = cardCountOf(pdc, "LES_TRACZ");
-        for (int i = 0; i < rekaTracza; i++) {
+        int rekaKupca = cardCountOf(pdc, "AGRO_KUPIEC");
+        for (int i = 0; i < rekaKupca; i++) {
             if (rnd.nextDouble() < 0.08) payBonus(player, 6 + tierOf(pdc) * 4);
         }
-        if (hasRare(pdc, "RARE_SIEK_MIDAS") && rnd.nextDouble() < 0.03) payBonus(player, 2 + tierOf(pdc));
+        if (hasRare(pdc, "RARE_MOT_MIDAS") && rnd.nextDouble() < 0.03) payBonus(player, 2 + tierOf(pdc));
 
         // Pasywne Szczęście - rośnie automatycznie z każdym poziomem (niezależnie od
-        // wykupionych kart), wyraźnie słabiej niż ręczne Oko Handlarza (max +60%).
+        // wykupionych kart), wyraźnie słabiej niż ręczne Oko Farmera (max +60%).
         int level = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
         if (rnd.nextDouble() < level * 0.0006) payBonus(player, 2 + tierOf(pdc));
 
-        // Duch Puszczy / Szczęśliwe Drzewo / Nieugięty Duch - bonusowe orby xp
-        int duchPuszczy = cardCountOf(pdc, "NAT_DUCH");
-        for (int i = 0; i < duchPuszczy; i++) {
+        // Duch Pola / Szczęśliwy Plon / Nieugięty Duch - bonusowe orby xp
+        int duchPola = cardCountOf(pdc, "NAT_DUCH");
+        for (int i = 0; i < duchPola; i++) {
             if (rnd.nextDouble() < 0.25) spawnXp(block.getLocation().add(0.5, 0.5, 0.5), 1 + rnd.nextInt(3));
         }
-        if (cardCountOf(pdc, "NAT_SZCZESLIWE") > 0 && rnd.nextDouble() < 0.15) {
+        if (cardCountOf(pdc, "NAT_SZCZESLIWY") > 0 && rnd.nextDouble() < 0.15) {
             spawnXp(block.getLocation().add(0.5, 0.5, 0.5), 5 + rnd.nextInt(6));
         }
-        if (hasRare(pdc, "RARE_SIEK_UNYIELDING_SPIRIT") && rnd.nextDouble() < 0.08) {
+        if (hasRare(pdc, "RARE_MOT_UNYIELDING_SPIRIT") && rnd.nextDouble() < 0.08) {
             spawnXp(block.getLocation().add(0.5, 0.5, 0.5), 10 + rnd.nextInt(11));
         }
 
-        // Magnes Drwala (rzadka)
-        if (hasRare(pdc, "RARE_SIEK_MAGNET")) pullNearbyDrops(player, block.getLocation());
+        // Magnes Rolnika (rzadka)
+        if (hasRare(pdc, "RARE_MOT_MAGNET")) pullNearbyDrops(player, block.getLocation());
 
-        // Błogosławieństwo Lasu (rzadka)
-        if (hasRare(pdc, "RARE_SIEK_FOREST_BLESSING")) {
+        // Błogosławieństwo Pól (rzadka)
+        if (hasRare(pdc, "RARE_MOT_FIELD_BLESSING")) {
             player.setSaturation((float) Math.min(20.0, player.getSaturation() + 0.5f));
             if (rnd.nextDouble() < 0.10) {
                 player.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 60, 0, true, false));
             }
         }
 
-        // Leśny Głód - poziom 2+ daje powtarzalną, słabszą regenerację sytości
+        // Głód Rolnika - poziom 2+ daje powtarzalną, słabszą regenerację sytości
         int glod = cardCountOf(pdc, "NAT_GLOD");
         if (glod >= 2) {
             float amount = glod >= 3 ? 0.2f : 0.1f;
             player.setSaturation((float) Math.min(20.0, player.getSaturation() + amount));
         }
 
-        // Rytm Drwala / Szał Drwala - kolejne kłody z rzędu dają chwilowy Pośpiech
-        // (handleKombo sama sprawdza, czy karta jest wykupiona - patrz kombo<=0 return)
-        handleKombo(player, pdc);
+        // Rytm Rolnika / Szał Żniwiarza - kolejne uprawy z rzędu dają chwilowy Pośpiech
+        // (handleRytm sama sprawdza, czy karta jest wykupiona)
+        handleRytm(player, pdc);
     }
 
-    private void handleKombo(Player player, PersistentDataContainer pdc) {
-        int kombo = cardCountOf(pdc, "CIECIE_KOMBO");
-        if (kombo <= 0) return;
+    private void handleRytm(Player player, PersistentDataContainer pdc) {
+        int rytm = cardCountOf(pdc, "PLON_RYTM");
+        if (rytm <= 0) return;
 
         UUID id = player.getUniqueId();
-        long windowMs = kombo >= 3 ? 5000 : 3000;
+        long windowMs = rytm >= 3 ? 5000 : 3000;
         long now = System.currentTimeMillis();
         long last = streakLastBreak.getOrDefault(id, 0L);
         int streak = (now - last <= windowMs) ? streakCount.getOrDefault(id, 0) + 1 : 1;
         streakLastBreak.put(id, now);
 
-        int threshold = kombo >= 2 ? 2 : 3;
+        int threshold = rytm >= 2 ? 2 : 3;
         if (streak >= threshold) {
             streak = 0;
-            int amplifier = cardCountOf(pdc, "CIECIE_WSCIEKLOSC") > 0 ? 1 : 0;
+            int amplifier = cardCountOf(pdc, "PLON_SZAL") > 0 ? 1 : 0;
             player.addPotionEffect(new PotionEffect(PotionEffectType.HASTE, 80, amplifier, true, false, true));
         }
         streakCount.put(id, streak);
@@ -201,7 +204,7 @@ public class AxeSkillManager extends ToolSkillManager {
         for (BlockFace face : new BlockFace[]{BlockFace.UP, BlockFace.DOWN, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST}) {
             Block neighbor = origin.getRelative(face);
             Material type = neighbor.getType();
-            boolean matches = requiredType != null ? type == requiredType : isLog(type);
+            boolean matches = requiredType != null ? type == requiredType : isUprawa(type);
             if (matches) candidates.add(neighbor);
         }
         Collections.shuffle(candidates);
@@ -263,23 +266,23 @@ public class AxeSkillManager extends ToolSkillManager {
     @Override
     protected Material materialForTier(int tier) {
         return switch (tier) {
-            case 0 -> Material.WOODEN_AXE;
-            case 1 -> Material.STONE_AXE;
-            case 2 -> Material.IRON_AXE;
-            case 3 -> Material.DIAMOND_AXE;
-            default -> Material.NETHERITE_AXE;
+            case 0 -> Material.WOODEN_HOE;
+            case 1 -> Material.STONE_HOE;
+            case 2 -> Material.IRON_HOE;
+            case 3 -> Material.DIAMOND_HOE;
+            default -> Material.NETHERITE_HOE;
         };
     }
 
     private int effLevelOf(PersistentDataContainer pdc) {
         Set<String> rare = csvToSet(pdc.getOrDefault(pkRare, PersistentDataType.STRING, ""));
-        return rare.contains("RARE_SIEK_EFFICIENCY") ? 1 : 0;
+        return rare.contains("RARE_MOT_EFFICIENCY") ? 1 : 0;
     }
 
     private int fortLevelOf(PersistentDataContainer pdc) {
         Set<String> rare = csvToSet(pdc.getOrDefault(pkRare, PersistentDataType.STRING, ""));
-        int fortLevel = cardCountOf(pdc, "LES_FORT");
-        if (rare.contains("RARE_SIEK_FORT4") && fortLevel > 0) fortLevel += 1;
+        int fortLevel = cardCountOf(pdc, "AGRO_FORT");
+        if (rare.contains("RARE_MOT_FORT4") && fortLevel > 0) fortLevel += 1;
         return fortLevel;
     }
 
@@ -299,7 +302,7 @@ public class AxeSkillManager extends ToolSkillManager {
         meta.removeEnchant(Enchantment.FORTUNE);
         if (fortLevel > 0) meta.addEnchant(Enchantment.FORTUNE, fortLevel, true);
 
-        int speedNodes = cardCountOf(pdc, "CIECIE_SPEED");
+        int speedNodes = cardCountOf(pdc, "PLON_SPEED");
         meta.removeAttributeModifier(Attribute.BLOCK_BREAK_SPEED);
         if (speedNodes > 0) {
             meta.addAttributeModifier(Attribute.BLOCK_BREAK_SPEED, new AttributeModifier(
@@ -315,16 +318,16 @@ public class AxeSkillManager extends ToolSkillManager {
     protected List<Component> statsLore(PersistentDataContainer pdc) {
         int effLevel = effLevelOf(pdc);
         int fortLevel = fortLevelOf(pdc);
-        int speedNodes = cardCountOf(pdc, "CIECIE_SPEED");
+        int speedNodes = cardCountOf(pdc, "PLON_SPEED");
         int haste = hasteLevelOf(pdc);
         int level = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
         Set<String> rare = csvToSet(pdc.getOrDefault(pkRare, PersistentDataType.STRING, ""));
 
         List<Component> lore = new ArrayList<>();
         lore.add(Component.text("Wydajność (enchant): " + (effLevel > 0 ? rzymskie(effLevel) : "Brak"), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text("Prędkość rąbania (karty): +" + (speedNodes * 3) + "%", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.text("Prędkość zbierania (karty): +" + (speedNodes * 3) + "%", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
         lore.add(Component.text("Fortuna (enchant): " + (fortLevel > 0 ? rzymskie(fortLevel) : "Brak"), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text("Wiatr Lasu: " + (haste > 0 ? rzymskie(haste) : "Brak"), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.text("Wiatr Pól: " + (haste > 0 ? rzymskie(haste) : "Brak"), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
         lore.add(Component.empty());
         lore.add(Component.text("Pasywne (co poziom, niezależnie od kart):", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
         lore.add(Component.text("+" + formatPercent(level * 0.08) + "% prędkości  •  +" + formatPercent(level * 0.06) + "% szczęścia",

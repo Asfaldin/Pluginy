@@ -1,5 +1,5 @@
 # ==========================================================================
-# siekiera-hub.yml - uklad menu "Siekiera - Umiejetnosci" (Shift + PPM siekiera).
+# miecz-hub.yml - uklad menu "Miecz - Umiejetnosci" (Shift + PPM miecz).
 # Model kart (roguelike level-up) - nie ma juz przegladania galezi, wiec uklad
 # jest prostszy niz kiedys. Mozna zmienic tu rozmiar okna oraz pozycje (sloty)
 # kazdej ikonki bez przebudowy pluginu, wystarczy zmienic plik i zrestartowac

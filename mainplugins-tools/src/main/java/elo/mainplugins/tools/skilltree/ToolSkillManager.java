@@ -42,28 +42,32 @@ import org.bukkit.util.Vector;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Generyczny silnik drzewka umiejętności narzędzia - wyciągnięty z PickaxeSkillManager
- * (pierwszego, ręcznie napisanego systemu dla kilofa) tak, żeby siekiera/motyka/miecz
- * mogły dostać DOKŁADNIE tę samą skalę progresji (100 poziomów, 5 tierów x 20, 3 gałęzie,
- * rzadkie perki co RARE_ROLL_INTERVAL poziomów) bez kopiowania ~1300 linii kodu 3 razy.
- * Kilof CELOWO zostaje na swoim osobnym, już przetestowanym PickaxeSkillManager - nie
- * został przepisany na ten silnik, żeby nie ryzykować regresji w działającym kodzie bez
+ * Generyczny silnik progresji narzędzia - model "kart" (roguelike level-up), nie stare
+ * drzewko kup-po-kolei. Co poziom gracz dostaje ofertę 4 kart wylosowanych z połączonej
+ * puli wszystkich gałęzi, ważonej rzadkością (patrz Rarity) - wybiera 1. Karty
+ * COMMON/RARE/EPIC są stackowalne (do card.maxStacks()), LEGENDARY to dawna pula
+ * RarePerks - unikalne, max 1 sztuka na całe życie przedmiotu (ta sama pula/mechanizm
+ * co wcześniej, tylko teraz zintegrowana w jedno losowanie zamiast osobnego mechanizmu
+ * "co N poziomów").
+ *
+ * Świadomie: suma maxStacks wszystkich kart w drzewku danego narzędzia jest WIĘKSZA niż
+ * MAX_LEVEL (100) - to jest zamierzone (margines niedoboru), żeby żaden gracz nie mógł
+ * dobić do "wszystko wykupione" i wybór faktycznie coś kosztował.
+ *
+ * Kilof (PickaxeSkillManager) NIE jest na tym silniku - zostaje na swoim osobnym, już
+ * przetestowanym systemie punktowo-drzewkowym, żeby nie ryzykować regresji bez
  * możliwości kompilacji/testów na tej maszynie.
  *
- * Podklasa musi dostarczyć: listę 3 gałęzi (branches), pulę rzadkich perków, mapowanie
- * tier→Material, treść statsIcon (statsLore) oraz WŁASNY listener na zdarzenie, które
- * napędza progresję (BlockBreakEvent dla siekiery/motyki, EntityDamageByEntityEvent dla
- * miecza) - to jedyna część, która musi różnić się na tyle, że nie da się jej uogólnić
- * jednym wspólnym hookiem (różne typy eventów, różne konteksty).
- *
- * WAŻNE: każda instancja tworzy WŁASNE obiekty Holder (HubHolder/BranchHolder/RareHolder)
- * ze wskaźnikiem "owner" na siebie - onInventoryClick sprawdza owner == this, żeby przy
+ * WAŻNE: każda instancja tworzy WŁASNE obiekty Holder (HubHolder/OfferHolder) ze
+ * wskaźnikiem "owner" na siebie - onInventoryClick sprawdza owner == this, żeby przy
  * kilku zarejestrowanych instancjach (siekiera + motyka + miecz naraz) każda reagowała
  * WYŁĄCZNIE na swoje własne GUI, nie na cudze.
  */
@@ -72,35 +76,25 @@ public abstract class ToolSkillManager implements Listener {
     protected static final int MAX_LEVEL = 100;
     protected static final int LEVELS_PER_TIER = 20;
     protected static final int MAX_TIER = 4;
-    protected static final int POINTS_PER_LEVEL = 1;
     protected static final int[] EXP_PER_LEVEL_BY_TIER = {25, 35, 43, 48, 50};
-    protected static final int RARE_ROLL_INTERVAL = 10;
 
     private static final int DEFAULT_HUB_SIZE = 27;
     private static final int DEFAULT_TOOL_ICON_SLOT = 4;
-    private static final int DEFAULT_SLOT_BRANCH1 = 10;
-    private static final int DEFAULT_SLOT_BRANCH2 = 13;
-    private static final int DEFAULT_SLOT_BRANCH3 = 16;
-    private static final int DEFAULT_RARE_BUTTON_SLOT = 18;
+    private static final int DEFAULT_OFFER_SLOT = 13;
     private static final int DEFAULT_STATS_SLOT = 20;
     private static final int DEFAULT_CLOSE_SLOT = 22;
     private static final int DEFAULT_UPGRADES_SLOT = 24;
 
-    private static final int NODES_PER_PAGE = 5;
-    private static final int[] BRANCH_NODE_SLOTS = {11, 12, 13, 14, 15};
-    private static final int PAGE_LEFT_SLOT = 9;
-    private static final int PAGE_RIGHT_SLOT = 17;
-    private static final int BRANCH_BACK_SLOT = 22;
-    private static final int[] RARE_CHOICE_SLOTS = {11, 13, 15};
+    private static final int[] OFFER_CHOICE_SLOTS = {10, 12, 14, 16};
+    private static final int OFFER_BACK_SLOT = 22;
     protected static final int AURA_DURATION_TICKS = 1_000_000;
 
     private int hubSize;
     private int slotToolIcon;
-    private int slotRareButton;
+    private int slotOffer;
     private int slotStats;
     private int slotClose;
     private int slotUpgrades;
-    private final int[] branchSlots = new int[3];
 
     protected final Plugin plugin;
     protected final EconomyService economyService;
@@ -115,16 +109,12 @@ public abstract class ToolSkillManager implements Listener {
     protected final NamespacedKey pkLevel;
     protected final NamespacedKey pkExp;
     protected final NamespacedKey pkTier;
-    protected final NamespacedKey pkPoints;
-    private final NamespacedKey[] pkBranchMask = new NamespacedKey[3];
+    protected final NamespacedKey pkCardCounts;
     protected final NamespacedKey pkRare;
-    protected final NamespacedKey pkPendingRare;
-    protected final NamespacedKey pkPendingRareQueue;
+    protected final NamespacedKey pkPendingOffer;
+    protected final NamespacedKey pkPendingOfferQueue;
 
-    /**
-     * @param branches musi mieć DOKŁADNIE 3 elementy (jak drzewko kilofa) - indeksy 0/1/2
-     *                 odpowiadają kolejno slotom branch1/branch2/branch3 w hub-configu.
-     */
+    /** @param branches musi mieć DOKŁADNIE 3 elementy - czysto porządkowe (patrz SkillBranch). */
     protected ToolSkillManager(Plugin plugin, EconomyService economyService, String toolType, String displayName,
                                 List<SkillBranch> branches, List<RarePerk> rarePerks, String hubConfigFileName) {
         if (branches.size() != 3) {
@@ -143,13 +133,10 @@ public abstract class ToolSkillManager implements Listener {
         this.pkLevel = new NamespacedKey(plugin, "pk_level");
         this.pkExp = new NamespacedKey(plugin, "pk_exp");
         this.pkTier = new NamespacedKey(plugin, "pk_tier");
-        this.pkPoints = new NamespacedKey(plugin, "pk_points");
-        this.pkBranchMask[0] = new NamespacedKey(plugin, "pk_branch1");
-        this.pkBranchMask[1] = new NamespacedKey(plugin, "pk_branch2");
-        this.pkBranchMask[2] = new NamespacedKey(plugin, "pk_branch3");
+        this.pkCardCounts = new NamespacedKey(plugin, "pk_card_counts");
         this.pkRare = new NamespacedKey(plugin, "pk_rare");
-        this.pkPendingRare = new NamespacedKey(plugin, "pk_pending_rare");
-        this.pkPendingRareQueue = new NamespacedKey(plugin, "pk_pending_rare_queue");
+        this.pkPendingOffer = new NamespacedKey(plugin, "pk_pending_offer");
+        this.pkPendingOfferQueue = new NamespacedKey(plugin, "pk_pending_offer_queue");
 
         wczytajUkladHuba();
     }
@@ -165,13 +152,10 @@ public abstract class ToolSkillManager implements Listener {
 
         hubSize = clampSize(cfg.getInt("rozmiar", DEFAULT_HUB_SIZE));
         slotToolIcon = clampSlot(cfg.getInt("sloty.narzedzie", DEFAULT_TOOL_ICON_SLOT));
-        slotRareButton = clampSlot(cfg.getInt("sloty.rzadki_wybor", DEFAULT_RARE_BUTTON_SLOT));
+        slotOffer = clampSlot(cfg.getInt("sloty.wybor_karty", DEFAULT_OFFER_SLOT));
         slotStats = clampSlot(cfg.getInt("sloty.statystyki", DEFAULT_STATS_SLOT));
         slotClose = clampSlot(cfg.getInt("sloty.wyjdz", DEFAULT_CLOSE_SLOT));
         slotUpgrades = clampSlot(cfg.getInt("sloty.ulepszenia", DEFAULT_UPGRADES_SLOT));
-        branchSlots[0] = clampSlot(cfg.getInt("sloty.galaz1", DEFAULT_SLOT_BRANCH1));
-        branchSlots[1] = clampSlot(cfg.getInt("sloty.galaz2", DEFAULT_SLOT_BRANCH2));
-        branchSlots[2] = clampSlot(cfg.getInt("sloty.galaz3", DEFAULT_SLOT_BRANCH3));
     }
 
     private int clampSize(int rozmiar) {
@@ -203,21 +187,17 @@ public abstract class ToolSkillManager implements Listener {
 
         int tierBefore = tierOf(pdc);
         int exp = pdc.getOrDefault(pkExp, PersistentDataType.INTEGER, 0) + 1;
-        int points = pdc.getOrDefault(pkPoints, PersistentDataType.INTEGER, 0);
 
         boolean leveledUp = false;
-        boolean rareRolled = false;
+        boolean offerRolled = false;
         boolean tierUp = false;
 
         if (exp >= expPerLevel(tierBefore)) {
             exp = 0;
             level++;
-            points += POINTS_PER_LEVEL;
             leveledUp = true;
 
-            if (level % RARE_ROLL_INTERVAL == 0) {
-                rareRolled = rollRareChoice(pdc);
-            }
+            offerRolled = rollCardOffer(pdc);
             int tierAfter = tierForLevel(level);
             if (tierAfter != tierBefore) {
                 pdc.set(pkTier, PersistentDataType.INTEGER, tierAfter);
@@ -227,14 +207,13 @@ public abstract class ToolSkillManager implements Listener {
 
         pdc.set(pkLevel, PersistentDataType.INTEGER, level);
         pdc.set(pkExp, PersistentDataType.INTEGER, exp);
-        pdc.set(pkPoints, PersistentDataType.INTEGER, points);
         item.setItemMeta(meta);
 
         refreshDisplay(item);
 
         if (leveledUp) {
             player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.4f);
-            player.sendActionBar(Component.text(displayName + ": poziom " + level + " (+" + POINTS_PER_LEVEL + " punkt umiejętności)", NamedTextColor.AQUA));
+            player.sendActionBar(Component.text(displayName + ": poziom " + level, NamedTextColor.AQUA));
 
             if (tierUp) {
                 int tier = pdc.getOrDefault(pkTier, PersistentDataType.INTEGER, 0);
@@ -244,8 +223,8 @@ public abstract class ToolSkillManager implements Listener {
                 ));
                 player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
             }
-            if (rareRolled) {
-                player.sendMessage(Component.text("★ Nowy Rzadki Wybór dostępny w drzewku umiejętności! (Shift + PPM)",
+            if (offerRolled) {
+                player.sendMessage(Component.text("★ Nowy poziom - masz kartę do wyboru! (Shift + PPM)",
                         NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
                 player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1f, 1f);
             }
@@ -256,31 +235,74 @@ public abstract class ToolSkillManager implements Listener {
         }
     }
 
-    private boolean rollRareChoice(PersistentDataContainer pdc) {
-        Set<String> owned = csvToSet(pdc.getOrDefault(pkRare, PersistentDataType.STRING, ""));
-        if (owned.size() >= rarePerks.size()) return false;
-
-        String pending = pdc.getOrDefault(pkPendingRare, PersistentDataType.STRING, "");
+    /**
+     * @return true, jeśli gracz dostał nową rundę wyboru (od razu albo w kolejce) - false
+     * tylko wtedy, gdy WSZYSTKIE karty (łącznie z legendarnymi) są już zmaksowane/wykupione.
+     */
+    private boolean rollCardOffer(PersistentDataContainer pdc) {
+        String pending = pdc.getOrDefault(pkPendingOffer, PersistentDataType.STRING, "");
         if (!pending.isEmpty()) {
-            int queued = pdc.getOrDefault(pkPendingRareQueue, PersistentDataType.INTEGER, 0);
-            pdc.set(pkPendingRareQueue, PersistentDataType.INTEGER, queued + 1);
+            int queued = pdc.getOrDefault(pkPendingOfferQueue, PersistentDataType.INTEGER, 0);
+            pdc.set(pkPendingOfferQueue, PersistentDataType.INTEGER, queued + 1);
             return true;
         }
-
-        return offerNewRareChoice(pdc, owned);
+        return offerNewCardChoice(pdc);
     }
 
-    private boolean offerNewRareChoice(PersistentDataContainer pdc, Set<String> owned) {
-        List<RarePerk> remaining = new ArrayList<>();
-        for (RarePerk perk : rarePerks) {
-            if (!owned.contains(perk.id())) remaining.add(perk);
-        }
-        if (remaining.isEmpty()) return false;
-
-        Collections.shuffle(remaining);
-        List<String> picks = remaining.stream().limit(3).map(RarePerk::id).toList();
-        pdc.set(pkPendingRare, PersistentDataType.STRING, String.join(",", picks));
+    private boolean offerNewCardChoice(PersistentDataContainer pdc) {
+        List<String> offer = drawOffer(pdc);
+        if (offer.isEmpty()) return false;
+        pdc.set(pkPendingOffer, PersistentDataType.STRING, String.join(",", offer));
         return true;
+    }
+
+    /** Losuje do 4 RÓŻNYCH kart: rzadkość ważona (patrz Rarity), konkretna karta w tierze - równomiernie. */
+    private List<String> drawOffer(PersistentDataContainer pdc) {
+        List<String> offer = new ArrayList<>();
+        Set<String> chosen = new LinkedHashSet<>();
+        int attempts = 0;
+        int totalWeight = 0;
+        for (Rarity r : Rarity.values()) totalWeight += r.waga;
+
+        while (offer.size() < 4 && attempts < 60) {
+            attempts++;
+            Rarity tier = weightedRandomTier(totalWeight);
+            String candidate = randomAvailableCardOfTier(pdc, tier, chosen);
+            if (candidate == null) continue;
+            offer.add(candidate);
+            chosen.add(candidate);
+        }
+        return offer;
+    }
+
+    private Rarity weightedRandomTier(int totalWeight) {
+        int roll = ThreadLocalRandom.current().nextInt(totalWeight);
+        int cumulative = 0;
+        for (Rarity r : Rarity.values()) {
+            cumulative += r.waga;
+            if (roll < cumulative) return r;
+        }
+        return Rarity.COMMON;
+    }
+
+    private String randomAvailableCardOfTier(PersistentDataContainer pdc, Rarity tier, Set<String> exclude) {
+        List<String> candidates = new ArrayList<>();
+        if (tier == Rarity.LEGENDARY) {
+            Set<String> owned = csvToSet(pdc.getOrDefault(pkRare, PersistentDataType.STRING, ""));
+            for (RarePerk perk : rarePerks) {
+                if (!owned.contains(perk.id()) && !exclude.contains(perk.id())) candidates.add(perk.id());
+            }
+        } else {
+            for (SkillBranch b : branches) {
+                for (SkillCard c : b.cards()) {
+                    if (c.rarity() == tier && !exclude.contains(c.id()) && cardCountOf(pdc, c.id()) < c.maxStacks()) {
+                        candidates.add(c.id());
+                    }
+                }
+            }
+        }
+        if (candidates.isEmpty()) return null;
+        return candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
     }
 
     protected void ensureInitialized(ItemStack item) {
@@ -292,13 +314,10 @@ public abstract class ToolSkillManager implements Listener {
         pdc.set(pkLevel, PersistentDataType.INTEGER, 1);
         pdc.set(pkExp, PersistentDataType.INTEGER, 0);
         pdc.set(pkTier, PersistentDataType.INTEGER, 0);
-        pdc.set(pkPoints, PersistentDataType.INTEGER, 0);
-        for (NamespacedKey key : pkBranchMask) {
-            pdc.set(key, PersistentDataType.INTEGER, 0);
-        }
+        pdc.set(pkCardCounts, PersistentDataType.STRING, "");
         pdc.set(pkRare, PersistentDataType.STRING, "");
-        pdc.set(pkPendingRare, PersistentDataType.STRING, "");
-        pdc.set(pkPendingRareQueue, PersistentDataType.INTEGER, 0);
+        pdc.set(pkPendingOffer, PersistentDataType.STRING, "");
+        pdc.set(pkPendingOfferQueue, PersistentDataType.INTEGER, 0);
         item.setItemMeta(meta);
 
         refreshDisplay(item);
@@ -318,9 +337,8 @@ public abstract class ToolSkillManager implements Listener {
 
         int level = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
         int exp = pdc.getOrDefault(pkExp, PersistentDataType.INTEGER, 0);
-        int points = pdc.getOrDefault(pkPoints, PersistentDataType.INTEGER, 0);
-        String pending = pdc.getOrDefault(pkPendingRare, PersistentDataType.STRING, "");
-        int queuedRare = pdc.getOrDefault(pkPendingRareQueue, PersistentDataType.INTEGER, 0);
+        String pending = pdc.getOrDefault(pkPendingOffer, PersistentDataType.STRING, "");
+        int queuedOffers = pdc.getOrDefault(pkPendingOfferQueue, PersistentDataType.INTEGER, 0);
 
         meta.displayName(Component.text(displayName + " ", NamedTextColor.AQUA, TextDecoration.BOLD)
                 .append(Component.text("[Poziom " + level + "]", NamedTextColor.YELLOW, TextDecoration.BOLD)));
@@ -333,20 +351,9 @@ public abstract class ToolSkillManager implements Listener {
             int expNeeded = expPerLevel(tier);
             lore.add(Component.text("Postęp: " + expBar(exp, expNeeded) + " " + exp + "/" + expNeeded, NamedTextColor.DARK_AQUA).decoration(TextDecoration.ITALIC, false));
         }
-        lore.add(Component.empty());
-        lore.add(Component.text("Punkty umiejętności: " + points, points > 0 ? NamedTextColor.GREEN : NamedTextColor.GRAY, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
-
-        StringBuilder counts = new StringBuilder();
-        for (int i = 0; i < 3; i++) {
-            if (i > 0) counts.append("  •  ");
-            int owned = Integer.bitCount(pdc.getOrDefault(pkBranchMask[i], PersistentDataType.INTEGER, 0));
-            counts.append(branches.get(i).displayName()).append(" ").append(owned).append("/").append(branches.get(i).nodes().size());
-        }
-        lore.add(Component.text(counts.toString(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-
         if (!pending.isEmpty()) {
             lore.add(Component.empty());
-            lore.add(Component.text("★ Dostępny Rzadki Wybór!" + (queuedRare > 0 ? " (+" + queuedRare + " w kolejce)" : ""),
+            lore.add(Component.text("★ Masz kartę do wyboru!" + (queuedOffers > 0 ? " (+" + queuedOffers + " w kolejce)" : ""),
                     NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
         }
         lore.add(Component.empty());
@@ -389,10 +396,6 @@ public abstract class ToolSkillManager implements Listener {
         };
     }
 
-    protected boolean bitSet(int mask, int index) {
-        return (mask & (1 << index)) != 0;
-    }
-
     /** Materiał narzędzia dla danego tieru (0=drewno .. 4=netheryt) - dostarcza podklasa. */
     protected abstract Material materialForTier(int tier);
 
@@ -411,29 +414,61 @@ public abstract class ToolSkillManager implements Listener {
     }
 
     /**
-     * Synchronizuje realne enchanty/atrybuty specyficzne dla narzędzia (np. kilof:
-     * Wydajność/Fortuna/prędkość kopania; miecz: Ostrość/obrażenia/szybkość ataku) -
-     * odpowiednik syncEnchants z PickaxeSkillManager, ale treść w 100% zależy od
-     * narzędzia, więc to jedyny obowiązkowy hook do zaimplementowania w podklasie.
+     * Synchronizuje realne enchanty/atrybuty specyficzne dla narzędzia (np. miecz:
+     * Ostrość/Grabież/szybkość ataku) - treść w 100% zależy od narzędzia, więc to
+     * obowiązkowy hook do zaimplementowania w podklasie.
      */
     protected abstract void syncToolSpecificStats(ItemMeta meta, PersistentDataContainer pdc);
 
-    /** Treść ikonki Statystyk/Ulepszeń w hubie - realne wartości specyficzne dla narzędzia. */
+    /** Treść ikonki Statystyk w hubie - realne wartości specyficzne dla narzędzia. */
     protected abstract List<Component> statsLore(PersistentDataContainer pdc);
 
-    // ================================================= Drzewko - odczyt ====
+    // ==================================================== Karty - odczyt ====
 
-    protected int indexOf(int branchIndex, String nodeId) {
-        List<SkillNode> nodes = branches.get(branchIndex).nodes();
-        for (int i = 0; i < nodes.size(); i++) {
-            if (nodes.get(i).id().equals(nodeId)) return i;
+    protected SkillCard findCard(String id) {
+        for (SkillBranch b : branches) {
+            for (SkillCard c : b.cards()) {
+                if (c.id().equals(id)) return c;
+            }
         }
-        throw new IllegalArgumentException("Nieznany węzeł: " + nodeId);
+        return null;
     }
 
-    protected boolean hasNode(PersistentDataContainer pdc, int branchIndex, String nodeId) {
-        int mask = pdc.getOrDefault(pkBranchMask[branchIndex], PersistentDataType.INTEGER, 0);
-        return bitSet(mask, indexOf(branchIndex, nodeId));
+    protected RarePerk findRarePerk(String id) {
+        for (RarePerk perk : rarePerks) {
+            if (perk.id().equals(id)) return perk;
+        }
+        return null;
+    }
+
+    private Map<String, Integer> parseCardCounts(String csv) {
+        Map<String, Integer> map = new LinkedHashMap<>();
+        if (csv != null && !csv.isEmpty()) {
+            for (String entry : csv.split(",")) {
+                int sep = entry.indexOf(':');
+                if (sep <= 0) continue;
+                try {
+                    map.put(entry.substring(0, sep), Integer.parseInt(entry.substring(sep + 1)));
+                } catch (NumberFormatException ignored) {
+                    // uszkodzony wpis - pomijamy, nie wywalamy całego stanu gracza
+                }
+            }
+        }
+        return map;
+    }
+
+    private String serializeCardCounts(Map<String, Integer> counts) {
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, Integer> e : counts.entrySet()) {
+            if (sb.length() > 0) sb.append(",");
+            sb.append(e.getKey()).append(':').append(e.getValue());
+        }
+        return sb.toString();
+    }
+
+    /** Aktualny poziom (liczba stacków) danej stackowalnej karty - 0, jeśli gracz jej nie ma. */
+    protected int cardCountOf(PersistentDataContainer pdc, String cardId) {
+        return parseCardCounts(pdc.getOrDefault(pkCardCounts, PersistentDataType.STRING, "")).getOrDefault(cardId, 0);
     }
 
     protected boolean hasRare(PersistentDataContainer pdc, String rareId) {
@@ -450,6 +485,19 @@ public abstract class ToolSkillManager implements Listener {
         return new LinkedHashSet<>(Arrays.asList(csv.split(",")));
     }
 
+    private void grantCard(PersistentDataContainer pdc, String cardId) {
+        SkillCard card = findCard(cardId);
+        if (card != null) {
+            Map<String, Integer> counts = parseCardCounts(pdc.getOrDefault(pkCardCounts, PersistentDataType.STRING, ""));
+            counts.merge(cardId, 1, Integer::sum);
+            pdc.set(pkCardCounts, PersistentDataType.STRING, serializeCardCounts(counts));
+        } else {
+            Set<String> owned = csvToSet(pdc.getOrDefault(pkRare, PersistentDataType.STRING, ""));
+            owned.add(cardId);
+            pdc.set(pkRare, PersistentDataType.STRING, String.join(",", owned));
+        }
+    }
+
     protected boolean isOwnedTool(ItemStack item, Player player) {
         if (item == null || item.getType().isAir()) return false;
         ItemMeta meta = item.getItemMeta();
@@ -462,13 +510,13 @@ public abstract class ToolSkillManager implements Listener {
 
     // ===================================================== Pasywna aura ====
     // Opcjonalny mechanizm (jak Aura Pośpiechu kilofa) - domyślnie wyłączony (null),
-    // podklasa może nadpisać oba hooki, żeby któraś gałąź dawała stały efekt mikstury.
+    // podklasa może nadpisać oba hooki, żeby któraś karta dawała stały efekt mikstury.
 
     protected PotionEffectType auraEffectType() {
         return null;
     }
 
-    /** Amplifier aury (0 = poziom I) albo null, jeśli węzeł dający aurę nie jest wykupiony. */
+    /** Amplifier aury (0 = poziom I) albo null, jeśli odpowiednia karta nie jest wykupiona. */
     protected Integer auraAmplifierFor(PersistentDataContainer pdc) {
         return null;
     }
@@ -545,13 +593,6 @@ public abstract class ToolSkillManager implements Listener {
         return value == Math.floor(value) ? String.valueOf((long) value) : String.format("%.2f", value);
     }
 
-    protected RarePerk findRarePerk(String id) {
-        for (RarePerk perk : rarePerks) {
-            if (perk.id().equals(id)) return perk;
-        }
-        return null;
-    }
-
     // ============================================================= GUI ====
 
     @EventHandler
@@ -574,9 +615,8 @@ public abstract class ToolSkillManager implements Listener {
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         int level = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
         int tier = pdc.getOrDefault(pkTier, PersistentDataType.INTEGER, 0);
-        int points = pdc.getOrDefault(pkPoints, PersistentDataType.INTEGER, 0);
-        String pending = pdc.getOrDefault(pkPendingRare, PersistentDataType.STRING, "");
-        int queuedRare = pdc.getOrDefault(pkPendingRareQueue, PersistentDataType.INTEGER, 0);
+        String pending = pdc.getOrDefault(pkPendingOffer, PersistentDataType.STRING, "");
+        int queuedOffers = pdc.getOrDefault(pkPendingOfferQueue, PersistentDataType.INTEGER, 0);
 
         HubHolder holder = new HubHolder(this);
         Inventory gui = Bukkit.createInventory(holder, hubSize, Component.text(displayName + " — Umiejętności", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD));
@@ -585,140 +625,119 @@ public abstract class ToolSkillManager implements Listener {
 
         gui.setItem(slotToolIcon, GuiUtils.namedItem(materialForTier(tier),
                 Component.text(displayName + " [Poziom " + level + "]", NamedTextColor.AQUA, TextDecoration.BOLD),
-                Component.text("Tier: " + tierName(tier), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                Component.text("Wolne punkty: " + points, points > 0 ? NamedTextColor.GREEN : NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+                Component.text("Tier: " + tierName(tier), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
 
-        for (int i = 0; i < 3; i++) {
-            SkillBranch branch = branches.get(i);
-            int mask = pdc.getOrDefault(pkBranchMask[i], PersistentDataType.INTEGER, 0);
-            int owned = Integer.bitCount(mask);
-            ItemStack icon = GuiUtils.namedItem(branch.icon(),
-                    Component.text(branch.displayName(), branch.color(), TextDecoration.BOLD),
-                    Component.text("Wykupione: " + owned + "/" + branch.nodes().size(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                    Component.empty(),
-                    Component.text("Kliknij, aby otworzyć", branch.color()).decoration(TextDecoration.ITALIC, false));
-            gui.setItem(branchSlots[i], icon);
-        }
-
-        gui.setItem(slotStats, statsIcon(pdc, "Statystyki"));
-        gui.setItem(slotUpgrades, statsIcon(pdc, "Aktualne Ulepszenia"));
+        gui.setItem(slotStats, statsIcon(pdc));
+        gui.setItem(slotUpgrades, ownedCardsIcon(pdc));
 
         if (!pending.isEmpty()) {
-            gui.setItem(slotRareButton, GuiUtils.namedItem(Material.NETHER_STAR,
-                    Component.text("★ Rzadki Wybór dostępny!", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD),
-                    Component.text("Kliknij, aby wybrać jedną z 3 rzadkich", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                    Component.text("umiejętności dla swojego narzędzia.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+            gui.setItem(slotOffer, GuiUtils.namedItem(Material.NETHER_STAR,
+                    Component.text("★ Nowa karta do wyboru!", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD),
+                    Component.text("Kliknij, aby wybrać jedną z ofiarowanych", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                    Component.text("ulepszeń dla swojego narzędzia.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
                     Component.empty(),
-                    Component.text(queuedRare > 0 ? "+" + queuedRare + " kolejnych w kolejce" : " ", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)));
+                    Component.text(queuedOffers > 0 ? "+" + queuedOffers + " kolejnych w kolejce" : " ", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)));
+        } else {
+            gui.setItem(slotOffer, GuiUtils.namedItem(Material.GRAY_DYE,
+                    Component.text("Brak oferty", NamedTextColor.DARK_GRAY, TextDecoration.BOLD),
+                    Component.text("Wróć po zdobyciu kolejnego poziomu.", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)));
         }
 
         gui.setItem(slotClose, GuiUtils.namedItem(Material.BARRIER, Component.text("Zamknij", NamedTextColor.RED, TextDecoration.BOLD)));
         player.openInventory(gui);
     }
 
-    private ItemStack statsIcon(PersistentDataContainer pdc, String title) {
+    private ItemStack statsIcon(PersistentDataContainer pdc) {
         List<Component> lore = statsLore(pdc);
         return GuiUtils.namedItem(Material.KNOWLEDGE_BOOK,
-                Component.text(title, NamedTextColor.GOLD, TextDecoration.BOLD),
+                Component.text("Statystyki", NamedTextColor.GOLD, TextDecoration.BOLD),
                 lore.toArray(Component[]::new));
     }
 
-    private int maxPageFor(int branchIndex) {
-        return (branches.get(branchIndex).nodes().size() - 1) / NODES_PER_PAGE;
+    /** Lista wszystkich posiadanych kart (stackowalnych wg poziomu + legendarnych), kolorowana wg rzadkości. */
+    private ItemStack ownedCardsIcon(PersistentDataContainer pdc) {
+        List<Component> lore = new ArrayList<>();
+        for (SkillBranch b : branches) {
+            for (SkillCard c : b.cards()) {
+                int count = cardCountOf(pdc, c.id());
+                if (count > 0) {
+                    lore.add(Component.text(c.displayName() + " " + count + "/" + c.maxStacks(), c.rarity().color).decoration(TextDecoration.ITALIC, false));
+                }
+            }
+        }
+        Set<String> owned = csvToSet(pdc.getOrDefault(pkRare, PersistentDataType.STRING, ""));
+        if (!owned.isEmpty()) {
+            lore.add(Component.empty());
+            for (String id : owned) {
+                RarePerk perk = findRarePerk(id);
+                if (perk != null) {
+                    lore.add(Component.text("★ " + perk.displayName(), Rarity.LEGENDARY.color, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+                }
+            }
+        }
+        if (lore.isEmpty()) {
+            lore.add(Component.text("Brak - zdobądź pierwszy poziom!", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
+        }
+        return GuiUtils.namedItem(Material.WRITTEN_BOOK,
+                Component.text("Aktualne Ulepszenia", NamedTextColor.GOLD, TextDecoration.BOLD),
+                lore.toArray(Component[]::new));
     }
 
-    private void openBranch(Player player, ItemStack tool, int branchIndex, int page) {
-        SkillBranch branch = branches.get(branchIndex);
-        ItemMeta meta = tool.getItemMeta();
-        PersistentDataContainer pdc = meta.getPersistentDataContainer();
-        int mask = pdc.getOrDefault(pkBranchMask[branchIndex], PersistentDataType.INTEGER, 0);
-        int points = pdc.getOrDefault(pkPoints, PersistentDataType.INTEGER, 0);
-        int maxPage = maxPageFor(branchIndex);
-        page = Math.max(0, Math.min(page, maxPage));
-
-        BranchHolder holder = new BranchHolder(this);
-        holder.branchIndex = branchIndex;
-        holder.page = page;
-        Inventory gui = Bukkit.createInventory(holder, 27, Component.text(
-                branch.displayName() + " — Drzewko (" + (page + 1) + "/" + (maxPage + 1) + ")", branch.color(), TextDecoration.BOLD));
+    private void openOfferChoice(Player player, String pendingCsv) {
+        List<String> ids = Arrays.asList(pendingCsv.split(","));
+        OfferHolder holder = new OfferHolder(this);
+        Inventory gui = Bukkit.createInventory(holder, 27, Component.text("Wybierz Ulepszenie", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
         holder.inventory = gui;
-        GuiUtils.fillBackground(gui);
+        GuiUtils.fillBackground(gui, Material.PURPLE_STAINED_GLASS_PANE);
 
-        List<SkillNode> nodes = branch.nodes();
-        int start = page * NODES_PER_PAGE;
-        int end = Math.min(start + NODES_PER_PAGE, nodes.size());
-        for (int i = start; i < end; i++) {
-            SkillNode node = nodes.get(i);
-            boolean purchased = bitSet(mask, i);
-            boolean available = i == 0 || bitSet(mask, i - 1);
+        for (int i = 0; i < ids.size() && i < OFFER_CHOICE_SLOTS.length; i++) {
+            gui.setItem(OFFER_CHOICE_SLOTS[i], offerCardIcon(player, ids.get(i)));
+        }
 
-            NamedTextColor nameColor;
+        gui.setItem(OFFER_BACK_SLOT, GuiUtils.namedItem(Material.BARRIER, Component.text("Zdecyduj później", NamedTextColor.GRAY, TextDecoration.BOLD)));
+        player.openInventory(gui);
+    }
+
+    private ItemStack offerCardIcon(Player player, String id) {
+        SkillCard card = findCard(id);
+        if (card != null) {
+            int current = cardCountOf(player.getInventory().getItemInMainHand().getItemMeta().getPersistentDataContainer(), id);
             List<Component> lore = new ArrayList<>();
-            lore.add(Component.text(node.opis(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text(card.rarity().label, card.rarity().color, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
             lore.add(Component.empty());
-            if (purchased) {
-                nameColor = NamedTextColor.GREEN;
-                lore.add(Component.text("✔ Wykupione", NamedTextColor.GREEN, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
-            } else if (available) {
-                nameColor = NamedTextColor.YELLOW;
-                lore.add(Component.text("Koszt: 1 punkt (masz " + points + ")", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
-                lore.add(Component.text("Kliknij, aby wykupić", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
-            } else {
-                nameColor = NamedTextColor.DARK_GRAY;
-                lore.add(Component.text("Zablokowane - wykup poprzedni węzeł", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
-            }
-
-            ItemStack icon = GuiUtils.namedItem(node.icon(), Component.text(node.displayName(), nameColor, TextDecoration.BOLD), lore.toArray(Component[]::new));
-            if (purchased) {
+            lore.add(Component.text(card.opis(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.empty());
+            lore.add(Component.text("Poziom karty: " + current + "/" + card.maxStacks(), NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Kliknij, aby wybrać", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
+            ItemStack icon = GuiUtils.namedItem(card.icon(), Component.text(card.displayName(), card.rarity().color, TextDecoration.BOLD), lore.toArray(Component[]::new));
+            if (card.rarity() != Rarity.COMMON) {
                 ItemMeta iconMeta = icon.getItemMeta();
                 iconMeta.setEnchantmentGlintOverride(true);
                 icon.setItemMeta(iconMeta);
             }
-            gui.setItem(BRANCH_NODE_SLOTS[i - start], icon);
+            return icon;
         }
 
-        if (page > 0) {
-            gui.setItem(PAGE_LEFT_SLOT, GuiUtils.namedItem(Material.ARROW, Component.text("« Poprzednia strona", NamedTextColor.YELLOW, TextDecoration.BOLD)));
-        }
-        if (end < nodes.size()) {
-            gui.setItem(PAGE_RIGHT_SLOT, GuiUtils.namedItem(Material.ARROW, Component.text("Następna strona »", NamedTextColor.YELLOW, TextDecoration.BOLD)));
-        }
-
-        gui.setItem(BRANCH_BACK_SLOT, GuiUtils.namedItem(Material.BARRIER, Component.text("« Wróć", NamedTextColor.GOLD, TextDecoration.BOLD)));
-        player.openInventory(gui);
-    }
-
-    private void openRareChoice(Player player, String pendingCsv) {
-        List<String> ids = Arrays.asList(pendingCsv.split(","));
-        RareHolder holder = new RareHolder(this);
-        Inventory gui = Bukkit.createInventory(holder, 27, Component.text("Rzadki Wybór", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
-        holder.inventory = gui;
-        GuiUtils.fillBackground(gui, Material.PURPLE_STAINED_GLASS_PANE);
-
-        for (int i = 0; i < ids.size() && i < RARE_CHOICE_SLOTS.length; i++) {
-            RarePerk perk = findRarePerk(ids.get(i));
-            if (perk == null) continue;
-
-            ItemStack icon = GuiUtils.namedItem(perk.icon(),
-                    Component.text(perk.displayName(), NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD),
-                    Component.text(perk.opis(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                    Component.empty(),
-                    Component.text("Kliknij, aby wybrać - NIEODWRACALNE", NamedTextColor.RED, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
-            ItemMeta iconMeta = icon.getItemMeta();
-            iconMeta.setEnchantmentGlintOverride(true);
-            icon.setItemMeta(iconMeta);
-            gui.setItem(RARE_CHOICE_SLOTS[i], icon);
-        }
-
-        gui.setItem(22, GuiUtils.namedItem(Material.BARRIER, Component.text("Zdecyduj później", NamedTextColor.GRAY, TextDecoration.BOLD)));
-        player.openInventory(gui);
+        RarePerk perk = findRarePerk(id);
+        if (perk == null) return GuiUtils.namedItem(Material.BARRIER, Component.text("???", NamedTextColor.RED));
+        List<Component> lore = new ArrayList<>();
+        lore.add(Component.text(Rarity.LEGENDARY.label, Rarity.LEGENDARY.color, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.empty());
+        lore.add(Component.text(perk.opis(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.empty());
+        lore.add(Component.text("Kliknij, aby wybrać - NIEODWRACALNE", NamedTextColor.RED, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+        ItemStack icon = GuiUtils.namedItem(perk.icon(), Component.text(perk.displayName(), Rarity.LEGENDARY.color, TextDecoration.BOLD), lore.toArray(Component[]::new));
+        ItemMeta iconMeta = icon.getItemMeta();
+        iconMeta.setEnchantmentGlintOverride(true);
+        icon.setItemMeta(iconMeta);
+        return icon;
     }
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) return;
         InventoryHolder rawHolder = event.getInventory().getHolder();
-        if (!(rawHolder instanceof HubHolder) && !(rawHolder instanceof BranchHolder) && !(rawHolder instanceof RareHolder)) return;
+        if (!(rawHolder instanceof HubHolder) && !(rawHolder instanceof OfferHolder)) return;
 
         // Kilka instancji ToolSkillManager (siekiera/motyka/miecz) nasłuchuje tego samego
         // eventu jednocześnie - to GUI może wcale nie należeć do TEJ instancji, więc trzeba
@@ -738,17 +757,14 @@ public abstract class ToolSkillManager implements Listener {
 
         if (rawHolder instanceof HubHolder) {
             handleHubClick(player, tool, clicked, event.getSlot());
-        } else if (rawHolder instanceof BranchHolder branchHolder) {
-            handleBranchClick(player, tool, branchHolder, event.getSlot());
         } else {
-            handleRareClick(player, tool, event.getSlot());
+            handleOfferClick(player, tool, event.getSlot());
         }
     }
 
     private boolean belongsToThis(InventoryHolder holder) {
         if (holder instanceof HubHolder h) return h.owner == this;
-        if (holder instanceof BranchHolder h) return h.owner == this;
-        if (holder instanceof RareHolder h) return h.owner == this;
+        if (holder instanceof OfferHolder h) return h.owner == this;
         return false;
     }
 
@@ -757,91 +773,27 @@ public abstract class ToolSkillManager implements Listener {
             player.closeInventory();
             return;
         }
-        if (slot == slotRareButton) {
+        if (slot == slotOffer) {
             PersistentDataContainer pdc = tool.getItemMeta().getPersistentDataContainer();
-            String pending = pdc.getOrDefault(pkPendingRare, PersistentDataType.STRING, "");
-            if (!pending.isEmpty()) openRareChoice(player, pending);
-            return;
-        }
-        for (int i = 0; i < 3; i++) {
-            if (slot == branchSlots[i]) {
-                openBranch(player, tool, i, 0);
-                return;
-            }
+            String pending = pdc.getOrDefault(pkPendingOffer, PersistentDataType.STRING, "");
+            if (!pending.isEmpty()) openOfferChoice(player, pending);
         }
     }
 
-    private void handleBranchClick(Player player, ItemStack tool, BranchHolder branchHolder, int slot) {
-        int branchIndex = branchHolder.branchIndex;
-        int page = branchHolder.page;
-
-        if (slot == BRANCH_BACK_SLOT) {
-            openHub(player, tool);
-            return;
-        }
-        if (slot == PAGE_LEFT_SLOT && page > 0) {
-            openBranch(player, tool, branchIndex, page - 1);
-            return;
-        }
-        if (slot == PAGE_RIGHT_SLOT && page < maxPageFor(branchIndex)) {
-            openBranch(player, tool, branchIndex, page + 1);
-            return;
-        }
-
-        int posOnPage = -1;
-        for (int i = 0; i < BRANCH_NODE_SLOTS.length; i++) {
-            if (BRANCH_NODE_SLOTS[i] == slot) {
-                posOnPage = i;
-                break;
-            }
-        }
-        if (posOnPage < 0) return;
-        List<SkillNode> nodes = branches.get(branchIndex).nodes();
-        int idx = page * NODES_PER_PAGE + posOnPage;
-        if (idx >= nodes.size()) return;
-
+    private void handleOfferClick(Player player, ItemStack tool, int slot) {
         ItemMeta meta = tool.getItemMeta();
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
-        NamespacedKey maskKey = pkBranchMask[branchIndex];
-        int mask = pdc.getOrDefault(maskKey, PersistentDataType.INTEGER, 0);
-        boolean purchased = bitSet(mask, idx);
-        boolean available = idx == 0 || bitSet(mask, idx - 1);
-        int points = pdc.getOrDefault(pkPoints, PersistentDataType.INTEGER, 0);
+        String pending = pdc.getOrDefault(pkPendingOffer, PersistentDataType.STRING, "");
 
-        if (purchased) {
-            player.sendActionBar(Component.text("Już posiadasz to ulepszenie.", NamedTextColor.GRAY));
-        } else if (!available) {
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
-            player.sendActionBar(Component.text("Najpierw wykup poprzedni węzeł!", NamedTextColor.RED));
-        } else if (points <= 0) {
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
-            player.sendActionBar(Component.text("Brak punktów umiejętności!", NamedTextColor.RED));
-        } else {
-            pdc.set(maskKey, PersistentDataType.INTEGER, mask | (1 << idx));
-            pdc.set(pkPoints, PersistentDataType.INTEGER, points - 1);
-            tool.setItemMeta(meta);
-            refreshDisplay(tool);
-            player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
-            player.sendActionBar(Component.text("Wykupiono: " + nodes.get(idx).displayName(), NamedTextColor.GREEN));
-        }
-
-        openBranch(player, tool, branchIndex, page);
-    }
-
-    private void handleRareClick(Player player, ItemStack tool, int slot) {
-        ItemMeta meta = tool.getItemMeta();
-        PersistentDataContainer pdc = meta.getPersistentDataContainer();
-        String pending = pdc.getOrDefault(pkPendingRare, PersistentDataType.STRING, "");
-
-        if (slot == 22 || pending.isEmpty()) {
+        if (slot == OFFER_BACK_SLOT || pending.isEmpty()) {
             player.closeInventory();
             return;
         }
 
         List<String> ids = Arrays.asList(pending.split(","));
         int idx = -1;
-        for (int i = 0; i < RARE_CHOICE_SLOTS.length; i++) {
-            if (RARE_CHOICE_SLOTS[i] == slot) {
+        for (int i = 0; i < OFFER_CHOICE_SLOTS.length; i++) {
+            if (OFFER_CHOICE_SLOTS[i] == slot) {
                 idx = i;
                 break;
             }
@@ -849,28 +801,31 @@ public abstract class ToolSkillManager implements Listener {
         if (idx < 0 || idx >= ids.size()) return;
 
         String chosenId = ids.get(idx);
-        RarePerk chosen = findRarePerk(chosenId);
-        if (chosen == null) return;
+        SkillCard chosenCard = findCard(chosenId);
+        RarePerk chosenRare = chosenCard == null ? findRarePerk(chosenId) : null;
+        if (chosenCard == null && chosenRare == null) return;
 
-        Set<String> owned = csvToSet(pdc.getOrDefault(pkRare, PersistentDataType.STRING, ""));
-        owned.add(chosenId);
-        pdc.set(pkRare, PersistentDataType.STRING, String.join(",", owned));
-        pdc.set(pkPendingRare, PersistentDataType.STRING, "");
+        grantCard(pdc, chosenId);
+        pdc.set(pkPendingOffer, PersistentDataType.STRING, "");
 
-        int queued = pdc.getOrDefault(pkPendingRareQueue, PersistentDataType.INTEGER, 0);
+        int queued = pdc.getOrDefault(pkPendingOfferQueue, PersistentDataType.INTEGER, 0);
         if (queued > 0) {
-            pdc.set(pkPendingRareQueue, PersistentDataType.INTEGER, queued - 1);
-            offerNewRareChoice(pdc, owned);
+            pdc.set(pkPendingOfferQueue, PersistentDataType.INTEGER, queued - 1);
+            offerNewCardChoice(pdc);
         }
 
         tool.setItemMeta(meta);
         refreshDisplay(tool);
 
-        player.sendMessage(Component.text("★ Wybrano rzadką umiejętność: " + chosen.displayName(), NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
-        player.showTitle(Title.title(
-                Component.text("Rzadka Umiejętność!", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD),
-                Component.text(chosen.displayName(), NamedTextColor.WHITE)
-        ));
+        String chosenName = chosenCard != null ? chosenCard.displayName() : chosenRare.displayName();
+        Rarity chosenRarity = chosenCard != null ? chosenCard.rarity() : Rarity.LEGENDARY;
+        player.sendMessage(Component.text("★ Wybrano: " + chosenName, chosenRarity.color, TextDecoration.BOLD));
+        if (chosenRarity == Rarity.EPIC || chosenRarity == Rarity.LEGENDARY) {
+            player.showTitle(Title.title(
+                    Component.text(chosenRarity.label + "!", chosenRarity.color, TextDecoration.BOLD),
+                    Component.text(chosenName, NamedTextColor.WHITE)
+            ));
+        }
         player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1f, 1f);
 
         openHub(player, tool);
@@ -885,19 +840,10 @@ public abstract class ToolSkillManager implements Listener {
         @Override public Inventory getInventory() { return inventory; }
     }
 
-    private static final class BranchHolder implements InventoryHolder {
+    private static final class OfferHolder implements InventoryHolder {
         private final ToolSkillManager owner;
         private Inventory inventory;
-        private int branchIndex;
-        private int page;
-        private BranchHolder(ToolSkillManager owner) { this.owner = owner; }
-        @Override public Inventory getInventory() { return inventory; }
-    }
-
-    private static final class RareHolder implements InventoryHolder {
-        private final ToolSkillManager owner;
-        private Inventory inventory;
-        private RareHolder(ToolSkillManager owner) { this.owner = owner; }
+        private OfferHolder(ToolSkillManager owner) { this.owner = owner; }
         @Override public Inventory getInventory() { return inventory; }
     }
 }

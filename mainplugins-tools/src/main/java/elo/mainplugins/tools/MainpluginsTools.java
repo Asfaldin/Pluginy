@@ -3,9 +3,11 @@ package elo.mainplugins.tools;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.ToolsService;
 import elo.mainplugins.tools.axe.AxeSkillManager;
+import elo.mainplugins.tools.hoe.HoeSkillManager;
 import elo.mainplugins.tools.pickaxe.BrukSurowceManager;
 import elo.mainplugins.tools.pickaxe.PickaxeSkillManager;
 import elo.mainplugins.tools.special.NiszczycielManager;
+import elo.mainplugins.tools.sword.SwordSkillManager;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.ServicePriority;
@@ -29,6 +31,12 @@ public final class MainpluginsTools extends JavaPlugin {
 
         AxeSkillManager axeSkillManager = new AxeSkillManager(this, CoreAPI.getEconomyService());
         getServer().getPluginManager().registerEvents(axeSkillManager, this);
+
+        HoeSkillManager hoeSkillManager = new HoeSkillManager(this, CoreAPI.getEconomyService());
+        getServer().getPluginManager().registerEvents(hoeSkillManager, this);
+
+        SwordSkillManager swordSkillManager = new SwordSkillManager(this, CoreAPI.getEconomyService());
+        getServer().getPluginManager().registerEvents(swordSkillManager, this);
 
         NiszczycielManager niszczycielManager = new NiszczycielManager(this);
         getServer().getPluginManager().registerEvents(niszczycielManager, this);
@@ -73,6 +81,10 @@ public final class MainpluginsTools extends JavaPlugin {
                     pickaxeSkillManager.debugAddLevels(player, item, amount);
                 } else if (type.equals("axe")) {
                     axeSkillManager.debugAddLevels(player, item, amount);
+                } else if (type.equals("hoe")) {
+                    hoeSkillManager.debugAddLevels(player, item, amount);
+                } else if (type.equals("sword")) {
+                    swordSkillManager.debugAddLevels(player, item, amount);
                 } else {
                     levelableToolsManager.debugAddLevels(player, item, amount);
                 }

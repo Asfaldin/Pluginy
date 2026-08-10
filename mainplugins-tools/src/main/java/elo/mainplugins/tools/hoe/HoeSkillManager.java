@@ -84,10 +84,11 @@ public class HoeSkillManager extends ToolSkillManager {
         ItemMeta meta = item.getItemMeta();
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
+        double scale = procScale(pdc);
 
         // Błogosławieństwo Urodzaju - podmienia plon zbieranej uprawy na cenny surowiec
         int urodzaj = cardCountOf(pdc, "NAT_URODZAJ");
-        if (urodzaj > 0 && rnd.nextDouble() < URODZAJ_CHANCE[urodzaj - 1]) {
+        if (urodzaj > 0 && rnd.nextDouble() < URODZAJ_CHANCE[urodzaj - 1] * scale) {
             if (rnd.nextBoolean()) {
                 ItemStack reward = rnd.nextBoolean() ? new ItemStack(Material.IRON_INGOT) : new ItemStack(Material.GOLD_NUGGET, 3);
                 block.getWorld().dropItemNaturally(block.getLocation(), reward);
@@ -97,33 +98,36 @@ public class HoeSkillManager extends ToolSkillManager {
         }
 
         // Obfity Zbiór / Celny Zbiór / Podwójne Żniwo / Mistrzostwo (x3) / Druga Szansa -
-        // dodatkowa kopia plonu (wszystko sumuje się w jedną wspólną szansę)
-        double bonusDropChance = cardCountOf(pdc, "PLON_ZBIOR") * 0.10
-                + cardCountOf(pdc, "AGRO_CELNY") * 0.15
-                + cardCountOf(pdc, "NAT_OBFITOSC") * 0.10
-                + (cardCountOf(pdc, "PLON_MISTRZOSTWO") > 0 ? 0.15 : 0)
-                + (cardCountOf(pdc, "AGRO_MISTRZOSTWO") > 0 ? 0.20 : 0)
-                + (cardCountOf(pdc, "NAT_MISTRZOSTWO") > 0 ? 0.10 : 0)
-                + (hasRare(pdc, "RARE_MOT_SECOND_CHANCE") ? 0.05 : 0);
-        if (bonusDropChance > 0 && rnd.nextDouble() < bonusDropChance) {
+        // dodatkowa kopia plonu (wszystko łączone jako niezależne szanse, patrz
+        // combineChances/stackedChance - suma NIGDY nie przekracza 100%)
+        double bonusDropChance = scale * combineChances(
+                stackedChance(cardCountOf(pdc, "PLON_ZBIOR"), 0.10),
+                stackedChance(cardCountOf(pdc, "AGRO_CELNY"), 0.15),
+                stackedChance(cardCountOf(pdc, "NAT_OBFITOSC"), 0.10),
+                cardCountOf(pdc, "PLON_MISTRZOSTWO") > 0 ? 0.15 : 0,
+                cardCountOf(pdc, "AGRO_MISTRZOSTWO") > 0 ? 0.20 : 0,
+                cardCountOf(pdc, "NAT_MISTRZOSTWO") > 0 ? 0.10 : 0,
+                hasRare(pdc, "RARE_MOT_SECOND_CHANCE") ? 0.05 : 0
+        );
+        if (rnd.nextDouble() < bonusDropChance) {
             dropCopy(block, item);
         }
 
         // Żniwo Pola - sąsiednie dojrzałe uprawy tego samego typu zbierają się razem
         int zniwoLevel = cardCountOf(pdc, "PLON_ZNIWO");
-        if (zniwoLevel > 0 && rnd.nextDouble() < 0.15 + zniwoLevel * 0.05) {
+        if (zniwoLevel > 0 && rnd.nextDouble() < (0.15 + zniwoLevel * 0.05) * scale) {
             breakRandomNeighbors(block, item, mat, zniwoLevel);
         }
 
         // Rdzeń Chaosu (rzadka) - do 3 sąsiednich upraw naraz
-        if (hasRare(pdc, "RARE_MOT_CHAOS_CORE") && rnd.nextDouble() < 0.05) {
+        if (hasRare(pdc, "RARE_MOT_CHAOS_CORE") && rnd.nextDouble() < 0.05 * scale) {
             breakRandomNeighbors(block, item, null, 3);
         }
 
         // Bogate Ziarno - dodatkowe nasiona, każdy poziom karty to niezależny rzut
         int bogateZiarno = cardCountOf(pdc, "AGRO_ZIARNO");
         for (int i = 0; i < bogateZiarno; i++) {
-            if (rnd.nextDouble() < 0.05) {
+            if (rnd.nextDouble() < 0.05 * scale) {
                 block.getWorld().dropItemNaturally(block.getLocation(), new ItemStack(Material.WHEAT_SEEDS));
             }
         }
@@ -131,28 +135,29 @@ public class HoeSkillManager extends ToolSkillManager {
         // Oko Farmera / Ręka Kupca / Dotyk Midasa - bonusowa wypłata
         int okoFarmera = cardCountOf(pdc, "AGRO_OKO");
         for (int i = 0; i < okoFarmera; i++) {
-            if (rnd.nextDouble() < 0.05) payBonus(player, 4 + tierOf(pdc) * 2);
+            if (rnd.nextDouble() < 0.05 * scale) payBonus(player, 4 + tierOf(pdc) * 2);
         }
         int rekaKupca = cardCountOf(pdc, "AGRO_KUPIEC");
         for (int i = 0; i < rekaKupca; i++) {
-            if (rnd.nextDouble() < 0.08) payBonus(player, 6 + tierOf(pdc) * 4);
+            if (rnd.nextDouble() < 0.08 * scale) payBonus(player, 6 + tierOf(pdc) * 4);
         }
-        if (hasRare(pdc, "RARE_MOT_MIDAS") && rnd.nextDouble() < 0.03) payBonus(player, 2 + tierOf(pdc));
+        if (hasRare(pdc, "RARE_MOT_MIDAS") && rnd.nextDouble() < 0.03 * scale) payBonus(player, 2 + tierOf(pdc));
 
         // Pasywne Szczęście - rośnie automatycznie z każdym poziomem (niezależnie od
-        // wykupionych kart), wyraźnie słabiej niż ręczne Oko Farmera (max +60%).
+        // wykupionych kart), wyraźnie słabiej niż ręczne Oko Farmera (max +60%). Już ze
+        // swojej natury skaluje się z poziomem - BEZ dodatkowego mnożnika scale.
         int level = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
         if (rnd.nextDouble() < level * 0.0006) payBonus(player, 2 + tierOf(pdc));
 
         // Duch Pola / Szczęśliwy Plon / Nieugięty Duch - bonusowe orby xp
         int duchPola = cardCountOf(pdc, "NAT_DUCH");
         for (int i = 0; i < duchPola; i++) {
-            if (rnd.nextDouble() < 0.25) spawnXp(block.getLocation().add(0.5, 0.5, 0.5), 1 + rnd.nextInt(3));
+            if (rnd.nextDouble() < 0.25 * scale) spawnXp(block.getLocation().add(0.5, 0.5, 0.5), 1 + rnd.nextInt(3));
         }
-        if (cardCountOf(pdc, "NAT_SZCZESLIWY") > 0 && rnd.nextDouble() < 0.15) {
+        if (cardCountOf(pdc, "NAT_SZCZESLIWY") > 0 && rnd.nextDouble() < 0.15 * scale) {
             spawnXp(block.getLocation().add(0.5, 0.5, 0.5), 5 + rnd.nextInt(6));
         }
-        if (hasRare(pdc, "RARE_MOT_UNYIELDING_SPIRIT") && rnd.nextDouble() < 0.08) {
+        if (hasRare(pdc, "RARE_MOT_UNYIELDING_SPIRIT") && rnd.nextDouble() < 0.08 * scale) {
             spawnXp(block.getLocation().add(0.5, 0.5, 0.5), 10 + rnd.nextInt(11));
         }
 
@@ -162,7 +167,7 @@ public class HoeSkillManager extends ToolSkillManager {
         // Błogosławieństwo Pól (rzadka)
         if (hasRare(pdc, "RARE_MOT_FIELD_BLESSING")) {
             player.setSaturation((float) Math.min(20.0, player.getSaturation() + 0.5f));
-            if (rnd.nextDouble() < 0.10) {
+            if (rnd.nextDouble() < 0.10 * scale) {
                 player.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 60, 0, true, false));
             }
         }

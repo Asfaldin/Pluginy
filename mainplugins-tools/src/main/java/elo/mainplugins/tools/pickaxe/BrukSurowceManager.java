@@ -1,27 +1,18 @@
 package elo.mainplugins.tools.pickaxe;
 
 import elo.mainplugins.tools.pickaxe.BrukSurowce.SurowiecDrop;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.Sound;
-import org.bukkit.block.Block;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -30,34 +21,97 @@ import java.util.concurrent.ThreadLocalRandom;
  * bonusowy surowiec. Pula możliwych surowców kumuluje się z tierem kilofa (patrz
  * BrukSurowce#pulaDlaTieru) - np. kilof kamienny losuje z puli drewnianego + własne.
  *
- * Klucze PDC "tool_type"/"tool_owner"/"pk_tier"/"pk_bruk_on" należą do LevelableToolsManager/
- * PickaxeSkillManager - tworzymy tu własne instancje NamespacedKey o tych samych nazwach
- * (ten sam plugin => równe klucze), zamiast wstrzykiwać tamte klasy tylko po to. Przełącznik
- * pk_bruk_on (domyślnie włączony) jest ustawiany przez gracza w hubie kilofa - patrz
- * PickaxeSkillManager#handleHubClick.
+ * WAŻNE: to jest czysta klasa obliczeniowa, NIE listener - roll i faktyczny drop wykonuje
+ * PickaxeSkillManager#applyMiningPerks (patrz rollBonusZBruku tamże), bo na tym Skyblocku
+ * to JEDYNY sposób zdobycia "rudy" (brak realnego świata z blokami rudy) - wynik tego rolla
+ * musiał stać się też warunkiem kart "rudowych" (Oko Sokoła, Rezonans Rudy, Serce Głębi...),
+ * więc oba mechanizmy musiały się zejść w jednym miejscu zamiast żyć w dwóch niezależnych
+ * listenerach na ten sam BlockBreakEvent.
+ *
+ * Dwie karty kilofa (gałąź Magia) modyfikują ten mechanizm: MAG_BRUK_SZCZESCIE podnosi samą
+ * szansę na trigger (+1pp/poziom), MAG_BRUK_INSTYNKT nie rusza szansy na trigger, tylko
+ * przechyla WAŻONE losowanie w puli w stronę surowców oznaczonych jako "cenne" (patrz
+ * BrukSurowce#cenny) - dzięki rozdzieleniu tych dwóch efektów drugą kartę można trzymać
+ * hojniejszą bez ryzyka zalania ekonomii Złomem Netherytu.
+ *
+ * Klucz PDC "pk_bruk_disabled" należy do PickaxeSkillManager - tworzymy tu własną instancję
+ * NamespacedKey o tej samej nazwie (ten sam plugin => równy klucz), zamiast wstrzykiwać tamtą
+ * klasę tylko po to.
  */
-public class BrukSurowceManager implements Listener {
+public class BrukSurowceManager {
+
+    /** Ile punktów procentowych szansy na trigger dodaje jeden poziom karty MAG_BRUK_SZCZESCIE. */
+    private static final double SZCZESCIE_PP_ZA_POZIOM = 1.0;
+
+    /** Mnożnik wagi surowców "cennych" = 1 + tyle_za_poziom * poziom karty MAG_BRUK_INSTYNKT. */
+    private static final double INSTYNKT_MNOZNIK_ZA_POZIOM = 0.5;
 
     private final Plugin plugin;
-    private final NamespacedKey keyType;
-    private final NamespacedKey keyOwner;
-    private final NamespacedKey pkTier;
-    private final NamespacedKey pkBrukOn;
+    private final NamespacedKey pkBrukDisabled;
 
     private FileConfiguration szanseConfig;
 
     public BrukSurowceManager(Plugin plugin) {
         this.plugin = plugin;
-        this.keyType = new NamespacedKey(plugin, "tool_type");
-        this.keyOwner = new NamespacedKey(plugin, "tool_owner");
-        this.pkTier = new NamespacedKey(plugin, "pk_tier");
-        this.pkBrukOn = new NamespacedKey(plugin, "pk_bruk_on");
+        this.pkBrukDisabled = new NamespacedKey(plugin, "pk_bruk_disabled");
         wczytajKonfiguracje();
     }
 
-    /** Szansa % (tier kilofa 0-4) skonfigurowana w bruk-szanse.yml - pod wyświetlanie w hubie kilofa. */
+    /** Bazowa szansa % (tier kilofa 0-4) skonfigurowana w bruk-szanse.yml, BEZ bonusu z karty - pod wyświetlanie w hubie kilofa. */
     public double szansaDlaTieru(int tier) {
         return szanseConfig.getDouble("tiery." + tier, 0.0);
+    }
+
+    /** Realna, całkowita szansa % na trigger - bazowa z yml + bonus z poziomu karty MAG_BRUK_SZCZESCIE. */
+    public double calkowitaSzansa(int tier, int poziomSzczescia) {
+        return Math.max(0, szansaDlaTieru(tier) + poziomSzczescia * SZCZESCIE_PP_ZA_POZIOM);
+    }
+
+    /** Udział (0-1) danego surowca w WAŻONEJ puli danego tieru (z pominięciem wyłączonych przez gracza) - pod wyświetlanie realnych % rozkładu w hubie kilofa. */
+    public double udzialSurowca(int tier, SurowiecDrop surowiec, int poziomInstynktu, Set<String> wylaczone) {
+        List<SurowiecDrop> pula = BrukSurowce.pulaDlaTieru(tier);
+        double mnoznikCennych = 1 + INSTYNKT_MNOZNIK_ZA_POZIOM * poziomInstynktu;
+        double suma = sumaWag(pula, mnoznikCennych, wylaczone);
+        if (suma <= 0) return 0;
+        return wagaEfektywna(surowiec, mnoznikCennych, wylaczone) / suma;
+    }
+
+    /** Waga efektywna 0, jeśli gracz ręcznie wyłączył ten surowiec (patrz PickaxeSkillManager#openBrukConfig) - traktowane jak nieobecność w puli. */
+    private double wagaEfektywna(SurowiecDrop surowiec, double mnoznikCennych, Set<String> wylaczone) {
+        if (wylaczone.contains(surowiec.id())) return 0;
+        return surowiec.cenny() ? surowiec.waga() * mnoznikCennych : surowiec.waga();
+    }
+
+    private double sumaWag(List<SurowiecDrop> pula, double mnoznikCennych, Set<String> wylaczone) {
+        double suma = 0;
+        for (SurowiecDrop s : pula) suma += wagaEfektywna(s, mnoznikCennych, wylaczone);
+        return suma;
+    }
+
+    /**
+     * Losuje JEDEN surowiec z puli, ważąc surowce "cenne" mnożnikiem z poziomu karty
+     * MAG_BRUK_INSTYNKT (0 = bez zmian, waga jak w BrukSurowce) i pomijając surowce ręcznie
+     * wyłączone przez gracza. Zwraca null, jeśli gracz wyłączył WSZYSTKO w puli tego tieru -
+     * wtedy po prostu nic nie wypada (patrz PickaxeSkillManager#rollBonusZBruku).
+     */
+    public SurowiecDrop losujWazony(List<SurowiecDrop> pula, int poziomInstynktu, Set<String> wylaczone) {
+        double mnoznikCennych = 1 + INSTYNKT_MNOZNIK_ZA_POZIOM * poziomInstynktu;
+        double suma = sumaWag(pula, mnoznikCennych, wylaczone);
+        if (suma <= 0) return null;
+        double roll = ThreadLocalRandom.current().nextDouble(suma);
+        double cumulative = 0;
+        for (SurowiecDrop s : pula) {
+            cumulative += wagaEfektywna(s, mnoznikCennych, wylaczone);
+            if (roll < cumulative) return s;
+        }
+        return null;
+    }
+
+    /** Zbiór id surowców (patrz SurowiecDrop#id) ręcznie wyłączonych przez gracza w konfiguracji bonusu z bruku. */
+    public Set<String> wylaczoneSurowce(PersistentDataContainer pdc) {
+        String csv = pdc.getOrDefault(pkBrukDisabled, PersistentDataType.STRING, "");
+        if (csv.isEmpty()) return Set.of();
+        return new LinkedHashSet<>(Arrays.asList(csv.split(",")));
     }
 
     private void wczytajKonfiguracje() {
@@ -69,51 +123,5 @@ public class BrukSurowceManager implements Listener {
             plugin.saveResource("bruk-szanse.yml", false);
         }
         szanseConfig = YamlConfiguration.loadConfiguration(plik);
-    }
-
-    @EventHandler(ignoreCancelled = true)
-    public void onBlockBreak(BlockBreakEvent event) {
-        Block block = event.getBlock();
-        if (block.getType() != Material.COBBLESTONE) return;
-
-        Player player = event.getPlayer();
-        ItemStack item = player.getInventory().getItemInMainHand();
-        if (!isOwnedPickaxe(item, player) || !isEnabled(item)) return;
-
-        int tier = tierOf(item);
-        double szansa = szanseConfig.getDouble("tiery." + tier, 0.0);
-        if (szansa <= 0 || ThreadLocalRandom.current().nextDouble(100.0) >= szansa) return;
-
-        List<SurowiecDrop> pula = BrukSurowce.pulaDlaTieru(tier);
-        if (pula.isEmpty()) return;
-        SurowiecDrop wylosowany = pula.get(ThreadLocalRandom.current().nextInt(pula.size()));
-
-        Location loc = block.getLocation();
-        block.getWorld().dropItemNaturally(loc.clone().add(0.5, 0.5, 0.5),
-                new ItemStack(wylosowany.item(), wylosowany.ilosc()));
-        player.playSound(loc, Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1f, 1f);
-        player.sendActionBar(Component.text("W bruku znalazłeś " + wylosowany.nazwa() + "!", NamedTextColor.AQUA));
-    }
-
-    private boolean isEnabled(ItemStack item) {
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) return true;
-        return meta.getPersistentDataContainer().getOrDefault(pkBrukOn, PersistentDataType.BYTE, (byte) 1) != 0;
-    }
-
-    private boolean isOwnedPickaxe(ItemStack item, Player player) {
-        if (item == null || item.getType().isAir()) return false;
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) return false;
-        PersistentDataContainer pdc = meta.getPersistentDataContainer();
-        if (!"pickaxe".equals(pdc.get(keyType, PersistentDataType.STRING))) return false;
-        String owner = pdc.get(keyOwner, PersistentDataType.STRING);
-        return owner != null && owner.equals(player.getUniqueId().toString());
-    }
-
-    private int tierOf(ItemStack item) {
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) return 0;
-        return meta.getPersistentDataContainer().getOrDefault(pkTier, PersistentDataType.INTEGER, 0);
     }
 }

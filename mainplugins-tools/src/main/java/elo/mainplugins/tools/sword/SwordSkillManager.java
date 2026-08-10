@@ -90,50 +90,52 @@ public class SwordSkillManager extends ToolSkillManager {
         ItemMeta meta = item.getItemMeta();
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
+        double scale = procScale(pdc);
 
         // Fala Ciosów - trafienie ma szansę zadać też obrażenia pobliskim wrogom
         int falaLevel = cardCountOf(pdc, "SILA_FALA");
-        if (falaLevel > 0 && rnd.nextDouble() < 0.15 + falaLevel * 0.05) {
+        if (falaLevel > 0 && rnd.nextDouble() < (0.15 + falaLevel * 0.05) * scale) {
             cleaveNearby(target, player, baseDamage, falaLevel);
         }
 
         // Rdzeń Chaosu (rzadka) - natychmiastowe obrażenia do 3 pobliskich wrogów
-        if (hasRare(pdc, "RARE_MIECZ_CHAOS_CORE") && rnd.nextDouble() < 0.05) {
+        if (hasRare(pdc, "RARE_MIECZ_CHAOS_CORE") && rnd.nextDouble() < 0.05 * scale) {
             cleaveNearby(target, player, baseDamage, 3);
         }
 
         // Oko Łowcy / Ręka Najemnika / Dotyk Midasa - bonusowa wypłata
         int okoLowcy = cardCountOf(pdc, "PREC_OKO");
         for (int i = 0; i < okoLowcy; i++) {
-            if (rnd.nextDouble() < 0.05) payBonus(player, 4 + tierOf(pdc) * 2);
+            if (rnd.nextDouble() < 0.05 * scale) payBonus(player, 4 + tierOf(pdc) * 2);
         }
         int rekaNajemnika = cardCountOf(pdc, "PREC_NAJEMNIK");
         for (int i = 0; i < rekaNajemnika; i++) {
-            if (rnd.nextDouble() < 0.08) payBonus(player, 6 + tierOf(pdc) * 4);
+            if (rnd.nextDouble() < 0.08 * scale) payBonus(player, 6 + tierOf(pdc) * 4);
         }
-        if (hasRare(pdc, "RARE_MIECZ_MIDAS") && rnd.nextDouble() < 0.03) payBonus(player, 2 + tierOf(pdc));
+        if (hasRare(pdc, "RARE_MIECZ_MIDAS") && rnd.nextDouble() < 0.03 * scale) payBonus(player, 2 + tierOf(pdc));
 
         // Pasywne Szczęście - rośnie automatycznie z każdym poziomem (niezależnie od
-        // wykupionych kart), wyraźnie słabiej niż ręczne Oko Łowcy (max +60%).
+        // wykupionych kart), wyraźnie słabiej niż ręczne Oko Łowcy (max +60%). Już ze
+        // swojej natury skaluje się z poziomem - BEZ dodatkowego mnożnika scale.
         int level = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
         if (rnd.nextDouble() < level * 0.0006) payBonus(player, 2 + tierOf(pdc));
 
         // Duch Bitwy / Szczęśliwy Cios / Nieugięty Duch - bonusowe orby xp
         int duchBitwy = cardCountOf(pdc, "DUCH_BITWA");
         for (int i = 0; i < duchBitwy; i++) {
-            if (rnd.nextDouble() < 0.25) spawnXp(target.getLocation().add(0, 1, 0), 1 + rnd.nextInt(3));
+            if (rnd.nextDouble() < 0.25 * scale) spawnXp(target.getLocation().add(0, 1, 0), 1 + rnd.nextInt(3));
         }
-        if (cardCountOf(pdc, "DUCH_SZCZESLIWY") > 0 && rnd.nextDouble() < 0.15) {
+        if (cardCountOf(pdc, "DUCH_SZCZESLIWY") > 0 && rnd.nextDouble() < 0.15 * scale) {
             spawnXp(target.getLocation().add(0, 1, 0), 5 + rnd.nextInt(6));
         }
-        if (hasRare(pdc, "RARE_MIECZ_UNYIELDING_SPIRIT") && rnd.nextDouble() < 0.08) {
+        if (hasRare(pdc, "RARE_MIECZ_UNYIELDING_SPIRIT") && rnd.nextDouble() < 0.08 * scale) {
             spawnXp(target.getLocation().add(0, 1, 0), 10 + rnd.nextInt(11));
         }
 
         // Błogosławieństwo Wojny (rzadka)
         if (hasRare(pdc, "RARE_MIECZ_WAR_BLESSING")) {
             player.setSaturation((float) Math.min(20.0, player.getSaturation() + 0.5f));
-            if (rnd.nextDouble() < 0.10) {
+            if (rnd.nextDouble() < 0.10 * scale) {
                 player.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 60, 0, true, false));
             }
         }
@@ -155,10 +157,11 @@ public class SwordSkillManager extends ToolSkillManager {
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
         Location deathLoc = event.getEntity().getLocation();
+        double scale = procScale(pdc);
 
         // Krew Bestii - pokonanie przeciwnika ma szansę dorzucić cenny surowiec/monety
         int krew = cardCountOf(pdc, "DUCH_KREW");
-        if (krew > 0 && rnd.nextDouble() < KREW_CHANCE[krew - 1]) {
+        if (krew > 0 && rnd.nextDouble() < KREW_CHANCE[krew - 1] * scale) {
             if (rnd.nextBoolean()) {
                 event.getDrops().add(rnd.nextBoolean() ? new ItemStack(Material.IRON_INGOT) : new ItemStack(Material.GOLD_NUGGET, 3));
             } else {
@@ -167,22 +170,25 @@ public class SwordSkillManager extends ToolSkillManager {
         }
 
         // Potężny Cios / Precyzyjny Cios / Podwójny Łup / Mistrzostwo (x3) / Druga Szansa -
-        // zdublowanie całego łupu (jedna wspólna szansa)
-        double bonusLootChance = cardCountOf(pdc, "SILA_CIOS") * 0.10
-                + cardCountOf(pdc, "PREC_CIOS") * 0.15
-                + cardCountOf(pdc, "DUCH_LUP") * 0.10
-                + (cardCountOf(pdc, "SILA_MISTRZOSTWO") > 0 ? 0.15 : 0)
-                + (cardCountOf(pdc, "PREC_MISTRZOSTWO") > 0 ? 0.20 : 0)
-                + (cardCountOf(pdc, "DUCH_MISTRZOSTWO") > 0 ? 0.10 : 0)
-                + (hasRare(pdc, "RARE_MIECZ_SECOND_CHANCE") ? 0.05 : 0);
-        if (bonusLootChance > 0 && rnd.nextDouble() < bonusLootChance && !event.getDrops().isEmpty()) {
+        // zdublowanie całego łupu (wszystko łączone jako niezależne szanse, patrz
+        // combineChances/stackedChance - suma NIGDY nie przekracza 100%)
+        double bonusLootChance = scale * combineChances(
+                stackedChance(cardCountOf(pdc, "SILA_CIOS"), 0.10),
+                stackedChance(cardCountOf(pdc, "PREC_CIOS"), 0.15),
+                stackedChance(cardCountOf(pdc, "DUCH_LUP"), 0.10),
+                cardCountOf(pdc, "SILA_MISTRZOSTWO") > 0 ? 0.15 : 0,
+                cardCountOf(pdc, "PREC_MISTRZOSTWO") > 0 ? 0.20 : 0,
+                cardCountOf(pdc, "DUCH_MISTRZOSTWO") > 0 ? 0.10 : 0,
+                hasRare(pdc, "RARE_MIECZ_SECOND_CHANCE") ? 0.05 : 0
+        );
+        if (rnd.nextDouble() < bonusLootChance && !event.getDrops().isEmpty()) {
             event.getDrops().addAll(new ArrayList<>(event.getDrops()));
         }
 
         // Krwawy Łup - dodatkowy szmaragd, każdy poziom karty to niezależny rzut
         int krwawyLup = cardCountOf(pdc, "PREC_LUP");
         for (int i = 0; i < krwawyLup; i++) {
-            if (rnd.nextDouble() < 0.05) {
+            if (rnd.nextDouble() < 0.05 * scale) {
                 event.getDrops().add(new ItemStack(Material.EMERALD));
             }
         }

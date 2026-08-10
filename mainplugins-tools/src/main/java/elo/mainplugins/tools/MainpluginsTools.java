@@ -24,7 +24,6 @@ public final class MainpluginsTools extends JavaPlugin {
         getServer().getServicesManager().register(ToolsService.class, levelableToolsManager, this, ServicePriority.Normal);
 
         BrukSurowceManager brukSurowceManager = new BrukSurowceManager(this);
-        getServer().getPluginManager().registerEvents(brukSurowceManager, this);
 
         PickaxeSkillManager pickaxeSkillManager = new PickaxeSkillManager(this, CoreAPI.getEconomyService(), brukSurowceManager);
         getServer().getPluginManager().registerEvents(pickaxeSkillManager, this);

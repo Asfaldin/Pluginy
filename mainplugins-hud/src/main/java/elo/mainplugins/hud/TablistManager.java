@@ -4,20 +4,28 @@ import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.IslandSummary;
 import elo.mainplugins.core.api.TopGracz;
 import elo.mainplugins.core.util.MoneyFormat;
+import elo.mainplugins.hud.font.PixelSpacer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerResourcePackStatusEvent;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Górna tabela graczy (Tab). Odświeżana raz na sekundę dla wszystkich online -
@@ -30,6 +38,21 @@ public class TablistManager implements Listener {
     private final EconomyService economyManager;
     private BukkitTask updateTask;
     private int tick = 0;
+
+    /**
+     * Gracze BEZ zaakceptowanego resource packa mainplugins:spacer (patrz resourcepack/
+     * w module) - dostają stary fallback (dopelnij, dopełnianie znakami), bo font
+     * mainplugins:spacer po prostu u nich nie istnieje (PixelSpacer wyświetliłby im
+     * kwadraciki zamiast pustych dystansów). Domyślnie (przed odpowiedzią klienta)
+     * gracz jest tutaj - bezpieczny fallback, dopóki nie potwierdzi ACCEPTED/
+     * SUCCESSFULLY_LOADED.
+     */
+    private final Set<UUID> bezPacka = new HashSet<>();
+
+    /** Puste url = paczka wyłączona - patrz resourcepack.yml i wczytajResourcePack(). */
+    private String packUrl;
+    private String packHash;
+    private boolean packWymagany;
 
     private static final String NAZWA_SERWERA = "SERWER SURVIVAL / SKYBLOCK";
 
@@ -44,7 +67,20 @@ public class TablistManager implements Listener {
     public TablistManager(Plugin plugin, EconomyService economyManager) {
         this.plugin = plugin;
         this.economyManager = economyManager;
+        wczytajResourcePack();
         startTablistUpdater();
+    }
+
+    /** Wczytuje resourcepack.yml (patrz plik dla opisu kluczy) - kopiowany 1:1 przy pierwszym uruchomieniu, żeby nie nadpisywać ręcznych zmian admina. */
+    private void wczytajResourcePack() {
+        File plik = new File(plugin.getDataFolder(), "resourcepack.yml");
+        if (!plik.exists()) {
+            plugin.saveResource("resourcepack.yml", false);
+        }
+        FileConfiguration cfg = YamlConfiguration.loadConfiguration(plik);
+        packUrl = cfg.getString("url", "");
+        packHash = cfg.getString("hash", "");
+        packWymagany = cfg.getBoolean("wymagany", false);
     }
 
     private void startTablistUpdater() {
@@ -59,11 +95,28 @@ public class TablistManager implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        aktualizujTabliste(event.getPlayer(), pobierzTopGraczy(), pobierzTopWysp(), pobierzTps(), aktualnaPodpowiedz());
+        Player player = event.getPlayer();
+        bezPacka.add(player.getUniqueId());
+        if (!packUrl.isBlank()) {
+            player.setResourcePack(packUrl, packHash, packWymagany);
+        }
+        aktualizujTabliste(player, pobierzTopGraczy(), pobierzTopWysp(), pobierzTps(), aktualnaPodpowiedz());
     }
 
     @EventHandler
-    public void onQuit(PlayerQuitEvent event) {}
+    public void onQuit(PlayerQuitEvent event) {
+        bezPacka.remove(event.getPlayer().getUniqueId());
+    }
+
+    /** Aktualizuje status paczki gracza - patrz komentarz przy polu bezPacka. */
+    @EventHandler
+    public void onResourcePackStatus(PlayerResourcePackStatusEvent event) {
+        switch (event.getStatus()) {
+            case SUCCESSFULLY_LOADED -> bezPacka.remove(event.getPlayer().getUniqueId());
+            case DECLINED, FAILED_DOWNLOAD, INVALID_URL, FAILED_RELOAD, DISCARDED -> bezPacka.add(event.getPlayer().getUniqueId());
+            default -> { /* ACCEPTED - jeszcze się pobiera, poczekaj na kolejny status */ }
+        }
+    }
 
     private void odswiezWszystkim() {
         tick++;
@@ -125,13 +178,16 @@ public class TablistManager implements Listener {
         return NamedTextColor.RED;
     }
 
-    // Szerokości (w znakach) pierwszych dwóch kolumn - trzecia (Twoje Statystyki) jest
-    // ostatnia, więc nie musi być dopełniana. Czcionka Minecrafta NIE jest monospace
-    // (litery mają różną szerokość), więc dopełnianie spacjami po liczbie znaków nigdy
-    // nie wyjdzie co do piksela idealnie równo - to twardy limit bez własnej czcionki
-    // w resource packu. Przy zwykłych nickach/kwotach różnica jest w praktyce niewielka.
+    // Szerokości pierwszych dwóch kolumn - trzecia (Twoje Statystyki) jest ostatnia, więc
+    // nie musi być dopełniana. DWIE wersje: w ZNAKACH (stary fallback, dopelnij()) i w
+    // PIKSELACH (PixelSpacer, dla graczy z zaakceptowanym resource packem mainplugins:
+    // spacer - patrz pole bezPacka). Czcionka Minecrafta NIE jest monospace (litery mają
+    // różną szerokość), więc dopełnianie po liczbie ZNAKÓW nigdy nie wyjdzie idealnie
+    // równo - stąd w ogóle ta cała para wersji zamiast jednej.
     private static final int SZEROKOSC_KOLUMNY_GRACZY = 26;
     private static final int SZEROKOSC_KOLUMNY_WYSP = 22;
+    private static final int SZEROKOSC_KOLUMNY_GRACZY_PX = 26 * 6;
+    private static final int SZEROKOSC_KOLUMNY_WYSP_PX = 22 * 6;
 
     /** 3 kolumny obok siebie: Top Gracze | Top Wyspy | Twoje Statystyki - budowane wiersz po wierszu. */
     private Component stworzStopke(Player player, List<TopGracz> topGracze, List<IslandSummary> topWyspy, String podpowiedz) {
@@ -163,6 +219,7 @@ public class TablistManager implements Listener {
                 : "Wyspa: Brak (wpisz /is)");
 
         int wiersze = Math.max(kolGracze.size(), Math.max(kolWyspy.size(), kolTy.size()));
+        boolean pixelPerfect = !bezPacka.contains(player.getUniqueId());
 
         Component wynik = Component.text("\n");
         for (int i = 0; i < wiersze; i++) {
@@ -172,8 +229,8 @@ public class TablistManager implements Listener {
             String c = i < kolTy.size() ? kolTy.get(i) : "";
 
             wynik = wynik
-                    .append(komorka(dopelnij(a, SZEROKOSC_KOLUMNY_GRACZY), NamedTextColor.GREEN, naglowek))
-                    .append(komorka(dopelnij(b, SZEROKOSC_KOLUMNY_WYSP), NamedTextColor.GOLD, naglowek))
+                    .append(komorkaDopelniona(a, NamedTextColor.GREEN, naglowek, SZEROKOSC_KOLUMNY_GRACZY_PX, SZEROKOSC_KOLUMNY_GRACZY, pixelPerfect))
+                    .append(komorkaDopelniona(b, NamedTextColor.GOLD, naglowek, SZEROKOSC_KOLUMNY_WYSP_PX, SZEROKOSC_KOLUMNY_WYSP, pixelPerfect))
                     .append(komorka(c, NamedTextColor.AQUA, naglowek))
                     .append(Component.text("\n"));
         }
@@ -187,7 +244,20 @@ public class TablistManager implements Listener {
         return Component.text(tekst, kolor).decoration(TextDecoration.BOLD, naglowek);
     }
 
-    /** Dopełnia spacjami do stałej liczby znaków (albo przycina, jeśli tekst jest dłuższy) - patrz komentarz przy szerokościach kolumn. */
+    /**
+     * Komórka kolumny wyrównanej do stałej szerokości - dwie ścieżki: PIKSEL-PERFECT
+     * (PixelSpacer, tylko gracze z zaakceptowanym resource packem) albo stary fallback
+     * (dopelnij, dopełnianie znakami) dla reszty. Patrz pole bezPacka.
+     */
+    private Component komorkaDopelniona(String tekst, NamedTextColor kolor, boolean naglowek, int szerokoscPx, int szerokoscZnakow, boolean pixelPerfect) {
+        if (pixelPerfect) {
+            Component base = Component.text(tekst, kolor).decoration(TextDecoration.BOLD, naglowek);
+            return PixelSpacer.padTo(base, tekst, szerokoscPx);
+        }
+        return komorka(dopelnij(tekst, szerokoscZnakow), kolor, naglowek);
+    }
+
+    /** Dopełnia spacjami do stałej liczby znaków (albo przycina, jeśli tekst jest dłuższy) - stary fallback, patrz komorkaDopelniona. */
     private String dopelnij(String tekst, int szerokosc) {
         if (tekst.length() >= szerokosc) return tekst.substring(0, szerokosc);
         return tekst + " ".repeat(szerokosc - tekst.length());

@@ -1,31 +1,28 @@
 # ==========================================================================
 # kilof-hub.yml - uklad menu "Kilof - Umiejetnosci" (Shift + PPM kilofem).
-# Mozna tu zmienic rozmiar okna oraz pozycje (sloty) kazdej ikonki - bez
-# przebudowy pluginu, wystarczy zmienic plik i zrestartowac serwer.
+# Model kart (roguelike level-up) - ten sam silnik co siekiera/motyka/miecz. Mozna
+# zmienic tu rozmiar okna oraz pozycje (sloty) kazdej ikonki bez przebudowy pluginu,
+# wystarczy zmienic plik i zrestartowac serwer.
 #
-# rozmiar: liczba slotow. Musi byc wielokrotnoscia 9 (Bukkit dzieli okno na
-# rzedy po 9) w zakresie 9-54 - inna wartosc zostanie zaokraglona w gore do
-# najblizszej wielokrotnosci 9 i przycieta do 54.
+# rozmiar: liczba slotow. Musi byc wielokrotnoscia 9 w zakresie 9-54 - inna wartosc
+# zostanie zaokraglona w gore do najblizszej wielokrotnosci 9 i przycieta do 54.
 #
-# sloty: numeracja od 0 (lewy gorny rog) do rozmiar-1 (prawy dolny rog),
-# rzedami po 9 (np. przy rozmiarze 27: rzad 1 to 0-8, rzad 2 to 9-17, rzad 3
-# to 18-26). Kazdy slot powinien byc unikalny - dwie ikonki na tym samym
-# slocie nadpisza sie nawzajem. Jesli wpiszesz slot spoza zakresu okna,
-# zostanie automatycznie przyciety do ostatniego dostepnego slotu.
+# sloty: numeracja od 0 (lewy gorny rog) do rozmiar-1 (prawy dolny rog), rzedami po 9.
+# Kazdy slot powinien byc unikalny.
 #
-# wydajnosc/precyzja/magia - trzy galezie drzewka, klikniecie otwiera ich
-# osobne (stale, nieskonfigurowane tutaj) podmenu.
+# wybor_karty - centralny przycisk: swieci, gdy czeka oferta 4 kart do wyboru (po
+# kazdym levelu). info - beacon otwierajacy menu Informacje (Statystyki/Rzadkie Perki/
+# Umiejetnosci/Kombinacje, wszystko jako bloczki - patrz ToolSkillManager#openInfo).
+# bonus_bruku - jedyna ikonka specyficzna dla kilofa: podglad/przelacznik bonusowego
+# surowca z kopanego bruku (patrz BrukSurowceManager), stoi po lewej od wyjdz, info po
+# prawej.
 # ==========================================================================
 
 rozmiar: 27
 
 sloty:
-  bonus_bruku: 0
-  kilof: 4
-  wydajnosc: 10
-  precyzja: 13
-  magia: 16
-  rzadki_wybor: 18
-  statystyki: 20
+  narzedzie: 4
+  wybor_karty: 13
+  bonus_bruku: 21
   wyjdz: 22
-  ulepszenia: 24
+  info: 23

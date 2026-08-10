@@ -62,9 +62,9 @@ import java.util.concurrent.ThreadLocalRandom;
  * MAX_LEVEL (100) - to jest zamierzone (margines niedoboru), żeby żaden gracz nie mógł
  * dobić do "wszystko wykupione" i wybór faktycznie coś kosztował.
  *
- * Kilof (PickaxeSkillManager) NIE jest na tym silniku - zostaje na swoim osobnym, już
- * przetestowanym systemie punktowo-drzewkowym, żeby nie ryzykować regresji bez
- * możliwości kompilacji/testów na tej maszynie.
+ * Wszystkie 4 duszozłączone narzędzia (kilof/siekiera/motyka/miecz) są na tym silniku -
+ * kilof jako jedyny ma dodatkową ikonkę w hubie (przełącznik bonusu z bruku, patrz
+ * PickaxeSkillManager#populateExtraHubIcons) poza standardowym zestawem.
  *
  * WAŻNE: każda instancja tworzy WŁASNE obiekty Holder (HubHolder/OfferHolder) ze
  * wskaźnikiem "owner" na siebie - onInventoryClick sprawdza owner == this, żeby przy
@@ -81,20 +81,46 @@ public abstract class ToolSkillManager implements Listener {
     private static final int DEFAULT_HUB_SIZE = 27;
     private static final int DEFAULT_TOOL_ICON_SLOT = 4;
     private static final int DEFAULT_OFFER_SLOT = 13;
-    private static final int DEFAULT_STATS_SLOT = 20;
     private static final int DEFAULT_CLOSE_SLOT = 22;
-    private static final int DEFAULT_UPGRADES_SLOT = 24;
+    private static final int DEFAULT_INFO_SLOT = 23;
 
+    private static final int OFFER_HUB_SIZE = 36;
     private static final int[] OFFER_CHOICE_SLOTS = {10, 12, 14, 16};
     private static final int OFFER_BACK_SLOT = 22;
     protected static final int AURA_DURATION_TICKS = 1_000_000;
 
-    private int hubSize;
+    // Menu "Informacje" (launcher) - małe, symetryczne, otwierane z beacona w hubie. Samo
+    // NIC nie pokazuje - to tylko 3 książki/beacon prowadzące do właściwych ekranów.
+    private static final int INFO_LAUNCHER_SIZE = 27;
+    private static final int INFO_LAUNCHER_STATS_SLOT = 11;
+    private static final int INFO_LAUNCHER_SKILLS_SLOT = 13;
+    private static final int INFO_LAUNCHER_SYNERGY_SLOT = 15;
+    private static final int INFO_LAUNCHER_BACK_SLOT = 22;
+
+    // Statystyki - osobny mały ekran, bloczki wyśrodkowane symetrycznie w jednym rzędzie.
+    private static final int INFO_STATS_SIZE = 27;
+    private static final int INFO_STATS_ROW_START = 9;
+    private static final int INFO_STATS_ROW_WIDTH = 9;
+    private static final int INFO_STATS_BACK_SLOT = 22;
+
+    // Umiejętności (Rzadkie Perki + Karty razem) - realnie więcej treści niż reszta, stąd
+    // większy ekran; treść wypełnia sloty 0-44, przycisk powrotu wyśrodkowany w dolnym rzędzie.
+    private static final int INFO_SKILLS_SIZE = 54;
+    private static final int INFO_SKILLS_CONTENT_SLOTS = 45;
+    private static final int INFO_SKILLS_BACK_SLOT = 49;
+
+    // Kombinacje - osobny mały ekran: rząd bloczków (wyśrodkowany) + rząd podświetlenia pod spodem.
+    private static final int INFO_SYNERGY_SIZE = 27;
+    private static final int INFO_SYNERGY_ROW_START = 9;
+    private static final int INFO_SYNERGY_ROW_WIDTH = 9;
+    private static final int INFO_SYNERGY_HIGHLIGHT_ROW_START = 18;
+    private static final int INFO_SYNERGY_BACK_SLOT = 22;
+
+    protected int hubSize;
     private int slotToolIcon;
     private int slotOffer;
-    private int slotStats;
     private int slotClose;
-    private int slotUpgrades;
+    private int slotInfo;
 
     protected final Plugin plugin;
     protected final EconomyService economyService;
@@ -102,6 +128,7 @@ public abstract class ToolSkillManager implements Listener {
     protected final String displayName;
     protected final List<SkillBranch> branches;
     protected final List<RarePerk> rarePerks;
+    protected final List<Synergy> synergies;
     protected final String hubConfigFileName;
 
     protected final NamespacedKey keyType;
@@ -117,6 +144,13 @@ public abstract class ToolSkillManager implements Listener {
     /** @param branches musi mieć DOKŁADNIE 3 elementy - czysto porządkowe (patrz SkillBranch). */
     protected ToolSkillManager(Plugin plugin, EconomyService economyService, String toolType, String displayName,
                                 List<SkillBranch> branches, List<RarePerk> rarePerks, String hubConfigFileName) {
+        this(plugin, economyService, toolType, displayName, branches, rarePerks, List.of(), hubConfigFileName);
+    }
+
+    /** @param branches musi mieć DOKŁADNIE 3 elementy - czysto porządkowe (patrz SkillBranch). */
+    protected ToolSkillManager(Plugin plugin, EconomyService economyService, String toolType, String displayName,
+                                List<SkillBranch> branches, List<RarePerk> rarePerks, List<Synergy> synergies,
+                                String hubConfigFileName) {
         if (branches.size() != 3) {
             throw new IllegalArgumentException("ToolSkillManager wymaga dokładnie 3 gałęzi, dostano: " + branches.size());
         }
@@ -126,6 +160,7 @@ public abstract class ToolSkillManager implements Listener {
         this.displayName = displayName;
         this.branches = branches;
         this.rarePerks = rarePerks;
+        this.synergies = synergies;
         this.hubConfigFileName = hubConfigFileName;
 
         this.keyType = new NamespacedKey(plugin, "tool_type");
@@ -153,17 +188,16 @@ public abstract class ToolSkillManager implements Listener {
         hubSize = clampSize(cfg.getInt("rozmiar", DEFAULT_HUB_SIZE));
         slotToolIcon = clampSlot(cfg.getInt("sloty.narzedzie", DEFAULT_TOOL_ICON_SLOT));
         slotOffer = clampSlot(cfg.getInt("sloty.wybor_karty", DEFAULT_OFFER_SLOT));
-        slotStats = clampSlot(cfg.getInt("sloty.statystyki", DEFAULT_STATS_SLOT));
         slotClose = clampSlot(cfg.getInt("sloty.wyjdz", DEFAULT_CLOSE_SLOT));
-        slotUpgrades = clampSlot(cfg.getInt("sloty.ulepszenia", DEFAULT_UPGRADES_SLOT));
+        slotInfo = clampSlot(cfg.getInt("sloty.info", DEFAULT_INFO_SLOT));
     }
 
-    private int clampSize(int rozmiar) {
+    protected int clampSize(int rozmiar) {
         int ograniczony = Math.max(9, Math.min(54, rozmiar));
         return Math.min(54, ((ograniczony + 8) / 9) * 9);
     }
 
-    private int clampSlot(int slot) {
+    protected int clampSlot(int slot) {
         return Math.max(0, Math.min(slot, hubSize - 1));
     }
 
@@ -286,16 +320,17 @@ public abstract class ToolSkillManager implements Listener {
     }
 
     private String randomAvailableCardOfTier(PersistentDataContainer pdc, Rarity tier, Set<String> exclude) {
+        int currentTier = tierOf(pdc);
         List<String> candidates = new ArrayList<>();
         if (tier == Rarity.LEGENDARY) {
             Set<String> owned = csvToSet(pdc.getOrDefault(pkRare, PersistentDataType.STRING, ""));
             for (RarePerk perk : rarePerks) {
-                if (!owned.contains(perk.id()) && !exclude.contains(perk.id())) candidates.add(perk.id());
+                if (perk.minTier() <= currentTier && !owned.contains(perk.id()) && !exclude.contains(perk.id())) candidates.add(perk.id());
             }
         } else {
             for (SkillBranch b : branches) {
                 for (SkillCard c : b.cards()) {
-                    if (c.rarity() == tier && !exclude.contains(c.id()) && cardCountOf(pdc, c.id()) < c.maxStacks()) {
+                    if (c.rarity() == tier && c.minTier() <= currentTier && !exclude.contains(c.id()) && cardCountOf(pdc, c.id()) < c.maxStacks()) {
                         candidates.add(c.id());
                     }
                 }
@@ -318,9 +353,14 @@ public abstract class ToolSkillManager implements Listener {
         pdc.set(pkRare, PersistentDataType.STRING, "");
         pdc.set(pkPendingOffer, PersistentDataType.STRING, "");
         pdc.set(pkPendingOfferQueue, PersistentDataType.INTEGER, 0);
+        initializeToolSpecific(pdc);
         item.setItemMeta(meta);
 
         refreshDisplay(item);
+    }
+
+    /** Hook: dodatkowa inicjalizacja PDC specyficzna dla narzędzia (np. kilof: pk_bruk_on) - domyślnie brak. */
+    protected void initializeToolSpecific(PersistentDataContainer pdc) {
     }
 
     protected void refreshDisplay(ItemStack item) {
@@ -423,6 +463,17 @@ public abstract class ToolSkillManager implements Listener {
     /** Treść ikonki Statystyk w hubie - realne wartości specyficzne dla narzędzia. */
     protected abstract List<Component> statsLore(PersistentDataContainer pdc);
 
+    /**
+     * Statystyki jako fizyczne bloczki (menu Informacje) zamiast tekstu w opisie - domyślnie
+     * pojedyncza ikonka z tekstową listą z statsLore (fallback dla narzędzi, które nie mają
+     * jeszcze własnego rozbicia na bloczki). Podklasa może nadpisać, żeby zwrócić osobny
+     * ItemStack na każdą statystykę (np. kilof: Wydajność/Fortuna/Prędkość/Aura Pośpiechu),
+     * z ilością w stosie odzwierciedlającą poziom danej statystyki.
+     */
+    protected List<ItemStack> statsBlocks(PersistentDataContainer pdc) {
+        return List.of(statsIcon(pdc));
+    }
+
     // ==================================================== Karty - odczyt ====
 
     protected SkillCard findCard(String id) {
@@ -439,6 +490,47 @@ public abstract class ToolSkillManager implements Listener {
             if (perk.id().equals(id)) return perk;
         }
         return null;
+    }
+
+    // =================================================== Kombinacje kart ====
+    // Bonusy emergentne z jednoczesnego zainwestowania w kilka konkretnych kart (patrz
+    // Synergy) - stan liczony na żywo z liczników kart, bez osobnej flagi w PDC (skoro
+    // karty nigdy nie tracą poziomów, spełnienie wymagań jest z definicji trwałe).
+
+    /** Czy dana kombinacja jest aktywna (wszystkie jej wymagania spełnione naraz) - pod efekty w podklasie. */
+    protected boolean hasSynergy(PersistentDataContainer pdc, String synergyId) {
+        for (Synergy s : synergies) {
+            if (s.id().equals(synergyId)) return synergyRequirementsMet(pdc, s);
+        }
+        return false;
+    }
+
+    private boolean synergyRequirementsMet(PersistentDataContainer pdc, Synergy synergy) {
+        for (Map.Entry<String, Integer> req : synergy.wymagania().entrySet()) {
+            if (cardCountOf(pdc, req.getKey()) < req.getValue()) return false;
+        }
+        return true;
+    }
+
+    private Set<String> activeSynergyIds(PersistentDataContainer pdc) {
+        Set<String> active = new LinkedHashSet<>();
+        for (Synergy s : synergies) {
+            if (synergyRequirementsMet(pdc, s)) active.add(s.id());
+        }
+        return active;
+    }
+
+    private void announceSynergyUnlock(Player player, String synergyId) {
+        for (Synergy s : synergies) {
+            if (!s.id().equals(synergyId)) continue;
+            player.sendMessage(Component.text("✦ Odkryto kombinację: " + s.displayName() + "!", NamedTextColor.GOLD, TextDecoration.BOLD));
+            player.showTitle(Title.title(
+                    Component.text("Nowa Kombinacja!", NamedTextColor.GOLD, TextDecoration.BOLD),
+                    Component.text(s.displayName(), NamedTextColor.YELLOW)
+            ));
+            player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
+            return;
+        }
     }
 
     private Map<String, Integer> parseCardCounts(String csv) {
@@ -521,6 +613,19 @@ public abstract class ToolSkillManager implements Listener {
         return null;
     }
 
+    // =============================================== Rozszerzenia huba ====
+    // Opcjonalne hooki dla narzędzi z dodatkową ikonką/przełącznikiem w hubie poza
+    // standardowym zestawem (np. kilof: przełącznik bonusu z bruku) - domyślnie brak.
+
+    /** Hook: dodatkowe ikonki w hubie poza standardowym zestawem - domyślnie brak. */
+    protected void populateExtraHubIcons(Inventory gui, PersistentDataContainer pdc) {
+    }
+
+    /** Hook: obsługa kliknięcia w dodatkową ikonkę z populateExtraHubIcons - domyślnie brak (false = nieobsłużone). */
+    protected boolean handleExtraHubClick(Player player, ItemStack tool, int slot) {
+        return false;
+    }
+
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         syncAura(event.getPlayer(), event.getPlayer().getInventory().getItemInMainHand());
@@ -593,6 +698,57 @@ public abstract class ToolSkillManager implements Listener {
         return value == Math.floor(value) ? String.valueOf((long) value) : String.format("%.2f", value);
     }
 
+    /**
+     * Prawdopodobieństwo przynajmniej jednego trafienia przy `count` NIEZALEŻNYCH próbach
+     * z szansą `perStackChance` każda - w odróżnieniu od naiwnego `count * perStackChance`
+     * nigdy nie przekracza 1.0 (asymptotycznie się do niej zbliża), więc kolejne poziomy
+     * karty nigdy nie stają się "bezużyteczne" po przekroczeniu 100% sumy.
+     */
+    protected double stackedChance(int count, double perStackChance) {
+        if (count <= 0 || perStackChance <= 0) return 0;
+        if (perStackChance >= 1) return 1;
+        return 1 - Math.pow(1 - perStackChance, count);
+    }
+
+    /**
+     * Łączy kilka NIEZALEŻNYCH szans w jedno prawdopodobieństwo "co najmniej jedna się
+     * uda" (dopełnienie iloczynu dopełnień) - tak jak stackedChance, NIGDY nie przekracza
+     * 1.0, więc suma wielu różnych kart tego samego typu bonusu nie robi się deterministyczna
+     * po przekroczeniu 100%. Zastępuje dawne naiwne sumowanie (`a + b + c + ...`).
+     */
+    protected double combineChances(double... chances) {
+        double missAll = 1.0;
+        for (double c : chances) {
+            missAll *= (1 - Math.max(0, Math.min(1, c)));
+        }
+        return 1 - missAll;
+    }
+
+    /** Poniżej tego ułamka nominalnej mocy nie spada nawet poziom 1 - patrz procScale(). */
+    private static final double MIN_PROC_SCALE = 0.25;
+
+    /**
+     * Mnożnik (MIN_PROC_SCALE..1.0) skalujący WSZYSTKIE losowe "szanse na bonus" (drop/
+     * xp/pieniądze z kart) razem z ogólnym postępem narzędzia - poziom 1-100 koduje
+     * jednocześnie tier (patrz tierForLevel), więc jeden ciągły mnożnik pokrywa zarówno
+     * "tier" jak i "poziom" naraz. Bez tego drewniany kilof, któremu (rzadko, ale możliwe)
+     * trafi się od razu kilka mocnych kart, byłby tak samo silny w farmieniu bonusów jak
+     * w pełni rozwinięty netherytowy - card-level dawałby 100% swojej nominalnej mocy od
+     * pierwszego wyboru. Świadomie NIE dotyczy deterministycznych efektów (prawdziwe
+     * enchanty Fortuna/Wydajność, % prędkości z atrybutów) - tam inwestycja w kartę i tak
+     * jest jedynym warunkiem, skalowanie "częściowej Fortuny" nie ma sensu.
+     */
+    protected double procScale(PersistentDataContainer pdc) {
+        int level = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
+        double progress = (double) (level - 1) / (MAX_LEVEL - 1);
+        return MIN_PROC_SCALE + (1 - MIN_PROC_SCALE) * Math.max(0, Math.min(1, progress));
+    }
+
+    /** Wygodny skrót na `rawChance * procScale(pdc)` - patrz procScale(). */
+    protected double scaledChance(PersistentDataContainer pdc, double rawChance) {
+        return rawChance * procScale(pdc);
+    }
+
     // ============================================================= GUI ====
 
     @EventHandler
@@ -627,8 +783,11 @@ public abstract class ToolSkillManager implements Listener {
                 Component.text(displayName + " [Poziom " + level + "]", NamedTextColor.AQUA, TextDecoration.BOLD),
                 Component.text("Tier: " + tierName(tier), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
 
-        gui.setItem(slotStats, statsIcon(pdc));
-        gui.setItem(slotUpgrades, ownedCardsIcon(pdc));
+        gui.setItem(slotInfo, GuiUtils.namedItem(Material.BEACON,
+                Component.text("Informacje", NamedTextColor.GOLD, TextDecoration.BOLD),
+                Component.text("Statystyki, umiejętności i kombinacje.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("Kliknij, aby otworzyć.", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)));
+        populateExtraHubIcons(gui, pdc);
 
         if (!pending.isEmpty()) {
             gui.setItem(slotOffer, GuiUtils.namedItem(Material.NETHER_STAR,
@@ -654,48 +813,239 @@ public abstract class ToolSkillManager implements Listener {
                 lore.toArray(Component[]::new));
     }
 
-    /** Lista wszystkich posiadanych kart (stackowalnych wg poziomu + legendarnych), kolorowana wg rzadkości. */
-    private ItemStack ownedCardsIcon(PersistentDataContainer pdc) {
-        List<Component> lore = new ArrayList<>();
+    // ==================================================== Menu Informacje ====
+    // Otwierane z beacona w hubie (patrz slotInfo) - NIE jest jednym wielkim ekranem:
+    // to mały, symetryczny launcher (3 książki/beacon), z którego dopiero kliknięcie
+    // otwiera właściwy, osobno rozmiarowany ekran (Statystyki/Umiejętności/Kombinacje).
+    // Wszystko jako fizyczne bloczki (nie tekst w opisie) - ilość w stosie = poziom
+    // danej statystyki/karty, gdzie to ma sens.
+
+    protected void openInfo(Player player, ItemStack tool) {
+        InfoLauncherHolder holder = new InfoLauncherHolder(this);
+        Inventory gui = Bukkit.createInventory(holder, INFO_LAUNCHER_SIZE, Component.text(displayName + " — Informacje", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD));
+        holder.inventory = gui;
+        GuiUtils.fillBackground(gui, Material.BLACK_STAINED_GLASS_PANE);
+
+        gui.setItem(INFO_LAUNCHER_STATS_SLOT, GuiUtils.namedItem(Material.KNOWLEDGE_BOOK,
+                Component.text("Statystyki", NamedTextColor.GOLD, TextDecoration.BOLD),
+                Component.text("Realne efekty aktualnie działające na narzędziu.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+        gui.setItem(INFO_LAUNCHER_SKILLS_SLOT, GuiUtils.namedItem(Material.ENCHANTED_BOOK,
+                Component.text("Umiejętności", NamedTextColor.AQUA, TextDecoration.BOLD),
+                Component.text("Wykupione karty i rzadkie perki.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+        gui.setItem(INFO_LAUNCHER_SYNERGY_SLOT, GuiUtils.namedItem(Material.BEACON,
+                Component.text("Kombinacje", NamedTextColor.GOLD, TextDecoration.BOLD),
+                Component.text("Bonusy za jednoczesne zainwestowanie w kilka kart.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+
+        gui.setItem(INFO_LAUNCHER_BACK_SLOT, GuiUtils.namedItem(Material.ARROW, Component.text("« Wróć", NamedTextColor.GOLD, TextDecoration.BOLD)));
+        player.openInventory(gui);
+    }
+
+    private void openInfoStats(Player player, ItemStack tool) {
+        PersistentDataContainer pdc = tool.getItemMeta().getPersistentDataContainer();
+
+        InfoStatsHolder holder = new InfoStatsHolder(this);
+        Inventory gui = Bukkit.createInventory(holder, INFO_STATS_SIZE, Component.text("Statystyki", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD));
+        holder.inventory = gui;
+        GuiUtils.fillBackground(gui, Material.BLACK_STAINED_GLASS_PANE);
+
+        List<ItemStack> statBlocks = statsBlocks(pdc);
+        int start = centeredRowStart(INFO_STATS_ROW_START, INFO_STATS_ROW_WIDTH, statBlocks.size());
+        for (int i = 0; i < statBlocks.size(); i++) {
+            gui.setItem(start + i, statBlocks.get(i));
+        }
+
+        gui.setItem(INFO_STATS_BACK_SLOT, GuiUtils.namedItem(Material.ARROW, Component.text("« Wróć", NamedTextColor.GOLD, TextDecoration.BOLD)));
+        player.openInventory(gui);
+    }
+
+    private void openInfoSkills(Player player, ItemStack tool) {
+        PersistentDataContainer pdc = tool.getItemMeta().getPersistentDataContainer();
+
+        InfoSkillsHolder holder = new InfoSkillsHolder(this);
+        Inventory gui = Bukkit.createInventory(holder, INFO_SKILLS_SIZE, Component.text("Umiejętności", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD));
+        holder.inventory = gui;
+        GuiUtils.fillBackground(gui, Material.BLACK_STAINED_GLASS_PANE);
+
+        List<ItemStack> content = new ArrayList<>(rarePerkBlocks(pdc));
+        content.addAll(ownedCardBlocks(pdc));
+        for (int i = 0; i < content.size() && i < INFO_SKILLS_CONTENT_SLOTS; i++) {
+            gui.setItem(i, content.get(i));
+        }
+        if (content.isEmpty()) {
+            gui.setItem(INFO_SKILLS_CONTENT_SLOTS / 2, GuiUtils.namedItem(Material.GRAY_DYE,
+                    Component.text("Brak - zdobądź pierwszy poziom!", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)));
+        }
+
+        gui.setItem(INFO_SKILLS_BACK_SLOT, GuiUtils.namedItem(Material.ARROW, Component.text("« Wróć", NamedTextColor.GOLD, TextDecoration.BOLD)));
+        player.openInventory(gui);
+    }
+
+    private void openInfoSynergies(Player player, ItemStack tool, String selectedSynergyId) {
+        PersistentDataContainer pdc = tool.getItemMeta().getPersistentDataContainer();
+
+        InfoSynergyHolder holder = new InfoSynergyHolder(this, selectedSynergyId);
+        Inventory gui = Bukkit.createInventory(holder, INFO_SYNERGY_SIZE, Component.text("Kombinacje", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD));
+        holder.inventory = gui;
+        GuiUtils.fillBackground(gui, Material.BLACK_STAINED_GLASS_PANE);
+
+        int start = centeredRowStart(INFO_SYNERGY_ROW_START, INFO_SYNERGY_ROW_WIDTH, synergies.size());
+        for (int i = 0; i < synergies.size(); i++) {
+            Synergy s = synergies.get(i);
+            gui.setItem(start + i, synergyBlock(pdc, s, s.id().equals(selectedSynergyId)));
+        }
+        if (synergies.isEmpty()) {
+            gui.setItem(INFO_SYNERGY_ROW_START + INFO_SYNERGY_ROW_WIDTH / 2, GuiUtils.namedItem(Material.GRAY_DYE,
+                    Component.text("Brak kombinacji dla tego narzędzia.", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)));
+        }
+
+        if (selectedSynergyId != null) {
+            Synergy selected = findSynergy(selectedSynergyId);
+            if (selected != null) {
+                Material highlightGlass = glassForColor(selected.highlightColor());
+                for (int slot = INFO_SYNERGY_HIGHLIGHT_ROW_START; slot < INFO_SYNERGY_HIGHLIGHT_ROW_START + 9; slot++) {
+                    if (slot == INFO_SYNERGY_BACK_SLOT) continue;
+                    gui.setItem(slot, GuiUtils.namedItem(highlightGlass,
+                            Component.text(selected.displayName(), selected.highlightColor(), TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false)));
+                }
+            }
+        }
+
+        gui.setItem(INFO_SYNERGY_BACK_SLOT, GuiUtils.namedItem(Material.ARROW, Component.text("« Wróć", NamedTextColor.GOLD, TextDecoration.BOLD)));
+        player.openInventory(gui);
+    }
+
+    /** Symetryczne wyśrodkowanie `count` bloczków w rzędzie szerokości `rowWidth` - jeśli nie mieszczą się, zaczyna od początku rzędu. */
+    private int centeredRowStart(int rowStart, int rowWidth, int count) {
+        return rowStart + Math.max(0, (rowWidth - count) / 2);
+    }
+
+    private List<ItemStack> rarePerkBlocks(PersistentDataContainer pdc) {
+        Set<String> owned = csvToSet(pdc.getOrDefault(pkRare, PersistentDataType.STRING, ""));
+        List<ItemStack> blocks = new ArrayList<>();
+        for (String id : owned) {
+            RarePerk perk = findRarePerk(id);
+            if (perk == null) continue;
+            ItemStack icon = GuiUtils.namedItem(perk.icon(),
+                    Component.text(perk.displayName(), Rarity.LEGENDARY.color, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false),
+                    Component.text(perk.opis(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                    Component.empty(),
+                    Component.text(Rarity.LEGENDARY.label, Rarity.LEGENDARY.color).decoration(TextDecoration.ITALIC, false));
+            ItemMeta iconMeta = icon.getItemMeta();
+            iconMeta.setEnchantmentGlintOverride(true);
+            icon.setItemMeta(iconMeta);
+            blocks.add(icon);
+        }
+        return blocks;
+    }
+
+    private List<ItemStack> ownedCardBlocks(PersistentDataContainer pdc) {
+        List<ItemStack> blocks = new ArrayList<>();
         for (SkillBranch b : branches) {
             for (SkillCard c : b.cards()) {
                 int count = cardCountOf(pdc, c.id());
-                if (count > 0) {
-                    lore.add(Component.text(c.displayName() + " " + count + "/" + c.maxStacks(), c.rarity().color).decoration(TextDecoration.ITALIC, false));
-                }
+                if (count <= 0) continue;
+                ItemStack icon = GuiUtils.namedItem(c.icon(),
+                        Component.text(c.displayName(), c.rarity().color, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false),
+                        Component.text(c.opis(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                        Component.empty(),
+                        Component.text("Poziom: " + count + "/" + c.maxStacks(), NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false),
+                        Component.text(c.rarity().label, c.rarity().color).decoration(TextDecoration.ITALIC, false));
+                icon.setAmount(Math.min(64, count));
+                blocks.add(icon);
             }
         }
-        Set<String> owned = csvToSet(pdc.getOrDefault(pkRare, PersistentDataType.STRING, ""));
-        if (!owned.isEmpty()) {
-            lore.add(Component.empty());
-            for (String id : owned) {
-                RarePerk perk = findRarePerk(id);
-                if (perk != null) {
-                    lore.add(Component.text("★ " + perk.displayName(), Rarity.LEGENDARY.color, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
-                }
-            }
+        return blocks;
+    }
+
+    private ItemStack synergyBlock(PersistentDataContainer pdc, Synergy s, boolean selected) {
+        boolean unlocked = synergyRequirementsMet(pdc, s);
+        List<Component> lore = new ArrayList<>();
+        lore.add(Component.text(s.rarity().label, s.rarity().color, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.empty());
+        lore.add(Component.text(s.opis(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.empty());
+        for (Map.Entry<String, Integer> req : s.wymagania().entrySet()) {
+            SkillCard card = findCard(req.getKey());
+            String name = card != null ? card.displayName() : req.getKey();
+            int have = cardCountOf(pdc, req.getKey());
+            int need = req.getValue();
+            lore.add(Component.text(name + ": " + have + "/" + need,
+                    have >= need ? NamedTextColor.GREEN : NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
         }
-        if (lore.isEmpty()) {
-            lore.add(Component.text("Brak - zdobądź pierwszy poziom!", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.empty());
+        lore.add(Component.text(unlocked ? "✔ Odblokowana" : "○ Niekompletna",
+                unlocked ? NamedTextColor.GREEN : NamedTextColor.DARK_GRAY, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.text(selected ? "Kliknij, aby zdjąć podświetlenie" : "Kliknij, aby podświetlić", NamedTextColor.LIGHT_PURPLE).decoration(TextDecoration.ITALIC, false));
+
+        ItemStack icon = GuiUtils.namedItem(s.icon(), Component.text(s.displayName(), s.highlightColor(), TextDecoration.BOLD), lore.toArray(Component[]::new));
+        if (unlocked) {
+            ItemMeta iconMeta = icon.getItemMeta();
+            iconMeta.setEnchantmentGlintOverride(true);
+            icon.setItemMeta(iconMeta);
         }
-        return GuiUtils.namedItem(Material.WRITTEN_BOOK,
-                Component.text("Aktualne Ulepszenia", NamedTextColor.GOLD, TextDecoration.BOLD),
-                lore.toArray(Component[]::new));
+        return icon;
+    }
+
+    private Synergy findSynergy(String id) {
+        for (Synergy s : synergies) {
+            if (s.id().equals(id)) return s;
+        }
+        return null;
     }
 
     private void openOfferChoice(Player player, String pendingCsv) {
         List<String> ids = Arrays.asList(pendingCsv.split(","));
         OfferHolder holder = new OfferHolder(this);
-        Inventory gui = Bukkit.createInventory(holder, 27, Component.text("Wybierz Ulepszenie", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
+        Inventory gui = Bukkit.createInventory(holder, OFFER_HUB_SIZE, Component.text("Wybierz Ulepszenie", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
         holder.inventory = gui;
-        GuiUtils.fillBackground(gui, Material.PURPLE_STAINED_GLASS_PANE);
+        GuiUtils.fillBackground(gui, Material.BLACK_STAINED_GLASS_PANE);
 
         for (int i = 0; i < ids.size() && i < OFFER_CHOICE_SLOTS.length; i++) {
-            gui.setItem(OFFER_CHOICE_SLOTS[i], offerCardIcon(player, ids.get(i)));
+            String id = ids.get(i);
+            ItemStack glass = categoryGlass(id);
+            gui.setItem(OFFER_CHOICE_SLOTS[i] - 9, glass);
+            gui.setItem(OFFER_CHOICE_SLOTS[i], offerCardIcon(player, id));
+            gui.setItem(OFFER_CHOICE_SLOTS[i] + 9, glass.clone());
         }
 
         gui.setItem(OFFER_BACK_SLOT, GuiUtils.namedItem(Material.BARRIER, Component.text("Zdecyduj później", NamedTextColor.GRAY, TextDecoration.BOLD)));
         player.openInventory(gui);
+    }
+
+    /**
+     * Szybka pod ikonką oferty (slot+9, rząd niżej) - kolor odpowiada gałęzi (kategorii),
+     * do której należy karta, żeby gracz od razu widział "skąd" jest dana oferta bez
+     * czytania opisu. Rzadkie perki nie należą do żadnej gałęzi - dostają żółtą szybkę.
+     */
+    private ItemStack categoryGlass(String id) {
+        SkillBranch branch = branchOfCard(id);
+        if (branch == null) {
+            return GuiUtils.namedItem(Material.YELLOW_STAINED_GLASS_PANE,
+                    Component.text("Kategoria: " + Rarity.LEGENDARY.label, Rarity.LEGENDARY.color).decoration(TextDecoration.ITALIC, false));
+        }
+        return GuiUtils.namedItem(glassForColor(branch.color()),
+                Component.text("Kategoria: " + branch.displayName(), branch.color()).decoration(TextDecoration.ITALIC, false));
+    }
+
+    /** Gałąź (kategoria), do której należy karta o danym id - null, jeśli to rzadki perk (bez gałęzi). */
+    private SkillBranch branchOfCard(String id) {
+        for (SkillBranch b : branches) {
+            for (SkillCard c : b.cards()) {
+                if (c.id().equals(id)) return b;
+            }
+        }
+        return null;
+    }
+
+    /** Mapuje kolor gałęzi (patrz SkillBranch) na najbliższy odpowiednik szkła witrażowego. */
+    private Material glassForColor(NamedTextColor color) {
+        if (color == NamedTextColor.GOLD) return Material.ORANGE_STAINED_GLASS_PANE;
+        if (color == NamedTextColor.AQUA) return Material.LIGHT_BLUE_STAINED_GLASS_PANE;
+        if (color == NamedTextColor.LIGHT_PURPLE) return Material.MAGENTA_STAINED_GLASS_PANE;
+        if (color == NamedTextColor.GREEN) return Material.LIME_STAINED_GLASS_PANE;
+        if (color == NamedTextColor.RED) return Material.RED_STAINED_GLASS_PANE;
+        if (color == NamedTextColor.YELLOW) return Material.YELLOW_STAINED_GLASS_PANE;
+        return Material.GRAY_STAINED_GLASS_PANE;
     }
 
     private ItemStack offerCardIcon(Player player, String id) {
@@ -737,7 +1087,7 @@ public abstract class ToolSkillManager implements Listener {
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) return;
         InventoryHolder rawHolder = event.getInventory().getHolder();
-        if (!(rawHolder instanceof HubHolder) && !(rawHolder instanceof OfferHolder)) return;
+        if (!(rawHolder instanceof HubHolder) && !(rawHolder instanceof OfferHolder) && !(rawHolder instanceof InfoScreenHolder)) return;
 
         // Kilka instancji ToolSkillManager (siekiera/motyka/miecz) nasłuchuje tego samego
         // eventu jednocześnie - to GUI może wcale nie należeć do TEJ instancji, więc trzeba
@@ -757,14 +1107,23 @@ public abstract class ToolSkillManager implements Listener {
 
         if (rawHolder instanceof HubHolder) {
             handleHubClick(player, tool, clicked, event.getSlot());
-        } else {
+        } else if (rawHolder instanceof OfferHolder) {
             handleOfferClick(player, tool, event.getSlot());
+        } else if (rawHolder instanceof InfoLauncherHolder) {
+            handleInfoLauncherClick(player, tool, event.getSlot());
+        } else if (rawHolder instanceof InfoStatsHolder) {
+            handleInfoStatsClick(player, tool, event.getSlot());
+        } else if (rawHolder instanceof InfoSkillsHolder) {
+            handleInfoSkillsClick(player, tool, event.getSlot());
+        } else if (rawHolder instanceof InfoSynergyHolder h) {
+            handleInfoSynergyClick(player, tool, h, event.getSlot());
         }
     }
 
     private boolean belongsToThis(InventoryHolder holder) {
         if (holder instanceof HubHolder h) return h.owner == this;
         if (holder instanceof OfferHolder h) return h.owner == this;
+        if (holder instanceof InfoScreenHolder h) return h.owner() == this;
         return false;
     }
 
@@ -777,7 +1136,49 @@ public abstract class ToolSkillManager implements Listener {
             PersistentDataContainer pdc = tool.getItemMeta().getPersistentDataContainer();
             String pending = pdc.getOrDefault(pkPendingOffer, PersistentDataType.STRING, "");
             if (!pending.isEmpty()) openOfferChoice(player, pending);
+            return;
         }
+        if (slot == slotInfo) {
+            openInfo(player, tool);
+            return;
+        }
+        if (handleExtraHubClick(player, tool, slot)) {
+            openHub(player, tool);
+        }
+    }
+
+    private void handleInfoLauncherClick(Player player, ItemStack tool, int slot) {
+        if (slot == INFO_LAUNCHER_BACK_SLOT) {
+            openHub(player, tool);
+        } else if (slot == INFO_LAUNCHER_STATS_SLOT) {
+            openInfoStats(player, tool);
+        } else if (slot == INFO_LAUNCHER_SKILLS_SLOT) {
+            openInfoSkills(player, tool);
+        } else if (slot == INFO_LAUNCHER_SYNERGY_SLOT) {
+            openInfoSynergies(player, tool, null);
+        }
+    }
+
+    private void handleInfoStatsClick(Player player, ItemStack tool, int slot) {
+        if (slot == INFO_STATS_BACK_SLOT) openInfo(player, tool);
+    }
+
+    private void handleInfoSkillsClick(Player player, ItemStack tool, int slot) {
+        if (slot == INFO_SKILLS_BACK_SLOT) openInfo(player, tool);
+    }
+
+    private void handleInfoSynergyClick(Player player, ItemStack tool, InfoSynergyHolder holder, int slot) {
+        if (slot == INFO_SYNERGY_BACK_SLOT) {
+            openInfo(player, tool);
+            return;
+        }
+        int start = centeredRowStart(INFO_SYNERGY_ROW_START, INFO_SYNERGY_ROW_WIDTH, synergies.size());
+        int idx = slot - start;
+        if (idx < 0 || idx >= synergies.size()) return;
+
+        String clickedId = synergies.get(idx).id();
+        String newSelection = clickedId.equals(holder.selectedSynergyId) ? null : clickedId;
+        openInfoSynergies(player, tool, newSelection);
     }
 
     private void handleOfferClick(Player player, ItemStack tool, int slot) {
@@ -805,6 +1206,7 @@ public abstract class ToolSkillManager implements Listener {
         RarePerk chosenRare = chosenCard == null ? findRarePerk(chosenId) : null;
         if (chosenCard == null && chosenRare == null) return;
 
+        Set<String> synergiesBefore = activeSynergyIds(pdc);
         grantCard(pdc, chosenId);
         pdc.set(pkPendingOffer, PersistentDataType.STRING, "");
 
@@ -828,6 +1230,12 @@ public abstract class ToolSkillManager implements Listener {
         }
         player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1f, 1f);
 
+        Set<String> synergiesAfter = activeSynergyIds(pdc);
+        synergiesAfter.removeAll(synergiesBefore);
+        for (String newSynergyId : synergiesAfter) {
+            announceSynergyUnlock(player, newSynergyId);
+        }
+
         openHub(player, tool);
     }
 
@@ -845,5 +1253,46 @@ public abstract class ToolSkillManager implements Listener {
         private Inventory inventory;
         private OfferHolder(ToolSkillManager owner) { this.owner = owner; }
         @Override public Inventory getInventory() { return inventory; }
+    }
+
+    /** Wspólny interfejs 4 ekranów menu Informacje (launcher + Statystyki/Umiejętności/Kombinacje) - pozwala je odróżnić od HubHolder/OfferHolder w onInventoryClick jednym instanceof. */
+    private interface InfoScreenHolder extends InventoryHolder {
+        ToolSkillManager owner();
+    }
+
+    private static final class InfoLauncherHolder implements InfoScreenHolder {
+        private final ToolSkillManager owner;
+        private Inventory inventory;
+        private InfoLauncherHolder(ToolSkillManager owner) { this.owner = owner; }
+        @Override public Inventory getInventory() { return inventory; }
+        @Override public ToolSkillManager owner() { return owner; }
+    }
+
+    private static final class InfoStatsHolder implements InfoScreenHolder {
+        private final ToolSkillManager owner;
+        private Inventory inventory;
+        private InfoStatsHolder(ToolSkillManager owner) { this.owner = owner; }
+        @Override public Inventory getInventory() { return inventory; }
+        @Override public ToolSkillManager owner() { return owner; }
+    }
+
+    private static final class InfoSkillsHolder implements InfoScreenHolder {
+        private final ToolSkillManager owner;
+        private Inventory inventory;
+        private InfoSkillsHolder(ToolSkillManager owner) { this.owner = owner; }
+        @Override public Inventory getInventory() { return inventory; }
+        @Override public ToolSkillManager owner() { return owner; }
+    }
+
+    private static final class InfoSynergyHolder implements InfoScreenHolder {
+        private final ToolSkillManager owner;
+        private final String selectedSynergyId;
+        private Inventory inventory;
+        private InfoSynergyHolder(ToolSkillManager owner, String selectedSynergyId) {
+            this.owner = owner;
+            this.selectedSynergyId = selectedSynergyId;
+        }
+        @Override public Inventory getInventory() { return inventory; }
+        @Override public ToolSkillManager owner() { return owner; }
     }
 }

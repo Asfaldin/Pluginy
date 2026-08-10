@@ -13,7 +13,9 @@
 # rzedami po 9. Kazdy slot powinien byc unikalny.
 #
 # wybor_karty - centralny przycisk: swieci, gdy czeka oferta 4 kart do wyboru
-# (po kazdym levelu).
+# (po kazdym levelu). info - beacon otwierajacy menu Informacje (Statystyki/
+# Rzadkie Perki/Umiejetnosci/Kombinacje, wszystko jako bloczki - patrz
+# ToolSkillManager#openInfo).
 # ==========================================================================
 
 rozmiar: 27
@@ -21,6 +23,5 @@ rozmiar: 27
 sloty:
   narzedzie: 4
   wybor_karty: 13
-  statystyki: 20
   wyjdz: 22
-  ulepszenia: 24
+  info: 23

@@ -80,10 +80,11 @@ public class AxeSkillManager extends ToolSkillManager {
         ItemMeta meta = item.getItemMeta();
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
+        double scale = procScale(pdc);
 
         // Duch Drzewa - podmienia plon rąbanego drewna na cenny surowiec
         int duchDrzewa = cardCountOf(pdc, "NAT_DUCHDRZEWA");
-        if (duchDrzewa > 0 && rnd.nextDouble() < DUCH_DRZEWA_CHANCE[duchDrzewa - 1]) {
+        if (duchDrzewa > 0 && rnd.nextDouble() < scaledChance(pdc, DUCH_DRZEWA_CHANCE[duchDrzewa - 1])) {
             if (rnd.nextBoolean()) {
                 ItemStack reward = rnd.nextBoolean() ? new ItemStack(Material.IRON_INGOT) : new ItemStack(Material.GOLD_NUGGET, 3);
                 block.getWorld().dropItemNaturally(block.getLocation(), reward);
@@ -93,33 +94,36 @@ public class AxeSkillManager extends ToolSkillManager {
         }
 
         // Ostre Ostrze / Precyzyjny Cios / Podwójny Pień / Mistrzostwo (x3) / Druga Szansa -
-        // dodatkowa kopia plonu (wszystko sumuje się w jedną wspólną szansę)
-        double bonusDropChance = cardCountOf(pdc, "CIECIE_OSTRZE") * 0.10
-                + cardCountOf(pdc, "LES_CIOS") * 0.15
-                + cardCountOf(pdc, "NAT_PIEN") * 0.10
-                + (cardCountOf(pdc, "CIECIE_MISTRZOSTWO") > 0 ? 0.15 : 0)
-                + (cardCountOf(pdc, "LES_MISTRZOSTWO") > 0 ? 0.20 : 0)
-                + (cardCountOf(pdc, "NAT_MISTRZOSTWO") > 0 ? 0.10 : 0)
-                + (hasRare(pdc, "RARE_SIEK_SECOND_CHANCE") ? 0.05 : 0);
-        if (bonusDropChance > 0 && rnd.nextDouble() < bonusDropChance) {
+        // dodatkowa kopia plonu (wszystko łączone jako niezależne szanse, patrz
+        // combineChances/stackedChance - suma NIGDY nie przekracza 100%)
+        double bonusDropChance = scale * combineChances(
+                stackedChance(cardCountOf(pdc, "CIECIE_OSTRZE"), 0.10),
+                stackedChance(cardCountOf(pdc, "LES_CIOS"), 0.15),
+                stackedChance(cardCountOf(pdc, "NAT_PIEN"), 0.10),
+                cardCountOf(pdc, "CIECIE_MISTRZOSTWO") > 0 ? 0.15 : 0,
+                cardCountOf(pdc, "LES_MISTRZOSTWO") > 0 ? 0.20 : 0,
+                cardCountOf(pdc, "NAT_MISTRZOSTWO") > 0 ? 0.10 : 0,
+                hasRare(pdc, "RARE_SIEK_SECOND_CHANCE") ? 0.05 : 0
+        );
+        if (rnd.nextDouble() < bonusDropChance) {
             dropCopy(block, item);
         }
 
         // Trzask Konarów - sąsiednie bloki drewna pękają razem z rąbanym
         int trzaskLevel = cardCountOf(pdc, "CIECIE_TRZASK");
-        if (trzaskLevel > 0 && rnd.nextDouble() < 0.15 + trzaskLevel * 0.05) {
+        if (trzaskLevel > 0 && rnd.nextDouble() < scaledChance(pdc, 0.15 + trzaskLevel * 0.05)) {
             breakRandomNeighbors(block, item, mat, trzaskLevel);
         }
 
         // Rdzeń Chaosu (rzadka) - do 3 sąsiednich bloków drewna naraz
-        if (hasRare(pdc, "RARE_SIEK_CHAOS_CORE") && rnd.nextDouble() < 0.05) {
+        if (hasRare(pdc, "RARE_SIEK_CHAOS_CORE") && rnd.nextDouble() < scaledChance(pdc, 0.05)) {
             breakRandomNeighbors(block, item, null, 3);
         }
 
         // Zielony Kciuk - dodatkowa sadzonka/jabłko, każdy poziom karty to niezależny rzut
         int zielonyKciuk = cardCountOf(pdc, "LES_ZLOTYKCIUK");
         for (int i = 0; i < zielonyKciuk; i++) {
-            if (rnd.nextDouble() < 0.05) {
+            if (rnd.nextDouble() < 0.05 * scale) {
                 block.getWorld().dropItemNaturally(block.getLocation(),
                         new ItemStack(rnd.nextBoolean() ? Material.APPLE : Material.OAK_SAPLING));
             }
@@ -128,28 +132,29 @@ public class AxeSkillManager extends ToolSkillManager {
         // Oko Handlarza / Ręka Tracza / Dotyk Midasa - bonusowa wypłata
         int okoHandlarza = cardCountOf(pdc, "LES_OKO");
         for (int i = 0; i < okoHandlarza; i++) {
-            if (rnd.nextDouble() < 0.05) payBonus(player, 4 + tierOf(pdc) * 2);
+            if (rnd.nextDouble() < 0.05 * scale) payBonus(player, 4 + tierOf(pdc) * 2);
         }
         int rekaTracza = cardCountOf(pdc, "LES_TRACZ");
         for (int i = 0; i < rekaTracza; i++) {
-            if (rnd.nextDouble() < 0.08) payBonus(player, 6 + tierOf(pdc) * 4);
+            if (rnd.nextDouble() < 0.08 * scale) payBonus(player, 6 + tierOf(pdc) * 4);
         }
-        if (hasRare(pdc, "RARE_SIEK_MIDAS") && rnd.nextDouble() < 0.03) payBonus(player, 2 + tierOf(pdc));
+        if (hasRare(pdc, "RARE_SIEK_MIDAS") && rnd.nextDouble() < 0.03 * scale) payBonus(player, 2 + tierOf(pdc));
 
         // Pasywne Szczęście - rośnie automatycznie z każdym poziomem (niezależnie od
-        // wykupionych kart), wyraźnie słabiej niż ręczne Oko Handlarza (max +60%).
+        // wykupionych kart), wyraźnie słabiej niż ręczne Oko Handlarza (max +60%). Już ze
+        // swojej natury skaluje się z poziomem - BEZ dodatkowego mnożnika scale.
         int level = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
         if (rnd.nextDouble() < level * 0.0006) payBonus(player, 2 + tierOf(pdc));
 
         // Duch Puszczy / Szczęśliwe Drzewo / Nieugięty Duch - bonusowe orby xp
         int duchPuszczy = cardCountOf(pdc, "NAT_DUCH");
         for (int i = 0; i < duchPuszczy; i++) {
-            if (rnd.nextDouble() < 0.25) spawnXp(block.getLocation().add(0.5, 0.5, 0.5), 1 + rnd.nextInt(3));
+            if (rnd.nextDouble() < 0.25 * scale) spawnXp(block.getLocation().add(0.5, 0.5, 0.5), 1 + rnd.nextInt(3));
         }
-        if (cardCountOf(pdc, "NAT_SZCZESLIWE") > 0 && rnd.nextDouble() < 0.15) {
+        if (cardCountOf(pdc, "NAT_SZCZESLIWE") > 0 && rnd.nextDouble() < 0.15 * scale) {
             spawnXp(block.getLocation().add(0.5, 0.5, 0.5), 5 + rnd.nextInt(6));
         }
-        if (hasRare(pdc, "RARE_SIEK_UNYIELDING_SPIRIT") && rnd.nextDouble() < 0.08) {
+        if (hasRare(pdc, "RARE_SIEK_UNYIELDING_SPIRIT") && rnd.nextDouble() < 0.08 * scale) {
             spawnXp(block.getLocation().add(0.5, 0.5, 0.5), 10 + rnd.nextInt(11));
         }
 
@@ -159,7 +164,7 @@ public class AxeSkillManager extends ToolSkillManager {
         // Błogosławieństwo Lasu (rzadka)
         if (hasRare(pdc, "RARE_SIEK_FOREST_BLESSING")) {
             player.setSaturation((float) Math.min(20.0, player.getSaturation() + 0.5f));
-            if (rnd.nextDouble() < 0.10) {
+            if (rnd.nextDouble() < 0.10 * scale) {
                 player.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 60, 0, true, false));
             }
         }

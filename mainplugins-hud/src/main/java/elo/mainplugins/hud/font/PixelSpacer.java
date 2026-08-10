@@ -12,7 +12,7 @@ import net.kyori.adventure.text.format.Style;
  * zlozyc z sumy podzbioru tych poteg (rozklad binarny), wiec dopelnienie do dokladnej
  * szerokosci nigdy nie wymaga wiecej niz 11 znakow.
  *
- * WAZNE: znaki wpisane jako escape'y \uXXXX (czysty ASCII w pliku zrodlowym), NIE jako
+ * WAZNE: znaki wpisane jako escape'owy zapis Unicode w kodzie (czysty ASCII w pliku zrodlowym), NIE jako
  * surowe bajty Unicode - inaczej kodowanie pliku na Windowsie potrafi je po cichu
  * uszkodzic przy zapisie/odczycie, dajac przy kompilacji INNE (przypadkowe) kody niz
  * zamierzone, mimo ze kod nadal sie kompiluje bez bledu (patrz historia tego pliku -

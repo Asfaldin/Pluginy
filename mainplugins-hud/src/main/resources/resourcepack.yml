@@ -14,6 +14,6 @@
 # Puste url = paczka WYLACZONA (nic nie jest wysylane graczom, sam stary uklad).
 # ==========================================================================
 
-url: "https://download.mc-packs.net/pack/c132507c225eff8b7b0f5726c9438c54ee3895ff.zip"
-hash: "c132507c225eff8b7b0f5726c9438c54ee3895ff"
+url: ""
+hash: ""
 wymagany: false

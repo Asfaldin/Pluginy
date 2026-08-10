@@ -3,7 +3,7 @@
     {
       "type": "bitmap",
       "file": "mainplugins:font/space.png",
-      "ascent": 7,
+      "ascent": 0,
       "height": 1,
       "chars": [
         "\uf801"
@@ -12,7 +12,7 @@
     {
       "type": "bitmap",
       "file": "mainplugins:font/space.png",
-      "ascent": 7,
+      "ascent": 0,
       "height": 2,
       "chars": [
         "\uf802"
@@ -21,7 +21,7 @@
     {
       "type": "bitmap",
       "file": "mainplugins:font/space.png",
-      "ascent": 7,
+      "ascent": 0,
       "height": 4,
       "chars": [
         "\uf803"
@@ -30,7 +30,7 @@
     {
       "type": "bitmap",
       "file": "mainplugins:font/space.png",
-      "ascent": 7,
+      "ascent": 0,
       "height": 8,
       "chars": [
         "\uf804"
@@ -39,7 +39,7 @@
     {
       "type": "bitmap",
       "file": "mainplugins:font/space.png",
-      "ascent": 7,
+      "ascent": 0,
       "height": 16,
       "chars": [
         "\uf805"
@@ -48,7 +48,7 @@
     {
       "type": "bitmap",
       "file": "mainplugins:font/space.png",
-      "ascent": 7,
+      "ascent": 0,
       "height": 32,
       "chars": [
         "\uf806"
@@ -57,7 +57,7 @@
     {
       "type": "bitmap",
       "file": "mainplugins:font/space.png",
-      "ascent": 7,
+      "ascent": 0,
       "height": 64,
       "chars": [
         "\uf807"
@@ -66,7 +66,7 @@
     {
       "type": "bitmap",
       "file": "mainplugins:font/space.png",
-      "ascent": 7,
+      "ascent": 0,
       "height": 128,
       "chars": [
         "\uf808"
@@ -75,7 +75,7 @@
     {
       "type": "bitmap",
       "file": "mainplugins:font/space.png",
-      "ascent": 7,
+      "ascent": 0,
       "height": 256,
       "chars": [
         "\uf809"
@@ -84,7 +84,7 @@
     {
       "type": "bitmap",
       "file": "mainplugins:font/space.png",
-      "ascent": 7,
+      "ascent": 0,
       "height": 512,
       "chars": [
         "\uf80a"
@@ -93,7 +93,7 @@
     {
       "type": "bitmap",
       "file": "mainplugins:font/space.png",
-      "ascent": 7,
+      "ascent": 0,
       "height": 1024,
       "chars": [
         "\uf80b"

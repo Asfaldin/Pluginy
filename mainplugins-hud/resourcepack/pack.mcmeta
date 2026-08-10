@@ -2,8 +2,8 @@
   "pack": {
     "pack_format": 55,
     "supported_formats": {
-      "min_inclusive": 1,
-      "max_inclusive": 999
+      "min_format": 1,
+      "max_format": 999
     },
     "description": "Mainplugins - niewidzialny font do wyrownania tabeli graczy (Tab)"
   }

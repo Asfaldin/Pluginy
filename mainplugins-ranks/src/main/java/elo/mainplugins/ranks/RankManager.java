@@ -1,7 +1,9 @@
 package elo.mainplugins.ranks;
 
+import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.Rank;
 import elo.mainplugins.core.api.RankService;
+import elo.mainplugins.core.api.TytulService;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -154,19 +156,31 @@ public class RankManager implements RankService, Listener {
     }
 
     /**
-     * Dokleja tag rangi przed domyślnym wyglądem wiadomości na czacie - Renderer
-     * zamiast ręcznego budowania całej wiadomości, żeby nie psuć klikalności nicku
-     * (podpowiedź/sugestia komendy po kliknięciu) ani żadnych innych domyślnych
-     * zachowań czatu Vanilla/Paper poza samym dołożeniem tagu z przodu.
+     * Dokleja tag rangi (i, jeśli gracz go ma, tytuł z questów - patrz tytulGracza) przed
+     * domyślnym wyglądem wiadomości na czacie - Renderer zamiast ręcznego budowania całej
+     * wiadomości, żeby nie psuć klikalności nicku (podpowiedź/sugestia komendy po kliknięciu)
+     * ani żadnych innych domyślnych zachowań czatu Vanilla/Paper poza samym dołożeniem tagu
+     * z przodu. Oba tagi MUSZĄ się złożyć w jednym event.renderer() - to zwykły setter, nie
+     * łańcuch, więc gdyby mainplugins-quests zarejestrował drugi, niezależny listener na
+     * AsyncChatEvent, jeden z tagów po prostu by zniknął (kolejność listenerów nie jest
+     * gwarantowana między pluginami).
      */
     @EventHandler
     public void onChat(AsyncChatEvent event) {
         Rank rank = getRank(event.getPlayer().getUniqueId());
-        if (rank == Rank.GRACZ) return; // brak tagu - zostaw domyślny renderer
+        Component tytul = tytulGracza(event.getPlayer().getUniqueId());
+        if (rank == Rank.GRACZ && tytul == null) return; // nic do dołożenia - zostaw domyślny renderer
 
-        Component prefix = prefixDlaRangi(rank);
+        Component prefix = tytul != null ? tytul.append(prefixDlaRangi(rank)) : prefixDlaRangi(rank);
+        NamedTextColor kolor = kolorNicku(rank);
         event.renderer((source, sourceDisplayName, message, viewer) ->
-                prefix.append(Component.text(source.getName() + ": ", kolorNicku(rank)))
+                prefix.append(Component.text(source.getName() + ": ", kolor))
                         .append(message));
+    }
+
+    /** Opcjonalny tytuł zdobyty w questach (mainplugins-quests) - null, jeśli plugin questów niewgrany albo gracz jeszcze nic nie zdobył. */
+    private Component tytulGracza(UUID uuid) {
+        TytulService serwis = CoreAPI.getTytulService();
+        return serwis != null ? serwis.tytulGracza(uuid) : null;
     }
 }

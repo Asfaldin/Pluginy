@@ -14,14 +14,23 @@ public interface ToolsService {
     /** Daje graczowi jego startowy, ewoluujący kilof (tier drewno, poziom 1) - patrz LevelableToolsManager. */
     void dajEwoluujacyKilof(Player player);
 
-    /** Jak {@link #dajEwoluujacyKilof(Player)}, ale siekiera - nagroda za quest "Timberman" Głównej Ścieżki. */
+    /** Jak {@link #dajEwoluujacyKilof(Player)}, ale siekiera - nagroda za quest "Drwal i Siewca" Głównej Ścieżki. */
     void dajEwoluujacaSiekiere(Player player);
 
-    /** Jak {@link #dajEwoluujacyKilof(Player)}, ale motyka - nagroda za quest "Farmimy dalej" Głównej Ścieżki. */
+    /** Jak {@link #dajEwoluujacyKilof(Player)}, ale motyka - nagroda za quest "Rolniczy Krok" Głównej Ścieżki. */
     void dajEwoluujacaMotyke(Player player);
 
-    /** Jak {@link #dajEwoluujacyKilof(Player)}, ale miecz - nagroda za quest "Pierwsza Krew" Głównej Ścieżki. */
+    /** Jak {@link #dajEwoluujacyKilof(Player)}, ale miecz - nagroda za quest "Fundusz Obronny" Głównej Ścieżki. */
     void dajEwoluujacyMiecz(Player player);
+
+    /**
+     * Jak {@link #dajEwoluujacyKilof(Player)}, ale łopata - piąte ewoluujące narzędzie,
+     * przywrócone do gry jako nagroda za quest "generator kruchych surowców" Głównej
+     * Ścieżki (wcześniej usunięte, patrz historia LevelableToolsManager). Działa
+     * DOKŁADNIE tak jak pozostałe cztery narzędzia - bez żadnej specjalnej flagi/silk
+     * touchu (świadomie odłożone na później).
+     */
+    void dajEwoluujacaLopate(Player player);
 
     /**
      * Poziom (globalny, rośnie 1,2,3...) ewoluującego kilofa gracza, gdziekolwiek w

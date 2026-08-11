@@ -1280,12 +1280,6 @@ categories:
         display-name: "Kwarc"
         amount: 16
         buy-price: 800
-      20:
-        material: NETHERITE_SCRAP
-        slot: 20
-        display-name: "Złom Netherytu"
-        amount: 1
-        buy-price: 5000
       21:
         material: NAUTILUS_SHELL
         slot: 21
@@ -1437,18 +1431,6 @@ categories:
         amount: 64
         sell-amount: 64
         sell-price: 4000
-      18:
-        material: BLAZE_ROD
-        slot: 18
-        display-name: "Różdżka Płomyka"
-        amount: 4
-        buy-price: 1000
-      19:
-        material: GHAST_TEAR
-        slot: 19
-        display-name: "Łza Ghasta"
-        amount: 1
-        buy-price: 940
       20:
         material: MAGMA_CREAM
         slot: 20

@@ -1,22 +1,36 @@
 package elo.mainplugins.quests;
 
 import elo.mainplugins.core.CoreAPI;
+import elo.mainplugins.core.api.CrateService;
+import elo.mainplugins.core.api.IslandService;
+import elo.mainplugins.core.api.IslandSummary;
+import elo.mainplugins.core.api.Rank;
+import elo.mainplugins.core.api.RankService;
 import elo.mainplugins.core.api.ToolsService;
+import elo.mainplugins.core.api.TytulService;
 import elo.mainplugins.core.util.CustomItemKeys;
+import elo.mainplugins.core.util.MoneyFormat;
 import org.bukkit.persistence.PersistentDataType;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
+import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Zombie;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.Inventory;
@@ -40,7 +54,7 @@ import java.util.*;
  * dowolnej kolejności (siatka, slotySrodkowe), tak samo jak "Questy Specjalne" -
  * to po prostu kolejne ramię z trudniejszą/rzadszą treścią, bez specjalnej logiki.
  */
-public class QuestManager implements Listener {
+public class QuestManager implements Listener, TytulService {
 
     /**
      * PRZEDMIOT - klasyczne "przynieś N sztuk materiału (jednego lub kilku naraz), zostaje
@@ -109,10 +123,25 @@ public class QuestManager implements Listener {
             return new Quest(id, tytul, opis, TypWymogu.PRZEDMIOT, List.of(Wymog.zwykly(material, ilosc)), 0, List.of(), monetyNagrody + " Monet", monetyNagrody);
         }
 
+        /** Jak {@link #nagrodaMonety}, ale kilka różnych materiałów naraz (np. arbuz + pszenica + marchewka). */
+        static Quest nagrodaMonety(int id, String tytul, List<String> opis, List<Wymog> wymogi, double monetyNagrody) {
+            return new Quest(id, tytul, opis, TypWymogu.PRZEDMIOT, wymogi, 0, List.of(), monetyNagrody + " Monet", monetyNagrody);
+        }
+
         /** Jak {@link #nagrodaMonety}, ale wymóg to konkretny custom-tagowany item (patrz {@link #przedmiotCustom}). */
         static Quest nagrodaMonetyCustom(int id, String tytul, List<String> opis, Material material, int ilosc,
                                           String customId, String nazwaWyswietlana, double monetyNagrody) {
             return new Quest(id, tytul, opis, TypWymogu.PRZEDMIOT, List.of(new Wymog(material, ilosc, customId, nazwaWyswietlana)), 0, List.of(), monetyNagrody + " Monet", monetyNagrody);
+        }
+
+        /**
+         * Jedyny wariant łączący RÓWNOCZEŚNIE przedmioty i monety jako nagrodę (patrz
+         * odpowiadająca zmiana w wreczNagrode() - if/if zamiast if/else). Reszta factory
+         * method zawsze ustawia tylko jedno z dwóch (nagrody ITEMS xor monetyNagrody).
+         */
+        static Quest przedmiotyIMonety(int id, String tytul, List<String> opis, List<Wymog> wymogi,
+                                        List<ItemStack> nagrody, double monetyNagrody, String nazwaNagrody) {
+            return new Quest(id, tytul, opis, TypWymogu.PRZEDMIOT, wymogi, 0, nagrody, nazwaNagrody, monetyNagrody);
         }
 
         /** Quest "awansuj narzędzie na tier X" - sprawdza posiadanie, NIE zabiera przedmiotu (patrz TypWymogu.NARZEDZIE). */
@@ -138,6 +167,28 @@ public class QuestManager implements Listener {
     // Zmienna zapamiętująca czy gracz wszedł z poziomu /menu
     private final Map<UUID, Boolean> otwartoZMenu = new HashMap<>();
 
+    /**
+     * Stan jednego aktywnego "ataku" Płaczącego Obsydianu - pasek bossbara resetuje się
+     * do pełna na starcie każdej fali i zmniejsza się wraz z zabijaniem TYLKO zombie z TEJ
+     * fali (patrz onZombieDeath/kluczSesjiFali). Klucz mapy aktywneFale to losowe UUID sesji
+     * (nie gracza), żeby dwóch graczy mogło jednocześnie odpalić własny Płaczący Obsydian
+     * bez kolizji stanu. zywoZombie śledzi UUID-y aktualnie żywych zombie tej sesji - patrz
+     * pilnujSpadajacychZombie(), który co sekundę teleportuje je z powrotem, gdyby spadły
+     * za krawędź wyspy w otchłań (kotwica = blok, przy którym siedzą wszystkie fale).
+     */
+    private static final class StanFali {
+        final BossBar pasek;
+        final Block kotwica;
+        int numerFali;
+        int wFaliLacznie;
+        int pozostaliWFali;
+        final Set<UUID> zywoZombie = new HashSet<>();
+        StanFali(BossBar pasek, Block kotwica) { this.pasek = pasek; this.kotwica = kotwica; }
+    }
+
+    private final Map<UUID, StanFali> aktywneFaleZombie = new HashMap<>();
+    private final NamespacedKey kluczSesjiFali;
+
     // Definiujemy 35 slotów na środku (7 kolumn x 5 rzędów) - kategorie zwykłe (dowolna kolejność).
     private final int[] slotySrodkowe = {
             1, 2, 3, 4, 5, 6, 7,
@@ -147,19 +198,31 @@ public class QuestManager implements Listener {
             37, 38, 39, 40, 41, 42, 43
     };
 
-    // Te same 35 pozycji, ale w kolejności "wężyka" - dla Głównej Ścieżki, żeby zadanie
-    // 1->2->3... wizualnie ciągnęło się zygzakiem, a nie skakało po siatce.
+    /**
+     * 23 sloty (nie 35 jak slotySrodkowe) - Główna Ścieżka ma teraz "wężyk z przerwą":
+     * pełny rząd (7 slotów) → JEDEN łącznik na krawędzi w następnym rzędzie (reszta tego
+     * rzędu to czyste tło, przerwa) → znów pełny rząd, itd. Łącznik naprzemiennie po prawej
+     * (slot 16) i lewej (slot 28) stronie, żeby dotykał sąsiedniego rzędu W TEJ SAMEJ
+     * kolumnie co koniec poprzedniego/początek następnego odcinka - wężyk fizycznie się
+     * styka na bokach, tylko środek każdego "pustego" rzędu zostaje pusty. Reszta rzędu 1/3
+     * (poza łącznikiem) NIE ma wpisu tutaj - wypelnijTlo() i tak wypełnia całe GUI szarym
+     * szkłem jako tło PRZED ustawieniem ikon questów, więc pominięte sloty automatycznie
+     * zostają "przerwą" bez dodatkowego kodu.
+     */
     private static final int[] SLOTY_WEZYK = {
             1, 2, 3, 4, 5, 6, 7,
-            16, 15, 14, 13, 12, 11, 10,
-            19, 20, 21, 22, 23, 24, 25,
-            34, 33, 32, 31, 30, 29, 28,
+            16,
+            25, 24, 23, 22, 21, 20, 19,
+            28,
             37, 38, 39, 40, 41, 42, 43
     };
 
     private static final int SLOT_CENTRUM_GWIAZDY = 22; // Główna Ścieżka - środek gwiazdy
     private static final int SLOT_POWROT = 45; // wolny róg, poza wszystkimi ramionami gwiazdy
     private static final String KATEGORIA_GLOWNA_SCIEZKA = "Główna Ścieżka";
+
+    // Tag CustomItemKeys.CUSTOM_ITEM_ID nagrody questu 9 - patrz placzacyObsydian()/onPlaceObsydian().
+    private static final String CUSTOM_ID_PLACZACY_OBSYDIAN = "QUEST_PLACZACY_OBSYDIAN";
 
     // 8 ramion od SLOT_CENTRUM_GWIAZDY na zewnątrz (N,S,E,W,NE,NW,SE,SW) - różnej długości,
     // ograniczone geometrią 54-slotowego (6x9) GUI: pion mieści tylko 2 kroki w każdą stronę
@@ -178,6 +241,7 @@ public class QuestManager implements Listener {
 
     public QuestManager(Plugin plugin) {
         this.plugin = plugin;
+        this.kluczSesjiFali = new NamespacedKey(plugin, "siege-session");
         this.plikPostepow = new File(plugin.getDataFolder(), "quests.yml");
         if (!plikPostepow.exists()) {
             plikPostepow.getParentFile().mkdirs();
@@ -186,6 +250,7 @@ public class QuestManager implements Listener {
         this.configPostepow = YamlConfiguration.loadConfiguration(plikPostepow);
         zaladujQuesty();
         wczytajPostep();
+        Bukkit.getScheduler().runTaskTimer(plugin, this::pilnujSpadajacychZombie, 20L, 20L);
     }
 
     private void zaladujQuesty() {
@@ -194,15 +259,35 @@ public class QuestManager implements Listener {
         // swojej zwykłej nagrody (trofeum) jeszcze Beacon w wreczNagrode() - jedyny
         // wyjątek w całej ścieżce, gdzie nagroda to więcej niż lista q.nagrody().
         //
+        // Kamienie milowe 18/20/30/40 dorzucają też skrzynkę+klucz (mainplugins-crates,
+        // tier 1/1/2/3 - patrz wreczSkrzynkeKamienMilowy()) - to jedyne organiczne źródło
+        // skrzynek dla zwykłego gracza (reszta to komendy admina albo ~3.7% szansy z
+        // wędkowania), więc Główna Ścieżka celowo pełni tę rolę zamiast zostawiać to
+        // przypadkowi. Quest 8 dorzuca WŁASNĄ, osobną skrzynkę tier 1 - patrz specjalny
+        // przypadek q.id()==8 w wreczNagrode() (NIE przez wreczSkrzynkeKamienMilowy, bo
+        // tam skrzynka jest cichym bonusem obok innej głównej nagrody, a tu ma to być
+        // JEDYNA, w pełni widoczna nagroda questu). Questy 17/18 to para "spore
+        // oszczędności" (17, 5000$) + "pierwszy powazny zakup" (18, 20000$) - progi
+        // dobrane tak, by nie dało się ich zdać samą sprzedażą kamienia/drewna z
+        // wczesnych questów, ale były realne po ogarnięciu rudy/emeraldów (questy 11/14)
+        // - patrz też sklep.yml: NETHERITE_SCRAP/GHAST_TEAR/BLAZE_ROD celowo NIE mają
+        // już buy-price, żeby questy 24/27/28 (polowanie na blaze'y/ghasty, szukanie
+        // złomu netherytu) nie dało się odkupić w sklepie zamiast faktycznie zrobić -
+        // inne "trudne" materiały (SHULKER_SHELL, ROTTEN_FLESH, RAW_IRON, LAPIS_LAZULI,
+        // ENDER_PEARL, PHANTOM_MEMBRANE) już tak miały (sprzedaż-only albo zaporowa
+        // cena), to ujednolica resztę ścieżki do tego samego standardu.
+        //
         // Kilof/siekiera/miecz/motyka NIE są już dawane automatycznie przy pierwszym
-        // wejściu - są w głównej mierze nagrodami z Głównej Ścieżki (questy 1/3/5/8
+        // wejściu - są w głównej mierze nagrodami z Głównej Ścieżki (questy 1/4/6/9
         // niżej), realne wręczenie w wreczNagrode() przez ToolsService. ItemStack w tych
         // questach to tylko placeholder do wyświetlenia w GUI, zanim gracz je ukończy.
         // Quest 2 to WYJĄTEK od wyjątku - sprawdza faktyczny POZIOM kilofa
         // (TypWymogu.POZIOM_KILOFA, ToolsService.poziomKilofa), a nagrodą są zwykłe
-        // przedmioty (mączka + sadzonka), nie kolejne narzędzie. Quest 9 ("Kopacz spod
-        // Ziemi") sprawdza awans kilofa do tieru Kamień, ale nagrodą jest zwykły
-        // przedmiot (pochodnie) - łopata jako narzędzie została usunięta z gry.
+        // przedmioty (ziemia), nie kolejne narzędzie. Quest 9 to DRUGI wyjątek od
+        // wzorca "1 quest = 1 narzędzie" - oprócz miecza (wręczanego w wreczNagrode(),
+        // BEZ return po tools.dajEwoluujacyMiecz(), żeby quest wciąż dorzucił swoją
+        // zwykłą nagrodę niżej) daje jeszcze Płaczący Obsydian Wezwania - patrz sekcja
+        // "Płaczący Obsydian" niżej w pliku.
         //
         // Późniejsze questy tych narzędzi (12, 21, 30, 31) NIE dają ich ponownie -
         // weryfikują AWANS TIERU (np. "STONE_PICKAXE x1" = kilof faktycznie doszedł do
@@ -213,25 +298,27 @@ public class QuestManager implements Listener {
                 Quest.darmowy(1, "Witaj na Wyspie", List.of("Twoja przygoda właśnie się zaczyna - odbierz swój pierwszy, ewoluujący kilof."),
                         new ItemStack(Material.WOODEN_PICKAXE, 1), "1x Ewoluujący Kilof"),
                 Quest.poziomKilofa(2, "Zaczynamy", List.of("Wykop kilofem wystarczająco dużo, by zdobyć swój pierwszy poziom."),
-                        2, List.of(new ItemStack(Material.BONE_MEAL, 10), new ItemStack(Material.BIRCH_SAPLING, 1)), "10x Mączka Kostna + Sadzonka Brzozy"),
-                Quest.przedmioty(3, "Timberman", List.of("Zbierz drewno dębowe i brzozowe na rozbudowę bazy."),
-                        List.of(Wymog.zwykly(Material.OAK_LOG, 16), Wymog.zwykly(Material.BIRCH_LOG, 16)),
+                        1, List.of(new ItemStack(Material.DIRT, 16)), "16x Ziemia"),
+                Quest.przedmioty(3, "Kamienny Fundament", List.of("Zbierz stack kamienia - podwaliny pod całą resztę wyspy."),
+                        List.of(Wymog.zwykly(Material.COBBLESTONE, 64)),
+                        List.of(new ItemStack(Material.BONE_MEAL, 20), new ItemStack(Material.BIRCH_SAPLING, 1)), "20x Mączka Kostna + Sadzonka Brzozy"),
+                Quest.przedmioty(4, "Drwal i Siewca", List.of("Zbierz drewno dębowe i sadzonki brzozy na rozbudowę bazy."),
+                        List.of(Wymog.zwykly(Material.OAK_LOG, 8), Wymog.zwykly(Material.BIRCH_SAPLING, 6)),
                         new ItemStack(Material.WOODEN_AXE, 1), "1x Ewoluująca Siekiera"),
-                Quest.nagrodaMonety(4, "Może zaczniemy zarabiać?", List.of("Sprzedaj nadwyżkę sadzonek dębu."),
-                        Material.OAK_SAPLING, 32, 200),
-                Quest.przedmioty(5, "Farmimy dalej", List.of("Kup sadzonki siana i marchewki pod przyszłe pole."),
-                        List.of(Wymog.zwykly(Material.WHEAT_SEEDS, 5), Wymog.zwykly(Material.CARROT, 5)),
-                        new ItemStack(Material.WOODEN_HOE, 1), "1x Ewoluująca Motyka"),
-                Quest.przedmiot(6, "Plon czas zebrać", List.of("Zasadź ziarna pszenicy na swoim polu."),
-                        Material.WHEAT_SEEDS, 30, new ItemStack(Material.MELON_SEEDS, 8), "8x Nasiona Arbuza"),
-                Quest.nagrodaMonety(7, "Słodki Zysk", List.of("Zbierz i sprzedaj plasterki arbuza."),
-                        Material.MELON_SLICE, 16, 150),
-                Quest.przedmiot(8, "Pierwsza Krew", List.of("Stocz walkę z nieumarłymi i przynieś na to dowód."),
-                        Material.ROTTEN_FLESH, 20, new ItemStack(Material.WOODEN_SWORD, 1), "1x Ewoluujący Miecz"),
-                Quest.narzedzie(9, "Kopacz spod Ziemi", List.of("Ulepsz kilof do tieru Kamień (jeśli jeszcze nie awansował) - przyda Ci się światło w kopalni."),
-                        Material.STONE_PICKAXE, new ItemStack(Material.TORCH, 32), "32x Pochodnia"),
-                Quest.zaMonety(10, "Fundamenty Wyspy", List.of("Wpłać pierwsze oszczędności do banku wyspy.", "Kamień milowy - pierwszy etap za Tobą!"),
-                        500, trofeum(Material.PLAYER_HEAD, "Głowa Osadnika", "Za pierwsze kroki na wyspie."), "Trofeum: Głowa Osadnika"),
+                Quest.przedmioty(5, "Rozpal Ognisko", List.of("Zbierz węgiel z kopalni i węgiel drzewny z paleniska."),
+                        List.of(Wymog.zwykly(Material.COAL, 5), Wymog.zwykly(Material.CHARCOAL, 5)),
+                        List.of(new ItemStack(Material.CARROT, 2), new ItemStack(Material.MELON_SEEDS, 4)), "2x Marchewka + 4x Nasiona Arbuza"),
+                Quest.narzedzie(6, "Rolniczy Krok", List.of("Stwórz kamienną motykę - to sygnał, że jesteś gotowy na prawdziwe pole."),
+                        Material.STONE_HOE, new ItemStack(Material.WOODEN_HOE, 1), "1x Ewoluująca Motyka"),
+                Quest.nagrodaMonety(7, "Plony Wyspy", List.of("Zbierz pierwsze duże zbiory - arbuza, pszenicy i marchewki."),
+                        List.of(Wymog.zwykly(Material.MELON_SLICE, 16), Wymog.zwykly(Material.WHEAT, 16), Wymog.zwykly(Material.CARROT, 16)),
+                        200),
+                Quest.przedmiot(8, "Ciacho na Szczęście", List.of("Upiecz i zdobądź ciastka - drobna nagroda za słodki gest."),
+                        Material.COOKIE, 32, new ItemStack(Material.EMERALD, 10), "Podstawowa Skrzynka + Klucz (słaby drop)"),
+                Quest.zaMonety(9, "Fundusz Obronny", List.of("Wpłać pierwsze oszczędności do banku wyspy.", "Coś w mrocznym obsydianie już się budzi..."),
+                        100, placzacyObsydian(), "Płaczący Obsydian Wezwania + 1x Ewoluujący Miecz"),
+                Quest.przedmiot(10, "Egzamin Początkującego", List.of("Sprzedaj dowód stoczonych walk z nieumarłymi.", "Kamień milowy - pierwszy etap za Tobą!"),
+                        Material.ROTTEN_FLESH, 5, trofeum(Material.PLAYER_HEAD, "Głowa Początkującego", "Za pierwsze pokonane zombie.", "Odblokowuje tytuł \"Początkujący\" na czacie!"), "Trofeum: Głowa Początkującego + Tytuł"),
 
                 Quest.przedmiot(11, "Żelazna Gorączka", List.of("Wykop surowe żelazo w kopalni."),
                         Material.RAW_IRON, 24, new ItemStack(Material.IRON_BLOCK, 2), "2x Blok Żelaza"),
@@ -246,9 +333,10 @@ public class QuestManager implements Listener {
                 Quest.przedmiot(16, "Zaklinacz", List.of("Zbierz lapis lazuli pod stół zaklęć."),
                         Material.LAPIS_LAZULI, 32, new ItemStack(Material.ENCHANTING_TABLE, 1), "1x Stół Zaklęć"),
                 Quest.zaMonety(17, "Skarbnik", List.of("Wpłać spory depozyt do banku wyspy."),
-                        1000, new ItemStack(Material.GOLD_INGOT, 10), "10x Sztabka Złota (odsetki)"),
-                Quest.darmowy(18, "Strażnik Wyspy", List.of("Odwiedź /spawn i poznaj chronione tereny wyspy."),
-                        new ItemStack(Material.COMPASS, 1), "1x Kompas"),
+                        5000, new ItemStack(Material.GOLD_INGOT, 10), "10x Sztabka Złota (odsetki)"),
+                Quest.zaMonety(18, "Pierwsza Inwestycja", List.of("Udowodnij, że stać Cię na coś poważniejszego niż podstawy.",
+                                "Nie kupujemy Ci tego za Ciebie - po prostu pokaż, że masz na to środki."),
+                        20000, trofeum(Material.PLAYER_HEAD, "Głowa Inwestora", "Za pierwszy powazny kapital."), "Trofeum: Głowa Inwestora"),
                 Quest.darmowy(19, "Czytelnik", List.of("Otwórz Poradnik Wyspiarza i poznaj resztę systemów wyspy."),
                         new ItemStack(Material.BOOK, 3), "3x Książka"),
                 Quest.przedmiot(20, "Filar Wyspy", List.of("Udowodnij, że Twoja wyspa stoi na solidnych fundamentach.", "Kamień milowy - połowa ścieżki za Tobą!"),
@@ -297,25 +385,71 @@ public class QuestManager implements Listener {
                         Material.NETHER_STAR, 1, trofeum(Material.PLAYER_HEAD, "Głowa Smoka", "Za pokonanie Enderdragona.", "Otrzymujesz też Beacon!"), "Trofeum: Głowa Smoka + Beacon")
         ));
 
-        // GÓRNICTWO - 40 questów (pokazuje paginację)
-        List<Quest> gornictwo = new ArrayList<>();
-        for (int i = 1; i <= 40; i++) {
-            gornictwo.add(Quest.przedmiot(i, "Górnik " + i, List.of(), Material.COBBLESTONE, 64, new ItemStack(Material.DIAMOND, 1), "1x Diament"));
-        }
-        questyKategorii.put("Górnictwo", gornictwo);
-
-        // HODOWLA
-        questyKategorii.put("Hodowla", List.of(
-                Quest.przedmiot(1, "Zbiory 1", List.of(), Material.CARROT, 32, new ItemStack(Material.EMERALD, 5), "5x Szmaragd"),
-                Quest.przedmiot(2, "Zbiory 2", List.of(), Material.WHEAT, 64, new ItemStack(Material.GOLD_INGOT, 10), "10x Złoto"),
-                Quest.przedmiot(3, "Zbiory 3", List.of(), Material.POTATO, 64, new ItemStack(Material.IRON_INGOT, 32), "32x Żelazo")
+        // GÓRNICTWO - odblokowywana questem #3 Głównej Ścieżki (patrz WYMOG_ODBLOKOWANIA_KATEGORII).
+        // W odróżnieniu od Głównej Ścieżki (fabuła, jeden konkretny tier narzędzia na raz)
+        // to grind na ZMIENNOŚĆ i GOTÓWKĘ - różne rudy naraz, głównie nagrody pieniężne,
+        // rosnące ilości. Zero powtórzeń wymogów z Głównej Ścieżki (tam już jest diament/
+        // netheryt jako fabularny wymóg tieru narzędzia - tu to osobny, równoległy grind).
+        questyKategorii.put("Górnictwo", List.of(
+                Quest.nagrodaMonety(1, "Węglowa Żyła", List.of("Rozgrzej się na start - zbierz węgiel."),
+                        Material.COAL, 64, 300),
+                Quest.nagrodaMonety(2, "Miedziany Początek", List.of("Miedź nie jest efektowna, ale dobrze się sprzedaje."),
+                        Material.RAW_COPPER, 48, 400),
+                Quest.nagrodaMonety(3, "Rudonośna Żyła", List.of("Wykop więcej surowego żelaza niż potrzebujesz na własny użytek."),
+                        Material.RAW_IRON, 48, 700),
+                Quest.nagrodaMonety(4, "Złota Gorączka", List.of("Złoto w Overworldzie jest rzadsze niż żelazo - warto po nie zejść głębiej."),
+                        Material.RAW_GOLD, 32, 900),
+                Quest.przedmiot(5, "Prąd pod Ziemią", List.of("Zbierz redstone na własne mechanizmy - to nie jest ten sam depozyt co w Głównej Ścieżce."),
+                        Material.REDSTONE, 48, new ItemStack(Material.REDSTONE_BLOCK, 4), "4x Blok Redstone"),
+                Quest.przedmiot(6, "Lazurowa Żyła", List.of("Zbierz lapis - starczy na więcej niż jeden stół zaklęć."),
+                        Material.LAPIS_LAZULI, 48, new ItemStack(Material.EXPERIENCE_BOTTLE, 20), "20x Butelka Doświadczenia"),
+                Quest.nagrodaMonety(7, "Ametystowa Jaskinia", List.of("Znajdź geodę ametystu i zbierz z niej kryształy."),
+                        Material.AMETHYST_SHARD, 20, 1200),
+                Quest.nagrodaMonety(8, "Kwarcowe Podziemia", List.of("Nether ma nie tylko blaze - kwarc też się przyda."),
+                        Material.QUARTZ, 48, 1000),
+                Quest.nagrodaMonety(9, "Diamentowe Oko", List.of("Osiem diamentów - solidny dowód, że umiesz już kopać głęboko."),
+                        Material.DIAMOND, 8, 2500),
+                Quest.przedmiot(10, "Skarb Otchłani", List.of("Trzydzieści dwa diamenty naraz - to już poważny wynik."),
+                        Material.DIAMOND, 32, new ItemStack(Material.DIAMOND_BLOCK, 2), "2x Blok Diamentu"),
+                Quest.nagrodaMonety(11, "Starożytny Ślad", List.of("Złom netherytu trzeba faktycznie wykopać - w sklepie już go nie kupisz."),
+                        Material.NETHERITE_SCRAP, 2, 12000),
+                Quest.przedmioty(12, "Mistrz Kopalni", List.of("Ostatni sprawdzian - pokaż, że Twoja kopalnia stoi na solidnych fundamentach.",
+                                "Wymaga żelaza, złota i diamentów naraz."),
+                        List.of(Wymog.zwykly(Material.RAW_IRON, 64), Wymog.zwykly(Material.RAW_GOLD, 64), Wymog.zwykly(Material.DIAMOND, 16)),
+                        new ItemStack(Material.NETHERITE_BLOCK, 1), "1x Blok Netherytu")
         ));
 
-        // ŁOWCA
+        // HODOWLA - odblokowywana questem #5 Głównej Ścieżki (Ewoluująca Motyka).
+        questyKategorii.put("Hodowla", List.of(
+                Quest.przedmiot(1, "Zbiory 1", List.of("Rozkręć swoje pole - zacznij od marchewki."),
+                        Material.CARROT, 32, new ItemStack(Material.EMERALD, 5), "5x Szmaragd"),
+                Quest.przedmiot(2, "Zbiory 2", List.of("Pszenica to podstawa każdej dobrej farmy."),
+                        Material.WHEAT, 64, new ItemStack(Material.GOLD_INGOT, 10), "10x Złoto"),
+                Quest.przedmiot(3, "Zbiory 3", List.of("Ziemniaki rosną szybko - zbierz spory zapas."),
+                        Material.POTATO, 64, new ItemStack(Material.IRON_INGOT, 32), "32x Żelazo"),
+                Quest.przedmiot(4, "Burakowe Pole", List.of("Buraki przydają się do farb i zup - zbierz ich sporo."),
+                        Material.BEETROOT, 48, new ItemStack(Material.EMERALD, 8), "8x Szmaragd"),
+                Quest.nagrodaMonety(5, "Dyniowy Zbiór", List.of("Dynie dobrze się sprzedają - zbuduj z nich niezłą farmę."),
+                        Material.PUMPKIN, 32, 1500),
+                Quest.przedmiot(6, "Mistrz Farmy", List.of("Wykorzystaj złote marchewki - dowód, że Twoja farma jest w pełni samowystarczalna."),
+                        Material.GOLDEN_CARROT, 8, new ItemStack(Material.HONEY_BOTTLE, 12), "12x Butelka Miodu")
+        ));
+
+        // ŁOWCA - odblokowywana questem #8 Głównej Ścieżki (Ewoluujący Miecz). Trzyma się
+        // Overworldu (potwory z Netheru/Endu to już domena Głównej Ścieżki, questy 24/27/35).
         questyKategorii.put("Łowca", List.of(
-                Quest.przedmiot(1, "Początkujący", List.of(), Material.ROTTEN_FLESH, 32, new ItemStack(Material.COOKED_BEEF, 16), "16x Pieczona Wołowina"),
-                Quest.przedmiot(2, "Strzelec", List.of(), Material.BONE, 16, new ItemStack(Material.BOW, 1), "1x Łuk"),
-                Quest.przedmiot(3, "Nocny Marek", List.of(), Material.STRING, 10, new ItemStack(Material.EXPERIENCE_BOTTLE, 16), "16x Butelka EXP")
+                Quest.przedmiot(1, "Początkujący", List.of("Nieumarli w nocy nie odpuszczają - obróć to na swoją korzyść."),
+                        Material.ROTTEN_FLESH, 32, new ItemStack(Material.COOKED_BEEF, 16), "16x Pieczona Wołowina"),
+                Quest.przedmiot(2, "Strzelec", List.of("Kości ze szkieletów przydadzą się na coś więcej niż mączkę kostną."),
+                        Material.BONE, 16, new ItemStack(Material.BOW, 1), "1x Łuk"),
+                Quest.przedmiot(3, "Nocny Marek", List.of("Pajęczyny z pająków są zaskakująco poszukiwane."),
+                        Material.STRING, 10, new ItemStack(Material.EXPERIENCE_BOTTLE, 16), "16x Butelka EXP"),
+                Quest.nagrodaMonety(4, "Prochowy Zbieracz", List.of("Creepery wybuchają prochem, nie tylko kraterami."),
+                        Material.GUNPOWDER, 24, 800),
+                Quest.przedmiot(5, "Pajęcze Oko", List.of("Zbierz oczy pająków - podstawa niejednej mikstury."),
+                        Material.SPIDER_EYE, 12, new ItemStack(Material.GLASS_BOTTLE, 16), "16x Pusta Butelka"),
+                Quest.przedmiot(6, "Nocna Zjawa", List.of("Fantomy nawiedzają tych, co za długo nie śpią - upoluj kilka."),
+                        Material.PHANTOM_MEMBRANE, 6, new ItemStack(Material.ELYTRA, 1), "1x Elytra")
         ));
 
         // RYBAK - ikona w gwieździe istniała od dawna, ale kategoria była pusta (patrz
@@ -414,6 +548,56 @@ public class QuestManager implements Listener {
             new KategoriaGwiazdy(Material.DIAMOND_SWORD, "Mistrz Miecza", "Zadania dla miecza")
     );
 
+    /**
+     * Kategoria odblokowuje się dopiero po ukończeniu danego questu Głównej Ścieżki -
+     * "woda rozlewająca się na boki" od centrum gwiazdy, zamiast wszystkiego dostępnego
+     * od razu. Tylko kategorie z REALNĄ treścią questową mają tu wpis - pozostałe ~16 ikon
+     * w gwieździe (Drwal, Alchemik, Kowal, ...) to i tak puste placeholdery bez questów
+     * (patrz questyKategorii/getOrDefault w otworzKategorie), więc gating byłby bez sensu,
+     * dopóki ktoś nie doda im treści. Dopasowanie tematyczne:
+     * - Górnictwo po queście 3 (stack kamienia w kieszeni - realnie zaczął już kopać).
+     * - Hodowla po queście 7 (pierwsze duże zbiory - gracz ma już czym rozkręcić farmę).
+     * - Łowca po queście 9 (Ewoluujący Miecz - pierwsza walka, plus fale zombie z
+     *   Płaczącego Obsydianu, za nim).
+     * - Rybak po queście 13 (Sniffer postawiony - wyspa na tyle ogarnięta, że gracz
+     *   ma czas na poboczne hobby).
+     * - Questy Specjalne po queście 30 (Nether pokonany) - prawdziwy endgame dla
+     *   weteranów, zgodnie z własnym opisem kategorii.
+     */
+    private static final Map<String, Integer> WYMOG_ODBLOKOWANIA_KATEGORII = Map.of(
+            "Górnictwo", 3,
+            "Hodowla", 7,
+            "Łowca", 9,
+            "Rybak", 13,
+            "Questy Specjalne", 30
+    );
+
+    /** Czy gracz ukończył quest Głównej Ścieżki wymagany do odblokowania danej kategorii (patrz WYMOG_ODBLOKOWANIA_KATEGORII). */
+    private boolean kategoriaOdblokowana(Player player, String kategoria) {
+        Integer wymaganyQuest = WYMOG_ODBLOKOWANIA_KATEGORII.get(kategoria);
+        if (wymaganyQuest == null) return true;
+        return postepyDlaKategorii(player, KATEGORIA_GLOWNA_SCIEZKA).contains(wymaganyQuest);
+    }
+
+    /** Czytelny tekst wymogu do lore zablokowanej ikony kategorii - "Ukończ <tytuł questu> (#N) w Głównej Ścieżce." */
+    private String tekstWymoguOdblokowania(String kategoria) {
+        Integer id = WYMOG_ODBLOKOWANIA_KATEGORII.get(kategoria);
+        if (id == null) return "";
+        String tytul = questyKategorii.getOrDefault(KATEGORIA_GLOWNA_SCIEZKA, List.of()).stream()
+                .filter(q -> q.id() == id).findFirst().map(Quest::tytul).orElse("?");
+        return "Ukończ \"" + tytul + "\" (#" + id + ") w Głównej Ścieżce.";
+    }
+
+    /**
+     * Czy kategoria ma jakąkolwiek realną treść questową. ~16 ikon w gwieździe (Drwal,
+     * Alchemik, Kowal, Mag, Odkrywca, Mistrz Kilofa/Miecza...) to czyste, puste
+     * placeholdery bez ani jednego questu - bez tego rozróżnienia kliknięcie w nie
+     * otwierało całkowicie pustą siatkę bez wyjaśnienia. Patrz stworzIkoneKategorii/W_BUDOWIE.
+     */
+    private boolean kategoriaMaTresc(String kategoria) {
+        return !questyKategorii.getOrDefault(kategoria, List.of()).isEmpty();
+    }
+
     // ---- Persystencja postępu (per gracz, per kategoria) ----
 
     private void wczytajPostep() {
@@ -497,7 +681,7 @@ public class QuestManager implements Listener {
 
         for (int i = 0; i < SLOTY_GWIAZDY.length && i < KATEGORIE_GWIAZDY.size(); i++) {
             KategoriaGwiazdy k = KATEGORIE_GWIAZDY.get(i);
-            gui.setItem(SLOTY_GWIAZDY[i], stworzIkoneKategorii(k.ikona(), k.nazwa(), k.opis()));
+            gui.setItem(SLOTY_GWIAZDY[i], stworzIkoneKategorii(player, k));
         }
 
         if (zMenu) {
@@ -516,11 +700,14 @@ public class QuestManager implements Listener {
         String tytulMenu = "Strona " + (strona + 1) + " | " + nazwaKategorii;
         Inventory gui = Bukkit.createInventory(null, 54, Component.text(tytulMenu, NamedTextColor.DARK_GREEN, TextDecoration.BOLD));
         wypelnijTlo(gui);
+        wypelnijPanelStatystyk(gui, player, nazwaKategorii);
 
         Set<Integer> postepy = postepyDlaKategorii(player, nazwaKategorii);
 
-        int startIndex = strona * 35;
-        for (int i = 0; i < 35; i++) {
+        // sloty.length zamiast sztywnej 35 - Główna Ścieżka (SLOTY_WEZYK) ma teraz 23
+        // sloty/stronę (wężyk z przerwą), reszta kategorii (slotySrodkowe) nadal 35.
+        int startIndex = strona * sloty.length;
+        for (int i = 0; i < sloty.length; i++) {
             if (startIndex + i < questy.size()) {
                 StanQuestu stan = ustalStan(nazwaKategorii, questy, startIndex + i, postepy);
                 gui.setItem(sloty[i], stworzIkoneQuesta(questy.get(startIndex + i), stan));
@@ -529,7 +716,7 @@ public class QuestManager implements Listener {
 
         gui.setItem(49, stworzPrzycisk(Material.DARK_OAK_DOOR, "Powrót do Kategorii", NamedTextColor.GOLD));
         if (strona > 0) gui.setItem(45, stworzPrzycisk(Material.ARROW, "Poprzednia Strona", NamedTextColor.YELLOW));
-        if (startIndex + 35 < questy.size()) gui.setItem(53, stworzPrzycisk(Material.ARROW, "Następna Strona", NamedTextColor.YELLOW));
+        if (startIndex + sloty.length < questy.size()) gui.setItem(53, stworzPrzycisk(Material.ARROW, "Następna Strona", NamedTextColor.YELLOW));
 
         player.openInventory(gui);
     }
@@ -542,11 +729,101 @@ public class QuestManager implements Listener {
         for (int i = 0; i < 54; i++) gui.setItem(i, tlo);
     }
 
-    private ItemStack stworzIkoneKategorii(Material material, String nazwa, String opis) {
+    // Prawa krawędź GUI (kolumna 8, rzędy 0-4) - kolumna 1-7 to zawsze sloty questów
+    // (slotySrodkowe/SLOTY_WEZYK), więc ta krawędź jest zawsze wolna na obu układach.
+    private static final int[] SLOTY_PANELU_STATYSTYK = {8, 17, 26, 35, 44};
+
+    /**
+     * Panel boczny z podstawowymi statystykami gracza - widoczny na każdej stronie listy
+     * questów danej kategorii (patrz otworzKategorie). Każdy opcjonalny serwis (Tools/Rank/
+     * Island) ma sensowny fallback tekstowy, gdyby odpowiedni plugin nie był akurat wgrany -
+     * ten sam wzorzec co reszta pliku (patrz np. wreczSkrzynkeKamienMilowy).
+     */
+    private void wypelnijPanelStatystyk(Inventory gui, Player player, String kategoria) {
+        gui.setItem(SLOTY_PANELU_STATYSTYK[0], ikonaStatystyki(Material.EMERALD, "Saldo",
+                MoneyFormat.kompaktowo(CoreAPI.getEconomyService().getKasa(player.getUniqueId())) + " monet"));
+
+        ToolsService tools = CoreAPI.getToolsService();
+        int poziomKilofa = tools != null ? tools.poziomKilofa(player) : 0;
+        gui.setItem(SLOTY_PANELU_STATYSTYK[1], ikonaStatystyki(Material.DIAMOND_PICKAXE, "Poziom Kilofa",
+                poziomKilofa > 0 ? "Poziom " + poziomKilofa : "Brak ewoluującego kilofa"));
+
+        RankService rankService = CoreAPI.getRankService();
+        Rank ranga = rankService != null ? rankService.getRank(player.getUniqueId()) : Rank.GRACZ;
+        gui.setItem(SLOTY_PANELU_STATYSTYK[2], ikonaStatystyki(Material.NAME_TAG, "Ranga", ranga.name()));
+
+        int ukonczoneWTejKategorii = postepyDlaKategorii(player, kategoria).size();
+        int wszystkichWTejKategorii = questyKategorii.getOrDefault(kategoria, List.of()).size();
+        gui.setItem(SLOTY_PANELU_STATYSTYK[3], ikonaStatystyki(Material.BOOK, "Postęp w Kategorii",
+                ukonczoneWTejKategorii + "/" + wszystkichWTejKategorii + " questów"));
+
+        IslandService islandService = CoreAPI.getIslandService();
+        IslandSummary wyspa = islandService != null ? islandService.getIslandOf(player.getUniqueId()) : null;
+        gui.setItem(SLOTY_PANELU_STATYSTYK[4], ikonaStatystyki(Material.GRASS_BLOCK, "Wyspa",
+                wyspa != null ? "Rozmiar: " + wyspa.borderSize() : "Brak wyspy"));
+    }
+
+    /** Buduje pojedynczą ikonę panelu statystyk - nazwa + jedna linijka wartości w lore. */
+    private ItemStack ikonaStatystyki(Material material, String nazwa, String wartosc) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text(nazwa, NamedTextColor.GOLD, TextDecoration.BOLD));
-        meta.lore(List.of(Component.text(opis, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+        meta.displayName(Component.text(nazwa, NamedTextColor.AQUA, TextDecoration.BOLD));
+        meta.lore(List.of(Component.text(wartosc, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private enum StanKategorii { DOSTEPNA, ZABLOKOWANA, W_BUDOWIE }
+
+    /** Ikona Głównej Ścieżki - zawsze dostępna, jedyny wywołujący spoza pętli gwiazdy. */
+    private ItemStack stworzIkoneKategorii(Material material, String nazwa, String opis) {
+        return stworzIkoneKategoriiZeStanem(material, nazwa, opis, StanKategorii.DOSTEPNA, null);
+    }
+
+    /** Ustala stan (dostępna/zablokowana/w budowie) jednej ikony ramienia gwiazdy i buduje jej item. */
+    private ItemStack stworzIkoneKategorii(Player player, KategoriaGwiazdy k) {
+        if (!kategoriaMaTresc(k.nazwa())) {
+            return stworzIkoneKategoriiZeStanem(k.ikona(), k.nazwa(), k.opis(), StanKategorii.W_BUDOWIE, null);
+        }
+        if (!kategoriaOdblokowana(player, k.nazwa())) {
+            return stworzIkoneKategoriiZeStanem(k.ikona(), k.nazwa(), k.opis(), StanKategorii.ZABLOKOWANA, tekstWymoguOdblokowania(k.nazwa()));
+        }
+        return stworzIkoneKategoriiZeStanem(k.ikona(), k.nazwa(), k.opis(), StanKategorii.DOSTEPNA, null);
+    }
+
+    /**
+     * Buduje ikonę kategorii dla danego stanu - szary barwnik + kłódka w lore, gdy
+     * zablokowana (patrz WYMOG_ODBLOKOWANIA_KATEGORII), albo barierka + "w budowie",
+     * gdy kategoria nie ma jeszcze ani jednego questu (patrz kategoriaMaTresc) - bez
+     * tego rozróżnienia kliknięcie w ~16 pustych ikon gwiazdy (Drwal, Alchemik, Kowal...)
+     * otwierało zupełnie pustą siatkę bez wyjaśnienia. Nazwa kategorii w displayName
+     * ZOSTAJE prawdziwa nawet zablokowana (nie "???" jak przy questach Głównej Ścieżki) -
+     * onInventoryClick() odczytuje z niej nazwę kategorii do routingu, a poza tym sama
+     * nazwa kategorii to nie spoiler.
+     */
+    private ItemStack stworzIkoneKategoriiZeStanem(Material material, String nazwa, String opis, StanKategorii stan, String dodatkowyTekst) {
+        Material materialIkony = switch (stan) {
+            case DOSTEPNA -> material;
+            case ZABLOKOWANA -> Material.GRAY_DYE;
+            case W_BUDOWIE -> Material.BARRIER;
+        };
+        NamedTextColor kolorNazwy = stan == StanKategorii.DOSTEPNA ? NamedTextColor.GOLD : NamedTextColor.DARK_GRAY;
+
+        ItemStack item = new ItemStack(materialIkony);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.text(nazwa, kolorNazwy, TextDecoration.BOLD));
+        List<Component> lore = new ArrayList<>();
+        lore.add(Component.text(opis, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        if (stan == StanKategorii.ZABLOKOWANA) {
+            lore.add(Component.empty());
+            lore.add(Component.text("🔒 Zablokowane", NamedTextColor.RED, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text(dodatkowyTekst, NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
+        } else if (stan == StanKategorii.W_BUDOWIE) {
+            lore.add(Component.empty());
+            lore.add(Component.text("🚧 W budowie", NamedTextColor.YELLOW, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Wróć tu później - jeszcze nie ma tu zadań.", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
+        }
+        meta.lore(lore);
         item.setItemMeta(meta);
         return item;
     }
@@ -573,13 +850,75 @@ public class QuestManager implements Listener {
         return item;
     }
 
-    /** "16x OAK_LOG, 16x BIRCH_LOG" - łączy kilka wymaganych materiałów w jeden czytelny tekst do lore. */
+    /**
+     * Polskie nazwy materiałów do lore wymogów questa - bez tego "Wymaga: 8x OAK_LOG"
+     * pokazywałoby surową nazwę enuma Bukkita zamiast "8x Kłoda Dębu". Tylko materiały,
+     * które faktycznie występują jako WYMÓG (nie nagroda - te mają zawsze własne
+     * nazwaNagrody) gdziekolwiek w questyKategorii - patrz nazwaMaterialu().
+     */
+    private static final Map<Material, String> NAZWY_MATERIALOW = Map.ofEntries(
+            Map.entry(Material.COBBLESTONE, "Brukowiec"),
+            Map.entry(Material.OAK_LOG, "Kłoda Dębu"),
+            Map.entry(Material.BIRCH_SAPLING, "Sadzonka Brzozy"),
+            Map.entry(Material.COAL, "Węgiel"),
+            Map.entry(Material.CHARCOAL, "Węgiel Drzewny"),
+            Map.entry(Material.STONE_HOE, "Kamienna Motyka"),
+            Map.entry(Material.MELON_SLICE, "Plasterek Arbuza"),
+            Map.entry(Material.WHEAT, "Pszenica"),
+            Map.entry(Material.CARROT, "Marchewka"),
+            Map.entry(Material.COOKIE, "Ciastko"),
+            Map.entry(Material.ROTTEN_FLESH, "Zgniłe Mięso"),
+            Map.entry(Material.RAW_IRON, "Surowe Żelazo"),
+            Map.entry(Material.IRON_AXE, "Żelazna Siekiera"),
+            Map.entry(Material.SNIFFER_EGG, "Jajo Sniffera"),
+            Map.entry(Material.EMERALD, "Szmaragd"),
+            Map.entry(Material.REDSTONE, "Redstone"),
+            Map.entry(Material.LAPIS_LAZULI, "Lapis Lazuli"),
+            Map.entry(Material.DIAMOND, "Diament"),
+            Map.entry(Material.DIAMOND_PICKAXE, "Diamentowy Kilof"),
+            Map.entry(Material.OBSIDIAN, "Obsydian"),
+            Map.entry(Material.NETHERRACK, "Netherrack"),
+            Map.entry(Material.BLAZE_ROD, "Różdżka Blaze'a"),
+            Map.entry(Material.SOUL_SAND, "Duszowy Piasek"),
+            Map.entry(Material.QUARTZ, "Kwarc Netherowy"),
+            Map.entry(Material.GHAST_TEAR, "Łza Ghasta"),
+            Map.entry(Material.NETHERITE_SCRAP, "Złom Netherytu"),
+            Map.entry(Material.NETHERITE_INGOT, "Sztabka Netherytu"),
+            Map.entry(Material.DIAMOND_SWORD, "Diamentowy Miecz"),
+            Map.entry(Material.NETHERITE_PICKAXE, "Netherytowy Kilof"),
+            Map.entry(Material.ENDER_PEARL, "Perła Endermana"),
+            Map.entry(Material.PURPUR_BLOCK, "Blok Purpuru"),
+            Map.entry(Material.CHORUS_FRUIT, "Owoc Chorusu"),
+            Map.entry(Material.SHULKER_SHELL, "Skorupa Shulkera"),
+            Map.entry(Material.PHANTOM_MEMBRANE, "Błona Fantoma"),
+            Map.entry(Material.GOLDEN_CARROT, "Złota Marchewka"),
+            Map.entry(Material.DRAGON_BREATH, "Oddech Smoka"),
+            Map.entry(Material.NETHER_STAR, "Gwiazda Netheru"),
+            Map.entry(Material.RAW_COPPER, "Surowa Miedź"),
+            Map.entry(Material.RAW_GOLD, "Surowe Złoto"),
+            Map.entry(Material.AMETHYST_SHARD, "Odłamek Ametystu"),
+            Map.entry(Material.POTATO, "Ziemniak"),
+            Map.entry(Material.BEETROOT, "Burak"),
+            Map.entry(Material.PUMPKIN, "Dynia"),
+            Map.entry(Material.BONE, "Kość"),
+            Map.entry(Material.STRING, "Sznurek"),
+            Map.entry(Material.GUNPOWDER, "Proch Strzelniczy"),
+            Map.entry(Material.SPIDER_EYE, "Oko Pająka"),
+            Map.entry(Material.WITHER_SKELETON_SKULL, "Czaszka Witherowego Szkieletu")
+    );
+
+    /** Polska nazwa materiału z NAZWY_MATERIALOW, a jeśli czegoś zabraknie w mapie - surowa nazwa enuma jako bezpieczny fallback zamiast wyjątku. */
+    private static String nazwaMaterialu(Material material) {
+        return NAZWY_MATERIALOW.getOrDefault(material, material.name());
+    }
+
+    /** "16x Kłoda Dębu, 16x Sadzonka Brzozy" - łączy kilka wymaganych materiałów w jeden czytelny tekst do lore. */
     private String opisWymogow(List<Wymog> wymogi) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < wymogi.size(); i++) {
             if (i > 0) sb.append(", ");
             Wymog w = wymogi.get(i);
-            sb.append(w.ilosc()).append("x ").append(w.nazwaWyswietlana() != null ? w.nazwaWyswietlana() : w.material().name());
+            sb.append(w.ilosc()).append("x ").append(w.nazwaWyswietlana() != null ? w.nazwaWyswietlana() : nazwaMaterialu(w.material()));
         }
         return sb.toString();
     }
@@ -599,6 +938,25 @@ public class QuestManager implements Listener {
         }
         meta.lore(lore);
         meta.getPersistentDataContainer().set(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING, customId);
+        meta.setEnchantmentGlintOverride(true);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    /**
+     * Nagroda questu 9 - zwykły CRYING_OBSIDIAN, ale otagowany CustomItemKeys.CUSTOM_ITEM_ID
+     * (patrz {@link #CUSTOM_ID_PLACZACY_OBSYDIAN}), żeby onPlaceObsydian() odróżnił go od
+     * dowolnego innego płaczącego obsydianu, jaki gracz mógłby kiedyś zdobyć/postawić.
+     */
+    private static ItemStack placzacyObsydian() {
+        ItemStack item = new ItemStack(Material.CRYING_OBSIDIAN);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.text("Płaczący Obsydian Wezwania", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD));
+        meta.lore(List.of(
+                Component.text("Postaw go na wyspie, by przywołać", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("5 fal zombie broniących Twojej bazy.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        meta.getPersistentDataContainer().set(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING, CUSTOM_ID_PLACZACY_OBSYDIAN);
         meta.setEnchantmentGlintOverride(true);
         item.setItemMeta(meta);
         return item;
@@ -673,6 +1031,16 @@ public class QuestManager implements Listener {
             }
             else if (event.getCurrentItem() != null && event.getCurrentItem().getType() != Material.GRAY_STAINED_GLASS_PANE) {
                 String kategoria = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(event.getCurrentItem().getItemMeta().displayName());
+                if (!kategoriaMaTresc(kategoria)) {
+                    player.sendMessage(Component.text("Ta kategoria jest jeszcze w budowie - wróć później!", NamedTextColor.YELLOW));
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                    return;
+                }
+                if (!kategoriaOdblokowana(player, kategoria)) {
+                    player.sendMessage(Component.text("Ta kategoria jest jeszcze zablokowana!", NamedTextColor.RED));
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                    return;
+                }
                 otworzKategorie(player, kategoria, 0);
             }
         } else if (title.startsWith("Strona ")) {
@@ -693,7 +1061,7 @@ public class QuestManager implements Listener {
                 for (int i = 0; i < sloty.length; i++) {
                     if (slot == sloty[i]) {
                         List<Quest> questy = questyKategorii.get(kategoria);
-                        int questIndex = (strona * 35) + i;
+                        int questIndex = (strona * sloty.length) + i;
                         if (questy != null && questIndex < questy.size()) {
                             zrealizujQuest(player, kategoria, questy, questIndex, strona);
                         }
@@ -803,7 +1171,7 @@ public class QuestManager implements Listener {
 
     /**
      * Wręcza nagrodę za quest. Wyjątek od "zwykłego ItemStacka z configu listy" - questy
-     * 1/3/5/8 Głównej Ścieżki (kilof/siekiera/motyka/miecz), gdzie zamiast placeholdera
+     * 1/4/6/9 Głównej Ścieżki (kilof/siekiera/motyka/miecz), gdzie zamiast placeholdera
      * z zaladujQuesty() gracz dostaje PRAWDZIWE, działające ewoluujące narzędzie z
      * mainplugins-tools (patrz ToolsService/CoreAPI - ten sam mechanizm poziomowania,
      * ochrony przed wyrzuceniem itd.). Jeśli mainplugins-tools nie jest akurat wgrany,
@@ -816,22 +1184,78 @@ public class QuestManager implements Listener {
             if (tools != null) {
                 switch (q.id()) {
                     case 1 -> { tools.dajEwoluujacyKilof(player); return; }
-                    case 3 -> { tools.dajEwoluujacaSiekiere(player); return; }
-                    case 5 -> { tools.dajEwoluujacaMotyke(player); return; }
-                    case 8 -> { tools.dajEwoluujacyMiecz(player); return; }
+                    case 4 -> { tools.dajEwoluujacaSiekiere(player); return; }
+                    case 6 -> { tools.dajEwoluujacaMotyke(player); return; }
+                    // Brak "return" celowo - quest 9 poza mieczem dorzuca jeszcze zwykłą
+                    // nagrodę (Płaczący Obsydian Wezwania) z listy q.nagrody() niżej.
+                    case 9 -> tools.dajEwoluujacyMiecz(player);
+                }
+            }
+            // Quest 8 ("Ciacho na Szczęście") - JEDYNA widoczna nagroda to podstawowa
+            // skrzynka+klucz (mainplugins-crates, tier 1, słaby drop) - w odróżnieniu od
+            // wreczSkrzynkeKamienMilowy() (cichy BONUS obok głównej nagrody na 18/20/30/40),
+            // tu skrzynka JEST główną nagrodą, więc wracamy od razu i pomijamy q.nagrody().
+            // Jeśli mainplugins-crates nie jest wgrany, spadamy na zwykłą listę q.nagrody()
+            // (garść szmaragdów) niżej, żeby gracz nie skończył z pustymi rękami.
+            if (q.id() == 8) {
+                CrateService crateService = CoreAPI.getCrateService();
+                if (crateService != null) {
+                    var nieZmieszczone = player.getInventory().addItem(crateService.stworzSkrzynke(1), crateService.stworzKlucz());
+                    nieZmieszczone.values().forEach(i -> player.getWorld().dropItemNaturally(player.getLocation(), i));
+                    return;
                 }
             }
         }
+        // Dwa NIEZALEŻNE if (nie if/else) - Quest.przedmiotyIMonety() to jedyny wariant,
+        // gdzie oba pola są naraz niepuste (monety + przedmioty w jednej nagrodzie).
+        // Dla reszty questów jedno z nich zawsze jest puste/zero, więc zachowanie się
+        // nie zmienia względem starego if/else.
         if (q.monetyNagrody() > 0) {
             CoreAPI.getEconomyService().dodajKase(player.getUniqueId(), q.monetyNagrody());
-        } else {
-            q.nagrody().forEach(item -> player.getInventory().addItem(item));
+        }
+        if (!q.nagrody().isEmpty()) {
+            // Sprawdzenie firstEmpty()==-1 przed wywolaniem tej metody gwarantuje tylko
+            // JEDEN wolny slot - questy z kilkoma roznymi przedmiotami nagrody naraz
+            // (np. quest 3: mączka kostna + sadzonka) mogly wczesniej po cichu gubic druga
+            // sztuke, jesli ta pierwsza zajela jedyny wolny slot. addItem() zwraca
+            // niezmieszczone itemy - teraz zawsze ladujemy je na ziemie zamiast tracic.
+            for (ItemStack item : q.nagrody()) {
+                var nieZmieszczone = player.getInventory().addItem(item);
+                nieZmieszczone.values().forEach(i -> player.getWorld().dropItemNaturally(player.getLocation(), i));
+            }
         }
         // Quest 40 ("Mistrz Wyspy") dorzuca Beacon do trofeum - jedyny wyjątek, gdzie
         // ścieżka wręcza dwa przedmioty naraz, patrz komentarz w zaladujQuesty().
         if (kategoria.equals(KATEGORIA_GLOWNA_SCIEZKA) && q.id() == 40) {
-            player.getInventory().addItem(new ItemStack(Material.BEACON, 1));
+            var nieZmieszczoneBeacon = player.getInventory().addItem(new ItemStack(Material.BEACON, 1));
+            nieZmieszczoneBeacon.values().forEach(i -> player.getWorld().dropItemNaturally(player.getLocation(), i));
         }
+        if (kategoria.equals(KATEGORIA_GLOWNA_SCIEZKA)) {
+            wreczSkrzynkeKamienMilowy(player, q.id());
+        }
+    }
+
+    /**
+     * Skrzynki (mainplugins-crates) na kamieniach milowych Głównej Ścieżki - 18/20/30/40.
+     * Bez tego nowy gracz nie miałby ŻADNEGO organicznego sposobu na zdobycie skrzynki/klucza
+     * (patrz komentarz przy CrateService) - questy to jedyne kontrolowane źródło. Tier rośnie
+     * wraz z postępem (1 -> 1 -> 2 -> 3), zawsze skrzynka + klucz naraz, żeby dało się ją od
+     * razu otworzyć. Cichy no-op, jeśli mainplugins-crates nie jest wgrany - patrz CrateService.
+     */
+    private void wreczSkrzynkeKamienMilowy(Player player, int questId) {
+        int tier = switch (questId) {
+            case 18, 20 -> 1;
+            case 30 -> 2;
+            case 40 -> 3;
+            default -> 0;
+        };
+        if (tier == 0) return;
+
+        CrateService crateService = CoreAPI.getCrateService();
+        if (crateService == null) return;
+
+        var nieZmieszczone = player.getInventory().addItem(crateService.stworzSkrzynke(tier), crateService.stworzKlucz());
+        nieZmieszczone.values().forEach(i -> player.getWorld().dropItemNaturally(player.getLocation(), i));
     }
 
     /**
@@ -859,5 +1283,221 @@ public class QuestManager implements Listener {
                 1.0f, BossBar.Color.YELLOW, BossBar.Overlay.PROGRESS);
         player.showBossBar(pasek);
         Bukkit.getScheduler().runTaskLater(plugin, () -> player.hideBossBar(pasek), 20L * 6);
+    }
+
+    // ---- Płaczący Obsydian: fale zombie (nagroda questu 9 "Fundusz Obronny") ----
+
+    /**
+     * Rozpoznaje nagrodę questu 9 po CustomItemKeys.CUSTOM_ITEM_ID (patrz placzacyObsydian()) -
+     * zwykły, kupiony/wydobyty płaczący obsydian NIE wywołuje fal. ignoreCancelled=true, żeby
+     * np. IslandProtectionManager (postawienie poza granicami własnej wyspy) mógł zablokować
+     * samo postawienie bloku bez odpalenia fal na lokacji, gdzie fizycznie nic nie stanęło.
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onPlaceObsydian(BlockPlaceEvent event) {
+        ItemStack reka = event.getItemInHand();
+        if (!reka.hasItemMeta()) return;
+        String customId = reka.getItemMeta().getPersistentDataContainer().get(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING);
+        if (!CUSTOM_ID_PLACZACY_OBSYDIAN.equals(customId)) return;
+
+        rozpocznijFaleZombie(event.getPlayer(), event.getBlock(), true);
+    }
+
+    /**
+     * (Admin) /addfale - testowe odpalenie 5 fal pod nogami gracza, bez zużywania
+     * questowego Płaczącego Obsydianu. prawdziwaNagroda=false, więc blok pod graczem
+     * NIE znika po piątej fali i gracz NIE dostaje 200 monet ani finałowego lootu -
+     * to czysto testowe narzędzie do sprawdzania balansu fal/lootu/paska, nie sposób
+     * na farmienie nagrody questu 9 w kółko.
+     */
+    public void wywolajTestoweFale(Player player) {
+        Block podNogami = player.getLocation().getBlock().getRelative(0, -1, 0);
+        rozpocznijFaleZombie(player, podNogami, false);
+    }
+
+    /**
+     * 5 fal zombie w stałych, z góry ustalonych odstępach (NIE czekamy, aż gracz zabije
+     * poprzednią falę - prostsza i przewidywalna sekwencja, koniec zawsze po ~85s).
+     * Zombie spawnują WYŁĄCZNIE na solidnym gruncie w promieniu bloku (patrz
+     * znajdzMiejsceNaZiemi) - nigdy w powietrzu, i są otagowane sesją (kluczSesjiFali) +
+     * dopisane do StanFali.zywoZombie, żeby pilnujSpadajacychZombie() mogło je teleportować
+     * z powrotem, gdyby spadły za krawędź wyspy w otchłań. To zwykłe, nieuzbrojone zombie
+     * (żadnego pancerza/broni), więc mają tylko domyślne wanilijskie dropy - świeży gracz
+     * z drewnianym/kamiennym mieczem ma z tym realną szansę. KAŻDA fala (nie tylko ostatnia)
+     * dorzuca małą premię lootu + 1x zgniłe mięso (5 fal x 1 = dokładnie 5, tyle ile wymaga
+     * quest 10 "Egzamin Początkującego" - celowe powiązanie fabularne). prawdziwaNagroda
+     * steruje TYLKO efektami "to jest realna nagroda questu 9": zniszczeniem bloku po
+     * piątej fali i wypłatą 200 monet - patrz wywolajTestoweFale (/addfale).
+     *
+     * Pasek bossbara (StanFali) resetuje się do pełna na starcie każdej fali i zmniejsza
+     * się o krok przy KAŻDYM zabitym zombie tej sesji (patrz onZombieDeath). Sesja
+     * identyfikowana losowym UUID (nie graczem), żeby dwie osoby mogły odpalić własny
+     * Płaczący Obsydian (albo /addfale) jednocześnie bez wzajemnego mieszania stanu.
+     */
+    private void rozpocznijFaleZombie(Player player, Block block, boolean prawdziwaNagroda) {
+        block.getWorld().setTime(13000);
+        player.sendMessage(Component.text("Płaczący Obsydian budzi się do życia... nadchodzą fale zombie!", NamedTextColor.DARK_RED, TextDecoration.BOLD));
+
+        UUID sesjaId = UUID.randomUUID();
+        StanFali stan = new StanFali(BossBar.bossBar(Component.text("Fala 1/5"), 1.0f, BossBar.Color.RED, BossBar.Overlay.NOTCHED_10), block);
+        aktywneFaleZombie.put(sesjaId, stan);
+        player.showBossBar(stan.pasek);
+
+        int[] rozmiaryFal = {2, 2, 3, 3, 4};
+        List<List<ItemStack>> premieFal = List.of(
+                List.of(new ItemStack(Material.BREAD, 8), new ItemStack(Material.ROTTEN_FLESH, 1)),
+                List.of(new ItemStack(Material.ARROW, 12), new ItemStack(Material.ROTTEN_FLESH, 1)),
+                List.of(new ItemStack(Material.SHIELD, 1), new ItemStack(Material.ROTTEN_FLESH, 1)),
+                List.of(new ItemStack(Material.ARROW, 16), new ItemStack(Material.ROTTEN_FLESH, 1)),
+                List.of(new ItemStack(Material.IRON_INGOT, 3), new ItemStack(Material.GOLDEN_APPLE, 1), new ItemStack(Material.ROTTEN_FLESH, 1))
+        );
+        long odstepMiedzyFalami = 20L * 15; // 15 sekund na falę
+
+        for (int fala = 0; fala < rozmiaryFal.length; fala++) {
+            int numerFali = fala + 1;
+            int iloscZombie = rozmiaryFal[fala];
+            List<ItemStack> premia = premieFal.get(fala);
+            boolean ostatnia = numerFali == rozmiaryFal.length;
+
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                int zespawnowane = 0;
+                for (int i = 0; i < iloscZombie; i++) {
+                    Location miejsce = znajdzMiejsceNaZiemi(block, 6);
+                    if (miejsce != null) {
+                        Zombie zombie = block.getWorld().spawn(miejsce, Zombie.class, z -> {
+                            z.setBaby(false);
+                            z.getPersistentDataContainer().set(kluczSesjiFali, PersistentDataType.STRING, sesjaId.toString());
+                        });
+                        stan.zywoZombie.add(zombie.getUniqueId());
+                        zespawnowane++;
+                    }
+                }
+                // Reset paska do pełna na start tej fali - liczy TYLKO zombie faktycznie
+                // zespawnowane teraz (jeśli znajdzMiejsceNaZiemi zawiodło kilka razy, pasek
+                // i tak trafnie odzwierciedla realną liczbę przeciwników do zabicia).
+                stan.numerFali = numerFali;
+                stan.wFaliLacznie = zespawnowane;
+                stan.pozostaliWFali = zespawnowane;
+                odswiezPasekFali(stan);
+
+                for (ItemStack item : premia) {
+                    block.getWorld().dropItemNaturally(block.getLocation(), item);
+                }
+                if (player.isOnline()) {
+                    player.sendMessage(Component.text("Fala " + numerFali + "/5 nadchodzi!", NamedTextColor.RED));
+                }
+
+                if (ostatnia) {
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        if (prawdziwaNagroda) {
+                            block.setType(Material.AIR);
+                            block.getWorld().dropItemNaturally(block.getLocation(), new ItemStack(Material.IRON_INGOT, 5));
+                            block.getWorld().dropItemNaturally(block.getLocation(), new ItemStack(Material.GOLDEN_CARROT, 4));
+                            if (player.isOnline()) {
+                                CoreAPI.getEconomyService().dodajKase(player.getUniqueId(), 200);
+                                player.sendMessage(Component.text("Ostatnia fala odparta! Obsydian rozpada się, zostawiając nagrodę i 200 monet.", NamedTextColor.GREEN, TextDecoration.BOLD));
+                            }
+                        } else if (player.isOnline()) {
+                            player.sendMessage(Component.text("Ostatnia fala odparta! (test /addfale - bez nagrody)", NamedTextColor.GREEN, TextDecoration.BOLD));
+                        }
+                        if (player.isOnline()) player.hideBossBar(stan.pasek);
+                        aktywneFaleZombie.remove(sesjaId);
+                    }, 20L * 10); // 10 sekund na dobicie ostatnich zombie, zanim blok zniknie
+                }
+            }, odstepMiedzyFalami * numerFali);
+        }
+    }
+
+    /** Odświeża tytuł i wypełnienie paska StanFali na podstawie pozostaliWFali/wFaliLacznie. */
+    private void odswiezPasekFali(StanFali stan) {
+        float postep = stan.wFaliLacznie == 0 ? 0f : (float) stan.pozostaliWFali / stan.wFaliLacznie;
+        stan.pasek.progress(Math.max(0f, Math.min(1f, postep)));
+        stan.pasek.name(Component.text("⚔ Fala " + stan.numerFali + "/5 - pozostało " + stan.pozostaliWFali + " zombie",
+                NamedTextColor.RED, TextDecoration.BOLD));
+    }
+
+    /** Zmniejsza pasek aktywnej fali, gdy ginie zombie oznaczone kluczSesjiFali (patrz rozpocznijFaleZombie) - obce zombie ignorujemy. */
+    @EventHandler
+    public void onZombieDeath(EntityDeathEvent event) {
+        if (!(event.getEntity() instanceof Zombie zombie)) return;
+        String sesjaStr = zombie.getPersistentDataContainer().get(kluczSesjiFali, PersistentDataType.STRING);
+        if (sesjaStr == null) return;
+
+        UUID sesjaId;
+        try {
+            sesjaId = UUID.fromString(sesjaStr);
+        } catch (IllegalArgumentException e) {
+            return;
+        }
+        StanFali stan = aktywneFaleZombie.get(sesjaId);
+        if (stan == null) return;
+
+        stan.zywoZombie.remove(zombie.getUniqueId());
+        stan.pozostaliWFali = Math.max(0, stan.pozostaliWFali - 1);
+        odswiezPasekFali(stan);
+    }
+
+    /**
+     * Co sekundę sprawdza wszystkie żywe zombie aktywnych fal (StanFali.zywoZombie) - jeśli
+     * któreś spadło ponad 10 bloków poniżej kotwicy (typowo: za krawędź wyspy w otchłań),
+     * teleportuje je z powrotem na solidny grunt obok kotwicy (patrz znajdzMiejsceNaZiemi).
+     * Przy okazji sprząta z zestawu zombie, które już zginęły gdzie indziej (np. od upadku,
+     * zanim zdążyliśmy je złapać) - onZombieDeath by je i tak usunął, to tylko dodatkowe
+     * zabezpieczenie przeciw wyciekowi pamięci, gdyby event się nie odpalił.
+     */
+    private void pilnujSpadajacychZombie() {
+        for (StanFali stan : aktywneFaleZombie.values()) {
+            if (stan.zywoZombie.isEmpty()) continue;
+            for (UUID id : new ArrayList<>(stan.zywoZombie)) {
+                Entity encja = Bukkit.getEntity(id);
+                if (!(encja instanceof Zombie zombie) || zombie.isDead()) {
+                    stan.zywoZombie.remove(id);
+                    continue;
+                }
+                if (zombie.getLocation().getY() < stan.kotwica.getY() - 10) {
+                    Location powrot = znajdzMiejsceNaZiemi(stan.kotwica, 6);
+                    zombie.teleport(powrot != null ? powrot : stan.kotwica.getLocation().add(0.5, 1, 0.5));
+                }
+            }
+        }
+    }
+
+    /**
+     * Szuka losowego miejsca na solidnym gruncie (2 bloki powietrza nad nim) w promieniu
+     * wokół bloku - zombie NIGDY nie spawnują w powietrzu. Zwraca null po 20 nieudanych
+     * próbach (np. teren bez żadnego pasującego miejsca w zasięgu) - wołający po prostu
+     * pomija tę sztukę zombie zamiast rzucać błędem.
+     */
+    private Location znajdzMiejsceNaZiemi(Block centrum, int promien) {
+        Random random = new Random();
+        for (int probka = 0; probka < 20; probka++) {
+            int dx = random.nextInt(promien * 2 + 1) - promien;
+            int dz = random.nextInt(promien * 2 + 1) - promien;
+            for (int dy = -3; dy <= 3; dy++) {
+                Block podstawa = centrum.getRelative(dx, dy, dz);
+                Block powietrze1 = podstawa.getRelative(0, 1, 0);
+                Block powietrze2 = podstawa.getRelative(0, 2, 0);
+                if (podstawa.getType().isSolid() && powietrze1.getType().isAir() && powietrze2.getType().isAir()) {
+                    return powietrze1.getLocation().add(0.5, 0, 0.5);
+                }
+            }
+        }
+        return null;
+    }
+
+    // ---- TytulService: tytuł na czacie za ukończenie questu 10 (patrz komentarz w interfejsie) ----
+
+    /**
+     * {@inheritDoc} Zero osobnej persystencji - to bezpośrednio ta sama flaga co ukończenie
+     * questu 10 ("Egzamin Początkującego") w quests.yml. mainplugins-ranks (RankManager.onChat)
+     * dokleja to PRZED własnym tagiem rangi, zamiast rejestrować drugi, konkurencyjny renderer.
+     */
+    @Override
+    public Component tytulGracza(UUID uuid) {
+        Map<String, Set<Integer>> kategorie = postepyGraczy.get(uuid);
+        if (kategorie == null) return null;
+        Set<Integer> glownaSciezka = kategorie.get(KATEGORIA_GLOWNA_SCIEZKA);
+        if (glownaSciezka == null || !glownaSciezka.contains(10)) return null;
+        return Component.text("[Początkujący] ", NamedTextColor.GRAY, TextDecoration.BOLD);
     }
 }

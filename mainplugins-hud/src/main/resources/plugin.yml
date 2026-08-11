@@ -3,8 +3,16 @@ version: ${project.version}
 main: elo.mainplugins.hud.MainpluginsHUD
 api-version: '1.20'
 depend: [MainpluginsCore]
+softdepend: [PlaceholderAPI]
+loadbefore: [TAB]
 
-# Scoreboard i tablista działają w pełni automatycznie (PlayerJoinEvent +
-# zadanie cykliczne) - nie potrzebują żadnej komendy. Oryginalne plugin.yml
-# deklarowało tu "tab", ale nigdzie nie było podpiętego handlera - usunięte
-# jako martwa konfiguracja.
+# Ten modul juz nie renderuje wlasnego Taba (patrz historia - wlasny resourcepack/font
+# byl zbyt kruchy: format paczki, hosting, przepelnienie tekstu). Zamiast tego wystawia
+# dane Skyblocka jako placeholdery %mainplugins_...% (patrz MainpluginsPlaceholders) do
+# uzycia w pluginie TAB (NEZNAMY) - to on odpowiada za wyglad/wyrownanie Taba.
+#
+# loadbefore: [TAB] jest KRYTYCZNE - TAB przy wlasnym starcie raz skanuje, ktore
+# placeholdery PlaceholderAPI istnieja ("X placeholder hook(s) registered!" w logu).
+# Bez tego HUD (a wiec i ekspansja "mainplugins") wlaczal sie PO TAB, wiec TAB widzial
+# "0 placeholder hook(s) registered!" i traktowal %mainplugins_...% jak martwe -
+# stad puste kolumny w layoucie mimo poprawnego configu.

@@ -64,6 +64,7 @@ public class LevelableToolsManager implements Listener, ToolsService {
         player.getInventory().addItem(stworzNarzedzie(player, "axe", 0));
         player.getInventory().addItem(stworzNarzedzie(player, "sword", 0));
         player.getInventory().addItem(stworzNarzedzie(player, "hoe", 0));
+        player.getInventory().addItem(stworzNarzedzie(player, "shovel", 0));
         player.sendMessage(Component.text("Otrzymałeś startowe narzędzia przypisane do Twojej duszy!", NamedTextColor.GREEN, TextDecoration.BOLD));
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
     }
@@ -76,7 +77,7 @@ public class LevelableToolsManager implements Listener, ToolsService {
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
     }
 
-    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Timberman". */
+    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Drwal i Siewca". */
     @Override
     public void dajEwoluujacaSiekiere(Player player) {
         player.getInventory().addItem(stworzNarzedzie(player, "axe", 0));
@@ -84,7 +85,7 @@ public class LevelableToolsManager implements Listener, ToolsService {
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
     }
 
-    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Farmimy dalej". */
+    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Rolniczy Krok". */
     @Override
     public void dajEwoluujacaMotyke(Player player) {
         player.getInventory().addItem(stworzNarzedzie(player, "hoe", 0));
@@ -92,11 +93,23 @@ public class LevelableToolsManager implements Listener, ToolsService {
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
     }
 
-    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Pierwsza Krew". */
+    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Fundusz Obronny". */
     @Override
     public void dajEwoluujacyMiecz(Player player) {
         player.getInventory().addItem(stworzNarzedzie(player, "sword", 0));
         player.sendMessage(Component.text("Otrzymałeś swój pierwszy, ewoluujący miecz!", NamedTextColor.GREEN, TextDecoration.BOLD));
+        player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
+    }
+
+    /**
+     * {@inheritDoc} Piąte narzędzie, przywrócone do gry (patrz javadoc w ToolsService) -
+     * działa DOKŁADNIE tak jak pozostałe cztery (ta sama progresja tierów/poziomów przez
+     * stworzNarzedzie/dodajExp), bez żadnej specjalnej flagi silk touch.
+     */
+    @Override
+    public void dajEwoluujacaLopate(Player player) {
+        player.getInventory().addItem(stworzNarzedzie(player, "shovel", 0));
+        player.sendMessage(Component.text("Otrzymałeś swoją pierwszą, ewoluującą łopatę!", NamedTextColor.GREEN, TextDecoration.BOLD));
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
     }
 
@@ -270,6 +283,7 @@ public class LevelableToolsManager implements Listener, ToolsService {
             case "axe" -> "Ewoluująca Siekiera";
             case "sword" -> "Ewoluujący Miecz";
             case "hoe" -> "Ewoluująca Motyka";
+            case "shovel" -> "Ewoluująca Łopata";
             default -> "Narzędzie";
         };
 
@@ -313,15 +327,15 @@ public class LevelableToolsManager implements Listener, ToolsService {
 
     private Material pobierzMaterial(String type, int tier) {
         if (tier == 0) {
-            return switch(type) { case "pickaxe" -> Material.WOODEN_PICKAXE; case "axe" -> Material.WOODEN_AXE; case "sword" -> Material.WOODEN_SWORD; case "hoe" -> Material.WOODEN_HOE; default -> Material.STICK; };
+            return switch(type) { case "pickaxe" -> Material.WOODEN_PICKAXE; case "axe" -> Material.WOODEN_AXE; case "sword" -> Material.WOODEN_SWORD; case "hoe" -> Material.WOODEN_HOE; case "shovel" -> Material.WOODEN_SHOVEL; default -> Material.STICK; };
         } else if (tier == 1) {
-            return switch(type) { case "pickaxe" -> Material.STONE_PICKAXE; case "axe" -> Material.STONE_AXE; case "sword" -> Material.STONE_SWORD; case "hoe" -> Material.STONE_HOE; default -> Material.STICK; };
+            return switch(type) { case "pickaxe" -> Material.STONE_PICKAXE; case "axe" -> Material.STONE_AXE; case "sword" -> Material.STONE_SWORD; case "hoe" -> Material.STONE_HOE; case "shovel" -> Material.STONE_SHOVEL; default -> Material.STICK; };
         } else if (tier == 2) {
-            return switch(type) { case "pickaxe" -> Material.IRON_PICKAXE; case "axe" -> Material.IRON_AXE; case "sword" -> Material.IRON_SWORD; case "hoe" -> Material.IRON_HOE; default -> Material.STICK; };
+            return switch(type) { case "pickaxe" -> Material.IRON_PICKAXE; case "axe" -> Material.IRON_AXE; case "sword" -> Material.IRON_SWORD; case "hoe" -> Material.IRON_HOE; case "shovel" -> Material.IRON_SHOVEL; default -> Material.STICK; };
         } else if (tier == 3) {
-            return switch(type) { case "pickaxe" -> Material.DIAMOND_PICKAXE; case "axe" -> Material.DIAMOND_AXE; case "sword" -> Material.DIAMOND_SWORD; case "hoe" -> Material.DIAMOND_HOE; default -> Material.STICK; };
+            return switch(type) { case "pickaxe" -> Material.DIAMOND_PICKAXE; case "axe" -> Material.DIAMOND_AXE; case "sword" -> Material.DIAMOND_SWORD; case "hoe" -> Material.DIAMOND_HOE; case "shovel" -> Material.DIAMOND_SHOVEL; default -> Material.STICK; };
         } else {
-            return switch(type) { case "pickaxe" -> Material.NETHERITE_PICKAXE; case "axe" -> Material.NETHERITE_AXE; case "sword" -> Material.NETHERITE_SWORD; case "hoe" -> Material.NETHERITE_HOE; default -> Material.STICK; };
+            return switch(type) { case "pickaxe" -> Material.NETHERITE_PICKAXE; case "axe" -> Material.NETHERITE_AXE; case "sword" -> Material.NETHERITE_SWORD; case "hoe" -> Material.NETHERITE_HOE; case "shovel" -> Material.NETHERITE_SHOVEL; default -> Material.STICK; };
         }
     }
 
@@ -347,4 +361,3 @@ public class LevelableToolsManager implements Listener, ToolsService {
         }
     }
 }
-//sperma z byka

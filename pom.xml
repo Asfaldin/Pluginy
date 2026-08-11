@@ -64,6 +64,11 @@
             <id>enginehub-maven</id>
             <url>https://maven.enginehub.org/repo/</url>
         </repository>
+        <!-- Repozytorium PlaceholderAPI (tylko moduł mainplugins-hud) -->
+        <repository>
+            <id>placeholderapi</id>
+            <url>https://repo.extendedclip.com/releases/</url>
+        </repository>
     </repositories>
 
     <!-- Wersje wspólne dla wszystkich modułów - każdy moduł deklaruje tylko groupId/artifactId -->

@@ -21,4 +21,13 @@ public final class CustomItemKeys {
 
     /** Wartość: nazwa enuma SpawnerType - ustawiana na encji przy spawnie, żeby rozpoznać ją przy śmierci (np. custom dropy). */
     public static final NamespacedKey SPAWNER_MOB_SOURCE = new NamespacedKey("mainplugins", "spawner-mob-source");
+
+    /**
+     * Wartość: boolean. Własny odpowiednik wanilijskiego Silk Touch, NIEZALEŻNY od
+     * prawdziwego enczantu - narzędzie z tą flagą (na start: ewoluująca łopata, patrz
+     * LevelableToolsManager) potrafi zebrać CAŁY custom-blok (np. generator kruchych
+     * surowców z mainplugins-quests) zamiast jego zwykłego dropu, bez dotykania
+     * wanilijskiego systemu enczantów.
+     */
+    public static final NamespacedKey SPECJALNY_SILK_TOUCH = new NamespacedKey("mainplugins", "specjalny-silk-touch");
 }

@@ -308,7 +308,10 @@ public class ShopManager implements Listener {
                         NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
             }
             if (sellPrice >= 0) {
-                lore.add(Component.text("PPM — sprzedaj cały stack (po " + sellAmount + " szt.)",
+                String opisPpm = KATEGORIA_POJEDYNCZE.equals(catKey)
+                        ? "PPM — sprzedaj dowolną ilość"
+                        : "PPM — sprzedaj cały stack (po " + sellAmount + " szt.)";
+                lore.add(Component.text(opisPpm,
                         NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
                 lore.add(Component.text("Shift+PPM — sprzedaj cały ekwipunek",
                         NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
@@ -569,8 +572,11 @@ public class ShopManager implements Listener {
         return item;
     }
 
-    /** Ile sztuk idzie w jednej transakcji skupu i ile sklep za taki lot płaci. */
-    private record OfertaSkupu(int lot, int cenaZaLot) {}
+    /** Ile sztuk idzie w jednej transakcji skupu, ile sklep za taki lot płaci i z jakiej jest kategorii. */
+    private record OfertaSkupu(int lot, int cenaZaLot, String kategoria) {}
+
+    /** Jedyna kategoria, w której sprzedaje się pojedyncze sztuki zamiast pełnych lotów. */
+    private static final String KATEGORIA_POJEDYNCZE = "mineraly";
 
     /** Skąd sprzedajLoty() ma brać sprzedawane sztuki. */
     private enum TrybSkupu { REKA, JEDEN_STOS, CALY_EKWIPUNEK }
@@ -608,7 +614,7 @@ public class ShopManager implements Listener {
                 // sell-amount to lot skupu; gdy go nie ma, spada na amount (lot kupna)
                 int lot = sklepConfig.getInt(path + "sell-amount",
                           sklepConfig.getInt(path + "amount", 1));
-                if (lot > 0) return new OfertaSkupu(lot, cena);
+                if (lot > 0) return new OfertaSkupu(lot, cena, catKey);
             }
         }
         return null;
@@ -666,16 +672,42 @@ public class ShopManager implements Listener {
             case REKA -> pasujeDoOferty(inv.getItemInMainHand(), material, customId) ? inv.getItemInMainHand().getAmount() : 0;
         };
 
-        int loty = posiadane / oferta.lot();
-        if (loty == 0) {
-            player.sendMessage(Component.text(
-                    "Sklep skupuje ten przedmiot po " + oferta.lot() + " szt. — masz " + posiadane + ".",
-                    NamedTextColor.RED));
+        if (posiadane == 0) {
+            player.sendMessage(Component.text("Nie masz nic do sprzedania!", NamedTextColor.RED));
             return;
         }
 
-        int doZabrania = loty * oferta.lot();
-        long zarobek = (long) loty * oferta.cenaZaLot();
+        boolean pojedynczo = KATEGORIA_POJEDYNCZE.equals(oferta.kategoria());
+
+        int doZabrania;
+        long zarobek;
+
+        if (pojedynczo) {
+            // Rudy i Minerały: sprzedaje się WSZYSTKO co gracz ma (w danym trybie),
+            // bez wymogu pełnego lotu. Cena zawsze w dół (floor): floor(a) + floor(b)
+            // nigdy nie przekracza floor(a+b), więc rozbijanie sprzedaży na małe
+            // partie nie daje żadnej przewagi - najwyżej gracz straci ułamek.
+            doZabrania = posiadane;
+            zarobek = (long) Math.floor((double) posiadane * oferta.cenaZaLot() / oferta.lot());
+        } else {
+            // Reszta sklepu: wyłącznie pełne loty, jak dotąd.
+            int loty = posiadane / oferta.lot();
+            if (loty == 0) {
+                player.sendMessage(Component.text(
+                        "Sklep skupuje ten przedmiot po " + oferta.lot() + " szt. — masz " + posiadane + ".",
+                        NamedTextColor.RED));
+                return;
+            }
+            doZabrania = loty * oferta.lot();
+            zarobek = (long) loty * oferta.cenaZaLot();
+        }
+
+        if (zarobek <= 0) {
+            player.sendMessage(Component.text(
+                    "Za tak małą ilość sklep nic by Ci nie zapłacił — sprzedaj więcej naraz.",
+                    NamedTextColor.RED));
+            return;
+        }
 
         if (tryb == TrybSkupu.REKA) {
             ItemStack wRece = inv.getItemInMainHand();

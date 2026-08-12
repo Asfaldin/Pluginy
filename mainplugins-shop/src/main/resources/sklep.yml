@@ -1,11 +1,12 @@
 # =========================================================================
-# sklep.yml v26 — Mineraly: Muszla Lodzika usunieta, Glina bez skupu.
-# Skup podniesiony x2 ponizej ceny diamentu/szmaragdu, x1.5 od nich w gore.
+# sklep.yml v29 — poprawka trzech pozycji, gdzie skup przekraczal kupno:
+# Krzemien kupno 30/szt skup 20/szt, Wegiel kupno 50/szt, Sztabka Miedzi
+# kupno 70/szt.
 # UWAGA: spawnery i ryby dziela ten sam Material - rozroznia je custom-id.
 # =========================================================================
 
 sklep-v2-zaladowany: true
-sklep-v26-tryby: true
+sklep-v29-tryby: true
 
 categories:
   bloki:
@@ -1129,122 +1130,122 @@ categories:
         material: BONE_MEAL
         slot: 0
         display-name: "Mączka Kostna"
-        amount: 16
-        buy-price: 3200
+        amount: 64
+        buy-price: 1000
         sell-amount: 1
         sell-price: 4
       1:
-        material: RESIN_CLUMP
+        material: CLAY_BALL
         slot: 1
-        display-name: "Gruda Żywicy"
-        amount: 4
-        buy-price: 3600
+        display-name: "Glina"
+        amount: 64
+        buy-price: 1600
+      2:
+        material: FLINT
+        slot: 2
+        display-name: "Krzemień"
+        amount: 64
+        buy-price: 1920
         sell-amount: 1
         sell-price: 20
-      2:
-        material: CLAY_BALL
-        slot: 2
-        display-name: "Glina"
-        amount: 1
-        buy-price: 1400
       3:
-        material: FLINT
+        material: COAL
         slot: 3
-        display-name: "Krzemień"
-        amount: 1
-        buy-price: 1800
+        display-name: "Węgiel"
+        amount: 64
+        buy-price: 3200
         sell-amount: 1
         sell-price: 40
       4:
-        material: COAL
-        slot: 4
-        display-name: "Węgiel"
-        amount: 1
-        buy-price: 1800
-        sell-amount: 1
-        sell-price: 40
-      5:
-        material: GLOWSTONE_DUST
-        slot: 5
-        display-name: "Jasnopył"
-        amount: 1
-        buy-price: 2200
-      6:
         material: COPPER_INGOT
-        slot: 6
+        slot: 4
         display-name: "Sztabka Miedzi"
-        amount: 1
-        buy-price: 2300
+        amount: 64
+        buy-price: 4480
         sell-amount: 1
         sell-price: 50
-      7:
+      5:
         material: LAPIS_LAZULI
-        slot: 7
+        slot: 5
         display-name: "Lazuryt"
-        amount: 1
-        buy-price: 2700
+        amount: 16
+        buy-price: 1120
         sell-amount: 1
         sell-price: 60
-      8:
-        material: IRON_INGOT
-        slot: 8
-        display-name: "Sztabka Żelaza"
-        amount: 1
-        buy-price: 2700
-        sell-amount: 1
-        sell-price: 60
-      9:
-        material: REDSTONE
-        slot: 9
-        display-name: "Redstone"
-        amount: 1
-        buy-price: 3200
-        sell-amount: 1
-        sell-price: 70
-      10:
+      6:
         material: GOLD_INGOT
-        slot: 10
+        slot: 6
         display-name: "Sztabka Złota"
-        amount: 1
-        buy-price: 4200
+        amount: 4
+        buy-price: 600
         sell-amount: 1
         sell-price: 120
-      11:
-        material: TURTLE_SCUTE
-        slot: 11
-        display-name: "Tarczka Żółwia"
-        amount: 1
-        buy-price: 5500
-      12:
-        material: AMETHYST_SHARD
-        slot: 12
-        display-name: "Odłamek Ametystu"
-        amount: 1
-        buy-price: 6300
+      7:
+        material: REDSTONE
+        slot: 7
+        display-name: "Redstone"
+        amount: 16
+        buy-price: 2720
         sell-amount: 1
-        sell-price: 180
-      13:
+        sell-price: 70
+      8:
+        material: RESIN_CLUMP
+        slot: 8
+        display-name: "Gruda Żywicy"
+        amount: 16
+        buy-price: 3200
+        sell-amount: 1
+        sell-price: 18
+      9:
+        material: IRON_INGOT
+        slot: 9
+        display-name: "Sztabka Żelaza"
+        amount: 16
+        buy-price: 4350
+        sell-amount: 1
+        sell-price: 60
+      10:
+        material: GLOWSTONE_DUST
+        slot: 10
+        display-name: "Jasnopył"
+        amount: 4
+        buy-price: 1600
+      11:
         material: PRISMARINE_SHARD
-        slot: 13
+        slot: 11
         display-name: "Odłamek Pryzmarynu"
-        amount: 1
-        buy-price: 7700
+        amount: 4
+        buy-price: 3375
         sell-amount: 1
         sell-price: 220
-      14:
+      12:
+        material: TURTLE_SCUTE
+        slot: 12
+        display-name: "Tarczka Żółwia"
+        amount: 4
+        buy-price: 4000
+      13:
         material: PRISMARINE_CRYSTALS
-        slot: 14
+        slot: 13
         display-name: "Kryształy Pryzmarynu"
-        amount: 1
-        buy-price: 9100
+        amount: 4
+        buy-price: 4219
         sell-amount: 1
         sell-price: 260
+      14:
+        material: AMETHYST_SHARD
+        slot: 14
+        display-name: "Odłamek Ametystu"
+        amount: 1
+        buy-price: 1336
+        sell-amount: 1
+        sell-price: 180
       15:
         material: QUARTZ
         slot: 15
         display-name: "Kwarc"
         amount: 1
-        buy-price: 15600
+        buy-price: 2023
         sell-amount: 1
         sell-price: 520
       16:
@@ -1252,25 +1253,25 @@ categories:
         slot: 16
         display-name: "Szmaragd"
         amount: 1
-        buy-price: 19500
+        buy-price: 4539
         sell-amount: 1
-        sell-price: 650
+        sell-price: 645
       17:
         material: DIAMOND
         slot: 17
         display-name: "Diament"
         amount: 1
-        buy-price: 19500
+        buy-price: 4539
         sell-amount: 1
-        sell-price: 650
+        sell-price: 645
       18:
         material: NETHERITE_SCRAP
         slot: 18
         display-name: "Złom Netherytu"
         amount: 1
-        buy-price: 60000
+        buy-price: 37500
         sell-amount: 1
-        sell-price: 2000
+        sell-price: 1950
 
   moby:
     name: "Dropy z Mobów"

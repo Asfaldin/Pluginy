@@ -151,7 +151,7 @@ public class ShopManager implements Listener {
      * dawniej w jednym sklep.yml, sprzed rozbicia na osobne pliki.
      */
     private static final String[] KOLEJNOSC_KATEGORII = {
-            "bloki", "roslinki", "drewno", "mineraly", "moby", "mechanizmy",
+            "bloki", "roslinki", "drewno", "mineraly", "moby",
             "narzedzia", "jedzenie", "dekoracje", "specjalne", "spawnery", "ryby_wedkarskie"
     };
 

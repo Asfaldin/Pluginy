@@ -1,6 +1,6 @@
-name: "Narzędzia i Przybory"
+name: "Narzędzia i Mechanizmy"
 icon: FISHING_ROD
-slot: 16
+slot: 15
 items:
   0:
     material: GRINDSTONE
@@ -200,3 +200,51 @@ items:
     display-name: "Kozi Róg"
     amount: 1
     buy-price: 25000
+  33:
+    material: DROPPER
+    slot: 33
+    display-name: "Dozownik"
+    amount: 16
+    buy-price: 7680
+  34:
+    material: DISPENSER
+    slot: 34
+    display-name: "Podajnik"
+    amount: 16
+    buy-price: 9760
+  35:
+    material: SCULK_SENSOR
+    slot: 35
+    display-name: "Sculkowy Czujnik"
+    amount: 1
+    buy-price: 800
+  36:
+    material: PISTON
+    slot: 36
+    display-name: "Tłok"
+    amount: 16
+    buy-price: 17600
+  37:
+    material: OBSERVER
+    slot: 37
+    display-name: "Obserwator"
+    amount: 4
+    buy-price: 19600
+  38:
+    material: REPEATER
+    slot: 38
+    display-name: "Przekaźnik"
+    amount: 16
+    buy-price: 19200
+  39:
+    material: COMPARATOR
+    slot: 39
+    display-name: "Komparator"
+    amount: 1
+    buy-price: 5200
+  40:
+    material: HOPPER
+    slot: 40
+    display-name: "Lejek"
+    amount: 4
+    buy-price: 11600

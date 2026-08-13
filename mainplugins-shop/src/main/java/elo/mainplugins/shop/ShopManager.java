@@ -70,8 +70,37 @@ public class ShopManager implements Listener {
      * do czasu, aż gracz je zamknie i otworzy ponownie).
      */
     public void przeladujKonfiguracje() {
-        sklepConfig = YamlConfiguration.loadConfiguration(sklepFile);
+        sklepConfig = wczytajSklepZFolderow();
         ostrzezZaNieCalkowiteCeny();
+    }
+
+    /**
+     * Wczytuje sklep.yml (ustawienia globalne, jeśli jakieś zostały) i dokleja
+     * do niego zawartość każdego pliku z categories/ pod "categories.<nazwa>".
+     * Brakujący folder categories/ nie jest błędem — po prostu nie ma kategorii.
+     */
+    private YamlConfiguration wczytajSklepZFolderow() {
+        File plikGlowny = new File(plugin.getDataFolder(), "sklep.yml");
+        YamlConfiguration cfg = YamlConfiguration.loadConfiguration(plikGlowny);
+
+        File folderKategorii = new File(plugin.getDataFolder(), "categories");
+        File[] pliki = folderKategorii.listFiles((dir, name) -> name.endsWith(".yml"));
+        if (pliki == null) {
+            plugin.getLogger().warning("Brak folderu categories/ — sklep będzie pusty.");
+            return cfg;
+        }
+
+        for (File plik : pliki) {
+            String klucz = plik.getName().substring(0, plik.getName().length() - 4); // bez ".yml"
+            YamlConfiguration kat = YamlConfiguration.loadConfiguration(plik);
+
+            // getValues(true) daje płaską mapę ze wszystkimi zagnieżdżeniami —
+            // createSection ją odtwarza jako pełną strukturę sekcji.
+            cfg.createSection("categories." + klucz, kat.getValues(true));
+        }
+
+        plugin.getLogger().info("Wczytano " + pliki.length + " kategorii z categories/.");
+        return cfg;
     }
 
     private void stworzLubWczytajPlikSklepu() {
@@ -82,7 +111,17 @@ public class ShopManager implements Listener {
             // nie nadpisujemy - ewentualne ręczne zmiany admina zostają nietknięte.
             plugin.saveResource("sklep.yml", false);
         }
-        sklepConfig = YamlConfiguration.loadConfiguration(sklepFile);
+
+        File folderKategorii = new File(plugin.getDataFolder(), "categories");
+        if (!folderKategorii.exists()) {
+            folderKategorii.mkdirs();
+            // Jeśli w src/main/resources/categories/ leżą domyślne pliki,
+            // skopiuj je tu przez saveResource("categories/" + nazwa + ".yml", false)
+            // dla każdej znanej kategorii. W innym wypadku administrator sam
+            // wrzuca pliki .yml do tego folderu.
+        }
+
+        sklepConfig = wczytajSklepZFolderow();
         ostrzezZaNieCalkowiteCeny();
     }
 

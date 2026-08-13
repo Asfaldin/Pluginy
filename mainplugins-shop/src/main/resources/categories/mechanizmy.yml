@@ -1,0 +1,166 @@
+name: "Mechanizmy"
+icon: REPEATER
+slot: 15
+items:
+  0:
+    material: STONE_BUTTON
+    slot: 0
+    display-name: "Kamienny Przycisk"
+    amount: 64
+    buy-price: 1920
+  1:
+    material: LEVER
+    slot: 1
+    display-name: "Dźwignia"
+    amount: 64
+    buy-price: 1920
+  2:
+    material: STONE_PRESSURE_PLATE
+    slot: 2
+    display-name: "Kamienna Płyta Naciskowa"
+    amount: 64
+    buy-price: 3840
+  3:
+    material: RAIL
+    slot: 3
+    display-name: "Tory"
+    amount: 64
+    buy-price: 13440
+  4:
+    material: REDSTONE_TORCH
+    slot: 4
+    display-name: "Pochodnia Redstone"
+    amount: 16
+    buy-price: 5600
+  5:
+    material: POWERED_RAIL
+    slot: 5
+    display-name: "Tory Zasilane"
+    amount: 16
+    buy-price: 5760
+  6:
+    material: NOTE_BLOCK
+    slot: 6
+    display-name: "Blok Dźwiękowy"
+    amount: 16
+    buy-price: 7520
+  7:
+    material: DROPPER
+    slot: 7
+    display-name: "Dozownik"
+    amount: 16
+    buy-price: 7680
+  8:
+    material: TRIPWIRE_HOOK
+    slot: 8
+    display-name: "Hak"
+    amount: 16
+    buy-price: 9120
+  9:
+    material: ACTIVATOR_RAIL
+    slot: 9
+    display-name: "Tory Aktywujące"
+    amount: 16
+    buy-price: 9760
+  10:
+    material: DISPENSER
+    slot: 10
+    display-name: "Podajnik"
+    amount: 16
+    buy-price: 9760
+  11:
+    material: DETECTOR_RAIL
+    slot: 11
+    display-name: "Tory z Czujnikiem"
+    amount: 16
+    buy-price: 9920
+  12:
+    material: HONEY_BLOCK
+    slot: 12
+    display-name: "Blok Miodu"
+    amount: 16
+    buy-price: 12000
+  13:
+    material: SCULK_SENSOR
+    slot: 13
+    display-name: "Sculkowy Czujnik"
+    amount: 1
+    buy-price: 800
+  14:
+    material: SCULK_SHRIEKER
+    slot: 14
+    display-name: "Sculkowe Wrzeszczadło"
+    amount: 1
+    buy-price: 1000
+  15:
+    material: PISTON
+    slot: 15
+    display-name: "Tłok"
+    amount: 16
+    buy-price: 17600
+  16:
+    material: REPEATER
+    slot: 16
+    display-name: "Przekaźnik"
+    amount: 16
+    buy-price: 19200
+  17:
+    material: STICKY_PISTON
+    slot: 17
+    display-name: "Lepki Tłok"
+    amount: 16
+    buy-price: 19200
+  18:
+    material: SLIME_BLOCK
+    slot: 18
+    display-name: "Blok Szlamu"
+    amount: 16
+    buy-price: 19200
+  19:
+    material: CALIBRATED_SCULK_SENSOR
+    slot: 19
+    display-name: "Skalibrowany Sculkowy Czujnik"
+    amount: 1
+    buy-price: 1500
+  20:
+    material: TARGET
+    slot: 20
+    display-name: "Blok Docelowy"
+    amount: 4
+    buy-price: 7600
+  21:
+    material: MINECART
+    slot: 21
+    display-name: "Wagonik"
+    amount: 4
+    buy-price: 11200
+  22:
+    material: HOPPER
+    slot: 22
+    display-name: "Lejek"
+    amount: 4
+    buy-price: 11600
+  23:
+    material: REDSTONE_LAMP
+    slot: 23
+    display-name: "Lampa Redstone"
+    amount: 4
+    buy-price: 18400
+  24:
+    material: OBSERVER
+    slot: 24
+    display-name: "Obserwator"
+    amount: 4
+    buy-price: 19600
+  25:
+    material: COMPARATOR
+    slot: 25
+    display-name: "Komparator"
+    amount: 1
+    buy-price: 5200
+  26:
+    material: DAYLIGHT_DETECTOR
+    slot: 26
+    display-name: "Czujnik Światła"
+    amount: 1
+    buy-price: 13000

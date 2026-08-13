@@ -1,0 +1,184 @@
+name: "Jedzenie"
+icon: COOKED_CHICKEN
+slot: 20
+items:
+  0:
+    material: MUTTON
+    slot: 0
+    display-name: "Surowa Baranina"
+    amount: 64
+    buy-price: 1100
+    sell-amount: 64
+    sell-price: 270
+  1:
+    material: RABBIT
+    slot: 1
+    display-name: "Surowy Królik"
+    amount: 64
+    buy-price: 1300
+    sell-amount: 64
+    sell-price: 320
+  2:
+    material: DRIED_KELP
+    slot: 2
+    display-name: "Suszone Wodorosty"
+    amount: 64
+    buy-price: 1300
+  3:
+    material: BEEF
+    slot: 3
+    display-name: "Surowa Wołowina"
+    amount: 64
+    buy-price: 1600
+    sell-amount: 64
+    sell-price: 400
+  4:
+    material: PORKCHOP
+    slot: 4
+    display-name: "Surowa Wieprzowina"
+    amount: 64
+    buy-price: 1600
+    sell-amount: 64
+    sell-price: 400
+  5:
+    material: CHICKEN
+    slot: 5
+    display-name: "Surowy Kurczak"
+    amount: 64
+    buy-price: 1800
+    sell-amount: 64
+    sell-price: 460
+  6:
+    material: COOKIE
+    slot: 6
+    display-name: "Ciastko"
+    amount: 64
+    buy-price: 1900
+    sell-amount: 64
+    sell-price: 480
+  7:
+    material: BAKED_POTATO
+    slot: 7
+    display-name: "Pieczony Ziemniak"
+    amount: 16
+    buy-price: 640
+    sell-amount: 64
+    sell-price: 640
+  8:
+    material: COOKED_CHICKEN
+    slot: 8
+    display-name: "Pieczony Kurczak"
+    amount: 16
+    buy-price: 960
+    sell-amount: 64
+    sell-price: 960
+  9:
+    material: BREAD
+    slot: 9
+    display-name: "Chleb"
+    amount: 16
+    buy-price: 960
+    sell-amount: 64
+    sell-price: 960
+  10:
+    material: CHORUS_FRUIT
+    slot: 10
+    display-name: "Owoc Chorusa"
+    amount: 16
+    buy-price: 1000
+  11:
+    material: COOKED_MUTTON
+    slot: 11
+    display-name: "Pieczona Baranina"
+    amount: 16
+    buy-price: 1100
+    sell-amount: 64
+    sell-price: 1100
+  12:
+    material: COOKED_RABBIT
+    slot: 12
+    display-name: "Pieczony Królik"
+    amount: 16
+    buy-price: 1100
+    sell-amount: 64
+    sell-price: 1100
+  13:
+    material: COOKED_BEEF
+    slot: 13
+    display-name: "Stek"
+    amount: 16
+    buy-price: 1300
+    sell-amount: 64
+    sell-price: 1300
+  14:
+    material: COOKED_PORKCHOP
+    slot: 14
+    display-name: "Pieczona Wieprzowina"
+    amount: 16
+    buy-price: 1300
+    sell-amount: 64
+    sell-price: 1300
+  15:
+    material: APPLE
+    slot: 15
+    display-name: "Jabłko"
+    amount: 16
+    buy-price: 1600
+    sell-amount: 64
+    sell-price: 1600
+  16:
+    material: MUSHROOM_STEW
+    slot: 16
+    display-name: "Zupa Grzybowa"
+    amount: 1
+    buy-price: 100
+    sell-amount: 64
+    sell-price: 1600
+  17:
+    material: BEETROOT_SOUP
+    slot: 17
+    display-name: "Barszcz"
+    amount: 1
+    buy-price: 100
+    sell-amount: 64
+    sell-price: 1600
+  18:
+    material: PUMPKIN_PIE
+    slot: 18
+    display-name: "Tarta Dyniowa"
+    amount: 16
+    buy-price: 2400
+    sell-amount: 64
+    sell-price: 2400
+  19:
+    material: HONEY_BOTTLE
+    slot: 19
+    display-name: "Butelka Miodu"
+    amount: 16
+    buy-price: 2400
+  20:
+    material: RABBIT_STEW
+    slot: 20
+    display-name: "Gulasz z Królika"
+    amount: 1
+    buy-price: 200
+    sell-amount: 64
+    sell-price: 3200
+  21:
+    material: SUSPICIOUS_STEW
+    slot: 21
+    display-name: "Podejrzana Zupa"
+    amount: 1
+    buy-price: 300
+  22:
+    material: CAKE
+    slot: 22
+    display-name: "Ciasto"
+    amount: 1
+    buy-price: 400
+  23:
+    material: GOLDEN_APPLE
+    slot: 23
+    display-name: "Złote Jabłko"
+    amount: 1
+    buy-price: 3000

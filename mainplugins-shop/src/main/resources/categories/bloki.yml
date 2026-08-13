@@ -1,0 +1,362 @@
+name: "Bloki"
+icon: GRASS_BLOCK
+slot: 10
+items:
+  0:
+    material: COARSE_DIRT
+    slot: 0
+    display-name: "Zbita Ziemia"
+    amount: 64
+    buy-price: 640
+  1:
+    material: SNOW_BLOCK
+    slot: 1
+    display-name: "Blok Śniegu"
+    amount: 64
+    buy-price: 640
+  2:
+    material: MUD
+    slot: 2
+    display-name: "Błoto"
+    amount: 64
+    buy-price: 640
+  3:
+    material: COBBLESTONE
+    slot: 3
+    display-name: "Bruk"
+    amount: 64
+    buy-price: 640
+    sell-amount: 64
+    sell-price: 50
+  4:
+    material: DIRT
+    slot: 4
+    display-name: "Ziemia"
+    amount: 64
+    buy-price: 640
+    sell-amount: 64
+    sell-price: 60
+  5:
+    material: STONE
+    slot: 5
+    display-name: "Kamień"
+    amount: 64
+    buy-price: 960
+    sell-amount: 64
+    sell-price: 70
+  6:
+    material: GRANITE
+    slot: 6
+    display-name: "Granit"
+    amount: 64
+    buy-price: 1600
+  7:
+    material: DIORITE
+    slot: 7
+    display-name: "Dioryt"
+    amount: 64
+    buy-price: 1600
+  8:
+    material: ANDESITE
+    slot: 8
+    display-name: "Andezyt"
+    amount: 64
+    buy-price: 1600
+  9:
+    material: COBBLED_DEEPSLATE
+    slot: 9
+    display-name: "Bruk Głębinowy"
+    amount: 64
+    buy-price: 1792
+  10:
+    material: SMOOTH_STONE
+    slot: 10
+    display-name: "Gładki Kamień"
+    amount: 64
+    buy-price: 1920
+  11:
+    material: STONE_BRICKS
+    slot: 11
+    display-name: "Kamienne Cegły"
+    amount: 64
+    buy-price: 1920
+  12:
+    material: ROOTED_DIRT
+    slot: 12
+    display-name: "Ziemia z Korzeniami"
+    amount: 64
+    buy-price: 2240
+  13:
+    material: NETHERRACK
+    slot: 13
+    display-name: "Netherrack"
+    amount: 64
+    buy-price: 2240
+    sell-amount: 64
+    sell-price: 25
+  14:
+    material: DRIPSTONE_BLOCK
+    slot: 14
+    display-name: "Blok Nacieku"
+    amount: 16
+    buy-price: 640
+  15:
+    material: TUFF
+    slot: 15
+    display-name: "Tuf"
+    amount: 16
+    buy-price: 640
+  16:
+    material: END_STONE
+    slot: 16
+    display-name: "Kamień Endu"
+    amount: 16
+    buy-price: 720
+  17:
+    material: NETHER_BRICKS
+    slot: 17
+    display-name: "Netherowe Cegły"
+    amount: 16
+    buy-price: 720
+  18:
+    material: SULFUR
+    slot: 18
+    display-name: "Siarka"
+    amount: 16
+    buy-price: 720
+  19:
+    material: MANGROVE_ROOTS
+    slot: 19
+    display-name: "Namorzynowe Korzenie"
+    amount: 16
+    buy-price: 720
+  20:
+    material: DEEPSLATE
+    slot: 20
+    display-name: "Łupek Głębinowy"
+    amount: 16
+    buy-price: 720
+  21:
+    material: BASALT
+    slot: 21
+    display-name: "Bazalt"
+    amount: 16
+    buy-price: 720
+  22:
+    material: PODZOL
+    slot: 22
+    display-name: "Bielica"
+    amount: 16
+    buy-price: 720
+  23:
+    material: MOSS_BLOCK
+    slot: 23
+    display-name: "Blok Mchu"
+    amount: 16
+    buy-price: 720
+  24:
+    material: GRASS_BLOCK
+    slot: 24
+    display-name: "Blok Trawy"
+    amount: 16
+    buy-price: 720
+  25:
+    material: CALCITE
+    slot: 25
+    display-name: "Kalcyt"
+    amount: 16
+    buy-price: 720
+  26:
+    material: ICE
+    slot: 26
+    display-name: "Lód"
+    amount: 16
+    buy-price: 800
+  27:
+    material: CINNABAR
+    slot: 27
+    display-name: "Cynober"
+    amount: 16
+    buy-price: 800
+  28:
+    material: MUDDY_MANGROVE_ROOTS
+    slot: 28
+    display-name: "Zabłocone Namorzynowe Korzenie"
+    amount: 16
+    buy-price: 800
+  29:
+    material: BLACKSTONE
+    slot: 29
+    display-name: "Czarny Kamień"
+    amount: 16
+    buy-price: 800
+  30:
+    material: MYCELIUM
+    slot: 30
+    display-name: "Grzybnia"
+    amount: 16
+    buy-price: 800
+  31:
+    material: GRAVEL
+    slot: 31
+    display-name: "Żwir"
+    amount: 16
+    buy-price: 800
+    sell-amount: 64
+    sell-price: 110
+  32:
+    material: TERRACOTTA
+    slot: 32
+    display-name: "Terakota"
+    amount: 16
+    buy-price: 880
+  33:
+    material: SOUL_SAND
+    slot: 33
+    display-name: "Piasek Dusz"
+    amount: 16
+    buy-price: 880
+    sell-amount: 64
+    sell-price: 40
+  34:
+    material: SOUL_SOIL
+    slot: 34
+    display-name: "Gleba Dusz"
+    amount: 16
+    buy-price: 880
+  35:
+    material: PALE_MOSS_BLOCK
+    slot: 35
+    display-name: "Blok Bladego Mchu"
+    amount: 16
+    buy-price: 880
+  36:
+    material: SMOOTH_BASALT
+    slot: 36
+    display-name: "Gładki Bazalt"
+    amount: 16
+    buy-price: 880
+  37:
+    material: SAND
+    slot: 37
+    display-name: "Piasek"
+    amount: 16
+    buy-price: 960
+    sell-amount: 64
+    sell-price: 110
+  38:
+    material: BRICKS
+    slot: 38
+    display-name: "Cegły"
+    amount: 16
+    buy-price: 960
+  39:
+    material: MAGMA_BLOCK
+    slot: 39
+    display-name: "Blok Magmy"
+    amount: 16
+    buy-price: 960
+  40:
+    material: PURPUR_BLOCK
+    slot: 40
+    display-name: "Blok Purpuru"
+    amount: 16
+    buy-price: 960
+  41:
+    material: QUARTZ_BLOCK
+    slot: 41
+    display-name: "Blok Kwarcu"
+    amount: 16
+    buy-price: 960
+  42:
+    material: NETHER_WART_BLOCK
+    slot: 42
+    display-name: "Blok Brodawki"
+    amount: 16
+    buy-price: 1120
+  43:
+    material: RED_SAND
+    slot: 43
+    display-name: "Czerwony Piasek"
+    amount: 16
+    buy-price: 1440
+  44:
+    material: CRIMSON_NYLIUM
+    slot: 44
+    display-name: "Szkarłatne Nylium"
+    amount: 16
+    buy-price: 1440
+  45:
+    material: WARPED_NYLIUM
+    slot: 45
+    display-name: "Spaczone Nylium"
+    amount: 16
+    buy-price: 1440
+  46:
+    material: PRISMARINE
+    slot: 46
+    display-name: "Pryzmaryn"
+    amount: 16
+    buy-price: 1440
+  47:
+    material: DARK_PRISMARINE
+    slot: 47
+    display-name: "Ciemny Pryzmaryn"
+    amount: 16
+    buy-price: 1600
+  48:
+    material: PACKED_ICE
+    slot: 48
+    display-name: "Zbity Lód"
+    amount: 4
+    buy-price: 400
+  49:
+    material: GLASS
+    slot: 49
+    display-name: "Szkło"
+    amount: 16
+    buy-price: 1760
+  50:
+    material: SHROOMLIGHT
+    slot: 50
+    display-name: "Grzyboświetlik"
+    amount: 16
+    buy-price: 1760
+  51:
+    material: WHITE_CONCRETE
+    slot: 51
+    display-name: "Biały Cement"
+    amount: 16
+    buy-price: 1920
+  52:
+    material: BLUE_ICE
+    slot: 52
+    display-name: "Błękitny Lód"
+    amount: 16
+    buy-price: 2400
+  53:
+    material: SEA_LANTERN
+    slot: 53
+    display-name: "Morska Latarnia"
+    amount: 4
+    buy-price: 720
+  54:
+    material: OBSIDIAN
+    slot: 54
+    display-name: "Obsydian"
+    amount: 4
+    buy-price: 800
+    sell-amount: 64
+    sell-price: 400
+  55:
+    material: SPONGE
+    slot: 55
+    display-name: "Gąbka"
+    amount: 4
+    buy-price: 1000
+  56:
+    material: CRYING_OBSIDIAN
+    slot: 56
+    display-name: "Płaczący Obsydian"
+    amount: 4
+    buy-price: 1200

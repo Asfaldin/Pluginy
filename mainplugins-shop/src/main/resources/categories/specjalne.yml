@@ -1,0 +1,41 @@
+name: "Itemy Specjalne"
+icon: NETHERITE_PICKAXE
+slot: 24
+items:
+  0:
+    material: SHULKER_SHELL
+    slot: 0
+    display-name: "Skorupa Shulkera"
+    amount: 1
+    buy-price: 7500
+  1:
+    material: ELYTRA
+    slot: 1
+    display-name: "Elytra"
+    amount: 1
+    buy-price: 75000
+  2:
+    material: SNIFFER_EGG
+    slot: 2
+    custom-id: SNIFFER_JAJKO
+    display-name: "Sniffer Farmera"
+    lore:
+      - "PPM na własnej wyspie stawia stacjonarnego"
+      - "Sniffera, który automatycznie zbiera i"
+      - "sadzi dojrzałe uprawy w pobliżu"
+      - "Zebrane plony trafiają do najbliższej skrzyni"
+      - "Maksymalnie 1 Sniffer na wyspę"
+    amount: 1
+    buy-price: 100000
+  3:
+    material: NETHERITE_PICKAXE
+    slot: 3
+    custom-id: NISZCZYCIEL
+    display-name: "Niszczyciel"
+    lore:
+      - "Kilof z ultra szybkim kopaniem (Haste X)"
+      - "PPM: niszczy 3x3 bloków naraz"
+      - "Zawsze dropi właściwy blok (jak Silk Touch)"
+      - "Służy tylko do kopania - nic więcej"
+    amount: 1
+    buy-price: 150000

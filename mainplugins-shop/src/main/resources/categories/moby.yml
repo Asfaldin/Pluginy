@@ -1,0 +1,212 @@
+name: "Dropy z Mobów"
+icon: BONE
+slot: 14
+items:
+  0:
+    material: ROTTEN_FLESH
+    slot: 0
+    display-name: "Zgniłe Mięso"
+    amount: 64
+    buy-price: 640
+    sell-amount: 64
+    sell-price: 160
+  1:
+    material: BONE
+    slot: 1
+    display-name: "Kość"
+    amount: 64
+    buy-price: 840
+    sell-amount: 64
+    sell-price: 210
+  2:
+    material: STRING
+    slot: 2
+    display-name: "Nić"
+    amount: 64
+    buy-price: 1100
+    sell-amount: 64
+    sell-price: 270
+  3:
+    material: WHITE_WOOL
+    slot: 3
+    display-name: "Biała Wełna"
+    amount: 64
+    buy-price: 1300
+    sell-amount: 64
+    sell-price: 320
+  4:
+    material: RABBIT_HIDE
+    slot: 4
+    display-name: "Królicza Skórka"
+    amount: 64
+    buy-price: 1300
+    sell-amount: 64
+    sell-price: 320
+  5:
+    material: ARROW
+    slot: 5
+    display-name: "Strzała"
+    amount: 64
+    buy-price: 1300
+    sell-amount: 64
+    sell-price: 320
+  6:
+    material: SPIDER_EYE
+    slot: 6
+    display-name: "Pajęcze Oko"
+    amount: 64
+    buy-price: 1600
+    sell-amount: 64
+    sell-price: 400
+  7:
+    material: GUNPOWDER
+    slot: 7
+    display-name: "Proch"
+    amount: 64
+    buy-price: 1600
+    sell-amount: 64
+    sell-price: 400
+  8:
+    material: FEATHER
+    slot: 8
+    display-name: "Pióro"
+    amount: 64
+    buy-price: 1600
+    sell-amount: 64
+    sell-price: 400
+  9:
+    material: GLOW_INK_SAC
+    slot: 9
+    display-name: "Świecący Woreczek"
+    amount: 64
+    buy-price: 1600
+    sell-amount: 64
+    sell-price: 400
+  10:
+    material: OCHRE_FROGLIGHT
+    slot: 10
+    display-name: "Ochrowa Żabia Lampa"
+    amount: 64
+    buy-price: 1600
+    sell-amount: 64
+    sell-price: 400
+  11:
+    material: VERDANT_FROGLIGHT
+    slot: 11
+    display-name: "Zielona Żabia Lampa"
+    amount: 64
+    buy-price: 1600
+    sell-amount: 64
+    sell-price: 400
+  12:
+    material: PEARLESCENT_FROGLIGHT
+    slot: 12
+    display-name: "Perłowa Żabia Lampa"
+    amount: 64
+    buy-price: 1600
+    sell-amount: 64
+    sell-price: 400
+  13:
+    material: LEATHER
+    slot: 13
+    display-name: "Skóra"
+    amount: 64
+    buy-price: 2100
+    sell-amount: 64
+    sell-price: 530
+  14:
+    material: EGG
+    slot: 14
+    display-name: "Jajko"
+    amount: 16
+    buy-price: 640
+    sell-amount: 16
+    sell-price: 160
+  15:
+    material: INK_SAC
+    slot: 15
+    display-name: "Woreczek Atramentu"
+    amount: 16
+    buy-price: 750
+    sell-amount: 64
+    sell-price: 750
+  16:
+    material: BREEZE_ROD
+    slot: 16
+    display-name: "Różdżka Powiewu"
+    amount: 16
+    buy-price: 800
+    sell-amount: 64
+    sell-price: 800
+  17:
+    material: SLIME_BALL
+    slot: 17
+    display-name: "Kula Szlamu"
+    amount: 16
+    buy-price: 1000
+    sell-amount: 64
+    sell-price: 1000
+  18:
+    material: MAGMA_CREAM
+    slot: 18
+    display-name: "Magmowy Krem"
+    amount: 4
+    buy-price: 750
+    sell-amount: 64
+    sell-price: 3000
+  19:
+    material: FROGSPAWN
+    slot: 19
+    display-name: "Żabi Skrzek"
+    amount: 4
+    buy-price: 800
+    sell-amount: 64
+    sell-price: 3200
+  20:
+    material: ARMADILLO_SCUTE
+    slot: 20
+    display-name: "Tarczka Pancernika"
+    amount: 4
+    buy-price: 1000
+    sell-amount: 64
+    sell-price: 4000
+  21:
+    material: BLAZE_ROD
+    slot: 21
+    display-name: "Różdżka Płomyka"
+    amount: 4
+    buy-price: 1000
+    sell-amount: 64
+    sell-price: 4000
+  22:
+    material: ENDER_PEARL
+    slot: 22
+    display-name: "Perła Endu"
+    amount: 4
+    buy-price: 1500
+    sell-amount: 16
+    sell-price: 1500
+  23:
+    material: PHANTOM_MEMBRANE
+    slot: 23
+    display-name: "Błona Fantoma"
+    amount: 4
+    buy-price: 1500
+    sell-amount: 64
+    sell-price: 6000
+  24:
+    material: RABBIT_FOOT
+    slot: 24
+    display-name: "Królicza Łapka"
+    amount: 4
+    buy-price: 2000
+    sell-amount: 64
+    sell-price: 8000
+  25:
+    material: GHAST_TEAR
+    slot: 25
+    display-name: "Łza Ghasta"
+    amount: 1
+    buy-price: 940
+    sell-amount: 64
+    sell-price: 15000

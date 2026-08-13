@@ -1,0 +1,202 @@
+name: "Narzędzia i Przybory"
+icon: FISHING_ROD
+slot: 16
+items:
+  0:
+    material: GRINDSTONE
+    slot: 0
+    display-name: "Szlifierka"
+    amount: 64
+    buy-price: 5120
+  1:
+    material: FISHING_ROD
+    slot: 1
+    display-name: "Wędka"
+    amount: 64
+    buy-price: 6080
+  2:
+    material: WIND_CHARGE
+    slot: 2
+    display-name: "Wietrzna Kula"
+    amount: 16
+    buy-price: 1600
+  3:
+    material: CARTOGRAPHY_TABLE
+    slot: 3
+    display-name: "Stół Kartograficzny"
+    amount: 64
+    buy-price: 6400
+  4:
+    material: COMPOSTER
+    slot: 4
+    display-name: "Kompostownik"
+    amount: 64
+    buy-price: 7680
+  5:
+    material: LEAD
+    slot: 5
+    display-name: "Smycz"
+    amount: 64
+    buy-price: 8960
+  6:
+    material: LOOM
+    slot: 6
+    display-name: "Krosno"
+    amount: 64
+    buy-price: 8960
+  7:
+    material: MILK_BUCKET
+    slot: 7
+    display-name: "Wiadro Mleka"
+    amount: 1
+    buy-price: 150
+  8:
+    material: WATER_BUCKET
+    slot: 8
+    display-name: "Wiadro Wody"
+    amount: 1
+    buy-price: 190
+  9:
+    material: BARREL
+    slot: 9
+    display-name: "Beczka"
+    amount: 64
+    buy-price: 14080
+  10:
+    material: BRUSH
+    slot: 10
+    display-name: "Pędzel"
+    amount: 1
+    buy-price: 300
+  11:
+    material: SMOKER
+    slot: 11
+    display-name: "Wędzarnia"
+    amount: 16
+    buy-price: 6400
+  12:
+    material: BUNDLE
+    slot: 12
+    display-name: "Sakwa"
+    amount: 1
+    buy-price: 500
+  13:
+    material: LEATHER_HORSE_ARMOR
+    slot: 13
+    display-name: "Skórzana Zbroja dla Konia"
+    amount: 1
+    buy-price: 500
+  14:
+    material: FLINT_AND_STEEL
+    slot: 14
+    display-name: "Krzesiwo"
+    amount: 16
+    buy-price: 9760
+  15:
+    material: STONECUTTER
+    slot: 15
+    display-name: "Przecinarka"
+    amount: 16
+    buy-price: 10240
+  16:
+    material: BOOKSHELF
+    slot: 16
+    display-name: "Regał na Książki"
+    amount: 16
+    buy-price: 13440
+  17:
+    material: LAVA_BUCKET
+    slot: 17
+    display-name: "Wiadro Lawy"
+    amount: 1
+    buy-price: 940
+  18:
+    material: SHEARS
+    slot: 18
+    display-name: "Nożyce"
+    amount: 16
+    buy-price: 17600
+  19:
+    material: SMITHING_TABLE
+    slot: 19
+    display-name: "Stół Kowalski"
+    amount: 16
+    buy-price: 19200
+  20:
+    material: SADDLE
+    slot: 20
+    display-name: "Siodło"
+    amount: 1
+    buy-price: 1500
+  21:
+    material: IRON_HORSE_ARMOR
+    slot: 21
+    display-name: "Żelazna Zbroja dla Konia"
+    amount: 1
+    buy-price: 1500
+  22:
+    material: CLOCK
+    slot: 22
+    display-name: "Zegar"
+    amount: 4
+    buy-price: 6400
+  23:
+    material: BUCKET
+    slot: 23
+    display-name: "Wiadro"
+    amount: 4
+    buy-price: 6800
+  24:
+    material: NAME_TAG
+    slot: 24
+    display-name: "Imienniczek"
+    amount: 1
+    buy-price: 2000
+  25:
+    material: GOLDEN_HORSE_ARMOR
+    slot: 25
+    display-name: "Złota Zbroja dla Konia"
+    amount: 1
+    buy-price: 2500
+  26:
+    material: COMPASS
+    slot: 26
+    display-name: "Kompas"
+    amount: 4
+    buy-price: 10400
+  27:
+    material: TURTLE_HELMET
+    slot: 27
+    display-name: "Hełm Żółwia"
+    amount: 1
+    buy-price: 3000
+  28:
+    material: BLAST_FURNACE
+    slot: 28
+    display-name: "Piec Hutniczy"
+    amount: 4
+    buy-price: 12400
+  29:
+    material: DIAMOND_HORSE_ARMOR
+    slot: 29
+    display-name: "Diamentowa Zbroja dla Konia"
+    amount: 1
+    buy-price: 6000
+  30:
+    material: ANVIL
+    slot: 30
+    display-name: "Kowadło"
+    amount: 1
+    buy-price: 17000
+  31:
+    material: ENCHANTING_TABLE
+    slot: 31
+    display-name: "Stół Zaklęć"
+    amount: 1
+    buy-price: 20000
+  32:
+    material: GOAT_HORN
+    slot: 32
+    display-name: "Kozi Róg"
+    amount: 1
+    buy-price: 25000

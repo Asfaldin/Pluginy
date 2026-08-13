@@ -1,0 +1,150 @@
+name: "Rudy i Minerały"
+icon: DIAMOND
+slot: 13
+items:
+  0:
+    material: BONE_MEAL
+    slot: 0
+    display-name: "Mączka Kostna"
+    amount: 64
+    buy-price: 1000
+    sell-amount: 1
+    sell-price: 4
+  1:
+    material: CLAY_BALL
+    slot: 1
+    display-name: "Glina"
+    amount: 64
+    buy-price: 1600
+  2:
+    material: FLINT
+    slot: 2
+    display-name: "Krzemień"
+    amount: 64
+    buy-price: 1920
+    sell-amount: 1
+    sell-price: 20
+  3:
+    material: COAL
+    slot: 3
+    display-name: "Węgiel"
+    amount: 64
+    buy-price: 3200
+    sell-amount: 1
+    sell-price: 40
+  4:
+    material: COPPER_INGOT
+    slot: 4
+    display-name: "Sztabka Miedzi"
+    amount: 64
+    buy-price: 4480
+    sell-amount: 1
+    sell-price: 50
+  5:
+    material: LAPIS_LAZULI
+    slot: 5
+    display-name: "Lazuryt"
+    amount: 16
+    buy-price: 1120
+    sell-amount: 1
+    sell-price: 60
+  6:
+    material: GOLD_INGOT
+    slot: 6
+    display-name: "Sztabka Złota"
+    amount: 4
+    buy-price: 600
+    sell-amount: 1
+    sell-price: 120
+  7:
+    material: REDSTONE
+    slot: 7
+    display-name: "Redstone"
+    amount: 16
+    buy-price: 2720
+    sell-amount: 1
+    sell-price: 70
+  8:
+    material: RESIN_CLUMP
+    slot: 8
+    display-name: "Gruda Żywicy"
+    amount: 16
+    buy-price: 3200
+    sell-amount: 1
+    sell-price: 18
+  9:
+    material: IRON_INGOT
+    slot: 9
+    display-name: "Sztabka Żelaza"
+    amount: 16
+    buy-price: 4350
+    sell-amount: 1
+    sell-price: 60
+  10:
+    material: GLOWSTONE_DUST
+    slot: 10
+    display-name: "Jasnopył"
+    amount: 4
+    buy-price: 1600
+  11:
+    material: PRISMARINE_SHARD
+    slot: 11
+    display-name: "Odłamek Pryzmarynu"
+    amount: 4
+    buy-price: 3375
+    sell-amount: 1
+    sell-price: 220
+  12:
+    material: TURTLE_SCUTE
+    slot: 12
+    display-name: "Tarczka Żółwia"
+    amount: 4
+    buy-price: 4000
+  13:
+    material: PRISMARINE_CRYSTALS
+    slot: 13
+    display-name: "Kryształy Pryzmarynu"
+    amount: 4
+    buy-price: 4219
+    sell-amount: 1
+    sell-price: 260
+  14:
+    material: AMETHYST_SHARD
+    slot: 14
+    display-name: "Odłamek Ametystu"
+    amount: 1
+    buy-price: 1336
+    sell-amount: 1
+    sell-price: 180
+  15:
+    material: QUARTZ
+    slot: 15
+    display-name: "Kwarc"
+    amount: 1
+    buy-price: 2023
+    sell-amount: 1
+    sell-price: 520
+  16:
+    material: EMERALD
+    slot: 16
+    display-name: "Szmaragd"
+    amount: 1
+    buy-price: 4539
+    sell-amount: 1
+    sell-price: 645
+  17:
+    material: DIAMOND
+    slot: 17
+    display-name: "Diament"
+    amount: 1
+    buy-price: 4539
+    sell-amount: 1
+    sell-price: 645
+  18:
+    material: NETHERITE_SCRAP
+    slot: 18
+    display-name: "Złom Netherytu"
+    amount: 1
+    buy-price: 37500
+    sell-amount: 1
+    sell-price: 1950

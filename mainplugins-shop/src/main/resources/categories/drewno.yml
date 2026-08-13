@@ -1,0 +1,180 @@
+name: "Drewno"
+icon: OAK_LOG
+slot: 12
+items:
+  0:
+    material: OAK_PLANKS
+    slot: 0
+    display-name: "Dębowe Deski"
+    amount: 64
+    buy-price: 512
+    sell-amount: 64
+    sell-price: 375
+  1:
+    material: BIRCH_PLANKS
+    slot: 1
+    display-name: "Brzozowe Deski"
+    amount: 64
+    buy-price: 512
+    sell-amount: 64
+    sell-price: 375
+  2:
+    material: CRIMSON_PLANKS
+    slot: 2
+    display-name: "Szkarłatne Deski"
+    amount: 64
+    buy-price: 576
+    sell-amount: 64
+    sell-price: 375
+  3:
+    material: WARPED_PLANKS
+    slot: 3
+    display-name: "Spaczone Deski"
+    amount: 64
+    buy-price: 576
+    sell-amount: 64
+    sell-price: 375
+  4:
+    material: JUNGLE_PLANKS
+    slot: 4
+    display-name: "Tropikalne Deski"
+    amount: 64
+    buy-price: 704
+    sell-amount: 64
+    sell-price: 375
+  5:
+    material: ACACIA_PLANKS
+    slot: 5
+    display-name: "Akacjowe Deski"
+    amount: 64
+    buy-price: 704
+    sell-amount: 64
+    sell-price: 375
+  6:
+    material: SPRUCE_PLANKS
+    slot: 6
+    display-name: "Świerkowe Deski"
+    amount: 64
+    buy-price: 768
+    sell-amount: 64
+    sell-price: 375
+  7:
+    material: DARK_OAK_PLANKS
+    slot: 7
+    display-name: "Ciemnodębowe Deski"
+    amount: 64
+    buy-price: 768
+    sell-amount: 64
+    sell-price: 375
+  8:
+    material: MANGROVE_PLANKS
+    slot: 8
+    display-name: "Namorzynowe Deski"
+    amount: 64
+    buy-price: 832
+    sell-amount: 64
+    sell-price: 375
+  9:
+    material: CHERRY_PLANKS
+    slot: 9
+    display-name: "Wiśniowe Deski"
+    amount: 64
+    buy-price: 832
+    sell-amount: 64
+    sell-price: 375
+  10:
+    material: PALE_OAK_PLANKS
+    slot: 10
+    display-name: "Bladodębowe Deski"
+    amount: 64
+    buy-price: 832
+    sell-amount: 64
+    sell-price: 375
+  11:
+    material: OAK_LOG
+    slot: 11
+    display-name: "Dębowy Pień"
+    amount: 64
+    buy-price: 1920
+    sell-amount: 64
+    sell-price: 1300
+  12:
+    material: BIRCH_LOG
+    slot: 12
+    display-name: "Brzozowy Pień"
+    amount: 64
+    buy-price: 1920
+    sell-amount: 64
+    sell-price: 1300
+  13:
+    material: CRIMSON_STEM
+    slot: 13
+    display-name: "Szkarłatny Trzon"
+    amount: 64
+    buy-price: 2240
+    sell-amount: 64
+    sell-price: 1500
+  14:
+    material: WARPED_STEM
+    slot: 14
+    display-name: "Spaczony Trzon"
+    amount: 64
+    buy-price: 2240
+    sell-amount: 64
+    sell-price: 1500
+  15:
+    material: JUNGLE_LOG
+    slot: 15
+    display-name: "Tropikalny Pień"
+    amount: 64
+    buy-price: 2560
+    sell-amount: 64
+    sell-price: 400
+  16:
+    material: ACACIA_LOG
+    slot: 16
+    display-name: "Akacjowy Pień"
+    amount: 64
+    buy-price: 2560
+    sell-amount: 64
+    sell-price: 1500
+  17:
+    material: SPRUCE_LOG
+    slot: 17
+    display-name: "Świerkowy Pień"
+    amount: 64
+    buy-price: 2880
+    sell-amount: 64
+    sell-price: 400
+  18:
+    material: DARK_OAK_LOG
+    slot: 18
+    display-name: "Ciemnodębowy Pień"
+    amount: 64
+    buy-price: 2880
+    sell-amount: 64
+    sell-price: 400
+  19:
+    material: CHERRY_LOG
+    slot: 19
+    display-name: "Wiśniowy Pień"
+    amount: 64
+    buy-price: 3200
+    sell-amount: 64
+    sell-price: 1500
+  20:
+    material: PALE_OAK_LOG
+    slot: 20
+    display-name: "Bladodębowy Pień"
+    amount: 64
+    buy-price: 3200
+    sell-amount: 64
+    sell-price: 1500
+  21:
+    material: MANGROVE_LOG
+    slot: 21
+    display-name: "Namorzynowy Pień"
+    amount: 64
+    buy-price: 22400
+    sell-amount: 64
+    sell-price: 1500

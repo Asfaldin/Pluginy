@@ -1,0 +1,564 @@
+name: "Rośliny"
+icon: POPPY
+slot: 11
+items:
+  0:
+    material: AZALEA
+    slot: 0
+    display-name: "Sadzonka Azalii"
+    amount: 64
+    buy-price: 320
+  1:
+    material: FLOWERING_AZALEA
+    slot: 1
+    display-name: "Kwitnąca Sadzonka Azalii"
+    amount: 64
+    buy-price: 320
+  2:
+    material: MANGROVE_PROPAGULE
+    slot: 2
+    display-name: "Kiełek Mangrowca"
+    amount: 64
+    buy-price: 320
+  3:
+    material: GLOW_BERRIES
+    slot: 3
+    display-name: "Świecące Jagody"
+    amount: 64
+    buy-price: 320
+  4:
+    material: TORCHFLOWER_SEEDS
+    slot: 4
+    display-name: "Nasiona Pochodnika"
+    amount: 64
+    buy-price: 770
+  5:
+    material: PITCHER_POD
+    slot: 5
+    display-name: "Strąk Dzbanecznika"
+    amount: 64
+    buy-price: 770
+  6:
+    material: WHEAT_SEEDS
+    slot: 6
+    display-name: "Nasiona Pszenicy"
+    amount: 64
+    buy-price: 1280
+    sell-amount: 64
+    sell-price: 10
+  7:
+    material: BEETROOT_SEEDS
+    slot: 7
+    display-name: "Nasiona Buraka"
+    amount: 64
+    buy-price: 1280
+    sell-amount: 64
+    sell-price: 10
+  8:
+    material: MELON_SEEDS
+    slot: 8
+    display-name: "Nasiona Arbuza"
+    amount: 64
+    buy-price: 1280
+    sell-amount: 64
+    sell-price: 10
+  9:
+    material: PUMPKIN_SEEDS
+    slot: 9
+    display-name: "Nasiona Dyni"
+    amount: 64
+    buy-price: 1280
+    sell-amount: 64
+    sell-price: 10
+  10:
+    material: BEETROOT
+    slot: 10
+    display-name: "Burak"
+    amount: 64
+    buy-price: 1500
+    sell-amount: 64
+    sell-price: 300
+  11:
+    material: MELON_SLICE
+    slot: 11
+    display-name: "Kawałek Arbuza"
+    amount: 64
+    buy-price: 1600
+    sell-amount: 64
+    sell-price: 300
+  12:
+    material: KELP
+    slot: 12
+    display-name: "Wodorosty"
+    amount: 16
+    buy-price: 400
+  13:
+    material: PUMPKIN
+    slot: 13
+    display-name: "Dynia"
+    amount: 64
+    buy-price: 1920
+    sell-amount: 64
+    sell-price: 500
+  14:
+    material: WHEAT
+    slot: 14
+    display-name: "Pszenica"
+    amount: 64
+    buy-price: 1920
+    sell-amount: 64
+    sell-price: 600
+  15:
+    material: POPPY
+    slot: 15
+    display-name: "Mak"
+    amount: 4
+    buy-price: 160
+  16:
+    material: DANDELION
+    slot: 16
+    display-name: "Mniszek"
+    amount: 4
+    buy-price: 160
+  17:
+    material: SEAGRASS
+    slot: 17
+    display-name: "Trawa Morska"
+    amount: 4
+    buy-price: 200
+  18:
+    material: BLUE_ORCHID
+    slot: 18
+    display-name: "Błękitna Orchidea"
+    amount: 4
+    buy-price: 240
+  19:
+    material: ALLIUM
+    slot: 19
+    display-name: "Czosnek Ozdobny"
+    amount: 4
+    buy-price: 240
+  20:
+    material: AZURE_BLUET
+    slot: 20
+    display-name: "Błękitek"
+    amount: 4
+    buy-price: 240
+  21:
+    material: OXEYE_DAISY
+    slot: 21
+    display-name: "Złocień"
+    amount: 4
+    buy-price: 240
+  22:
+    material: CORNFLOWER
+    slot: 22
+    display-name: "Chaber"
+    amount: 4
+    buy-price: 240
+  23:
+    material: LILY_OF_THE_VALLEY
+    slot: 23
+    display-name: "Konwalia"
+    amount: 4
+    buy-price: 240
+  24:
+    material: CRIMSON_ROOTS
+    slot: 24
+    display-name: "Netherowe Kiełki"
+    amount: 4
+    buy-price: 320
+  25:
+    material: SUNFLOWER
+    slot: 25
+    display-name: "Słonecznik"
+    amount: 4
+    buy-price: 320
+  26:
+    material: LILAC
+    slot: 26
+    display-name: "Bez"
+    amount: 4
+    buy-price: 320
+  27:
+    material: ROSE_BUSH
+    slot: 27
+    display-name: "Krzew Różany"
+    amount: 4
+    buy-price: 320
+  28:
+    material: PEONY
+    slot: 28
+    display-name: "Piwonia"
+    amount: 4
+    buy-price: 320
+  29:
+    material: VINE
+    slot: 29
+    display-name: "Pnącza"
+    amount: 4
+    buy-price: 320
+  30:
+    material: LEAF_LITTER
+    slot: 30
+    display-name: "Ściółka"
+    amount: 4
+    buy-price: 320
+  31:
+    material: HANGING_ROOTS
+    slot: 31
+    display-name: "Zwisające Korzenie"
+    amount: 4
+    buy-price: 320
+  32:
+    material: WARPED_ROOTS
+    slot: 32
+    display-name: "Spaczone Korzenie"
+    amount: 4
+    buy-price: 320
+  33:
+    material: CARROT
+    slot: 33
+    display-name: "Marchewka"
+    amount: 4
+    buy-price: 320
+    sell-amount: 64
+    sell-price: 600
+  34:
+    material: POTATO
+    slot: 34
+    display-name: "Ziemniak"
+    amount: 4
+    buy-price: 320
+    sell-amount: 64
+    sell-price: 600
+  35:
+    material: SUGAR_CANE
+    slot: 35
+    display-name: "Trzcina Cukrowa"
+    amount: 16
+    buy-price: 1600
+    sell-amount: 64
+    sell-price: 400
+  36:
+    material: CACTUS
+    slot: 36
+    display-name: "Kaktus"
+    amount: 16
+    buy-price: 1600
+    sell-amount: 64
+    sell-price: 400
+  37:
+    material: BAMBOO
+    slot: 37
+    display-name: "Bambus"
+    amount: 64
+    buy-price: 6400
+    sell-amount: 64
+    sell-price: 8
+  38:
+    material: SWEET_BERRIES
+    slot: 38
+    display-name: "Słodkie Jagody"
+    amount: 64
+    buy-price: 6400
+    sell-amount: 64
+    sell-price: 8
+  39:
+    material: WEEPING_VINES
+    slot: 39
+    display-name: "Iskrzyłodyga"
+    amount: 4
+    buy-price: 400
+  40:
+    material: TWISTING_VINES
+    slot: 40
+    display-name: "Krętołodyga"
+    amount: 4
+    buy-price: 400
+  41:
+    material: PALE_HANGING_MOSS
+    slot: 41
+    display-name: "Zwisający Blady Mech"
+    amount: 4
+    buy-price: 400
+  42:
+    material: PINK_PETALS
+    slot: 42
+    display-name: "Różowe Kwiatki"
+    amount: 4
+    buy-price: 400
+  43:
+    material: WILDFLOWERS
+    slot: 43
+    display-name: "Polne Kwiaty"
+    amount: 4
+    buy-price: 400
+  44:
+    material: SMALL_DRIPLEAF
+    slot: 44
+    display-name: "Mały Spadoliść"
+    amount: 4
+    buy-price: 400
+  45:
+    material: OAK_SAPLING
+    slot: 45
+    display-name: "Sadzonka Dębu"
+    amount: 64
+    buy-price: 9600
+    sell-amount: 64
+    sell-price: 10
+  46:
+    material: BIRCH_SAPLING
+    slot: 46
+    display-name: "Sadzonka Brzozy"
+    amount: 64
+    buy-price: 9600
+    sell-amount: 64
+    sell-price: 10
+  47:
+    material: CRIMSON_FUNGUS
+    slot: 47
+    display-name: "Karmazynowy Grzyb"
+    amount: 4
+    buy-price: 600
+  48:
+    material: WARPED_FUNGUS
+    slot: 48
+    display-name: "Spaczony Grzyb"
+    amount: 4
+    buy-price: 600
+  49:
+    material: SEA_PICKLE
+    slot: 49
+    display-name: "Krasnorosty"
+    amount: 4
+    buy-price: 600
+  50:
+    material: BIG_DRIPLEAF
+    slot: 50
+    display-name: "Wielki Spadoliść"
+    amount: 4
+    buy-price: 600
+  51:
+    material: GLOW_LICHEN
+    slot: 51
+    display-name: "Świecący Porost"
+    amount: 4
+    buy-price: 600
+  52:
+    material: COCOA_BEANS
+    slot: 52
+    display-name: "Ziarna Kakao"
+    amount: 1
+    buy-price: 190
+    sell-amount: 64
+    sell-price: 800
+  53:
+    material: CHORUS_FLOWER
+    slot: 53
+    display-name: "Kwiat Chorusa"
+    amount: 1
+    buy-price: 200
+  54:
+    material: TUBE_CORAL
+    slot: 54
+    display-name: "Koralowiec Rurkowy"
+    amount: 1
+    buy-price: 200
+  55:
+    material: BRAIN_CORAL
+    slot: 55
+    display-name: "Koralowiec Mózgowy"
+    amount: 1
+    buy-price: 200
+  56:
+    material: BUBBLE_CORAL
+    slot: 56
+    display-name: "Koralowiec Bąbelkowy"
+    amount: 1
+    buy-price: 200
+  57:
+    material: FIRE_CORAL
+    slot: 57
+    display-name: "Koralowiec Ognisty"
+    amount: 1
+    buy-price: 200
+  58:
+    material: HORN_CORAL
+    slot: 58
+    display-name: "Koralowiec Rogowy"
+    amount: 1
+    buy-price: 200
+  59:
+    material: CACTUS_FLOWER
+    slot: 59
+    display-name: "Kwiat Kaktusa"
+    amount: 1
+    buy-price: 200
+  60:
+    material: SPRUCE_SAPLING
+    slot: 60
+    display-name: "Sadzonka Świerku"
+    amount: 64
+    buy-price: 16000
+    sell-amount: 64
+    sell-price: 10
+  61:
+    material: JUNGLE_SAPLING
+    slot: 61
+    display-name: "Sadzonka Tropikalna"
+    amount: 64
+    buy-price: 16000
+    sell-amount: 64
+    sell-price: 10
+  62:
+    material: ACACIA_SAPLING
+    slot: 62
+    display-name: "Sadzonka Akacji"
+    amount: 64
+    buy-price: 16000
+    sell-amount: 64
+    sell-price: 10
+  63:
+    material: DARK_OAK_SAPLING
+    slot: 63
+    display-name: "Sadzonka Ciemnego Dębu"
+    amount: 64
+    buy-price: 16000
+    sell-amount: 64
+    sell-price: 10
+  64:
+    material: BROWN_MUSHROOM
+    slot: 64
+    display-name: "Brązowy Grzyb"
+    amount: 1
+    buy-price: 250
+    sell-amount: 64
+    sell-price: 400
+  65:
+    material: RED_MUSHROOM
+    slot: 65
+    display-name: "Czerwony Grzyb"
+    amount: 1
+    buy-price: 250
+    sell-amount: 64
+    sell-price: 400
+  66:
+    material: NETHER_WART
+    slot: 66
+    display-name: "Netherowa Brodawka"
+    amount: 1
+    buy-price: 250
+  67:
+    material: SPORE_BLOSSOM
+    slot: 67
+    display-name: "Zarodnia"
+    amount: 1
+    buy-price: 250
+  68:
+    material: TUBE_CORAL_FAN
+    slot: 68
+    display-name: "Wachlarz Koralowca Rurkowego"
+    amount: 1
+    buy-price: 250
+  69:
+    material: BRAIN_CORAL_FAN
+    slot: 69
+    display-name: "Wachlarz Koralowca Mózgowego"
+    amount: 1
+    buy-price: 250
+  70:
+    material: BUBBLE_CORAL_FAN
+    slot: 70
+    display-name: "Wachlarz Koralowca Bąbelkowego"
+    amount: 1
+    buy-price: 250
+  71:
+    material: FIRE_CORAL_FAN
+    slot: 71
+    display-name: "Wachlarz Koralowca Ognistego"
+    amount: 1
+    buy-price: 250
+  72:
+    material: HORN_CORAL_FAN
+    slot: 72
+    display-name: "Wachlarz Koralowca Rogowego"
+    amount: 1
+    buy-price: 250
+  73:
+    material: CLOSED_EYEBLOSSOM
+    slot: 73
+    display-name: "Zamknięta Okrotka"
+    amount: 1
+    buy-price: 250
+  74:
+    material: OPEN_EYEBLOSSOM
+    slot: 74
+    display-name: "Otwarta Okrotka"
+    amount: 1
+    buy-price: 250
+  75:
+    material: TORCHFLOWER
+    slot: 75
+    display-name: "Ognisty Kwiat"
+    amount: 1
+    buy-price: 300
+  76:
+    material: FIREFLY_BUSH
+    slot: 76
+    display-name: "Krzew Świetlików"
+    amount: 1
+    buy-price: 300
+  77:
+    material: CHERRY_SAPLING
+    slot: 77
+    display-name: "Sadzonka Wiśni"
+    amount: 64
+    buy-price: 22400
+    sell-amount: 64
+    sell-price: 10
+  78:
+    material: PALE_OAK_SAPLING
+    slot: 78
+    display-name: "Sadzonka Bladego Dębu"
+    amount: 64
+    buy-price: 22400
+    sell-amount: 64
+    sell-price: 10
+  79:
+    material: PITCHER_PLANT
+    slot: 79
+    display-name: "Dzbanecznik"
+    amount: 1
+    buy-price: 400
+  80:
+    material: TUBE_CORAL_BLOCK
+    slot: 80
+    display-name: "Blok Koralowca Rurkowego"
+    amount: 1
+    buy-price: 600
+  81:
+    material: BRAIN_CORAL_BLOCK
+    slot: 81
+    display-name: "Blok Koralowca Mózgowego"
+    amount: 1
+    buy-price: 600
+  82:
+    material: BUBBLE_CORAL_BLOCK
+    slot: 82
+    display-name: "Blok Koralowca Bąbelkowego"
+    amount: 1
+    buy-price: 600
+  83:
+    material: FIRE_CORAL_BLOCK
+    slot: 83
+    display-name: "Blok Koralowca Ognistego"
+    amount: 1
+    buy-price: 600
+  84:
+    material: HORN_CORAL_BLOCK
+    slot: 84
+    display-name: "Blok Koralowca Rogowego"
+    amount: 1
+    buy-price: 600

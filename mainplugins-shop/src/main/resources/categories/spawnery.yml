@@ -1,0 +1,39 @@
+name: "Spawnery"
+icon: SPAWNER
+slot: 23
+items:
+  0:
+    material: SPAWNER
+    slot: 0
+    custom-id: SHEEP
+    display-name: "Spawner: Owiec"
+    amount: 1
+    buy-price: 18750
+  1:
+    material: SPAWNER
+    slot: 1
+    custom-id: RABBIT
+    display-name: "Spawner: Królików"
+    amount: 1
+    buy-price: 28125
+  2:
+    material: SPAWNER
+    slot: 2
+    custom-id: GLOW_SQUID
+    display-name: "Spawner: Świetlistych Kałamarnic"
+    amount: 1
+    buy-price: 37500
+  3:
+    material: SPAWNER
+    slot: 3
+    custom-id: PIGLIN
+    display-name: "Spawner: Piglinów"
+    amount: 1
+    buy-price: 56250
+  4:
+    material: SPAWNER
+    slot: 4
+    custom-id: BREEZE
+    display-name: "Spawner: Breeze'ów"
+    amount: 1
+    buy-price: 100000

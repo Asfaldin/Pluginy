@@ -1,0 +1,108 @@
+name: "Ryby z Wedki"
+icon: TROPICAL_FISH
+slot: 21
+items:
+  0:
+    material: COD
+    slot: 0
+    custom-id: FISH_KARP_MIELIZNY
+    display-name: "Karp Mielizny"
+    lore:
+      - "Zwykla ryba z plytkich wod."
+    amount: 16
+    sell-amount: 16
+    sell-price: 300
+  1:
+    material: SALMON
+    slot: 1
+    custom-id: FISH_SREBRNY_LESZCZ
+    display-name: "Srebrny Leszcz"
+    lore:
+      - "Zwykla ryba, polyskuje w sloncu."
+    amount: 16
+    sell-amount: 16
+    sell-price: 400
+  2:
+    material: TROPICAL_FISH
+    slot: 2
+    custom-id: FISH_TECZOWY_SKRZELACZ
+    display-name: "Teczowy Skrzelacz"
+    lore:
+      - "Niezwykla, kolorowa ryba rafowa."
+    amount: 8
+    sell-amount: 8
+    sell-price: 500
+  3:
+    material: PUFFERFISH
+    slot: 3
+    custom-id: FISH_KOLCZASTY_NURKACZ
+    display-name: "Kolczasty Nurkacz"
+    lore:
+      - "Niezwykla ryba - lepiej jej nie dotykac."
+    amount: 8
+    sell-amount: 8
+    sell-price: 450
+  4:
+    material: TROPICAL_FISH
+    slot: 4
+    custom-id: FISH_SZMARAGDOWY_WEGORZ
+    display-name: "Szmaragdowy Wegorz"
+    lore:
+      - "Rzadki wegorz o szmaragdowej lusce."
+    amount: 4
+    sell-amount: 4
+    sell-price: 900
+  5:
+    material: COD
+    slot: 5
+    custom-id: FISH_MGLAWICOWY_SUM
+    display-name: "Mglawicowy Sum"
+    lore:
+      - "Rzadki sum - jakby wyplynal z mgly."
+    amount: 1
+    sell-amount: 1
+    sell-price: 600
+  6:
+    material: SALMON
+    slot: 6
+    custom-id: FISH_OBLOCZNY_LATAWIEC
+    display-name: "Obloczny Latawiec"
+    lore:
+      - "Rzadka ryba lowiona wylacznie w powietrzu,"
+      - "Niebianska Wedka lub lepsza."
+    amount: 4
+    sell-amount: 4
+    sell-price: 1400
+  7:
+    material: TROPICAL_FISH
+    slot: 7
+    custom-id: FISH_GWIEZDNY_PROMYK
+    display-name: "Gwiezdny Promyk"
+    lore:
+      - "Epicka ryba lowiona wylacznie w powietrzu,"
+      - "Niebianska Wedka lub lepsza."
+    amount: 1
+    sell-amount: 1
+    sell-price: 3000
+  8:
+    material: PUFFERFISH
+    slot: 8
+    custom-id: FISH_OTCHLANNY_LEWIATAN
+    display-name: "Otchlanny Lewiatan"
+    lore:
+      - "Legendarna ryba lowiona wylacznie w powietrzu,"
+      - "Niebianska Wedka lub lepsza."
+    amount: 1
+    sell-amount: 1
+    sell-price: 12000
+  9:
+    material: COD
+    slot: 9
+    custom-id: FISH_DARKSTAR_ISKRA
+    display-name: "Iskra Ciemnej Gwiazdy"
+    lore:
+      - "Legendarna, najrzadsza ryba w grze."
+      - "Lowiona wylacznie Wedka Kosmiczna DARKSTAR."
+    amount: 1
+    sell-amount: 1
+    sell-price: 50000

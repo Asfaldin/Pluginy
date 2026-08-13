@@ -27,12 +27,14 @@ import java.io.File;
 import java.util.*;
 
 /**
- * Cała treść sklepu (kategorie, ceny, ikonki, ilości) żyje w sklep.yml, edytowalnym
- * na żywo przez /reloadsklep - ta klasa tylko RENDERUJE tę konfigurację i obsługuje
- * kliknięcia. Sam plik jest generowany zewnętrznie (cennik) i dostarczany jako
- * domyślny zasób w resources/sklep.yml - przy pierwszym uruchomieniu (brak pliku
- * w data folderze) jest kopiowany 1:1 przez saveResource(); jeśli plik już istnieje
- * (admin coś zmienił / serwer już działał), nic w nim nie ruszamy.
+ * Cała treść sklepu (kategorie, ceny, ikonki, ilości) żyje w plikach categories/*.yml
+ * (jeden plik na kategorię, nazwa pliku = klucz kategorii) - sklep.yml trzyma już tylko
+ * globalne ustawienia. Ta klasa tylko RENDERUJE scaloną konfigurację (patrz
+ * wczytajSklepZFolderow()) i obsługuje kliknięcia; scalanie jest odświeżane na żywo
+ * przez /reloadsklep. Pliki kategorii są generowane zewnętrznie (cennik) i dostarczane
+ * jako domyślne zasoby w resources/categories/ - przy pierwszym uruchomieniu (brak
+ * folderu w data folderze) są kopiowane 1:1 przez saveResource(); jeśli folder już
+ * istnieje (admin coś zmienił / serwer już działał), nic w nim nie ruszamy.
  *
  * buy-price/sell-price są CAŁKOWITE (cena za cały lot: amount przy kupnie, sell-amount
  * przy sprzedaży) - patrz nagłówek resources/sklep.yml. Odczyt w tej klasie leci przez
@@ -115,15 +117,24 @@ public class ShopManager implements Listener {
         File folderKategorii = new File(plugin.getDataFolder(), "categories");
         if (!folderKategorii.exists()) {
             folderKategorii.mkdirs();
-            // Jeśli w src/main/resources/categories/ leżą domyślne pliki,
-            // skopiuj je tu przez saveResource("categories/" + nazwa + ".yml", false)
-            // dla każdej znanej kategorii. W innym wypadku administrator sam
-            // wrzuca pliki .yml do tego folderu.
+            // saveResource() kopiuje jeden plik na raz i nie umie wylistować całego
+            // folderu z jara - stąd jawna lista, tak samo jak przy innych domyślnych
+            // configach w tym projekcie (patrz BrukSurowceManager/ToolSkillManager).
+            // Nową kategorię trzeba dopisać tutaj I dodać jej plik do resources/categories/.
+            for (String nazwaKategorii : DOMYSLNE_KATEGORIE) {
+                plugin.saveResource("categories/" + nazwaKategorii + ".yml", false);
+            }
         }
 
         sklepConfig = wczytajSklepZFolderow();
         ostrzezZaNieCalkowiteCeny();
     }
+
+    /** Nazwy (bez ".yml") domyślnych plików kategorii dostarczanych w resources/categories/ - kopiowane 1:1 przy pierwszym starcie. */
+    private static final String[] DOMYSLNE_KATEGORIE = {
+            "bloki", "roslinki", "mineraly", "drewno", "moby", "mechanizmy",
+            "narzedzia", "jedzenie", "dekoracje", "spawnery", "specjalne", "ryby_wedkarskie"
+    };
 
     /**
      * buy-price/sell-price mają być liczbami całkowitymi (cena za cały lot) - odczyt

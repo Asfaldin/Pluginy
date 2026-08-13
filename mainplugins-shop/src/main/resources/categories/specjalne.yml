@@ -3,20 +3,32 @@ icon: NETHERITE_PICKAXE
 slot: 24
 items:
   0:
-    material: SHULKER_SHELL
+    material: ARMADILLO_SCUTE
     slot: 0
+    display-name: "Tarczka Pancernika"
+    amount: 1
+    buy-price: 5000
+  1:
+    material: SHULKER_SHELL
+    slot: 1
     display-name: "Skorupa Shulkera"
     amount: 1
     buy-price: 7500
-  1:
+  2:
+    material: FROGSPAWN
+    slot: 2
+    display-name: "Żabi Skrzek"
+    amount: 1
+    buy-price: 10000
+  3:
     material: ELYTRA
-    slot: 1
+    slot: 3
     display-name: "Elytra"
     amount: 1
     buy-price: 75000
-  2:
+  4:
     material: SNIFFER_EGG
-    slot: 2
+    slot: 4
     custom-id: SNIFFER_JAJKO
     display-name: "Sniffer Farmera"
     lore:
@@ -27,9 +39,9 @@ items:
       - "Maksymalnie 1 Sniffer na wyspę"
     amount: 1
     buy-price: 100000
-  3:
+  5:
     material: NETHERITE_PICKAXE
-    slot: 3
+    slot: 5
     custom-id: NISZCZYCIEL
     display-name: "Niszczyciel"
     lore:

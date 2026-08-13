@@ -15,7 +15,7 @@ items:
     slot: 1
     display-name: "Glina"
     amount: 1
-    buy-price: 25
+    buy-price: 20
   2:
     material: FLINT
     slot: 2

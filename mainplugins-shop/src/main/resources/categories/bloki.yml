@@ -354,3 +354,9 @@ items:
     display-name: "Płaczący Obsydian"
     amount: 4
     buy-price: 1200
+  56:
+    material: HONEY_BLOCK
+    slot: 56
+    display-name: "Blok Miodu"
+    amount: 16
+    buy-price: 12000

@@ -3,344 +3,344 @@ icon: PAINTING
 slot: 22
 items:
   0:
-    material: WHITE_GLAZED_TERRACOTTA
-    slot: 0
-    display-name: "Glazurowana Terakota Biały"
-    amount: 64
-    buy-price: 1000
-  1:
-    material: ORANGE_GLAZED_TERRACOTTA
-    slot: 1
-    display-name: "Glazurowana Terakota Pomarańczowy"
-    amount: 64
-    buy-price: 1000
-  2:
-    material: MAGENTA_GLAZED_TERRACOTTA
-    slot: 2
-    display-name: "Glazurowana Terakota Karmazynowy"
-    amount: 64
-    buy-price: 1000
-  3:
-    material: LIGHT_BLUE_GLAZED_TERRACOTTA
-    slot: 3
-    display-name: "Glazurowana Terakota Jasnoniebieski"
-    amount: 64
-    buy-price: 1000
-  4:
-    material: YELLOW_GLAZED_TERRACOTTA
-    slot: 4
-    display-name: "Glazurowana Terakota Żółty"
-    amount: 64
-    buy-price: 1000
-  5:
-    material: LIME_GLAZED_TERRACOTTA
-    slot: 5
-    display-name: "Glazurowana Terakota Jasnozielony"
-    amount: 64
-    buy-price: 1000
-  6:
-    material: PINK_GLAZED_TERRACOTTA
-    slot: 6
-    display-name: "Glazurowana Terakota Różowy"
-    amount: 64
-    buy-price: 1000
-  7:
-    material: GRAY_GLAZED_TERRACOTTA
-    slot: 7
-    display-name: "Glazurowana Terakota Szary"
-    amount: 64
-    buy-price: 1000
-  8:
-    material: LIGHT_GRAY_GLAZED_TERRACOTTA
-    slot: 8
-    display-name: "Glazurowana Terakota Jasnoszary"
-    amount: 64
-    buy-price: 1000
-  9:
-    material: CYAN_GLAZED_TERRACOTTA
-    slot: 9
-    display-name: "Glazurowana Terakota Turkusowy"
-    amount: 64
-    buy-price: 1000
-  10:
-    material: PURPLE_GLAZED_TERRACOTTA
-    slot: 10
-    display-name: "Glazurowana Terakota Fioletowy"
-    amount: 64
-    buy-price: 1000
-  11:
-    material: BLUE_GLAZED_TERRACOTTA
-    slot: 11
-    display-name: "Glazurowana Terakota Niebieski"
-    amount: 64
-    buy-price: 1000
-  12:
-    material: BROWN_GLAZED_TERRACOTTA
-    slot: 12
-    display-name: "Glazurowana Terakota Brązowy"
-    amount: 64
-    buy-price: 1000
-  13:
-    material: GREEN_GLAZED_TERRACOTTA
-    slot: 13
-    display-name: "Glazurowana Terakota Zielony"
-    amount: 64
-    buy-price: 1000
-  14:
-    material: RED_GLAZED_TERRACOTTA
-    slot: 14
-    display-name: "Glazurowana Terakota Czerwony"
-    amount: 64
-    buy-price: 1000
-  15:
-    material: BLACK_GLAZED_TERRACOTTA
-    slot: 15
-    display-name: "Glazurowana Terakota Czarny"
-    amount: 64
-    buy-price: 1000
-  16:
     material: WHITE_DYE
-    slot: 16
+    slot: 0
     display-name: "Barwnik Biały"
-    amount: 64
-    buy-price: 1600
-  17:
+    amount: 1
+    buy-price: 70
+  1:
     material: ORANGE_DYE
-    slot: 17
+    slot: 1
     display-name: "Barwnik Pomarańczowy"
-    amount: 64
-    buy-price: 1600
-  18:
+    amount: 1
+    buy-price: 70
+  2:
     material: MAGENTA_DYE
-    slot: 18
+    slot: 2
     display-name: "Barwnik Karmazynowy"
-    amount: 64
-    buy-price: 1600
-  19:
+    amount: 1
+    buy-price: 70
+  3:
     material: LIGHT_BLUE_DYE
-    slot: 19
+    slot: 3
     display-name: "Barwnik Jasnoniebieski"
-    amount: 64
-    buy-price: 1600
-  20:
+    amount: 1
+    buy-price: 70
+  4:
     material: YELLOW_DYE
-    slot: 20
+    slot: 4
     display-name: "Barwnik Żółty"
-    amount: 64
-    buy-price: 1600
-  21:
+    amount: 1
+    buy-price: 70
+  5:
     material: LIME_DYE
-    slot: 21
+    slot: 5
     display-name: "Barwnik Jasnozielony"
-    amount: 64
-    buy-price: 1600
-  22:
+    amount: 1
+    buy-price: 70
+  6:
     material: PINK_DYE
-    slot: 22
+    slot: 6
     display-name: "Barwnik Różowy"
-    amount: 64
-    buy-price: 1600
-  23:
+    amount: 1
+    buy-price: 70
+  7:
     material: GRAY_DYE
-    slot: 23
+    slot: 7
     display-name: "Barwnik Szary"
-    amount: 64
-    buy-price: 1600
-  24:
+    amount: 1
+    buy-price: 70
+  8:
     material: LIGHT_GRAY_DYE
-    slot: 24
+    slot: 8
     display-name: "Barwnik Jasnoszary"
-    amount: 64
-    buy-price: 1600
-  25:
+    amount: 1
+    buy-price: 70
+  9:
     material: CYAN_DYE
-    slot: 25
+    slot: 9
     display-name: "Barwnik Turkusowy"
-    amount: 64
-    buy-price: 1600
-  26:
+    amount: 1
+    buy-price: 70
+  10:
     material: PURPLE_DYE
-    slot: 26
+    slot: 10
     display-name: "Barwnik Fioletowy"
-    amount: 64
-    buy-price: 1600
-  27:
+    amount: 1
+    buy-price: 70
+  11:
     material: BLUE_DYE
-    slot: 27
+    slot: 11
     display-name: "Barwnik Niebieski"
-    amount: 64
-    buy-price: 1600
-  28:
+    amount: 1
+    buy-price: 70
+  12:
     material: BROWN_DYE
-    slot: 28
+    slot: 12
     display-name: "Barwnik Brązowy"
-    amount: 64
-    buy-price: 1600
-  29:
+    amount: 1
+    buy-price: 70
+  13:
     material: GREEN_DYE
-    slot: 29
+    slot: 13
     display-name: "Barwnik Zielony"
-    amount: 64
-    buy-price: 1600
-  30:
+    amount: 1
+    buy-price: 70
+  14:
     material: RED_DYE
-    slot: 30
+    slot: 14
     display-name: "Barwnik Czerwony"
-    amount: 64
-    buy-price: 1600
-  31:
+    amount: 1
+    buy-price: 70
+  15:
     material: BLACK_DYE
-    slot: 31
+    slot: 15
     display-name: "Barwnik Czarny"
-    amount: 64
-    buy-price: 1600
-  32:
-    material: TORCH
-    slot: 32
-    display-name: "Pochodnia"
-    amount: 64
-    buy-price: 1920
-  33:
-    material: OAK_SIGN
-    slot: 33
-    display-name: "Tabliczka"
-    amount: 64
-    buy-price: 2240
-  34:
-    material: POINTED_DRIPSTONE
-    slot: 34
-    display-name: "Spiczasty Naciek"
-    amount: 16
-    buy-price: 1600
-  35:
-    material: END_ROD
-    slot: 35
-    display-name: "Endowy Słupek"
-    amount: 64
-    buy-price: 6400
-  36:
+    amount: 1
+    buy-price: 70
+  16:
     material: PAINTING
-    slot: 36
+    slot: 16
     display-name: "Obraz"
-    amount: 64
-    buy-price: 7040
-  37:
-    material: ARMOR_STAND
-    slot: 37
-    display-name: "Stojak na Zbroję"
-    amount: 64
-    buy-price: 7040
-  38:
+    amount: 1
+    buy-price: 100
+  17:
     material: ITEM_FRAME
-    slot: 38
+    slot: 17
     display-name: "Ramka"
-    amount: 64
-    buy-price: 8320
-  39:
-    material: SULFUR_SPIKE
-    slot: 39
-    display-name: "Siarkowe Kolce"
-    amount: 16
-    buy-price: 2400
-  40:
-    material: GLOW_ITEM_FRAME
-    slot: 40
-    display-name: "Świecąca Ramka"
-    amount: 64
-    buy-price: 11520
-  41:
-    material: SCAFFOLDING
-    slot: 41
-    display-name: "Rusztowanie"
-    amount: 64
-    buy-price: 13440
-  42:
-    material: CANDLE
-    slot: 42
-    display-name: "Świeca"
-    amount: 64
-    buy-price: 15360
-  43:
-    material: SOUL_LANTERN
-    slot: 43
-    display-name: "Latarnia Dusz"
-    amount: 4
-    buy-price: 1000
-  44:
+    amount: 1
+    buy-price: 100
+  18:
     material: FLOWER_POT
-    slot: 44
+    slot: 18
     display-name: "Doniczka"
-    amount: 16
-    buy-price: 5760
-  45:
-    material: DECORATED_POT
-    slot: 45
-    display-name: "Dekorowany Garniec"
-    amount: 16
-    buy-price: 7680
-  46:
-    material: LANTERN
-    slot: 46
-    display-name: "Latarnia"
-    amount: 16
-    buy-price: 8480
-  47:
+    amount: 1
+    buy-price: 100
+  19:
+    material: WHITE_GLAZED_TERRACOTTA
+    slot: 19
+    display-name: "Glazurowana Terakota Biały"
+    amount: 1
+    buy-price: 120
+  20:
+    material: ORANGE_GLAZED_TERRACOTTA
+    slot: 20
+    display-name: "Glazurowana Terakota Pomarańczowy"
+    amount: 1
+    buy-price: 120
+  21:
+    material: MAGENTA_GLAZED_TERRACOTTA
+    slot: 21
+    display-name: "Glazurowana Terakota Karmazynowy"
+    amount: 1
+    buy-price: 120
+  22:
+    material: LIGHT_BLUE_GLAZED_TERRACOTTA
+    slot: 22
+    display-name: "Glazurowana Terakota Jasnoniebieski"
+    amount: 1
+    buy-price: 120
+  23:
+    material: YELLOW_GLAZED_TERRACOTTA
+    slot: 23
+    display-name: "Glazurowana Terakota Żółty"
+    amount: 1
+    buy-price: 120
+  24:
+    material: LIME_GLAZED_TERRACOTTA
+    slot: 24
+    display-name: "Glazurowana Terakota Jasnozielony"
+    amount: 1
+    buy-price: 120
+  25:
+    material: PINK_GLAZED_TERRACOTTA
+    slot: 25
+    display-name: "Glazurowana Terakota Różowy"
+    amount: 1
+    buy-price: 120
+  26:
+    material: GRAY_GLAZED_TERRACOTTA
+    slot: 26
+    display-name: "Glazurowana Terakota Szary"
+    amount: 1
+    buy-price: 120
+  27:
+    material: LIGHT_GRAY_GLAZED_TERRACOTTA
+    slot: 27
+    display-name: "Glazurowana Terakota Jasnoszary"
+    amount: 1
+    buy-price: 120
+  28:
+    material: CYAN_GLAZED_TERRACOTTA
+    slot: 28
+    display-name: "Glazurowana Terakota Turkusowy"
+    amount: 1
+    buy-price: 120
+  29:
+    material: PURPLE_GLAZED_TERRACOTTA
+    slot: 29
+    display-name: "Glazurowana Terakota Fioletowy"
+    amount: 1
+    buy-price: 120
+  30:
+    material: BLUE_GLAZED_TERRACOTTA
+    slot: 30
+    display-name: "Glazurowana Terakota Niebieski"
+    amount: 1
+    buy-price: 120
+  31:
+    material: BROWN_GLAZED_TERRACOTTA
+    slot: 31
+    display-name: "Glazurowana Terakota Brązowy"
+    amount: 1
+    buy-price: 120
+  32:
+    material: GREEN_GLAZED_TERRACOTTA
+    slot: 32
+    display-name: "Glazurowana Terakota Zielony"
+    amount: 1
+    buy-price: 120
+  33:
+    material: RED_GLAZED_TERRACOTTA
+    slot: 33
+    display-name: "Glazurowana Terakota Czerwony"
+    amount: 1
+    buy-price: 120
+  34:
+    material: BLACK_GLAZED_TERRACOTTA
+    slot: 34
+    display-name: "Glazurowana Terakota Czarny"
+    amount: 1
+    buy-price: 120
+  35:
+    material: ARMOR_STAND
+    slot: 35
+    display-name: "Stojak na Zbroję"
+    amount: 1
+    buy-price: 150
+  36:
+    material: SCAFFOLDING
+    slot: 36
+    display-name: "Rusztowanie"
+    amount: 1
+    buy-price: 150
+  37:
     material: IRON_CHAIN
-    slot: 47
+    slot: 37
     display-name: "Żelazny Łańcuch"
-    amount: 16
-    buy-price: 10720
+    amount: 1
+    buy-price: 160
+  38:
+    material: POINTED_DRIPSTONE
+    slot: 38
+    display-name: "Spiczasty Naciek"
+    amount: 1
+    buy-price: 200
+  39:
+    material: END_ROD
+    slot: 39
+    display-name: "Endowy Słupek"
+    amount: 1
+    buy-price: 200
+  40:
+    material: SULFUR_SPIKE
+    slot: 40
+    display-name: "Siarkowe Kolce"
+    amount: 1
+    buy-price: 200
+  41:
+    material: CANDLE
+    slot: 41
+    display-name: "Świeca"
+    amount: 1
+    buy-price: 200
+  42:
+    material: SOUL_LANTERN
+    slot: 42
+    display-name: "Latarnia Dusz"
+    amount: 1
+    buy-price: 250
+  43:
+    material: LANTERN
+    slot: 43
+    display-name: "Latarnia"
+    amount: 1
+    buy-price: 250
+  44:
+    material: DECORATED_POT
+    slot: 44
+    display-name: "Dekorowany Garniec"
+    amount: 1
+    buy-price: 400
+  45:
+    material: SCULK_SHRIEKER
+    slot: 45
+    display-name: "Sculkowe Wrzeszczadło"
+    amount: 1
+    buy-price: 1000
+  46:
+    material: PEARLESCENT_FROGLIGHT
+    slot: 46
+    display-name: "Perłowa Żabia Lampa"
+    amount: 1
+    buy-price: 1000
+  47:
+    material: VERDANT_FROGLIGHT
+    slot: 47
+    display-name: "Zielona Żabia Lampa"
+    amount: 1
+    buy-price: 1000
   48:
-    material: BELL
+    material: OCHRE_FROGLIGHT
     slot: 48
-    display-name: "Dzwon"
-    amount: 4
-    buy-price: 6800
+    display-name: "Ochrowa Żabia Lampa"
+    amount: 1
+    buy-price: 1000
   49:
-    material: SKELETON_SKULL
+    material: BELL
     slot: 49
-    display-name: "Czaszka Szkieleta"
+    display-name: "Dzwon"
     amount: 1
     buy-price: 2000
   50:
-    material: ZOMBIE_HEAD
+    material: SKELETON_SKULL
     slot: 50
+    display-name: "Czaszka Szkieleta"
+    amount: 1
+    buy-price: 3000
+  51:
+    material: ZOMBIE_HEAD
+    slot: 51
     display-name: "Głowa Zombie"
     amount: 1
-    buy-price: 2000
-  51:
-    material: CREEPER_HEAD
-    slot: 51
-    display-name: "Głowa Creepera"
-    amount: 1
-    buy-price: 2000
+    buy-price: 3000
   52:
-    material: PIGLIN_HEAD
+    material: CREEPER_HEAD
     slot: 52
-    display-name: "Głowa Piglina"
+    display-name: "Głowa Creepera"
     amount: 1
     buy-price: 3000
   53:
-    material: PLAYER_HEAD
+    material: PIGLIN_HEAD
     slot: 53
-    display-name: "Głowa Gracza"
+    display-name: "Głowa Piglina"
     amount: 1
     buy-price: 3000
   54:
-    material: WITHER_SKELETON_SKULL
+    material: PLAYER_HEAD
     slot: 54
+    display-name: "Głowa Gracza"
+    amount: 1
+    buy-price: 3000
+  55:
+    material: WITHER_SKELETON_SKULL
+    slot: 55
     display-name: "Czaszka Witherowego Szkieletu"
     amount: 1
-    buy-price: 12500
-  55:
+    buy-price: 3000
+  56:
     material: DRAGON_HEAD
-    slot: 55
+    slot: 56
     display-name: "Głowa Smoka"
     amount: 1
-    buy-price: 50000
-  56:
-    material: LODESTONE
-    slot: 56
-    display-name: "Magnetyt"
-    amount: 1
-    buy-price: 75500
+    buy-price: 5000

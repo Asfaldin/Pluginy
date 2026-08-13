@@ -92,6 +92,19 @@ public class ShopManager implements Listener {
             return cfg;
         }
 
+        // File.listFiles() NIE gwarantuje żadnej konkretnej kolejności (w praktyce leci
+        // porządek systemu plików, czyli zwykle alfabetyczny, a nie ten sprzed rozbicia
+        // na osobne pliki) - kolejność w menu głównym sklepu zależy 1:1 od kolejności
+        // wstawiania do configu, więc bez tego sortu kategorie tasowałyby się losowo
+        // między restartami/OS-ami. Sortujemy wg KOLEJNOSC_KATEGORII; pliki spoza tej
+        // listy (np. świeżo dodana kategoria, o której ktoś zapomniał tu dopisać) lądują
+        // na końcu w kolejności z dysku, zamiast znikać.
+        Arrays.sort(pliki, Comparator.comparingInt(plik -> {
+            String klucz = plik.getName().substring(0, plik.getName().length() - 4);
+            int idx = Arrays.asList(KOLEJNOSC_KATEGORII).indexOf(klucz);
+            return idx < 0 ? Integer.MAX_VALUE : idx;
+        }));
+
         for (File plik : pliki) {
             String klucz = plik.getName().substring(0, plik.getName().length() - 4); // bez ".yml"
             YamlConfiguration kat = YamlConfiguration.loadConfiguration(plik);
@@ -121,7 +134,7 @@ public class ShopManager implements Listener {
             // folderu z jara - stąd jawna lista, tak samo jak przy innych domyślnych
             // configach w tym projekcie (patrz BrukSurowceManager/ToolSkillManager).
             // Nową kategorię trzeba dopisać tutaj I dodać jej plik do resources/categories/.
-            for (String nazwaKategorii : DOMYSLNE_KATEGORIE) {
+            for (String nazwaKategorii : KOLEJNOSC_KATEGORII) {
                 plugin.saveResource("categories/" + nazwaKategorii + ".yml", false);
             }
         }
@@ -130,10 +143,16 @@ public class ShopManager implements Listener {
         ostrzezZaNieCalkowiteCeny();
     }
 
-    /** Nazwy (bez ".yml") domyślnych plików kategorii dostarczanych w resources/categories/ - kopiowane 1:1 przy pierwszym starcie. */
-    private static final String[] DOMYSLNE_KATEGORIE = {
-            "bloki", "roslinki", "mineraly", "drewno", "moby", "mechanizmy",
-            "narzedzia", "jedzenie", "dekoracje", "spawnery", "specjalne", "ryby_wedkarskie"
+    /**
+     * Nazwy (bez ".yml") domyślnych plików kategorii dostarczanych w resources/categories/ -
+     * jedna lista na dwa cele: (1) co skopiować na świeży serwer przy pierwszym starcie,
+     * (2) w jakiej kolejności poukładać kategorie w menu sklepu (patrz sort w
+     * wczytajSklepZFolderow()) - to ta sama kolejność, w jakiej kategorie siedziały
+     * dawniej w jednym sklep.yml, sprzed rozbicia na osobne pliki.
+     */
+    private static final String[] KOLEJNOSC_KATEGORII = {
+            "bloki", "roslinki", "drewno", "mineraly", "moby", "mechanizmy",
+            "narzedzia", "jedzenie", "dekoracje", "specjalne", "spawnery", "ryby_wedkarskie"
     };
 
     /**

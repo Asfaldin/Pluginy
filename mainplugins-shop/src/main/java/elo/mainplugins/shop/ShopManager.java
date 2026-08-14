@@ -17,6 +17,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -64,6 +65,22 @@ public class ShopManager implements Listener {
 
     private static final int SLOT_SZUKAJ = 4;
     private static final String TYTUL_WYNIKOW = "Wyniki: ";
+
+    /**
+     * Znacznik widoku kategorii — tytuł tego okna to teraz SAMA nazwa kategorii
+     * (bez prefiksu "Sklep: "), więc dopasowanie po tekście tytułu w onInventoryClick()
+     * kolidowałoby z dowolnym innym ekwipunkiem nazwanym tak samo jak któraś z
+     * kategorii (np. skrzynia czy kowadło). Próba obejścia tego niewidocznym
+     * znakiem Unicode w tytule zawiodła — Minecraft renderuje go jako widoczne
+     * kropki. Zamiast kolejnej sztuczki z tekstem: identyfikacja przez
+     * InventoryHolder, który w ogóle nie jest częścią tego, co widzi gracz.
+     */
+    private static final class KategoriaHolder implements InventoryHolder {
+        @Override
+        public Inventory getInventory() {
+            return null; // sam marker do instanceof w onInventoryClick - nikt tego nie wywoluje
+        }
+    }
 
     /** Do jakiej pozycji sklepu (klucz "kategoria:itemKey") odnosi się otwarty ekran wyboru ilości. */
     private final Map<UUID, String> otwartyWyborIlosci = new HashMap<>();
@@ -258,7 +275,7 @@ public class ShopManager implements Listener {
         playerCategory.remove(player.getUniqueId());
         playerPage.remove(player.getUniqueId());
 
-        Inventory gui = Bukkit.createInventory(null, 54, Component.text("Sklep Serwerowy", NamedTextColor.GOLD, TextDecoration.BOLD));
+        Inventory gui = Bukkit.createInventory(null, 54, Component.text("Sklep Serwerowy", NamedTextColor.DARK_BLUE, TextDecoration.BOLD));
         wypelnijTloSzare(gui);
 
         ItemStack lupa = new ItemStack(Material.OAK_SIGN);
@@ -343,11 +360,9 @@ public class ShopManager implements Listener {
         if (page >= totalPages) page = totalPages - 1;
         if (page < 0) page = 0;
 
-        Component guiTitle = (totalPages > 1)
-                ? Component.text("Sklep: " + catName + " (Str. " + (page + 1) + ")", NamedTextColor.DARK_GREEN, TextDecoration.BOLD)
-                : Component.text("Sklep: " + catName, NamedTextColor.DARK_GREEN, TextDecoration.BOLD);
+        Component guiTitle = Component.text(catName, NamedTextColor.DARK_GREEN, TextDecoration.BOLD);
 
-        Inventory gui = Bukkit.createInventory(null, 54, guiTitle);
+        Inventory gui = Bukkit.createInventory(new KategoriaHolder(), 54, guiTitle);
         wypelnijTloSzare(gui);
 
         int pageStart = page * SLOTY_SIATKI.length;
@@ -428,6 +443,8 @@ public class ShopManager implements Listener {
             ItemStack prev = new ItemStack(Material.SPECTRAL_ARROW);
             ItemMeta metaPrev = prev.getItemMeta();
             metaPrev.displayName(Component.text("« Poprzednia Strona", NamedTextColor.YELLOW, TextDecoration.BOLD));
+            metaPrev.lore(List.of(Component.text("Strona " + page + " / " + totalPages, NamedTextColor.GRAY)
+                    .decoration(TextDecoration.ITALIC, false)));
             prev.setItemMeta(metaPrev);
             gui.setItem(45, prev); // Strona do tyłu = Slot 45
         }
@@ -436,6 +453,8 @@ public class ShopManager implements Listener {
             ItemStack next = new ItemStack(Material.SPECTRAL_ARROW);
             ItemMeta metaNext = next.getItemMeta();
             metaNext.displayName(Component.text("Następna Strona »", NamedTextColor.YELLOW, TextDecoration.BOLD));
+            metaNext.lore(List.of(Component.text("Strona " + (page + 2) + " / " + totalPages, NamedTextColor.GRAY)
+                    .decoration(TextDecoration.ITALIC, false)));
             next.setItemMeta(metaNext);
             gui.setItem(53, next); // Strona do przodu = Slot 53
         }
@@ -1009,7 +1028,7 @@ public class ShopManager implements Listener {
         }
 
         // KLIKANIE W PODKATEGORIACH SKLEPU
-        if (title.contains("Sklep: ")) {
+        if (event.getView().getTopInventory().getHolder() instanceof KategoriaHolder) {
             event.setCancelled(true);
             if (!klikniecieWGui) return;
 

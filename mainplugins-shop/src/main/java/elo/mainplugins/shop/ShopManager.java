@@ -52,6 +52,19 @@ public class ShopManager implements Listener {
     private final Map<UUID, Integer> playerPage = new HashMap<>();
     private final Map<UUID, Boolean> otwartoZMenu = new HashMap<>();
 
+    /** false = po cenie kupna rosnąco (domyślne), true = po cenie skupu malejąco. */
+    private final Map<UUID, Boolean> sortowaniePoSkupie = new HashMap<>();
+
+    private static final int SLOT_SORTOWANIA = 4;
+
+    /** Gracze, którzy kliknęli lupę i mają wpisać frazę na czacie. */
+    private final Set<UUID> czekaNaFraze = new HashSet<>();
+    /** Ostatnie wyniki wyszukiwania per gracz — "katKey:itemKey" w kolejności GUI. */
+    private final Map<UUID, List<String>> wynikiSzukania = new HashMap<>();
+
+    private static final int SLOT_SZUKAJ = 4;
+    private static final String TYTUL_WYNIKOW = "Wyniki: ";
+
     /** Do jakiej pozycji sklepu (klucz "kategoria:itemKey") odnosi się otwarty ekran wyboru ilości. */
     private final Map<UUID, String> otwartyWyborIlosci = new HashMap<>();
 
@@ -248,6 +261,18 @@ public class ShopManager implements Listener {
         Inventory gui = Bukkit.createInventory(null, 54, Component.text("Sklep Serwerowy", NamedTextColor.GOLD, TextDecoration.BOLD));
         wypelnijTloSzare(gui);
 
+        ItemStack lupa = new ItemStack(Material.OAK_SIGN);
+        ItemMeta metaLupa = lupa.getItemMeta();
+        metaLupa.displayName(Component.text("Szukaj przedmiotu", NamedTextColor.AQUA, TextDecoration.BOLD));
+        List<Component> loreLupa = new ArrayList<>();
+        loreLupa.add(Component.text("Kliknij i wpisz nazwę na czacie",
+                NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false));
+        loreLupa.add(Component.text("np. bruk, diament, kaktus",
+                NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        metaLupa.lore(loreLupa);
+        lupa.setItemMeta(metaLupa);
+        gui.setItem(SLOT_SZUKAJ, lupa);
+
         ConfigurationSection catSection = sklepConfig.getConfigurationSection("categories");
         if (catSection != null) {
             // SLOTY_MENU_KATEGORII to dwa rzędy po 7. Niepełny rząd (np. 12 kategorii = 7+5)
@@ -309,7 +334,10 @@ public class ShopManager implements Listener {
         // ta lista jest jedynym źródłem prawdy o tym, co ląduje w którym slocie GUI,
         // więc render (niżej) i rozpoznawanie kliknięcia (onInventoryClick) muszą liczyć
         // po niej identycznie.
-        List<String> itemKeys = itemsSection != null ? new ArrayList<>(itemsSection.getKeys(false)) : List.of();
+        List<String> itemKeys = itemsSection != null ? new ArrayList<>(itemsSection.getKeys(false)) : new ArrayList<>();
+
+        boolean poSkupie = sortowaniePoSkupie.getOrDefault(player.getUniqueId(), false);
+        itemKeys = posortujItemy(catKey, itemKeys, poSkupie);
 
         int totalPages = Math.max(1, (int) Math.ceil((double) itemKeys.size() / SLOTY_SIATKI.length));
         if (page >= totalPages) page = totalPages - 1;
@@ -412,6 +440,24 @@ public class ShopManager implements Listener {
             gui.setItem(53, next); // Strona do przodu = Slot 53
         }
 
+        ItemStack sortowanie = new ItemStack(poSkupie ? Material.GOLD_INGOT : Material.HOPPER);
+        ItemMeta metaSort = sortowanie.getItemMeta();
+        metaSort.displayName(Component.text("Sortowanie", NamedTextColor.AQUA, TextDecoration.BOLD));
+        List<Component> loreSort = new ArrayList<>();
+        loreSort.add(Component.text(
+                poSkupie ? "Teraz: od najwyższego skupu" : "Teraz: od najtańszego kupna",
+                NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false));
+        loreSort.add(Component.empty());
+        loreSort.add(Component.text("LPM — od najtańszego kupna",
+                poSkupie ? NamedTextColor.GRAY : NamedTextColor.YELLOW)
+                .decoration(TextDecoration.ITALIC, false));
+        loreSort.add(Component.text("PPM — od najwyższego skupu",
+                poSkupie ? NamedTextColor.YELLOW : NamedTextColor.GRAY)
+                .decoration(TextDecoration.ITALIC, false));
+        metaSort.lore(loreSort);
+        sortowanie.setItemMeta(metaSort);
+        gui.setItem(SLOT_SORTOWANIA, sortowanie);
+
         // Przycisk "Powrót do Kategorii (do głównego okna Sklepu)" - Slot 48 (ZMIENIONY)
         ItemStack powrotKategorie = new ItemStack(Material.COMPASS);
         ItemMeta metaPowrot = powrotKategorie.getItemMeta();
@@ -428,6 +474,44 @@ public class ShopManager implements Listener {
         gui.setItem(50, zamknijSklep);
 
         player.openInventory(gui);
+    }
+
+    /**
+     * Ustawia kolejność itemKeys wg wybranego trybu. Zwraca nową listę —
+     * oryginalna kolejność z pliku YAML zostaje nietknięta.
+     *
+     * Pozycje bez ceny w danym trybie (np. brak sell-price przy sortowaniu
+     * po skupie) lądują na końcu, żeby nie zaśmiecały początku listy.
+     */
+    private List<String> posortujItemy(String catKey, List<String> itemKeys, boolean poSkupie) {
+        List<String> kopia = new ArrayList<>(itemKeys);
+        kopia.sort((a, b) -> {
+            double ca = cenaDoSortowania(catKey, a, poSkupie);
+            double cb = cenaDoSortowania(catKey, b, poSkupie);
+            // Brak ceny (-1) zawsze na koniec, niezależnie od kierunku.
+            if (ca < 0 && cb < 0) return 0;
+            if (ca < 0) return 1;
+            if (cb < 0) return -1;
+            return poSkupie ? Double.compare(cb, ca) : Double.compare(ca, cb);
+        });
+        return kopia;
+    }
+
+    /** Cena za sztukę w danym trybie, albo -1 gdy pozycja nie ma tej ceny. */
+    private double cenaDoSortowania(String catKey, String itemKey, boolean poSkupie) {
+        String path = "categories." + catKey + ".items." + itemKey + ".";
+        if (poSkupie) {
+            int cena = sklepConfig.getInt(path + "sell-price", -1);
+            if (cena < 0) return -1;
+            int lot = sklepConfig.getInt(path + "sell-amount",
+                      sklepConfig.getInt(path + "amount", 1));
+            return lot > 0 ? (double) cena / lot : -1;
+        } else {
+            int cena = sklepConfig.getInt(path + "buy-price", -1);
+            if (cena < 0) return -1;
+            int lot = sklepConfig.getInt(path + "amount", 1);
+            return lot > 0 ? (double) cena / lot : -1;
+        }
     }
 
     /** Ile kosztuje dokładnie {@code ilosc} sztuk, gdy lot {@code lot} kosztuje {@code cenaLotu}. Zaokrąglenie
@@ -902,6 +986,14 @@ public class ShopManager implements Listener {
                 return;
             }
 
+            if (event.getSlot() == SLOT_SZUKAJ) {
+                czekaNaFraze.add(player.getUniqueId());
+                player.closeInventory();
+                player.sendMessage(Component.text("Wpisz na czacie, czego szukasz.", NamedTextColor.AQUA));
+                player.sendMessage(Component.text("Wpisz 'anuluj', żeby zrezygnować.", NamedTextColor.GRAY));
+                return;
+            }
+
             Material clickedMat = clickedItem.getType();
             ConfigurationSection catSection = sklepConfig.getConfigurationSection("categories");
             if (catSection == null) return;
@@ -928,7 +1020,13 @@ public class ShopManager implements Listener {
             // Logika dolnych przycisków - PO SLOCIE, nie po materiale (patrz komentarz
             // przy analogicznym fragmencie dla głównego ekranu sklepu wyżej).
             int slotKlikniecia = event.getSlot();
-            if (slotKlikniecia == 48) {
+            if (slotKlikniecia == SLOT_SORTOWANIA) {
+                // Zmiana sortowania wraca na stronę 1 — przy innej kolejności
+                // numer strony i tak przestaje cokolwiek znaczyć.
+                sortowaniePoSkupie.put(player.getUniqueId(), event.isRightClick());
+                otworzKategorieStrona(player, catKey, 0);
+                return;
+            } else if (slotKlikniecia == 48) {
                 boolean zMenu = otwartoZMenu.getOrDefault(player.getUniqueId(), false);
                 otworzSklep(player, zMenu); // Wracamy do głównego widoku sklepu
                 return;
@@ -953,8 +1051,10 @@ public class ShopManager implements Listener {
 
             // Ta sama arytmetyka co przy renderowaniu w otworzKategorieStrona() - kolejność
             // w sklep.yml + numer strony + slot w siatce muszą się zgadzać 1:1, inaczej
-            // klik trafi w zupełnie inny item niż ten widoczny na ekranie.
-            List<String> itemKeys = new ArrayList<>(itemsSection.getKeys(false));
+            // klik trafi w zupełnie inny item niż ten widoczny na ekranie. Stąd też to samo
+            // sortowanie (per gracz), co przy renderze, musi zostać zastosowane i tutaj.
+            boolean poSkupieKlik = sortowaniePoSkupie.getOrDefault(player.getUniqueId(), false);
+            List<String> itemKeys = posortujItemy(catKey, new ArrayList<>(itemsSection.getKeys(false)), poSkupieKlik);
             int absoluteIndex = currentPage * SLOTY_SIATKI.length + localIndex;
             if (absoluteIndex < 0 || absoluteIndex >= itemKeys.size()) return;
 
@@ -997,13 +1097,213 @@ public class ShopManager implements Listener {
                 String customId = sklepConfig.getString(path + "custom-id", null);
                 sprzedajLoty(player, cfgMaterial, customId, event.isShiftClick() ? TrybSkupu.CALY_EKWIPUNEK : TrybSkupu.JEDEN_STOS);
             }
+            return;
         }
+
+        // KLIKANIE W OKNIE WYNIKÓW WYSZUKIWANIA
+        if (title.contains(TYTUL_WYNIKOW)) {
+            event.setCancelled(true);
+            if (!klikniecieWGui) return;
+
+            if (event.getSlot() == 48) {
+                otworzSklep(player, otwartoZMenu.getOrDefault(player.getUniqueId(), false));
+                return;
+            }
+
+            List<String> wyniki = wynikiSzukania.get(player.getUniqueId());
+            if (wyniki == null) return;
+
+            int idx = lokalnyIndexDlaSlotu(event.getSlot());
+            if (idx < 0 || idx >= wyniki.size()) return;
+
+            String[] czesci = wyniki.get(idx).split(":");
+            String catKey = czesci[0], itemKey = czesci[1];
+            String path = "categories." + catKey + ".items." + itemKey + ".";
+
+            String matName = sklepConfig.getString(path + "material", "STONE");
+            Material material = Material.matchMaterial(matName);
+            if (material == null) return;
+
+            if (event.isLeftClick()) {
+                if (sklepConfig.getInt(path + "buy-price", -1) < 0) {
+                    player.sendMessage(Component.text("Tego przedmiotu nie można kupić!", NamedTextColor.RED));
+                    return;
+                }
+                // Itemy z custom-id (spawnery, itemy specjalne) mają własną ścieżkę
+                // kupna — tu ich nie obsługujemy, odsyłamy do kategorii.
+                if (sklepConfig.getString(path + "custom-id", null) != null) {
+                    player.sendMessage(Component.text("Ten przedmiot kup w jego kategorii.", NamedTextColor.YELLOW));
+                    otworzKategorieStrona(player, catKey, 0);
+                    return;
+                }
+                otworzWyborIlosci(player, catKey + ":" + itemKey);
+            } else if (event.isRightClick()) {
+                if (sklepConfig.getInt(path + "sell-price", -1) < 0) {
+                    player.sendMessage(Component.text("Tego przedmiotu nie można sprzedać!", NamedTextColor.RED));
+                    return;
+                }
+                // Jedna ścieżka sprzedaży co w kategorii (patrz wyżej) - custom-id musi iść
+                // razem z materiałem, PPM = jeden stos, Shift+PPM = cały ekwipunek.
+                String customIdWynik = sklepConfig.getString(path + "custom-id", null);
+                sprzedajLoty(player, material, customIdWynik, event.isShiftClick() ? TrybSkupu.CALY_EKWIPUNEK : TrybSkupu.JEDEN_STOS);
+            }
+            return;
+        }
+    }
+
+    @EventHandler
+    public void onChat(io.papermc.paper.event.player.AsyncChatEvent event) {
+        Player player = event.getPlayer();
+        if (!czekaNaFraze.remove(player.getUniqueId())) return;
+
+        event.setCancelled(true);   // fraza nie trafia na czat publiczny
+        String fraza = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                .serialize(event.message()).trim();
+
+        if (fraza.equalsIgnoreCase("anuluj")) {
+            player.sendMessage(Component.text("Anulowano.", NamedTextColor.GRAY));
+            return;
+        }
+
+        // Czat leci w wątku asynchronicznym, a GUI wolno otwierać TYLKO z głównego
+        // wątku serwera — bez tego skoku Bukkit rzuci wyjątkiem.
+        Bukkit.getScheduler().runTask(plugin, () -> otworzWyniki(player, fraza));
+    }
+
+    private void otworzWyniki(Player player, String fraza) {
+        String szukane = fraza.toLowerCase();
+        List<String> trafienia = new ArrayList<>();
+
+        ConfigurationSection catSection = sklepConfig.getConfigurationSection("categories");
+        if (catSection != null) {
+            for (String catKey : catSection.getKeys(false)) {
+                ConfigurationSection items =
+                        sklepConfig.getConfigurationSection("categories." + catKey + ".items");
+                if (items == null) continue;
+
+                for (String itemKey : items.getKeys(false)) {
+                    String path = "categories." + catKey + ".items." + itemKey + ".";
+                    String mat = sklepConfig.getString(path + "material", "");
+                    String nazwa = sklepConfig.getString(path + "display-name", mat);
+
+                    // Szukamy i po polskiej nazwie, i po nazwie materiału.
+                    if (nazwa.toLowerCase().contains(szukane) || mat.toLowerCase().contains(szukane)) {
+                        trafienia.add(catKey + ":" + itemKey);
+                    }
+                }
+            }
+        }
+
+        if (trafienia.isEmpty()) {
+            player.sendMessage(Component.text("Nic nie znaleziono dla: " + fraza, NamedTextColor.RED));
+            otworzSklep(player, otwartoZMenu.getOrDefault(player.getUniqueId(), false));
+            return;
+        }
+
+        // Więcej wyników niż mieści siatka - obcinamy i mówimy o tym graczowi.
+        boolean obciete = trafienia.size() > SLOTY_SIATKI.length;
+        if (obciete) trafienia = trafienia.subList(0, SLOTY_SIATKI.length);
+        wynikiSzukania.put(player.getUniqueId(), trafienia);
+
+        Inventory gui = Bukkit.createInventory(null, 54,
+                Component.text(TYTUL_WYNIKOW + fraza, NamedTextColor.DARK_AQUA, TextDecoration.BOLD));
+        wypelnijTloSzare(gui);
+
+        for (int i = 0; i < trafienia.size(); i++) {
+            String[] czesci = trafienia.get(i).split(":");
+            gui.setItem(SLOTY_SIATKI[i], zbudujItemWyniku(czesci[0], czesci[1]));
+        }
+
+        ItemStack powrot = new ItemStack(Material.COMPASS);
+        ItemMeta metaPowrot = powrot.getItemMeta();
+        metaPowrot.displayName(Component.text("Powrót do sklepu", NamedTextColor.GOLD, TextDecoration.BOLD));
+        powrot.setItemMeta(metaPowrot);
+        gui.setItem(48, powrot);
+
+        player.openInventory(gui);
+        player.sendMessage(Component.text("Znaleziono: " + trafienia.size()
+                + (obciete ? " (pokazano pierwsze " + SLOTY_SIATKI.length + ")" : ""),
+                NamedTextColor.AQUA));
+    }
+
+    /**
+     * Item do okna wyników — te same reguły renderu co w otworzKategorieStrona()
+     * (pojedyncza sztuka w ikonie, cena kupna ZA SZTUKĘ, nie za lot — patrz komentarz
+     * tam), tylko z dopiskiem, z jakiej kategorii pochodzi. Patch pierwotnie budował
+     * to inaczej (cały lot w ikonie + cena za cały lot w lore) - niespójne z resztą
+     * sklepu, więc dociągnięte do tego samego wzoru.
+     */
+    private ItemStack zbudujItemWyniku(String catKey, String itemKey) {
+        String path = "categories." + catKey + ".items." + itemKey + ".";
+        String matName = sklepConfig.getString(path + "material", "STONE");
+        Material material = Material.matchMaterial(matName);
+        if (material == null) material = Material.STONE;
+
+        int amount = sklepConfig.getInt(path + "amount", 1);
+        int sellAmount = sklepConfig.getInt(path + "sell-amount", amount);
+        int buyPrice = sklepConfig.getInt(path + "buy-price", -1);
+        int sellPrice = sklepConfig.getInt(path + "sell-price", -1);
+        String customDisplayName = sklepConfig.getString(path + "display-name", null);
+        String katNazwa = sklepConfig.getString("categories." + catKey + ".name", catKey);
+
+        ItemStack item = new ItemStack(material, 1);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(customDisplayName != null
+                ? Component.text(customDisplayName, NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD)
+                : Component.text(material.name(), NamedTextColor.YELLOW, TextDecoration.BOLD));
+
+        List<Component> lore = new ArrayList<>();
+        lore.add(Component.text("Kategoria: " + katNazwa, NamedTextColor.DARK_GRAY)
+                .decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.empty());
+
+        if (buyPrice >= 0) {
+            long cenaZaSztuke = policzCene(1, buyPrice, amount);
+            lore.add(Component.text("Kupno: " + cenaZaSztuke + " $ za szt.",
+                    NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
+        }
+        if (sellPrice >= 0) {
+            lore.add(Component.text("Skup: " + sellPrice + " $ za " + sellAmount + " szt.",
+                    NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
+        }
+        lore.add(Component.empty());
+
+        if (buyPrice >= 0) {
+            lore.add(Component.text("LPM — kupno",
+                    NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+        } else {
+            lore.add(Component.text("Tego nie da się kupić",
+                    NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
+        }
+        if (sellPrice >= 0) {
+            String opisPpm = KATEGORIA_POJEDYNCZE.equals(catKey)
+                    ? "PPM — sprzedaj dowolną ilość"
+                    : "PPM — sprzedaj cały stack (po " + sellAmount + " szt.)";
+            lore.add(Component.text(opisPpm,
+                    NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Shift+PPM — sprzedaj cały ekwipunek",
+                    NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+        } else {
+            lore.add(Component.text("Tego nie da się sprzedać",
+                    NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
+        }
+
+        meta.lore(lore);
+        item.setItemMeta(meta);
+        return item;
     }
 
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
         if (event.getPlayer() instanceof Player player) {
             otwartyWyborIlosci.remove(player.getUniqueId());
+            wynikiSzukania.remove(player.getUniqueId());
         }
+        // czekaNaFraze NIE czyścimy przy zamknięciu okna — gracz właśnie po to zamknął
+        // GUI, żeby móc coś wpisać na czacie.
+    }
+
+    public void wyczyscGracza(UUID uuid) {
+        sortowaniePoSkupie.remove(uuid);
     }
 }

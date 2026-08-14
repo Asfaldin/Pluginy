@@ -48,9 +48,9 @@ items:
     buy-price: 70
     sell-amount: 1
     sell-price: 60
-  6:    
+  6:
     material: IRON_INGOT
-    slot: 7
+    slot: 6
     display-name: "Sztabka Żelaza"
     amount: 1
     buy-price: 150
@@ -58,7 +58,7 @@ items:
     sell-price: 60
   7:
     material: GOLD_INGOT
-    slot: 6
+    slot: 7
     display-name: "Sztabka Złota"
     amount: 1
     buy-price: 160
@@ -89,7 +89,7 @@ items:
     slot: 11
     display-name: "Kwarc"
     amount: 1
-    buy-price: 700
+    buy-price: 750
     sell-amount: 1
     sell-price: 640
   12:
@@ -97,7 +97,7 @@ items:
     slot: 12
     display-name: "Diament"
     amount: 1
-    buy-price: 1300
+    buy-price: 1450
     sell-amount: 1
     sell-price: 1280
   13:

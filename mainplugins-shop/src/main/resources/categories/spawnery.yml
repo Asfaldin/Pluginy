@@ -5,34 +5,62 @@ items:
   0:
     material: SPAWNER
     slot: 0
-    custom-id: SHEEP
-    display-name: "Spawner: Owiec"
+    custom-id: ZOMBIE
+    display-name: "Spawner: Zombie"
     amount: 1
-    buy-price: 18750
+    buy-price: 20000
   1:
     material: SPAWNER
     slot: 1
-    custom-id: RABBIT
-    display-name: "Spawner: Królików"
+    custom-id: PIG
+    display-name: "Spawner: Świń"
     amount: 1
-    buy-price: 28125
+    buy-price: 25000
   2:
     material: SPAWNER
     slot: 2
-    custom-id: GLOW_SQUID
-    display-name: "Spawner: Świetlistych Kałamarnic"
+    custom-id: SKELETON
+    display-name: "Spawner: Szkieletów"
     amount: 1
-    buy-price: 37500
+    buy-price: 30000
   3:
     material: SPAWNER
     slot: 3
-    custom-id: PIGLIN
-    display-name: "Spawner: Piglinów"
+    custom-id: COW
+    display-name: "Spawner: Krów"
     amount: 1
-    buy-price: 56250
+    buy-price: 40000
   4:
     material: SPAWNER
     slot: 4
+    custom-id: SPIDER
+    display-name: "Spawner: Pająków"
+    amount: 1
+    buy-price: 45000
+  5:
+    material: SPAWNER
+    slot: 5
+    custom-id: CHICKEN
+    display-name: "Spawner: Kur"
+    amount: 1
+    buy-price: 55000
+  6:
+    material: SPAWNER
+    slot: 6
+    custom-id: CREEPER
+    display-name: "Spawner: Creeperów"
+    amount: 1
+    buy-price: 67000
+  7:
+    material: SPAWNER
+    slot: 7
+    custom-id: SHEEP
+    display-name: "Spawner: Owiec"
+    amount: 1
+    buy-price: 75000
+  8:
+    material: SPAWNER
+    slot: 8
     custom-id: BREEZE
     display-name: "Spawner: Breeze'ów"
     amount: 1

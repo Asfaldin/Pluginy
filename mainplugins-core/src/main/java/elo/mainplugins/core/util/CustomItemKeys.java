@@ -13,13 +13,13 @@ public final class CustomItemKeys {
     private CustomItemKeys() {}
 
     /**
-     * Wartość: identyfikator typu customowego itemu ze sklepu (np. "PIGLIN" dla spawnera,
+     * Wartość: identyfikator typu customowego itemu ze sklepu (np. "ZOMBIE" dla spawnera,
      * "NISZCZYCIEL" dla specjalnego kilofa) - ustawiana przez ShopManager przy zakupie,
      * odczytywana przez moduł, który nadaje itemowi realne zachowanie (spawners, tools...).
      */
     public static final NamespacedKey CUSTOM_ITEM_ID = new NamespacedKey("mainplugins", "custom-item-id");
 
-    /** Wartość: nazwa enuma SpawnerType - ustawiana na encji przy spawnie, żeby rozpoznać ją przy śmierci (np. custom dropy). */
+    /** Wartość: nazwa enuma SpawnerType - ustawiana na encji przy spawnie, żeby rozpoznać z jakiego spawnera pochodzi. */
     public static final NamespacedKey SPAWNER_MOB_SOURCE = new NamespacedKey("mainplugins", "spawner-mob-source");
 
     /**

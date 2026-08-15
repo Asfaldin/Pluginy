@@ -13,6 +13,7 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.CreatureSpawner;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -47,6 +48,14 @@ public class SpawnerManager implements Listener {
         final UUID ownerUUID;
         long nastepnySpawnMillis;
 
+        // "Stackowanie" mobków - zamiast trzymać osobną żywą encję na każdego moba (to one
+        // najbardziej obciążają serwer - AI/pathfinding), spawner ma NAJWYŻEJ JEDNĄ żywą encję
+        // na raz. rozmiarStosu to ile "kolejnych" mobków ta jedna encja reprezentuje - każde
+        // zabicie zdejmuje 1 (normalny drop za normalne zabicie) i od razu odradza resztę stosu
+        // w tym samym miejscu, więc dla gracza czuć to jak zabijanie osobnych mobków pod rząd.
+        int rozmiarStosu = 0;
+        UUID zywyMobId; // null = obecnie żadna encja nie reprezentuje stosu (czeka na najbliższy cykl)
+
         Instancja(Location lokalizacja, SpawnerType typ, UUID ownerUUID) {
             this.lokalizacja = lokalizacja;
             this.typ = typ;
@@ -54,8 +63,10 @@ public class SpawnerManager implements Listener {
         }
     }
 
-    // Promień (bloki) w jakim liczymy "pobliskie" mobki tego samego typu pod kątem limitu.
-    private static final int PROMIEN_LICZENIA = 12;
+    // Promień (bloki) w jakim musi być JAKIŚ gracz, żeby spawner w ogóle próbował spawnować -
+    // bez tego spawner mielił bez sensu nawet gdy właściciel jest na drugim końcu mapy
+    // (chunk czasem zostaje wczytany z innych powodów niż obecność gracza). Jak w vanilla.
+    private static final int PROMIEN_AKTYWNOSCI_GRACZA = 16;
 
     // Sufiksy kluczy w IslandSummary.spawnerLevels() - MUSZĄ się zgadzać 1:1 z tymi
     // samymi literałami w IslandManager (mainplugins-skyblock). Dwa osobne poziomy
@@ -67,6 +78,9 @@ public class SpawnerManager implements Listener {
     private final File plikSpawnerow;
     private final FileConfiguration configSpawnerow;
     private final Map<String, Instancja> instancje = new HashMap<>();
+    // Odwrotna mapa mob -> spawner który go wyprodukował, żeby onSmierc wiedział skąd go wypisać
+    // bez przeszukiwania wszystkich instancji.
+    private final Map<UUID, Instancja> mobyDoSpawnera = new HashMap<>();
 
     public SpawnerManager(Plugin plugin) {
         this.plugin = plugin;
@@ -115,7 +129,9 @@ public class SpawnerManager implements Listener {
                 continue;
             }
 
-            instancje.put(kluczLokalizacji(loc), new Instancja(loc, typ, ownerUUID));
+            Instancja instancja = new Instancja(loc, typ, ownerUUID);
+            zainicjujKolejnySpawn(instancja);
+            instancje.put(kluczLokalizacji(loc), instancja);
         }
 
         plugin.getLogger().info("Wczytano " + instancje.size() + " customowych spawnerów.");
@@ -177,7 +193,9 @@ public class SpawnerManager implements Listener {
         }
 
         Location loc = block.getLocation();
-        instancje.put(kluczLokalizacji(loc), new Instancja(loc, typ, ownerUUID));
+        Instancja instancja = new Instancja(loc, typ, ownerUUID);
+        zainicjujKolejnySpawn(instancja); // pełny interwał, nie spawnuje natychmiast po postawieniu
+        instancje.put(kluczLokalizacji(loc), instancja);
         zapisz();
 
         player.sendMessage(Component.text("Postawiono spawner: " + typ.getNazwaOdmieniona() + "!", NamedTextColor.GREEN));
@@ -202,23 +220,30 @@ public class SpawnerManager implements Listener {
             if (loc.getBlock().getType() != Material.SPAWNER) continue; // usunięty poza BlockBreakEvent (np. explozja)
 
             if (teraz < instancja.nastepnySpawnMillis) continue;
+            if (!gracsAktywujeSpawner(loc)) continue; // nikt w promieniu ani na tym samym chunku - śpi, nie zużywa cyklu
+
+            // Jeśli żywa encja stosu zniknęła bez zabicia (naturalny despawn - setRemoveWhenFarAway
+            // nie odpala EntityDeathEvent), tylko zapominamy o niej. rozmiarStosu zostaje - to wciąż
+            // "należny" limit temu spawnerowi, po prostu ktoś inny go zaraz odrodzi (poniżej albo w
+            // kolejnym cyklu).
+            if (instancja.zywyMobId != null) {
+                Entity mob = Bukkit.getEntity(instancja.zywyMobId);
+                if (mob == null || !mob.isValid()) {
+                    mobyDoSpawnera.remove(instancja.zywyMobId);
+                    instancja.zywyMobId = null;
+                }
+            }
 
             int poziomIlosci = pobierzPoziom(instancja, SUFIKS_ILOSC);
             int poziomSzybkosci = pobierzPoziom(instancja, SUFIKS_SZYBKOSC);
             int limit = SpawnerType.limitPobliskich(poziomIlosci);
             int iloscDoSpawnu = SpawnerType.iloscNaCykl(poziomIlosci);
 
-            long pobliskich = loc.getWorld().getNearbyEntities(loc, PROMIEN_LICZENIA, PROMIEN_LICZENIA, PROMIEN_LICZENIA)
-                    .stream()
-                    .filter(e -> e.getType() == instancja.typ.getEntityType())
-                    .count();
-
-            if (pobliskich < limit) {
-                for (int i = 0; i < iloscDoSpawnu && pobliskich + i < limit; i++) {
-                    Entity encja = loc.getWorld().spawnEntity(losowyPunktObokSpawnera(loc), instancja.typ.getEntityType());
-                    encja.setPersistent(true);
-                    encja.getPersistentDataContainer().set(CustomItemKeys.SPAWNER_MOB_SOURCE, PersistentDataType.STRING, instancja.typ.name());
-                }
+            if (instancja.rozmiarStosu < limit) {
+                instancja.rozmiarStosu = Math.min(limit, instancja.rozmiarStosu + iloscDoSpawnu);
+            }
+            if (instancja.zywyMobId == null && instancja.rozmiarStosu > 0) {
+                odrodzMoba(instancja, losowyPunktObokSpawnera(loc));
             }
 
             instancja.nastepnySpawnMillis = teraz + SpawnerType.interwalSekund(poziomSzybkosci) * 1000L;
@@ -240,6 +265,40 @@ public class SpawnerManager implements Listener {
         return spawnerLoc.clone().add(0.5 + dx, 1.0, 0.5 + dz);
     }
 
+    /**
+     * Spawner jest aktywny, gdy gracz jest w promieniu PROMIEN_AKTYWNOSCI_GRACZA LUB stoi
+     * gdziekolwiek na tym samym chunku co spawner - sam promień by nie wystarczył, bo
+     * przekątna chunka (16x16) ma ~22,6 bloku, więc gracz w rogu chunka mógłby się nie łapać.
+     */
+    private boolean gracsAktywujeSpawner(Location loc) {
+        if (!loc.getWorld().getNearbyPlayers(loc, PROMIEN_AKTYWNOSCI_GRACZA).isEmpty()) return true;
+
+        int chunkX = loc.getBlockX() >> 4;
+        int chunkZ = loc.getBlockZ() >> 4;
+        for (Player gracz : loc.getWorld().getPlayers()) {
+            Location poz = gracz.getLocation();
+            if ((poz.getBlockX() >> 4) == chunkX && (poz.getBlockZ() >> 4) == chunkZ) return true;
+        }
+        return false;
+    }
+
+    /** Spawnuje encję reprezentującą wierzch stosu tego spawnera i rejestruje ją jako "żywą". */
+    private void odrodzMoba(Instancja instancja, Location gdzie) {
+        Entity encja = gdzie.getWorld().spawnEntity(gdzie, instancja.typ.getEntityType());
+        if (encja instanceof LivingEntity zywa) {
+            zywa.setRemoveWhenFarAway(true); // ma despawnować jak zwykły dziki mob (zwierzęta domyślnie by NIE despawnowały)
+        }
+        encja.getPersistentDataContainer().set(CustomItemKeys.SPAWNER_MOB_SOURCE, PersistentDataType.STRING, instancja.typ.name());
+
+        if (instancja.rozmiarStosu > 1 && encja instanceof LivingEntity zywa) {
+            zywa.customName(Component.text(instancja.typ.getNazwaPojedyncza() + " x" + instancja.rozmiarStosu, NamedTextColor.YELLOW));
+            zywa.setCustomNameVisible(true);
+        }
+
+        instancja.zywyMobId = encja.getUniqueId();
+        mobyDoSpawnera.put(encja.getUniqueId(), instancja);
+    }
+
     private int pobierzPoziom(Instancja instancja, String sufiks) {
         IslandService islandService = CoreAPI.getIslandService();
         if (islandService == null) return 1;
@@ -251,16 +310,34 @@ public class SpawnerManager implements Listener {
     }
 
     /**
-     * Dodatkowy custom drop dla królików z tego spawnera - nie dotyczy dzikich
-     * królików spawnujących się naturalnie w świecie (te nie mają PDC taga).
+     * Termin pierwszego spawnu - zawsze pełny interwał od teraz, nigdy natychmiast.
+     * Używane przy postawieniu (onSadzenie) i przy wczytaniu z pliku (wczytaj) - bez tego
+     * każdy świeżo postawiony LUB każdy istniejący spawner po restarcie serwera
+     * (nastepnySpawnMillis wraca na domyślne 0) strzelał moba w tej samej sekundzie.
+     */
+    private void zainicjujKolejnySpawn(Instancja instancja) {
+        int poziomSzybkosci = pobierzPoziom(instancja, SUFIKS_SZYBKOSC);
+        instancja.nastepnySpawnMillis = System.currentTimeMillis() + SpawnerType.interwalSekund(poziomSzybkosci) * 1000L;
+    }
+
+    /**
+     * Zabicie encji stosu = zwykły, jeden drop (to wciąż normalne, pojedyncze zabicie - nic nie
+     * trzeba mnożyć ręcznie) + zdjęcie 1 z licznika stosu. Jeśli w stosie zostało jeszcze coś,
+     * od razu odradzamy resztę w tym samym miejscu, żeby dla gracza wyglądało to jak zabijanie
+     * mobków jeden po drugim (ważne dla automatycznych farm - bez tego farma "zatykałaby się"
+     * po jednym zabiciu, czekając na kolejny cykl spawnu).
      */
     @EventHandler
     public void onSmierc(EntityDeathEvent event) {
-        String source = event.getEntity().getPersistentDataContainer().get(CustomItemKeys.SPAWNER_MOB_SOURCE, PersistentDataType.STRING);
-        if (source == null) return;
+        UUID mobId = event.getEntity().getUniqueId();
+        Instancja instancja = mobyDoSpawnera.remove(mobId);
+        if (instancja == null) return; // nie nasz spawner-mob
 
-        if (SpawnerType.RABBIT.name().equals(source)) {
-            event.getDrops().add(new ItemStack(Material.BLAZE_ROD, 10));
+        if (mobId.equals(instancja.zywyMobId)) instancja.zywyMobId = null;
+        instancja.rozmiarStosu = Math.max(0, instancja.rozmiarStosu - 1);
+
+        if (instancja.rozmiarStosu > 0) {
+            odrodzMoba(instancja, event.getEntity().getLocation());
         }
     }
 

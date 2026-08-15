@@ -19,6 +19,8 @@ import elo.mainplugins.skyblock.event.IslandBankDepositEvent;
 import elo.mainplugins.skyblock.event.IslandCreatedEvent;
 import elo.mainplugins.skyblock.event.IslandMemberJoinedEvent;
 import elo.mainplugins.skyblock.event.IslandUpgradeEvent;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.TooltipDisplay;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -226,12 +228,17 @@ public class IslandManager implements Listener, IslandService {
     private static final String SUFIKS_ILOSC = "_ILOSC";
     private static final String SUFIKS_SZYBKOSC = "_SZYBKOSC";
 
+    // Kolejność = od najtańszego do najdroższego w sklepie (patrz categories/spawnery.yml).
     private static final List<SpawnerTypInfo> SPAWNER_TYPY = List.of(
-            new SpawnerTypInfo("PIGLIN", "Piglinów", Material.GOLD_NUGGET),
+            new SpawnerTypInfo("ZOMBIE", "Zombie", Material.ROTTEN_FLESH),
+            new SpawnerTypInfo("PIG", "Świń", Material.PORKCHOP),
+            new SpawnerTypInfo("SKELETON", "Szkieletów", Material.BONE),
+            new SpawnerTypInfo("COW", "Krów", Material.LEATHER),
+            new SpawnerTypInfo("SPIDER", "Pająków", Material.STRING),
+            new SpawnerTypInfo("CHICKEN", "Kur", Material.FEATHER),
+            new SpawnerTypInfo("CREEPER", "Creeperów", Material.GUNPOWDER),
             new SpawnerTypInfo("SHEEP", "Owiec", Material.WHITE_WOOL),
-            new SpawnerTypInfo("RABBIT", "Królików", Material.RABBIT_HIDE),
-            new SpawnerTypInfo("BREEZE", "Breeze'ów", Material.BREEZE_ROD),
-            new SpawnerTypInfo("GLOW_SQUID", "Świetlistych Kałamarnic", Material.GLOW_INK_SAC)
+            new SpawnerTypInfo("BREEZE", "Breeze'ów", Material.BREEZE_ROD)
     );
 
     private final Map<UUID, IslandData> islandDatabase = new HashMap<>();
@@ -1517,11 +1524,15 @@ public class IslandManager implements Listener, IslandService {
         gui.setItem(11, itemUpgradeSize);
 
         ItemStack itemDropy = new ItemStack(Material.SPAWNER);
+        // SPAWNER jako item ma własny wanilijski dopisek w tooltipie ("Interakcja z jajem
+        // przyzywającym: Ustawia typ stworzenia") - gracz o to pytał, więc jawnie go ukrywamy.
+        itemDropy.setData(DataComponentTypes.TOOLTIP_DISPLAY,
+                TooltipDisplay.tooltipDisplay().addHiddenComponents(DataComponentTypes.BLOCK_DATA));
         ItemMeta metaDropy = itemDropy.getItemMeta();
-        metaDropy.displayName(Component.text("Wzrost Dropów", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
+        metaDropy.displayName(Component.text("Ulepszenie Spawnerów", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
         metaDropy.lore(List.of(
-                Component.text("Ulepszaj poziomy customowych spawnerów", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                Component.text("postawionych na Twojej wyspie", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("Zwiększ tempo i ilość spawnu mobków", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("na Twojej wyspie", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
                 Component.empty(),
                 Component.text("Kliknij, aby otworzyć", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false)
         ));
@@ -1546,15 +1557,17 @@ public class IslandManager implements Listener, IslandService {
         IslandData data = wlasnaWyspaLubKomunikat(player);
         if (data == null) return;
 
-        Inventory gui = Bukkit.createInventory(null, 27, Component.text("Wzrost Dropów", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
+        Inventory gui = Bukkit.createInventory(null, 54, Component.text("Ulepszenie Spawnerów", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
 
         ItemStack tlo = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta metaTlo = tlo.getItemMeta();
         metaTlo.displayName(Component.empty());
         tlo.setItemMeta(metaTlo);
-        for (int i = 0; i < 27; i++) gui.setItem(i, tlo);
+        for (int i = 0; i < 54; i++) gui.setItem(i, tlo);
 
-        int[] sloty = {10, 11, 12, 13, 14};
+        // Szachownica na dwóch rzędach (5 + 4) - układ wg makiety gracza, zamiast dawnego
+        // jednego rzędu wciśniętego ciasno slot w slot.
+        int[] sloty = {9, 11, 13, 15, 17, 28, 30, 32, 34};
         for (int i = 0; i < SPAWNER_TYPY.size(); i++) {
             SpawnerTypInfo typ = SPAWNER_TYPY.get(i);
             int poziomIlosci = data.getSpawnerLevel(typ.id() + SUFIKS_ILOSC);
@@ -1579,7 +1592,7 @@ public class IslandManager implements Listener, IslandService {
         ItemMeta metaBack = itemBack.getItemMeta();
         metaBack.displayName(Component.text("Powrót do Ulepszeń", NamedTextColor.RED, TextDecoration.BOLD));
         itemBack.setItemMeta(metaBack);
-        gui.setItem(22, itemBack);
+        gui.setItem(49, itemBack);
 
         player.openInventory(gui);
     }
@@ -1617,7 +1630,7 @@ public class IslandManager implements Listener, IslandService {
 
         ItemStack itemBack = new ItemStack(Material.ARROW);
         ItemMeta metaBack = itemBack.getItemMeta();
-        metaBack.displayName(Component.text("Powrót do Wzrostu Dropów", NamedTextColor.RED, TextDecoration.BOLD));
+        metaBack.displayName(Component.text("Powrót do Ulepszeń Spawnerów", NamedTextColor.RED, TextDecoration.BOLD));
         itemBack.setItemMeta(metaBack);
         gui.setItem(22, itemBack);
 
@@ -1762,12 +1775,12 @@ public class IslandManager implements Listener, IslandService {
             else if (slot == 13) { otworzMenuWzrostuDropow(player); }
             else if (slot == 15) { otworzMenuWyspy(player, zMenu); }
         }
-        else if (title.contains("Wzrost Dropów")) {
+        else if (title.contains("Ulepszenie Spawnerów")) {
             event.setCancelled(true);
             int slot = event.getRawSlot();
-            if (slot == 22) { otworzMenuUlepszen(player); return; }
+            if (slot == 49) { otworzMenuUlepszen(player); return; }
 
-            int[] sloty = {10, 11, 12, 13, 14};
+            int[] sloty = {9, 11, 13, 15, 17, 28, 30, 32, 34};
             for (int i = 0; i < sloty.length; i++) {
                 if (sloty[i] == slot) {
                     otworzMenuUlepszenSpawnera(player, SPAWNER_TYPY.get(i).id());

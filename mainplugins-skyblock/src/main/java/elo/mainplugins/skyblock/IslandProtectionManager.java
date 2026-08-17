@@ -2,11 +2,13 @@ package elo.mainplugins.skyblock;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Tag;
 import org.bukkit.block.Block;
 import org.bukkit.block.Container;
+import org.bukkit.entity.EnderPearl;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LightningStrike;
 import org.bukkit.entity.Monster;
@@ -28,11 +30,13 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
@@ -48,9 +52,11 @@ import java.util.UUID;
  */
 public class IslandProtectionManager implements Listener {
 
+    private final Plugin plugin;
     private final IslandManager islandManager;
 
-    public IslandProtectionManager(IslandManager islandManager) {
+    public IslandProtectionManager(Plugin plugin, IslandManager islandManager) {
+        this.plugin = plugin;
         this.islandManager = islandManager;
     }
 
@@ -173,6 +179,31 @@ public class IslandProtectionManager implements Listener {
         if (islandManager.znajdzWyspePod(event.getEntity().getLocation()) != null) {
             event.setCancelled(true);
         }
+    }
+
+    private static final long MAX_LOT_PERLY_TICKS = 10 * 20L;
+
+    /**
+     * Blokada na "Ender Pearl chunk loading" - wanilijski trik, gdzie perła w locie zmusza
+     * silnik do dalszego tickowania chunku pod sobą niezależnie od tego, czy jakikolwiek
+     * gracz jest w pobliżu (albo nawet online) - efektywnie darmowy chunk loader, dopóki
+     * perła nie wyląduje. Twardy limit czasu lotu likwiduje to niezależnie od wariantu
+     * (rzuć+wyloguj się, rzuć+odejdź na drugi koniec wyspy, perła utknięta w bloku) - po
+     * prostu znika sama, jeśli nie wyląduje w rozsądnym czasie.
+     *
+     * Bez wyjątku dla właściciela (tak samo jak wybuchy/pioruny wyżej) - to nie jest kara za
+     * coś złego, tylko twardy limit fizyki, więc nie ma powodu robić wyjątków.
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onPearlLaunch(ProjectileLaunchEvent event) {
+        if (!(event.getEntity() instanceof EnderPearl perla)) return;
+        if (!islandManager.jestSwiatemWysp(perla.getWorld())) return;
+
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (perla.isValid() && !perla.isDead()) {
+                perla.remove();
+            }
+        }, MAX_LOT_PERLY_TICKS);
     }
 
     /**

@@ -1,0 +1,7 @@
+{
+  "quest_welcome": {
+    "sounds": [
+      "mainplugins:quest_welcome"
+    ]
+  }
+}

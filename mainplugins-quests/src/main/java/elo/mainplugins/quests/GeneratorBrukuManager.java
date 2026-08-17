@@ -9,6 +9,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
@@ -22,13 +23,21 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Generator Bruku - siostrzana mechanika do {@link GeneratorKruchychManager} (identyczny
- * wzorzec: postaw blok, wykop zwykłym narzędziem, blok sam się odbudowuje po
- * ODNOWA_TICKOW, narzędzie ze SPECJALNY_SILK_TOUCH zbiera cały generator zamiast zwykłego
- * dropu) - tu zamiast piasku/żwiru daje bruk (cobblestone). To celowo przydatne: bruk
- * karmi PickaxeSkillManager#rollBonusZBruku (mainplugins-tools) - jedyne źródło "rudy" na
- * tym Skyblocku (patrz komentarz klasowy tamże) - więc ten generator to renewable źródło
- * surowca pod CAŁĄ resztę ekonomii kilofa, nie tylko sam bruk.
+ * Generator Bruku - siostrzana mechanika do {@link GeneratorKruchychManager} (postaw blok,
+ * wykop odpowiednim narzędziem, blok wraca po krótkim odnowieniu - narzędzie ze
+ * SPECJALNY_SILK_TOUCH to jedyny sposób, żeby blok faktycznie zniknął na stałe, bo wtedy
+ * zbiera cały generator jako przenośny przedmiot) - tu zamiast piasku/żwiru daje bruk
+ * (cobblestone). Kopie się KILOFEM (nie łopatą jak Kruchy) - to bruk/kamień, naturalny
+ * dobór narzędzia.
+ *
+ * W odróżnieniu od Kruchego, zwykłe wykopanie NIE jest tu customowym dropem - podmieniamy
+ * blok na PRAWDZIWY Material.COBBLESTONE tuż przed przetworzeniem eventu (stąd
+ * {@code priority = EventPriority.LOWEST} na onBreak) i NIE anulujemy/nadpisujemy dropów,
+ * więc dalszy event leci dokładnie tak, jakby gracz kopał zwykły bruk - PickaxeSkillManager
+ * z mainplugins-tools (onBlockBreak, ignoreCancelled=true) widzi Material.COBBLESTONE i
+ * nalicza wszystko (exp, bonusy, rollBonusZBruku) tak samo jak przy zwykłym bruku na
+ * wyspie. Dzięki temu ten generator to renewable źródło surowca pod CAŁĄ resztę ekonomii
+ * kilofa, nie tylko sam bruk, bez duplikowania logiki dropów tutaj.
  *
  * Zdobywany DWOMA sposobami (inaczej niż Kruchy, celowo bez questa/receptury na start):
  * sklep (custom-id GENERATOR_BRUK_T1, patrz categories/specjalne.yml) i komenda testowa
@@ -38,8 +47,9 @@ public class GeneratorBrukuManager implements Listener {
 
     private static final String CUSTOM_ID_GENERATOR = "GENERATOR_BRUK_T1";
     private static final Material MATERIAL_GENERATORA = Material.MOSSY_COBBLESTONE;
-    private static final long ODNOWA_TICKOW = 20L * 60; // 60s
-    private static final int ILOSC_BRUKU_ZA_WYKOP = 3;
+    // Celowo minimalne - blok ma się odnawiać "prawie od razu", nie stać pusty przez
+    // dłuższą chwilę jak w starej wersji (60s).
+    private static final long ODNOWA_TICKOW = 15L;
 
     private final Plugin plugin;
 
@@ -62,9 +72,9 @@ public class GeneratorBrukuManager implements Listener {
                 Component.text("można wykopać z niego bruk (cobblestone).", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
                 Component.text("Blok sam się odbudowuje po wykopaniu.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
                 Component.empty(),
-                Component.text("Kopie się WYŁĄCZNIE łopatą.", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false),
+                Component.text("Kopie się WYŁĄCZNIE kilofem.", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false),
                 Component.text("Narzędzie ze specjalnym Silk Touchem", NamedTextColor.LIGHT_PURPLE).decoration(TextDecoration.ITALIC, false),
-                Component.text("(np. ewoluująca łopata) zbiera cały blok.", NamedTextColor.LIGHT_PURPLE).decoration(TextDecoration.ITALIC, false)
+                Component.text("(np. ewoluujący kilof) zbiera cały blok.", NamedTextColor.LIGHT_PURPLE).decoration(TextDecoration.ITALIC, false)
         ));
         meta.getPersistentDataContainer().set(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING, CUSTOM_ID_GENERATOR);
         item.setItemMeta(meta);
@@ -77,7 +87,11 @@ public class GeneratorBrukuManager implements Listener {
         aktywneGeneratory.add(event.getBlock().getLocation());
     }
 
-    @EventHandler
+    /**
+     * Priority LOWEST - musimy podmienić blok na zwykły bruk ZANIM PickaxeSkillManager
+     * (mainplugins-tools, priority NORMAL) przetworzy ten sam event, patrz komentarz klasy.
+     */
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onBreak(BlockBreakEvent event) {
         var block = event.getBlock();
         Location lokalizacja = block.getLocation();
@@ -86,22 +100,26 @@ public class GeneratorBrukuManager implements Listener {
         Player player = event.getPlayer();
         ItemStack narzedzie = player.getInventory().getItemInMainHand();
 
-        if (!jestLopata(narzedzie)) {
+        if (!jestKilof(narzedzie)) {
             event.setCancelled(true);
-            player.sendMessage(Component.text("Ten blok trzeba kopać łopatą!", NamedTextColor.RED));
+            player.sendMessage(Component.text("Ten blok trzeba kopać kilofem!", NamedTextColor.RED));
             return;
         }
-        event.setDropItems(false);
 
         if (maSpecjalnySilkTouch(narzedzie)) {
+            // Jedyny przypadek, gdzie blok faktycznie znika na stałe - gracz zabiera go ze sobą.
             aktywneGeneratory.remove(lokalizacja);
+            event.setDropItems(false);
             block.getWorld().dropItemNaturally(lokalizacja.clone().add(0.5, 0.5, 0.5), stworzGenerator());
             player.sendMessage(Component.text("Zebrałeś cały generator - możesz postawić go gdzie indziej!", NamedTextColor.GREEN));
             return;
         }
 
-        block.getWorld().dropItemNaturally(lokalizacja.clone().add(0.5, 0.5, 0.5), new ItemStack(Material.COBBLESTONE, ILOSC_BRUKU_ZA_WYKOP));
-
+        // Zwykłe wykopanie: NIE anulujemy i NIE nadpisujemy dropów - podmiana na
+        // Material.COBBLESTONE tuż przed dalszym przetwarzaniem eventu wystarczy, żeby
+        // reszta (drop, dźwięk, PickaxeSkillManager#rollBonusZBruku) zadziałała dokładnie
+        // jak przy zwykłym bruku, patrz komentarz klasy. Blok wraca po krótkim opóźnieniu.
+        block.setType(Material.COBBLESTONE, false);
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             // Ktoś w międzyczasie zebrał go specjalnym silk touchem - nie odbudowuj pustego miejsca.
             if (!aktywneGeneratory.contains(lokalizacja)) return;
@@ -121,8 +139,8 @@ public class GeneratorBrukuManager implements Listener {
         return Boolean.TRUE.equals(item.getItemMeta().getPersistentDataContainer().get(CustomItemKeys.SPECJALNY_SILK_TOUCH, PersistentDataType.BOOLEAN));
     }
 
-    /** Generator kopie się WYŁĄCZNIE łopatą (dowolny tier, w tym ewoluująca) - inne narzędzia są blokowane, patrz onBreak. */
-    private boolean jestLopata(ItemStack item) {
-        return item != null && item.getType().name().endsWith("_SHOVEL");
+    /** Generator kopie się WYŁĄCZNIE kilofem (dowolny tier, w tym ewoluujący) - inne narzędzia są blokowane, patrz onBreak. */
+    private boolean jestKilof(ItemStack item) {
+        return item != null && item.getType().name().endsWith("_PICKAXE");
     }
 }

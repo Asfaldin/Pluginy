@@ -5,9 +5,12 @@ import elo.mainplugins.core.api.ToolsService;
 import elo.mainplugins.tools.axe.AxeSkillManager;
 import elo.mainplugins.tools.hoe.HoeSkillManager;
 import elo.mainplugins.tools.pickaxe.BrukSurowceManager;
+import elo.mainplugins.tools.pickaxe.GemType;
 import elo.mainplugins.tools.pickaxe.PickaxeSkillManager;
+import elo.mainplugins.tools.pickaxe.PickaxeType;
 import elo.mainplugins.tools.special.NiszczycielManager;
 import elo.mainplugins.tools.sword.SwordSkillManager;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.ServicePriority;
@@ -27,6 +30,7 @@ public final class MainpluginsTools extends JavaPlugin {
 
         PickaxeSkillManager pickaxeSkillManager = new PickaxeSkillManager(this, CoreAPI.getEconomyService(), brukSurowceManager);
         getServer().getPluginManager().registerEvents(pickaxeSkillManager, this);
+        levelableToolsManager.setPickaxeSkillManager(pickaxeSkillManager);
 
         AxeSkillManager axeSkillManager = new AxeSkillManager(this, CoreAPI.getEconomyService());
         getServer().getPluginManager().registerEvents(axeSkillManager, this);
@@ -88,6 +92,60 @@ public final class MainpluginsTools extends JavaPlugin {
                     levelableToolsManager.debugAddLevels(player, item, amount);
                 }
                 player.sendMessage("§a[DEBUG] Dodano " + amount + " poziomów trzymanemu narzędziu.");
+                return true;
+            });
+        }
+
+        if (getCommand("addcustompickaxe") != null) {
+            getCommand("addcustompickaxe").setExecutor((sender, command, label, args) -> {
+                Player target;
+                if (args.length > 0) {
+                    target = Bukkit.getPlayer(args[0]);
+                    if (target == null) {
+                        sender.sendMessage("§cNie znaleziono online gracza o nicku: " + args[0]);
+                        return true;
+                    }
+                } else if (sender instanceof Player player) {
+                    target = player;
+                } else {
+                    sender.sendMessage("§cPodaj nick gracza: /addcustompickaxe <gracz>");
+                    return true;
+                }
+
+                levelableToolsManager.dajEwoluujacyKilof(target);
+                if (sender != target) {
+                    sender.sendMessage("§aNadano custom kilof graczowi " + target.getName() + ".");
+                }
+                return true;
+            });
+        }
+
+        if (getCommand("dajwszystko") != null) {
+            getCommand("dajwszystko").setExecutor((sender, command, label, args) -> {
+                Player target;
+                if (args.length > 0) {
+                    target = Bukkit.getPlayer(args[0]);
+                    if (target == null) {
+                        sender.sendMessage("§cNie znaleziono online gracza o nicku: " + args[0]);
+                        return true;
+                    }
+                } else if (sender instanceof Player player) {
+                    target = player;
+                } else {
+                    sender.sendMessage("§cPodaj nick gracza: /dajwszystko <gracz>");
+                    return true;
+                }
+
+                for (PickaxeType type : PickaxeType.values()) {
+                    target.getInventory().addItem(pickaxeSkillManager.stworzKilof(target, type));
+                }
+                for (GemType gem : GemType.values()) {
+                    target.getInventory().addItem(pickaxeSkillManager.stworzGem(gem));
+                }
+                target.sendMessage("§a[DEBUG] Otrzymałeś wszystkie typy kilofa i wszystkie gemy do testów.");
+                if (sender != target) {
+                    sender.sendMessage("§aNadano komplet testowy graczowi " + target.getName() + ".");
+                }
                 return true;
             });
         }

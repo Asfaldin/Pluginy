@@ -11,8 +11,22 @@ commands:
     description: "[DEBUG] Dodaje poziomy trzymanemu narzedziu (testy)"
     usage: "/<command> [ilosc]"
     permission: mainplugins.tools.addlvl
+  addcustompickaxe:
+    description: "[ADMIN] Nadaje startowy kilof (Wydajnosciowy) - jak nagroda questu 1"
+    usage: "/<command> [gracz]"
+    permission: mainplugins.tools.addcustompickaxe
+  dajwszystko:
+    description: "[DEBUG] Nadaje wszystkie typy kilofa i wszystkie gemy do testow"
+    usage: "/<command> [gracz]"
+    permission: mainplugins.tools.dajwszystko
 
 permissions:
   mainplugins.tools.addlvl:
     description: Pozwala levelowac trzymane narzedzie do testow
+    default: op
+  mainplugins.tools.addcustompickaxe:
+    description: Pozwala nadac startowy kilof (sobie lub innemu graczowi)
+    default: op
+  mainplugins.tools.dajwszystko:
+    description: Pozwala nadac komplet wszystkich kilofow i gemow do testow
     default: op

@@ -343,7 +343,7 @@ public class HoeSkillManager extends ToolSkillManager {
             lore.add(Component.text("Brak", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
         } else {
             for (String id : rare) {
-                var perk = findRarePerk(id);
+                var perk = findRarePerk(pdc, id);
                 if (perk != null) {
                     lore.add(Component.text("• " + perk.displayName(), NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
                 }

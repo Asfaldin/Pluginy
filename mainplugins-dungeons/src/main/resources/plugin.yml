@@ -1,0 +1,16 @@
+name: MainpluginsDungeons
+version: ${project.version}
+main: elo.mainplugins.dungeons.MainpluginsDungeons
+api-version: '1.20'
+depend: [MainpluginsCore]
+
+commands:
+  tpboss:
+    description: Teleportuje do areny bossa (walka 1v1 z customowym bossem)
+  tpdun:
+    description: Teleportuje do lochu (kilka pokoi z mobami, na końcu boss)
+
+permissions:
+  mainplugins.dungeons.use:
+    description: Pozwala uzywac /tpboss i /tpdun
+    default: true

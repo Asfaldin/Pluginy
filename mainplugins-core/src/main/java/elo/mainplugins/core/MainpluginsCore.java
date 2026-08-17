@@ -27,6 +27,8 @@ public final class MainpluginsCore extends JavaPlugin {
         economyManager = new EconomyManager(this);
         getServer().getServicesManager().register(EconomyService.class, economyManager, this, ServicePriority.Normal);
 
+        getServer().getPluginManager().registerEvents(new ResourcePackManager(this), this);
+
         if (getCommand("adminhelp") != null) {
             getCommand("adminhelp").setExecutor(new AdminHelpCommand());
         }

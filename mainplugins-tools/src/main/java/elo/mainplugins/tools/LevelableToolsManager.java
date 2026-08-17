@@ -1,6 +1,8 @@
 package elo.mainplugins.tools;
 
 import elo.mainplugins.core.api.ToolsService;
+import elo.mainplugins.tools.pickaxe.PickaxeSkillManager;
+import elo.mainplugins.tools.pickaxe.PickaxeType;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -38,10 +40,17 @@ public class LevelableToolsManager implements Listener, ToolsService {
     private final NamespacedKey keyLevel;
     private final NamespacedKey keyExp;
     private final NamespacedKey keyOwner;
-    private final NamespacedKey pkLevel; // klucz PDC "pk_level" - własność PickaxeSkillManager, kilof poziomuje się osobno (patrz poziomKilofa)
 
     private final int EXP_PER_LEVEL = 50;
     private final int MAX_LEVEL = 5;
+
+    /**
+     * Kilof NIE jest już tworzony/poziomowany tutaj - patrz dajEwoluujacyKilof/poziomKilofa,
+     * które delegują do PickaxeSkillManager (osobne typy kilofa, patrz PickaxeType). Setter
+     * zamiast konstruktora, bo MainpluginsTools konstruuje LevelableToolsManager PRZED
+     * PickaxeSkillManager - wołany raz w MainpluginsTools#onEnable zaraz po obu konstrukcjach.
+     */
+    private PickaxeSkillManager pickaxeSkillManager;
 
     public LevelableToolsManager(Plugin plugin) {
         this.plugin = plugin;
@@ -50,7 +59,10 @@ public class LevelableToolsManager implements Listener, ToolsService {
         this.keyLevel = new NamespacedKey(plugin, "tool_level");
         this.keyExp = new NamespacedKey(plugin, "tool_exp");
         this.keyOwner = new NamespacedKey(plugin, "tool_owner");
-        this.pkLevel = new NamespacedKey(plugin, "pk_level");
+    }
+
+    public void setPickaxeSkillManager(PickaxeSkillManager pickaxeSkillManager) {
+        this.pickaxeSkillManager = pickaxeSkillManager;
     }
 
     /**
@@ -60,7 +72,7 @@ public class LevelableToolsManager implements Listener, ToolsService {
      * nagrody z Głównej Ścieżki (mainplugins-quests), a nie start dawany za darmo.
      */
     public void dajStartoweNarzedzia(Player player) {
-        player.getInventory().addItem(stworzNarzedzie(player, "pickaxe", 0));
+        player.getInventory().addItem(pickaxeSkillManager.stworzKilof(player, PickaxeType.WYDAJNOSCIOWY));
         player.getInventory().addItem(stworzNarzedzie(player, "axe", 0));
         player.getInventory().addItem(stworzNarzedzie(player, "sword", 0));
         player.getInventory().addItem(stworzNarzedzie(player, "hoe", 0));
@@ -69,11 +81,16 @@ public class LevelableToolsManager implements Listener, ToolsService {
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
     }
 
-    /** {@inheritDoc} Wołane przez QuestManager (mainplugins-quests) po ukończeniu questa "Witaj na Wyspie". */
+    /**
+     * {@inheritDoc} Wołane przez QuestManager (mainplugins-quests) po ukończeniu questa
+     * "Witaj na Wyspie" - nadaje kilof typu {@link PickaxeType#WYDAJNOSCIOWY} (najbardziej
+     * uniwersalny start), w pełni zainicjalizowany przez PickaxeSkillManager (NIE przez
+     * stworzNarzedzie/tier-owy system, którego kilof już nie używa).
+     */
     @Override
     public void dajEwoluujacyKilof(Player player) {
-        player.getInventory().addItem(stworzNarzedzie(player, "pickaxe", 0));
-        player.sendMessage(Component.text("Otrzymałeś swój pierwszy, ewoluujący kilof!", NamedTextColor.GREEN, TextDecoration.BOLD));
+        player.getInventory().addItem(pickaxeSkillManager.stworzKilof(player, PickaxeType.WYDAJNOSCIOWY));
+        player.sendMessage(Component.text("Otrzymałeś swój pierwszy kilof - Wydajnościowy!", NamedTextColor.GREEN, TextDecoration.BOLD));
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
     }
 
@@ -114,20 +131,13 @@ public class LevelableToolsManager implements Listener, ToolsService {
     }
 
     /**
-     * {@inheritDoc} Kilof NIE trzyma poziomu pod keyLevel jak reszta narzędzi - ma
-     * osobny system (PickaxeSkillManager, klucz PDC "pk_level"). Czytamy tu ten sam
-     * klucz (ten sam plugin => ten sam NamespacedKey) zamiast dublować logikę.
+     * {@inheritDoc} Odkąd gracz może trzymać kilka RÓŻNYCH typów kilofa naraz (patrz
+     * PickaxeType), zwraca NAJWYŻSZY poziom wśród wszystkich - delegacja do
+     * PickaxeSkillManager, które jako jedyne tworzy/poziomuje kilofy.
      */
     @Override
     public int poziomKilofa(Player player) {
-        for (ItemStack item : player.getInventory().getContents()) {
-            if (item == null || !item.hasItemMeta()) continue;
-            PersistentDataContainer pdc = item.getItemMeta().getPersistentDataContainer();
-            if ("pickaxe".equals(pdc.get(keyType, PersistentDataType.STRING))) {
-                return pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
-            }
-        }
-        return 0;
+        return pickaxeSkillManager.poziomNajlepszegoKilofa(player);
     }
 
     @EventHandler
@@ -279,7 +289,6 @@ public class LevelableToolsManager implements Listener, ToolsService {
         ItemMeta meta = item.getItemMeta();
 
         String nazwa = switch(type) {
-            case "pickaxe" -> "Ewoluujący Kilof";
             case "axe" -> "Ewoluująca Siekiera";
             case "sword" -> "Ewoluujący Miecz";
             case "hoe" -> "Ewoluująca Motyka";
@@ -327,15 +336,15 @@ public class LevelableToolsManager implements Listener, ToolsService {
 
     private Material pobierzMaterial(String type, int tier) {
         if (tier == 0) {
-            return switch(type) { case "pickaxe" -> Material.WOODEN_PICKAXE; case "axe" -> Material.WOODEN_AXE; case "sword" -> Material.WOODEN_SWORD; case "hoe" -> Material.WOODEN_HOE; case "shovel" -> Material.WOODEN_SHOVEL; default -> Material.STICK; };
+            return switch(type) { case "axe" -> Material.WOODEN_AXE; case "sword" -> Material.WOODEN_SWORD; case "hoe" -> Material.WOODEN_HOE; case "shovel" -> Material.WOODEN_SHOVEL; default -> Material.STICK; };
         } else if (tier == 1) {
-            return switch(type) { case "pickaxe" -> Material.STONE_PICKAXE; case "axe" -> Material.STONE_AXE; case "sword" -> Material.STONE_SWORD; case "hoe" -> Material.STONE_HOE; case "shovel" -> Material.STONE_SHOVEL; default -> Material.STICK; };
+            return switch(type) { case "axe" -> Material.STONE_AXE; case "sword" -> Material.STONE_SWORD; case "hoe" -> Material.STONE_HOE; case "shovel" -> Material.STONE_SHOVEL; default -> Material.STICK; };
         } else if (tier == 2) {
-            return switch(type) { case "pickaxe" -> Material.IRON_PICKAXE; case "axe" -> Material.IRON_AXE; case "sword" -> Material.IRON_SWORD; case "hoe" -> Material.IRON_HOE; case "shovel" -> Material.IRON_SHOVEL; default -> Material.STICK; };
+            return switch(type) { case "axe" -> Material.IRON_AXE; case "sword" -> Material.IRON_SWORD; case "hoe" -> Material.IRON_HOE; case "shovel" -> Material.IRON_SHOVEL; default -> Material.STICK; };
         } else if (tier == 3) {
-            return switch(type) { case "pickaxe" -> Material.DIAMOND_PICKAXE; case "axe" -> Material.DIAMOND_AXE; case "sword" -> Material.DIAMOND_SWORD; case "hoe" -> Material.DIAMOND_HOE; case "shovel" -> Material.DIAMOND_SHOVEL; default -> Material.STICK; };
+            return switch(type) { case "axe" -> Material.DIAMOND_AXE; case "sword" -> Material.DIAMOND_SWORD; case "hoe" -> Material.DIAMOND_HOE; case "shovel" -> Material.DIAMOND_SHOVEL; default -> Material.STICK; };
         } else {
-            return switch(type) { case "pickaxe" -> Material.NETHERITE_PICKAXE; case "axe" -> Material.NETHERITE_AXE; case "sword" -> Material.NETHERITE_SWORD; case "hoe" -> Material.NETHERITE_HOE; case "shovel" -> Material.NETHERITE_SHOVEL; default -> Material.STICK; };
+            return switch(type) { case "axe" -> Material.NETHERITE_AXE; case "sword" -> Material.NETHERITE_SWORD; case "hoe" -> Material.NETHERITE_HOE; case "shovel" -> Material.NETHERITE_SHOVEL; default -> Material.STICK; };
         }
     }
 

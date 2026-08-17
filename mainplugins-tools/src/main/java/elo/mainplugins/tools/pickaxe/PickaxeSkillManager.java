@@ -5,7 +5,10 @@ import elo.mainplugins.core.api.CrateService;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.util.GuiUtils;
 import elo.mainplugins.tools.pickaxe.BrukSurowce.SurowiecDrop;
+import elo.mainplugins.tools.skilltree.RarePerk;
+import elo.mainplugins.tools.skilltree.SkillBranch;
 import elo.mainplugins.tools.skilltree.ToolSkillManager;
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -24,9 +27,8 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.inventory.EquipmentSlotGroup;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
@@ -44,56 +46,265 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 /**
- * Kilof na silniku ToolSkillManager (model kart) - tak samo jak siekiera/motyka/miecz.
- * Mechaniki niezmienione względem poprzedniej, węzłowej wersji - tylko czytane z
- * liczników kart (cardCountOf) zamiast bitmaskowych węzłów kup-po-kolei. Patrz
- * PickaxeSkillTrees dla treści/rzadkości kart, PickaxeRarePerks dla puli legendarnej.
+ * Kilof na silniku ToolSkillManager - w odróżnieniu od siekiery/motyki/miecza NIE jest
+ * już jedną ewoluującą linią tierów (drewno→netheryt). Zamiast tego gracz zdobywa jeden
+ * z {@link PickaxeType} (Material stały per typ, patrz materialOverride), z których
+ * każdy ma WŁASNĄ, dedykowaną pulę kart (branchesFor) i własną automatyczną statystykę
+ * rosnącą z poziomem (patrz applyMiningPerks/auraAmplifierFor) - "różne kilofy, różne
+ * systemy", zamiast wspólnego drzewka.
  *
- * Różnice względem pozostałych narzędzi:
- * 1) kilof ma dodatkową ikonkę w hubie (przełącznik/konfiguracja "Bonus z Bruku", patrz
- *    BrukSurowceManager) - stąd nadpisane populateExtraHubIcons/handleExtraHubClick/
- *    initializeToolSpecific z ToolSkillManager, plus własny ekran (BrukConfigHolder).
- * 2) na tym Skyblocku jedyny sposób zdobycia "rudy" to Bonus z Bruku (brak realnego
- *    świata z blokami rudy) - dlatego rollBonusZBruku jest wołany na SAMYM POCZĄTKU
- *    applyMiningPerks, a jego wynik (nie isOre(mat)/isRareOre(mat)) zasila karty rudowe
- *    (Oko Sokoła, Rezonans Rudy, Serce Głębi, Szczęśliwa Ruda, Bystre Oko/Ręka Jubilera).
+ * Bonus z Bruku (jedyne źródło "rudy" na tym Skyblocku - patrz BrukSurowceManager)
+ * zostaje UNIWERSALNY dla każdego typu (inaczej gracze bez Kilofa Szczęścia nigdy nie
+ * dostaliby diamentu/netherytu) - Szczęścia tylko podbija jego szansę, tak jak dawna
+ * karta MAG_BRUK_SZCZESCIE.
+ *
+ * Gemy (patrz {@link GemType}) - uniwersalne modyfikatory, max {@link #MAX_GEMY} na
+ * kilof, osadzane w kowadle (onPrepareAnvil, wzorem FishingManager#onPrepareAnvil w
+ * mainplugins-fishing).
  */
 public class PickaxeSkillManager extends ToolSkillManager {
+
+    public static final int MAX_GEMY = 3;
+
+    private static final List<SkillBranch> PLACEHOLDER_BRANCHES = List.of(
+            new SkillBranch("PLACEHOLDER_A", "-", NamedTextColor.GRAY, Material.BARRIER, List.of()),
+            new SkillBranch("PLACEHOLDER_B", "-", NamedTextColor.GRAY, Material.BARRIER, List.of()),
+            new SkillBranch("PLACEHOLDER_C", "-", NamedTextColor.GRAY, Material.BARRIER, List.of())
+    );
 
     private final BrukSurowceManager brukSurowceManager;
     private final NamespacedKey pkBrukOn;
     private final NamespacedKey pkBrukDisabled;
-    private final NamespacedKey pkSpeedModifierKey;
+    private final NamespacedKey pkType;
+    private final NamespacedKey pkGems;
+    private final NamespacedKey pkGemId;
     private final NamespacedKey pkSpeedPassiveModifierKey;
-    private final NamespacedKey pkSpeedSynergyKey;
 
     private int slotBrukInfo;
 
     private final Map<UUID, Long> streakLastBreak = new HashMap<>();
     private final Map<UUID, Integer> streakCount = new HashMap<>();
+    private final Map<UUID, Integer> luckStreak = new HashMap<>();
 
     public PickaxeSkillManager(Plugin plugin, EconomyService economyService, BrukSurowceManager brukSurowceManager) {
-        super(plugin, economyService, "pickaxe", "Kilof", PickaxeSkillTrees.BRANCHES, PickaxeRarePerks.WSZYSTKIE,
-                PickaxeSkillTrees.SYNERGIE, "kilof-hub.yml");
+        super(plugin, economyService, "pickaxe", "Kilof", PLACEHOLDER_BRANCHES, List.of(), List.of(), "kilof-hub.yml");
         this.brukSurowceManager = brukSurowceManager;
         this.pkBrukOn = new NamespacedKey(plugin, "pk_bruk_on");
         this.pkBrukDisabled = new NamespacedKey(plugin, "pk_bruk_disabled");
-        this.pkSpeedModifierKey = new NamespacedKey(plugin, "pk_speed_bonus");
+        this.pkType = new NamespacedKey(plugin, "pk_type");
+        this.pkGems = new NamespacedKey(plugin, "pk_gems");
+        this.pkGemId = new NamespacedKey(plugin, "gem_id");
         this.pkSpeedPassiveModifierKey = new NamespacedKey(plugin, "pk_speed_passive");
-        this.pkSpeedSynergyKey = new NamespacedKey(plugin, "pk_speed_synergy");
-        wczytajBrukSlot();
+        wczytajSloty();
     }
 
-    /** Slot dodatkowej ikonki "Bonus z Bruku" - jedyny klucz w kilof-hub.yml nieznany bazowemu ToolSkillManager. */
-    private void wczytajBrukSlot() {
+    /** Slot ikonki Bonusu z Bruku - jedyny klucz w kilof-hub.yml nieznany bazowemu ToolSkillManager (gemy pokazują się w ekranie Statystyki, patrz statsBlocks). */
+    private void wczytajSloty() {
         File plik = new File(plugin.getDataFolder(), "kilof-hub.yml");
         FileConfiguration cfg = YamlConfiguration.loadConfiguration(plik);
         slotBrukInfo = clampSlot(cfg.getInt("sloty.bonus_bruku", 21));
+    }
+
+    // ==================================================== Typ kilofa ====
+
+    /** Testowy dzieli mechanikę 1:1 z Wydajnościowym (patrz PickaxeType#TESTOWY) - jedyne miejsce, w którym trzeba to uwzględnić. */
+    private boolean jestWydajnosciowy(PickaxeType type) {
+        return type == PickaxeType.WYDAJNOSCIOWY || type == PickaxeType.TESTOWY;
+    }
+
+    private PickaxeType typeOf(PersistentDataContainer pdc) {
+        String name = pdc.get(pkType, PersistentDataType.STRING);
+        if (name == null) return PickaxeType.WYDAJNOSCIOWY;
+        try {
+            return PickaxeType.valueOf(name);
+        } catch (IllegalArgumentException e) {
+            return PickaxeType.WYDAJNOSCIOWY;
+        }
+    }
+
+    /** Tworzy w pełni zainicjalizowany kilof danego typu, poziom 1 - jedyne wejście do tworzenia kilofów (quest 1, /dajwszystko). */
+    public ItemStack stworzKilof(Player player, PickaxeType type) {
+        ItemStack item = new ItemStack(type.material());
+        ItemMeta meta = item.getItemMeta();
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        pdc.set(keyType, PersistentDataType.STRING, "pickaxe");
+        pdc.set(keyOwner, PersistentDataType.STRING, player.getUniqueId().toString());
+        pdc.set(pkType, PersistentDataType.STRING, type.name());
+        item.setItemMeta(meta);
+        ensureInitialized(item);
+        return item;
+    }
+
+    /** Gem jako fizyczny item do dropu/wręczenia (np. /dajwszystko) - osadzany w kowadle, patrz onPrepareAnvil. */
+    public ItemStack stworzGem(GemType gem) {
+        ItemStack item = new ItemStack(gem.icon());
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.text(gem.displayName(), NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
+        meta.lore(List.of(
+                Component.text(gem.opis(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.empty(),
+                Component.text("Połącz z kilofem w kowadle, aby osadzić.", NamedTextColor.LIGHT_PURPLE).decoration(TextDecoration.ITALIC, false)));
+        meta.getPersistentDataContainer().set(pkGemId, PersistentDataType.STRING, gem.name());
+        meta.setEnchantmentGlintOverride(true);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    /** Maksymalny poziom wśród WSZYSTKICH trzymanych kilofów gracza (dowolnego typu) - pod ToolsService#poziomKilofa. */
+    public int poziomNajlepszegoKilofa(Player player) {
+        int max = 0;
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item == null || item.getItemMeta() == null) continue;
+            PersistentDataContainer pdc = item.getItemMeta().getPersistentDataContainer();
+            if (!"pickaxe".equals(pdc.get(keyType, PersistentDataType.STRING))) continue;
+            int lvl = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
+            if (lvl > max) max = lvl;
+        }
+        return max;
+    }
+
+    // ==================================================== Silnik: hooki ====
+
+    @Override
+    protected Material materialOverride(PersistentDataContainer pdc) {
+        return typeOf(pdc).material();
+    }
+
+    /** Każdy typ ma WŁASNĄ nazwę ("Kilof Wydajnościowy", nie samo "Kilof") - inaczej wszystkie 4 typy wyglądają identycznie. */
+    @Override
+    protected String displayNameFor(PersistentDataContainer pdc) {
+        return "Kilof " + typeOf(pdc).displayName();
+    }
+
+    // ==================================================== Custom GUI (hub) ====
+    // Proof-of-concept custom teksturowanego huba - patrz assets/mainplugins/font/gui.json
+    // w resourcepacku (kod czcionki "mainplugins:gui"): znak dystansowy (cofa tytuł o 8px
+    // w lewo, żeby wyrównać się z lewą krawędzią GUI) + jeden znak-obrazek (CAŁE okno,
+    // 176x166px, ascent=7/height=166 - pokrywa naszą sekcję (3 rzędy) ORAZ ekwipunek
+    // gracza/hotbar pod spodem - patrz komentarz w PLACEHOLDER o ograniczeniu: realne itemy
+    // gracza i tak wyrenderują się NAD tym obrazkiem, jeśli coś tam ma). Placeholder ma
+    // siatkę (cyjan=nasze sloty, pomarańcz=ekw. gracza, limonka=hotbar) + znaczniki rogów
+    // pod kalibrację wyrównania.
+
+    private static final Key GUI_FONT = Key.key("mainplugins", "gui");
+    private static final String GUI_SPACER_CHAR = "";
+    private static final String GUI_HUB_BG_CHAR = "";
+
+    @Override
+    protected boolean hubUsesCustomBackground(PersistentDataContainer pdc) {
+        return true;
+    }
+
+    @Override
+    protected Component hubTitleFor(PersistentDataContainer pdc, String nazwa) {
+        return Component.text(GUI_SPACER_CHAR + GUI_HUB_BG_CHAR).font(GUI_FONT);
+    }
+
+    /** Nigdy realnie użyte (materialOverride zawsze wygrywa dla kilofa) - musi istnieć, bo abstrakcyjne w bazie. */
+    @Override
+    protected Material materialForTier(int tier) {
+        return PickaxeType.WYDAJNOSCIOWY.material();
+    }
+
+    @Override
+    protected int offerCadence(PersistentDataContainer pdc) {
+        return 5;
+    }
+
+    @Override
+    protected List<SkillBranch> branchesFor(PersistentDataContainer pdc) {
+        return List.of(typeOf(pdc).branch());
+    }
+
+    @Override
+    protected List<RarePerk> rarePerksFor(PersistentDataContainer pdc) {
+        return List.of();
+    }
+
+    @Override
+    protected void initializeToolSpecific(PersistentDataContainer pdc) {
+        pdc.set(pkBrukOn, PersistentDataType.BYTE, (byte) 1);
+        pdc.set(pkGems, PersistentDataType.STRING, "");
+        if (!pdc.has(pkType, PersistentDataType.STRING)) {
+            pdc.set(pkType, PersistentDataType.STRING, PickaxeType.WYDAJNOSCIOWY.name());
+        }
+    }
+
+    // ============================================================ Gemy ====
+
+    private List<GemType> gemsOf(PersistentDataContainer pdc) {
+        String csv = pdc.getOrDefault(pkGems, PersistentDataType.STRING, "");
+        if (csv.isEmpty()) return List.of();
+        List<GemType> list = new ArrayList<>();
+        for (String s : csv.split(",")) {
+            try {
+                list.add(GemType.valueOf(s));
+            } catch (IllegalArgumentException ignored) {
+                // uszkodzony wpis - pomijamy
+            }
+        }
+        return list;
+    }
+
+    private int gemCount(PersistentDataContainer pdc, GemType gem) {
+        int count = 0;
+        for (GemType g : gemsOf(pdc)) if (g == gem) count++;
+        return count;
+    }
+
+    /** Mnożnik z Gemu Mocy (1.0 = brak, 1.10 = jeden gem, itd.) - stosowany do głównej auto-staty typu. */
+    private double mocyMnoznik(PersistentDataContainer pdc) {
+        return 1.0 + gemCount(pdc, GemType.MOCY) * GemType.MOCY.wartosc();
+    }
+
+    private GemType gemFromItem(ItemStack item) {
+        if (item == null || item.getItemMeta() == null) return null;
+        String id = item.getItemMeta().getPersistentDataContainer().get(pkGemId, PersistentDataType.STRING);
+        if (id == null) return null;
+        try {
+            return GemType.valueOf(id);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Osadzanie gemu w kowadle - wzorowane 1:1 na FishingManager#onPrepareAnvil
+     * (mainplugins-fishing): lewy slot = nasz przedmiot, prawy slot = "surowiec"
+     * rozpoznawany po własnym tagu PDC, wynik = zmodyfikowany klon lewego przedmiotu.
+     * Konsumpcja obu slotów jest w pełni wanilijska (zero dodatkowego kodu).
+     */
+    @EventHandler
+    public void onPrepareAnvil(PrepareAnvilEvent event) {
+        ItemStack left = event.getInventory().getItem(0);
+        ItemStack right = event.getInventory().getItem(1);
+        if (left == null || right == null || left.getItemMeta() == null) return;
+
+        PersistentDataContainer leftPdc = left.getItemMeta().getPersistentDataContainer();
+        if (!"pickaxe".equals(leftPdc.get(keyType, PersistentDataType.STRING))) return;
+
+        List<GemType> gems = gemsOf(leftPdc);
+        if (gems.size() >= MAX_GEMY) return;
+
+        GemType gem = gemFromItem(right);
+        if (gem == null) return;
+
+        ItemStack wynik = left.clone();
+        ItemMeta wynikMeta = wynik.getItemMeta();
+        PersistentDataContainer wynikPdc = wynikMeta.getPersistentDataContainer();
+        List<GemType> nowe = new ArrayList<>(gems);
+        nowe.add(gem);
+        wynikPdc.set(pkGems, PersistentDataType.STRING, nowe.stream().map(Enum::name).collect(Collectors.joining(",")));
+        wynik.setItemMeta(wynikMeta);
+        refreshDisplay(wynik);
+
+        event.getInventory().setRepairCost(0);
+        event.setResult(wynik);
     }
 
     // ============================================================ Kopanie ====
@@ -107,186 +318,120 @@ public class PickaxeSkillManager extends ToolSkillManager {
         ensureInitialized(item);
         applyMiningPerks(player, event.getBlock(), item);
         addExp(player, item);
+
+        PersistentDataContainer pdc = item.getItemMeta().getPersistentDataContainer();
+        double bonusExpChance = gemCount(pdc, GemType.DOSWIADCZENIA) * GemType.DOSWIADCZENIA.wartosc();
+        if (bonusExpChance > 0 && ThreadLocalRandom.current().nextDouble() < bonusExpChance) {
+            addExp(player, item);
+        }
     }
 
     private void applyMiningPerks(Player player, Block block, ItemStack item) {
         ItemMeta meta = item.getItemMeta();
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        PickaxeType type = typeOf(pdc);
         Material mat = block.getType();
-        boolean stoneLike = mat == Material.STONE || mat == Material.COBBLESTONE
-                || mat == Material.DEEPSLATE || mat == Material.COBBLED_DEEPSLATE;
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
         double scale = procScale(pdc);
+        int level = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
+        int tier = tierOf(pdc);
+        double mocy = mocyMnoznik(pdc);
 
-        // Bonus z Bruku - JEDEN roll na to kopnięcie, ZANIM cokolwiek innego sprawdza
-        // ore/rareOre poniżej. Na tym Skyblocku jedyny sposób zdobycia "rudy" to właśnie
-        // ten mechanizm (brak realnego świata z blokami rudy) - więc karty rudowe (Oko
-        // Sokoła, Rezonans Rudy, Serce Głębi, Szczęśliwa Ruda, Bystre Oko/Ręka Jubilera)
-        // musiały zostać przepięte z isOre(mat)/isRareOre(mat) na WYNIK tego rolla. Realny
-        // blok rudy (isOre/isRareOre) zostaje jako fallback - gdyby kiedyś powstał sposób
-        // na kopanie prawdziwej rudy (np. przez questy), te karty ożyją też od niego.
+        // Bonus z Bruku - UNIWERSALNY (jedyne źródło "rudy" na tym Skyblocku, patrz komentarz klasowy).
         SurowiecDrop bonusSurowiec = rollBonusZBruku(player, block, mat, pdc);
-        boolean ore = isOre(mat) || bonusSurowiec != null;
-        boolean rareOre = isRareOre(mat) || (bonusSurowiec != null && bonusSurowiec.cenny());
+        boolean cenny = bonusSurowiec != null && bonusSurowiec.cenny();
 
-        // Klucz Górnika (legendarna) - śmiesznie mała, ale realna szansa przy DOWOLNYM
-        // bloku. Cichy no-op, jeśli mainplugins-crates nie jest wgrany (opcjonalny serwis).
-        if (hasRare(pdc, "RARE_KIL_MINER_KEY") && rnd.nextDouble() < 0.00001 * scale) {
-            grantKluczGornika(player);
+        if (type == PickaxeType.SZCZESCIA) {
+            UUID id = player.getUniqueId();
+            if (cenny) luckStreak.put(id, 0); else luckStreak.merge(id, 1, Integer::sum);
+
+            if (cenny && cardCountOf(pdc, "SZCZ_KLUCZ") > 0
+                    && rnd.nextDouble() < scale * stackedChance(cardCountOf(pdc, "SZCZ_KLUCZ"), 0.08)) {
+                grantKluczGornika(player);
+            }
+            if (cenny && cardCountOf(pdc, "SZCZ_PODWOJNY") > 0 && rnd.nextDouble() < scale * 0.15) {
+                block.getWorld().dropItemNaturally(block.getLocation().add(0.5, 0.5, 0.5),
+                        new ItemStack(bonusSurowiec.item(), bonusSurowiec.ilosc()));
+            }
         }
 
-        // Kamień Filozoficzny - podmienia plon kamienia/brukowca, szansa rośnie z poziomem karty
-        int philStone = cardCountOf(pdc, "MAG_PHILOSOPHERS_STONE");
-        if (stoneLike && philStone > 0) {
-            double chance = switch (philStone) {
-                case 1 -> 0.06;
-                case 2 -> 0.12;
-                case 3 -> 0.16;
-                case 4 -> 0.20;
-                default -> 0.24;
-            } * scale;
+        if (type == PickaxeType.PIENIEZNY) {
+            double autoChance = Math.min(level * 0.001, 0.15);
+            double cardChance = stackedChance(cardCountOf(pdc, "PIE_SZANSA"), 0.03);
+            double chance = scale * combineChances(autoChance, cardChance);
             if (rnd.nextDouble() < chance) {
-                if (rnd.nextBoolean()) {
-                    ItemStack reward = rnd.nextBoolean() ? new ItemStack(Material.IRON_INGOT) : new ItemStack(Material.GOLD_NUGGET, 3);
-                    block.getWorld().dropItemNaturally(block.getLocation(), reward);
-                } else {
-                    payBonus(player, 3 + tierOf(pdc));
-                }
+                double amount = (2 + tier * 2) * (1 + cardCountOf(pdc, "PIE_MNOZNIK") * 0.15) * mocy;
+                payBonus(player, amount);
+            }
+            if (rnd.nextDouble() < scale * stackedChance(cardCountOf(pdc, "PIE_JACKPOT"), 0.005)) {
+                payBonus(player, (50 + tier * 20) * mocy);
+            }
+            if (cenny && cardCountOf(pdc, "PIE_BRUK_BONUS") > 0) {
+                payBonus(player, (5 + tier * 3) * cardCountOf(pdc, "PIE_BRUK_BONUS") * 0.5 * mocy);
             }
         }
 
-        // Żelazna Pięść / Precyzyjne Uderzenie / Wrota Głębi / Mistrzostwo (x3) / Perfekcja /
-        // Druga Szansa - dodatkowa kopia plonu (wszystko łączone jako niezależne szanse,
-        // patrz combineChances/stackedChance - suma NIGDY nie przekracza 100%). WAŻNE: fizyczna
-        // duplikacja (dropCopy) działa TYLKO na kamieniu/bruku/deepslate - na rudzie te same
-        // karty dają w zamian bonus $, żeby nie dublować diamentu/szmaragdu za darmo.
-        double bonusDropChance = scale * combineChances(
-                stackedChance(cardCountOf(pdc, "WYD_IRONGRIP"), 0.10),
-                stackedChance(cardCountOf(pdc, "PREC_CRIT"), 0.15),
-                stackedChance(cardCountOf(pdc, "MAG_DEPTHS_GATE"), 0.10),
-                cardCountOf(pdc, "PREC_PERFECTION") > 0 ? 0.20 : 0,
-                cardCountOf(pdc, "PREC_MASTERY") > 0 ? 0.20 : 0,
-                cardCountOf(pdc, "WYD_MASTERY") > 0 ? 0.15 : 0,
-                cardCountOf(pdc, "MAG_MASTERY") > 0 ? 0.10 : 0,
-                hasRare(pdc, "RARE_KIL_SECOND_CHANCE") ? 0.05 : 0
-        );
-        if (rnd.nextDouble() < bonusDropChance) {
-            if (stoneLike) {
+        if (jestWydajnosciowy(type)) {
+            double dupChance = Math.min(level * 0.0005, 0.05) * mocy;
+            if (rnd.nextDouble() < scale * dupChance) {
                 dropCopy(block, item);
-            } else if (ore) {
-                payBonus(player, 6 + tierOf(pdc) * 3);
             }
-        }
-
-        // Oko Sokoła - na rzadkich rudach bonus $ (NIE dodatkowy plon - patrz komentarz wyżej)
-        if (rareOre && rnd.nextDouble() < scale * stackedChance(cardCountOf(pdc, "PREC_HAWK_EYE"), 0.10)) {
-            payBonus(player, 6 + tierOf(pdc) * 4);
-        }
-
-        // Szczęśliwa Ruda - spory, niezależny wybuch orbów exp
-        if (cardCountOf(pdc, "MAG_LUCKY_ORE") > 0 && rareOre && rnd.nextDouble() < 0.15 * scale) {
-            spawnXp(block.getLocation().add(0.5, 0.5, 0.5), 5 + rnd.nextInt(6));
-        }
-
-        // Rezonans Rudy - sąsiednie bloki bruku pękają razem z kopanym, gdy trafienie
-        // wypadnie na "rudę" (patrz ore/rareOre wyżej) - to REALNE bloki, nie duplikacja
-        // (patrz komentarz przy bonusDropChance); poziom karty podnosi zarówno szansę
-        // bazowego triggera, jak i liczbę sąsiadów. Łowca Żył (kombinacja PREC_HAWK_EYE+
-        // WYD_RESONANCE) - na rzadkich rudach trigger gwarantowany.
-        int resonance = cardCountOf(pdc, "WYD_RESONANCE");
-        if (ore && resonance > 0) {
-            boolean guaranteed = rareOre && hasSynergy(pdc, "SYN_LOWCA_ZYL");
-            if (guaranteed || rnd.nextDouble() < scale * (0.15 + resonance * 0.05)) {
-                breakRandomNeighbors(block, item, mat, resonance);
+            if (cardCountOf(pdc, "WYD_ZASIEG") > 0
+                    && rnd.nextDouble() < scale * stackedChance(cardCountOf(pdc, "WYD_ZASIEG"), 0.08)) {
+                breakRandomNeighbors(block, item, mat, 1);
             }
-        }
-
-        // Rdzeń Chaosu (rzadka) - do 3 sąsiednich bloków kamienia/rudy naraz
-        if (hasRare(pdc, "RARE_KIL_CHAOS_CORE") && rnd.nextDouble() < 0.05 * scale) {
-            breakRandomNeighbors(block, item, null, 3);
-        }
-
-        // Serce Głębi (kombinacja WYD_RESONANCE + MAG_PHILOSOPHERS_STONE + MAG_DEPTHS_GATE,
-        // wszystkie na maksie) - gwarantowany bonus $ z KAŻDEGO bloku rudy, NIE fizyczna
-        // duplikacja (patrz komentarz przy bonusDropChance) - to i tak endgame'owa synergia.
-        if (ore && hasSynergy(pdc, "SYN_GLEBIA")) {
-            payBonus(player, scale * (20 + tierOf(pdc) * 8));
-        }
-
-        // Bystre Oko / Ręka Jubilera / Dotyk Midasa - bonusowa wypłata (Chciwe Ręce -
-        // kombinacja PREC_KEEN_EYE+PREC_JEWELER - mnoży obie wypłaty x1.5)
-        if (ore) {
-            double chciweRece = hasSynergy(pdc, "SYN_CHCIWOSC") ? 1.5 : 1.0;
-            int keenEye = cardCountOf(pdc, "PREC_KEEN_EYE");
-            for (int i = 0; i < keenEye; i++) {
-                if (rnd.nextDouble() < 0.05 * scale) payBonus(player, (4 + tierOf(pdc) * 2) * chciweRece);
+            if (cardCountOf(pdc, "WYD_MAGNES") > 0) {
+                pullNearbyDrops(player, block.getLocation());
             }
-            int jeweler = cardCountOf(pdc, "PREC_JEWELER");
-            for (int i = 0; i < jeweler; i++) {
-                if (rnd.nextDouble() < 0.08 * scale) payBonus(player, (6 + tierOf(pdc) * 4) * chciweRece);
-            }
-
-            // Pasywne Szczęście - rośnie automatycznie z każdym poziomem (niezależnie od
-            // wykupionych kart), wyraźnie słabiej niż ręczne Bystre Oko (max +60%). Już
-            // ze swojej natury skaluje się z poziomem - BEZ dodatkowego mnożnika scale.
-            int level = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
-            if (rnd.nextDouble() < level * 0.0006) payBonus(player, 2 + tierOf(pdc));
-        }
-        if (hasRare(pdc, "RARE_KIL_MIDAS") && rnd.nextDouble() < 0.03 * scale) payBonus(player, 2 + tierOf(pdc));
-
-        // Iskra Many / Nieugięty Duch - bonusowe orby xp (Duch Kopalni - kombinacja
-        // WYD_IRONGRIP+MAG_SPARK - podnosi szansę Iskry Many z 25% do 40%)
-        double sparkChance = scale * (hasSynergy(pdc, "SYN_DUCH_KOPALNI") ? 0.40 : 0.25);
-        int spark = cardCountOf(pdc, "MAG_SPARK");
-        for (int i = 0; i < spark; i++) {
-            if (rnd.nextDouble() < sparkChance) spawnXp(block.getLocation().add(0.5, 0.5, 0.5), 1 + rnd.nextInt(3));
-        }
-        if (hasRare(pdc, "RARE_KIL_UNYIELDING_SPIRIT") && rnd.nextDouble() < 0.08 * scale) {
-            spawnXp(block.getLocation().add(0.5, 0.5, 0.5), 10 + rnd.nextInt(11));
+            handleMomentum(player, pdc);
         }
 
-        // Magnes Górnika (rzadka)
-        if (hasRare(pdc, "RARE_KIL_MAGNET")) pullNearbyDrops(player, block.getLocation());
-
-        // Błogosławieństwo Głębi (rzadka)
-        if (hasRare(pdc, "RARE_KIL_DEPTHS_BLESSING")) {
-            player.setSaturation((float) Math.min(20.0, player.getSaturation() + 0.5f));
-            if (rnd.nextDouble() < 0.10) {
-                player.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 60, 0, true, false));
-            }
+        if (type == PickaxeType.OBSZAROWY) {
+            int autoRadius = Math.min(1 + level / 20, 3);
+            int extra = cardCountOf(pdc, "OBS_TUNEL") + (cardCountOf(pdc, "OBS_WIEKSZY_PROMIEN") > 0 ? 2 : 0);
+            int total = Math.min(autoRadius + extra, 6);
+            boolean autoZbiory = cardCountOf(pdc, "OBS_AUTOPOMIN") > 0;
+            boolean echo = cardCountOf(pdc, "OBS_ECHO") > 0;
+            breakAreaAroundBlock(player, block, item, total, autoZbiory, echo, pdc);
         }
+    }
 
-        // Nienasycenie - poziom 2+ daje powtarzalną, słabszą regenerację sytości
-        int insatiable = cardCountOf(pdc, "MAG_INSATIABLE");
-        if (insatiable >= 2) {
-            float amount = insatiable >= 3 ? 0.2f : 0.1f;
-            player.setSaturation((float) Math.min(20.0, player.getSaturation() + amount));
+    /**
+     * Realna szansa (%) na trigger Bonusu z Bruku - baza z bruk-szanse.yml + auto-bonus
+     * Kilofa Szczęścia (rośnie z poziomem) + karta SZCZ_SZCZESCIE + Passa (SZCZ_PASSA,
+     * liczona TYLKO gdy player != null - patrz brukInfoIcon, gdzie nie mamy gracza pod
+     * ręką) + Gem Szczęścia (uniwersalny, dowolny typ).
+     */
+    private double totalBrukSzansa(Player player, PersistentDataContainer pdc) {
+        PickaxeType type = typeOf(pdc);
+        int tier = tierOf(pdc);
+        int level = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
+        double autoLuckUnits = type == PickaxeType.SZCZESCIA ? level / 10.0 : 0;
+        double passaBonusPP = 0;
+        if (player != null && type == PickaxeType.SZCZESCIA && cardCountOf(pdc, "SZCZ_PASSA") > 0) {
+            passaBonusPP = Math.min(luckStreak.getOrDefault(player.getUniqueId(), 0) * 0.02, 4.0);
         }
-
-        // Impet Górnika / Adrenalina Górnika - kopnięcia z rzędu dają chwilowy Pośpiech
-        // (handleMomentum sama sprawdza, czy karta jest wykupiona - patrz momentum<=0 return)
-        handleMomentum(player, pdc);
+        double gemLuckPP = gemCount(pdc, GemType.SZCZESCIA) * GemType.SZCZESCIA.wartosc();
+        int szczescieUnits = (int) Math.round(cardCountOf(pdc, "SZCZ_SZCZESCIE") + autoLuckUnits);
+        return brukSurowceManager.calkowitaSzansa(tier, szczescieUnits) + gemLuckPP + passaBonusPP;
     }
 
     /**
      * Bonus z Bruku - patrz komentarz klasowy BrukSurowceManager. Liczy trigger + losuje
      * konkretny surowiec (respektując przełącznik pk_bruk_on i ręcznie wyłączone surowce),
-     * OD RAZU wypłaca go graczowi (drop + dźwięk/actionbar) i zwraca wynik - żeby
-     * applyMiningPerks mogło na tej podstawie zasilić karty "rudowe" (ore/rareOre).
-     * Zwraca null, jeśli bonus jest wyłączony, nie trafił, albo blok to nie bruk.
+     * OD RAZU wypłaca go graczowi (drop + dźwięk/actionbar) i zwraca wynik.
      */
     private SurowiecDrop rollBonusZBruku(Player player, Block block, Material mat, PersistentDataContainer pdc) {
         if (mat != Material.COBBLESTONE) return null;
         boolean enabled = pdc.getOrDefault(pkBrukOn, PersistentDataType.BYTE, (byte) 1) != 0;
         if (!enabled) return null;
 
-        int tier = tierOf(pdc);
-        double szansa = brukSurowceManager.calkowitaSzansa(tier, cardCountOf(pdc, "MAG_BRUK_SZCZESCIE"));
+        double szansa = totalBrukSzansa(player, pdc);
         if (szansa <= 0 || ThreadLocalRandom.current().nextDouble(100.0) >= szansa) return null;
 
-        List<SurowiecDrop> pula = BrukSurowce.pulaDlaTieru(tier);
+        List<SurowiecDrop> pula = BrukSurowce.pulaDlaTieru(tierOf(pdc));
         if (pula.isEmpty()) return null;
-        SurowiecDrop wylosowany = brukSurowceManager.losujWazony(pula, cardCountOf(pdc, "MAG_BRUK_INSTYNKT"), brukSurowceManager.wylaczoneSurowce(pdc));
+        SurowiecDrop wylosowany = brukSurowceManager.losujWazony(pula, 0, brukSurowceManager.wylaczoneSurowce(pdc));
         if (wylosowany == null) return null;
 
         Location loc = block.getLocation();
@@ -297,35 +442,60 @@ public class PickaxeSkillManager extends ToolSkillManager {
     }
 
     private void handleMomentum(Player player, PersistentDataContainer pdc) {
-        int momentum = cardCountOf(pdc, "WYD_MOMENTUM");
-        if (momentum <= 0) return;
+        int streakCards = cardCountOf(pdc, "WYD_STREAK");
+        if (streakCards <= 0) return;
 
         UUID id = player.getUniqueId();
-        long windowMs = momentum >= 3 ? 5000 : 3000;
+        long windowMs = streakCards >= 3 ? 5000 : 3000;
         long now = System.currentTimeMillis();
         long last = streakLastBreak.getOrDefault(id, 0L);
-        int streak = (now - last <= windowMs) ? streakCount.getOrDefault(id, 0) + 1 : 1;
+        int combo = (now - last <= windowMs) ? streakCount.getOrDefault(id, 0) + 1 : 1;
         streakLastBreak.put(id, now);
 
-        int threshold = momentum >= 2 ? 2 : 3;
-        if (streak >= threshold) {
-            streak = 0;
-            int amplifier = cardCountOf(pdc, "WYD_ADRENALINE") > 0 ? 1 : 0;
-            player.addPotionEffect(new PotionEffect(PotionEffectType.HASTE, 80, amplifier, true, false, true));
+        int threshold = streakCards >= 2 ? 2 : 3;
+        if (combo >= threshold) {
+            combo = 0;
+            player.addPotionEffect(new PotionEffect(PotionEffectType.HASTE, 80, streakCards >= 3 ? 1 : 0, true, false, true));
         }
-        streakCount.put(id, streak);
+        streakCount.put(id, combo);
     }
 
+    /** Skruszenie do maxCount sąsiadów TEGO SAMEGO Materiału co origin - AoE Kilofa Obszarowego. */
+    private void breakAreaAroundBlock(Player player, Block origin, ItemStack tool, int maxCount, boolean autoZbiory, boolean echo, PersistentDataContainer pdc) {
+        Material originType = origin.getType();
+        List<Block> candidates = new ArrayList<>();
+        for (BlockFace face : new BlockFace[]{BlockFace.UP, BlockFace.DOWN, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST}) {
+            Block neighbor = origin.getRelative(face);
+            if (neighbor.getType() == originType) candidates.add(neighbor);
+        }
+        Collections.shuffle(candidates);
+
+        int broken = 0;
+        for (Block b : candidates) {
+            if (broken >= maxCount) break;
+            Material neighborType = b.getType();
+            if (autoZbiory) {
+                for (ItemStack drop : b.getDrops(tool)) {
+                    var leftover = player.getInventory().addItem(drop);
+                    leftover.values().forEach(i -> b.getWorld().dropItemNaturally(b.getLocation(), i));
+                }
+                b.setType(Material.AIR);
+            } else {
+                b.breakNaturally(tool);
+            }
+            if (echo && neighborType == Material.COBBLESTONE) {
+                rollBonusZBruku(player, b, neighborType, pdc);
+            }
+            broken++;
+        }
+    }
+
+    /** Skruszenie do maxCount LOSOWYCH sąsiadów zadanego Materiału - Rozszerzony Zasięg (WYD_ZASIEG). */
     private void breakRandomNeighbors(Block origin, ItemStack tool, Material requiredType, int maxCount) {
         List<Block> candidates = new ArrayList<>();
         for (BlockFace face : new BlockFace[]{BlockFace.UP, BlockFace.DOWN, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST}) {
             Block neighbor = origin.getRelative(face);
-            Material type = neighbor.getType();
-            boolean matches = requiredType != null
-                    ? type == requiredType
-                    : (isOre(type) || type == Material.STONE || type == Material.COBBLESTONE
-                        || type == Material.DEEPSLATE || type == Material.COBBLED_DEEPSLATE);
-            if (matches) candidates.add(neighbor);
+            if (neighbor.getType() == requiredType) candidates.add(neighbor);
         }
         Collections.shuffle(candidates);
         int broken = 0;
@@ -336,21 +506,9 @@ public class PickaxeSkillManager extends ToolSkillManager {
         }
     }
 
-    private boolean isOre(Material m) {
-        return m.name().endsWith("_ORE") || m == Material.ANCIENT_DEBRIS;
-    }
-
-    private boolean isRareOre(Material m) {
-        return switch (m) {
-            case DIAMOND_ORE, DEEPSLATE_DIAMOND_ORE, EMERALD_ORE, DEEPSLATE_EMERALD_ORE, ANCIENT_DEBRIS -> true;
-            default -> false;
-        };
-    }
-
     /**
-     * Klucz Górnika (rzadka) - opcjonalny bonus, cichy no-op jeśli mainplugins-crates nie
-     * jest wgrany/włączony (patrz CoreAPI#getCrateService, ten sam wzorzec co
-     * FishingManager#rzucBonusowaSkrzynke).
+     * Klucz Górnika - opcjonalny bonus, cichy no-op jeśli mainplugins-crates nie jest
+     * wgrany/włączony (patrz CoreAPI#getCrateService).
      */
     private void grantKluczGornika(Player player) {
         CrateService crateService = CoreAPI.getCrateService();
@@ -363,177 +521,106 @@ public class PickaxeSkillManager extends ToolSkillManager {
         player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
     }
 
-    // ===================================================== Pasywne efekty ====
-
-    @EventHandler
-    public void onEntityDamage(EntityDamageEvent event) {
-        if (!(event.getEntity() instanceof Player player)) return;
-        EntityDamageEvent.DamageCause cause = event.getCause();
-        boolean fallingBlock = cause == EntityDamageEvent.DamageCause.FALLING_BLOCK;
-        boolean fall = cause == EntityDamageEvent.DamageCause.FALL;
-        if (!fallingBlock && !fall) return;
-
-        ItemStack item = player.getInventory().getItemInMainHand();
-        if (!isOwnedTool(item, player)) return;
-        PersistentDataContainer pdc = item.getItemMeta().getPersistentDataContainer();
-        int gravityWard = cardCountOf(pdc, "MAG_GRAVITY_WARD");
-        if (fallingBlock && gravityWard >= 1) {
-            event.setCancelled(true);
-        } else if (fall && gravityWard >= 2) {
-            event.setCancelled(true);
-        }
-    }
-
-    @EventHandler
-    public void onFoodLevelChange(FoodLevelChangeEvent event) {
-        if (!(event.getEntity() instanceof Player player)) return;
-        if (event.getFoodLevel() >= player.getFoodLevel()) return;
-
-        ItemStack item = player.getInventory().getItemInMainHand();
-        if (!isOwnedTool(item, player)) return;
-        PersistentDataContainer pdc = item.getItemMeta().getPersistentDataContainer();
-        if (cardCountOf(pdc, "MAG_INSATIABLE") >= 1) {
-            event.setCancelled(true);
-        }
-    }
+    // ===================================================== Pasywna aura ====
 
     @Override
     protected PotionEffectType auraEffectType() {
         return PotionEffectType.HASTE;
     }
 
+    /** Tylko Kilof Wydajnościowy (i Testowy, patrz jestWydajnosciowy) ma stałą Aurę Pośpiechu - rośnie automatycznie z poziomem (+ Gem Mocy). */
     @Override
     protected Integer auraAmplifierFor(PersistentDataContainer pdc) {
-        int haste = cardCountOf(pdc, "MAG_HASTE");
-        return haste > 0 ? haste - 1 : null;
+        if (!jestWydajnosciowy(typeOf(pdc))) return null;
+        int level = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
+        return (int) Math.min(4, Math.round((level / 20.0) * mocyMnoznik(pdc)));
     }
 
     // ==================================================== Statystyki/wygląd ====
 
     @Override
-    protected Material materialForTier(int tier) {
-        return switch (tier) {
-            case 0 -> Material.WOODEN_PICKAXE;
-            case 1 -> Material.STONE_PICKAXE;
-            case 2 -> Material.IRON_PICKAXE;
-            case 3 -> Material.DIAMOND_PICKAXE;
-            default -> Material.NETHERITE_PICKAXE;
-        };
-    }
-
-    private int effLevelOf(PersistentDataContainer pdc) {
-        Set<String> rare = csvToSet(pdc.getOrDefault(pkRare, PersistentDataType.STRING, ""));
-        return rare.contains("RARE_KIL_EFFICIENCY") ? 1 : 0;
-    }
-
-    private int fortLevelOf(PersistentDataContainer pdc) {
-        Set<String> rare = csvToSet(pdc.getOrDefault(pkRare, PersistentDataType.STRING, ""));
-        int fortLevel = cardCountOf(pdc, "PREC_FORT");
-        if (rare.contains("RARE_KIL_FORT4") && fortLevel > 0) fortLevel += 1;
-        return fortLevel;
-    }
-
-    private int hasteLevelOf(PersistentDataContainer pdc) {
-        Integer amp = auraAmplifierFor(pdc);
-        return amp == null ? 0 : amp + 1;
-    }
-
-    @Override
     protected void syncToolSpecificStats(ItemMeta meta, PersistentDataContainer pdc) {
-        int effLevel = effLevelOf(pdc);
-        int fortLevel = fortLevelOf(pdc);
-        int level = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
-
-        meta.removeEnchant(Enchantment.EFFICIENCY);
-        if (effLevel > 0) meta.addEnchant(Enchantment.EFFICIENCY, effLevel, true);
+        PickaxeType type = typeOf(pdc);
+        meta.setCustomModelData(type.customModelData());
         meta.removeEnchant(Enchantment.FORTUNE);
-        if (fortLevel > 0) meta.addEnchant(Enchantment.FORTUNE, fortLevel, true);
-
-        int speedCards = cardCountOf(pdc, "WYD_SPEED");
         meta.removeAttributeModifier(Attribute.BLOCK_BREAK_SPEED);
-        if (speedCards > 0) {
+
+        if (jestWydajnosciowy(type)) {
+            if (cardCountOf(pdc, "WYD_AUTOFORTUNE") > 0) meta.addEnchant(Enchantment.FORTUNE, 1, true);
+            int level = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
             meta.addAttributeModifier(Attribute.BLOCK_BREAK_SPEED, new AttributeModifier(
-                    pkSpeedModifierKey, speedCards * 0.03, AttributeModifier.Operation.ADD_SCALAR, EquipmentSlotGroup.MAINHAND));
-        }
-        if (level > 0) {
-            meta.addAttributeModifier(Attribute.BLOCK_BREAK_SPEED, new AttributeModifier(
-                    pkSpeedPassiveModifierKey, level * 0.0008, AttributeModifier.Operation.ADD_SCALAR, EquipmentSlotGroup.MAINHAND));
-        }
-        // Błyskawiczny Górnik (kombinacja WYD_SPEED≥10 + MAG_HASTE≥3) - dodatkowe +5%,
-        // osobny modifier żeby nie mieszać się z pkSpeedModifierKey powyżej.
-        if (hasSynergy(pdc, "SYN_SPEED")) {
-            meta.addAttributeModifier(Attribute.BLOCK_BREAK_SPEED, new AttributeModifier(
-                    pkSpeedSynergyKey, 0.05, AttributeModifier.Operation.ADD_SCALAR, EquipmentSlotGroup.MAINHAND));
+                    pkSpeedPassiveModifierKey, level * 0.003 * mocyMnoznik(pdc), AttributeModifier.Operation.ADD_SCALAR, EquipmentSlotGroup.MAINHAND));
         }
     }
 
     @Override
     protected List<Component> statsLore(PersistentDataContainer pdc) {
-        int effLevel = effLevelOf(pdc);
-        int fortLevel = fortLevelOf(pdc);
-        int speedCards = cardCountOf(pdc, "WYD_SPEED");
-        int haste = hasteLevelOf(pdc);
-        int level = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
-        Set<String> rare = csvToSet(pdc.getOrDefault(pkRare, PersistentDataType.STRING, ""));
-
+        PickaxeType type = typeOf(pdc);
         List<Component> lore = new ArrayList<>();
-        boolean synSpeed = hasSynergy(pdc, "SYN_SPEED");
-        lore.add(Component.text("Wydajność (enchant): " + (effLevel > 0 ? rzymskie(effLevel) : "Brak"), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text("Prędkość kopania (karty): +" + (speedCards * 3 + (synSpeed ? 5 : 0)) + "%"
-                + (synSpeed ? " (w tym +5% z kombinacji)" : ""), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text("Fortuna (enchant): " + (fortLevel > 0 ? rzymskie(fortLevel) : "Brak"), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text("Aura Pośpiechu: " + (haste > 0 ? rzymskie(haste) : "Brak"), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.text("Typ: " + type.displayName(), type.color(), TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
         lore.add(Component.empty());
-        lore.add(Component.text("Pasywne (co poziom, niezależnie od kart):", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text("+" + formatPercent(level * 0.08) + "% prędkości  •  +" + formatPercent(level * 0.06) + "% szczęścia",
-                NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.empty());
-        lore.add(Component.text("Rzadkie perki (" + rare.size() + "):", NamedTextColor.LIGHT_PURPLE).decoration(TextDecoration.ITALIC, false));
-        if (rare.isEmpty()) {
-            lore.add(Component.text("Brak", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
-        } else {
-            for (String id : rare) {
-                var perk = findRarePerk(id);
-                if (perk != null) {
-                    lore.add(Component.text("• " + perk.displayName(), NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
-                }
-            }
-        }
+        lore.addAll(autoStatLines(pdc, type));
         return lore;
     }
 
-    /**
-     * Te same 4 statystyki co statsLore, ale jako fizyczne bloczki (menu Informacje) -
-     * ilość w stosie odzwierciedla poziom danej statystyki (np. Fortuna III = 3 szmaragdy).
-     * Zero-owe statystyki są pomijane (jak brakujące rzadkie perki - patrz rarePerkBlocks).
-     */
+    private List<Component> autoStatLines(PersistentDataContainer pdc, PickaxeType type) {
+        int level = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
+        List<Component> lines = new ArrayList<>();
+        switch (type) {
+            case WYDAJNOSCIOWY, TESTOWY -> {
+                Integer amp = auraAmplifierFor(pdc);
+                lines.add(Component.text("Aura Pośpiechu: " + rzymskie((amp == null ? 0 : amp) + 1), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+                lines.add(Component.text("Szansa na dodatkowy drop: " + formatPercent(Math.min(level * 0.05, 5)) + "%", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            }
+            case PIENIEZNY -> lines.add(Component.text("Szansa na bonus $: " + formatPercent(Math.min(level * 0.1, 15)) + "%", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            case SZCZESCIA -> lines.add(Component.text("Bonus do szansy z Bruku: +" + formatPercent(level / 10.0) + " pp", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            case OBSZAROWY -> lines.add(Component.text("Promień obszarowy: " + Math.min(1 + level / 20, 3), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        }
+        lines.add(Component.empty());
+        List<GemType> gems = gemsOf(pdc);
+        lines.add(Component.text("Gemy (" + gems.size() + "/" + MAX_GEMY + "):", NamedTextColor.LIGHT_PURPLE).decoration(TextDecoration.ITALIC, false));
+        if (gems.isEmpty()) {
+            lines.add(Component.text("Brak - połącz kilof z gemem w kowadle.", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
+        } else {
+            for (GemType g : gems) lines.add(Component.text("• " + g.displayName(), NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+        }
+        return lines;
+    }
+
     @Override
     protected List<ItemStack> statsBlocks(PersistentDataContainer pdc) {
-        int effLevel = effLevelOf(pdc);
-        int fortLevel = fortLevelOf(pdc);
-        int speedCards = cardCountOf(pdc, "WYD_SPEED");
-        int haste = hasteLevelOf(pdc);
+        PickaxeType type = typeOf(pdc);
         int level = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
-        boolean synSpeed = hasSynergy(pdc, "SYN_SPEED");
-        int totalSpeedPercent = speedCards * 3 + (synSpeed ? 5 : 0);
-
         List<ItemStack> blocks = new ArrayList<>();
-        if (effLevel > 0) {
-            blocks.add(statBlock(Material.NETHERITE_PICKAXE, "Wydajność " + rzymskie(effLevel),
-                    "Prawdziwy enchant (z rzadkiego perku).", effLevel));
+        switch (type) {
+            case WYDAJNOSCIOWY, TESTOWY -> {
+                Integer amp = auraAmplifierFor(pdc);
+                int ampVal = (amp == null ? 0 : amp) + 1;
+                blocks.add(statBlock(Material.AMETHYST_SHARD, "Aura Pośpiechu " + rzymskie(ampVal), "Rośnie z poziomem.", ampVal));
+                blocks.add(statBlock(Material.FEATHER, "Dodatkowy Drop +" + formatPercent(Math.min(level * 0.05, 5)) + "%", "Rośnie z poziomem.", 1));
+            }
+            case PIENIEZNY -> blocks.add(statBlock(Material.GOLD_NUGGET, "Bonus $ " + formatPercent(Math.min(level * 0.1, 15)) + "%", "Rośnie z poziomem.", 1));
+            case SZCZESCIA -> blocks.add(statBlock(Material.RABBIT_FOOT, "Bonus Bruku +" + formatPercent(level / 10.0) + " pp", "Rośnie z poziomem.", 1));
+            case OBSZAROWY -> {
+                int radius = Math.min(1 + level / 20, 3);
+                blocks.add(statBlock(Material.TNT, "Promień " + radius, "Rośnie z poziomem.", radius));
+            }
         }
-        if (fortLevel > 0) {
-            blocks.add(statBlock(Material.EMERALD, "Fortuna " + rzymskie(fortLevel),
-                    "Prawdziwy enchant (karty + ew. rzadki perk).", fortLevel));
+        // Zawsze DOKŁADNIE MAX_GEMY okienek (puste albo wypełnione) - nie tylko posiadane,
+        // żeby gracz widział ile gniazd ma w ogóle do dyspozycji (patrz onPrepareAnvil).
+        List<GemType> gems = gemsOf(pdc);
+        for (int i = 0; i < MAX_GEMY; i++) {
+            if (i < gems.size()) {
+                GemType g = gems.get(i);
+                blocks.add(statBlock(g.icon(), g.displayName(), g.opis(), 1));
+            } else {
+                ItemStack puste = GuiUtils.namedItem(Material.GRAY_STAINED_GLASS_PANE,
+                        Component.text("Puste gniazdo", NamedTextColor.DARK_GRAY, TextDecoration.BOLD),
+                        Component.text("Połącz ten kilof z gemem w kowadle,", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                        Component.text("aby go tu osadzić.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+                blocks.add(puste);
+            }
         }
-        blocks.add(statBlock(Material.FEATHER, "Prędkość Kopania +" + totalSpeedPercent + "%",
-                speedCards + " kart" + (synSpeed ? " + kombinacja Błyskawiczny Górnik (+5%)" : ""), Math.max(1, speedCards)));
-        if (haste > 0) {
-            blocks.add(statBlock(Material.AMETHYST_SHARD, "Aura Pośpiechu " + rzymskie(haste),
-                    "Stały efekt, dopóki trzymasz kilof.", haste));
-        }
-        blocks.add(statBlock(Material.GOLD_NUGGET, "Pasywne Szczęście",
-                "+" + formatPercent(level * 0.08) + "% prędkości  •  +" + formatPercent(level * 0.06) + "% szczęścia (co poziom, niezależnie od kart)", 1));
         return blocks;
     }
 
@@ -545,15 +632,7 @@ public class PickaxeSkillManager extends ToolSkillManager {
         return icon;
     }
 
-    // ==================================================== Bonus z bruku ====
-    // Jedyna funkcja bez odpowiednika u pozostałych narzędzi - realny efekt (dodatkowy
-    // surowiec z kopanego bruku) liczy BrukSurowceManager (osobny listener, czyta ten sam
-    // klucz pk_bruk_on), tu tylko ikonka podglądu/przełącznik w hubie kilofa.
-
-    @Override
-    protected void initializeToolSpecific(PersistentDataContainer pdc) {
-        pdc.set(pkBrukOn, PersistentDataType.BYTE, (byte) 1);
-    }
+    // ============================================== Dodatkowe ikonki huba ====
 
     @Override
     protected void populateExtraHubIcons(Inventory gui, PersistentDataContainer pdc) {
@@ -563,17 +642,16 @@ public class PickaxeSkillManager extends ToolSkillManager {
 
     @Override
     protected boolean handleExtraHubClick(Player player, ItemStack tool, int slot) {
-        if (slot != slotBrukInfo) return false;
-        openBrukConfig(player, tool);
+        if (slot == slotBrukInfo) {
+            openBrukConfig(player, tool);
+        }
         return false;
     }
 
     private ItemStack brukInfoIcon(PersistentDataContainer pdc, boolean enabled) {
         int tier = tierOf(pdc);
-        int szczescie = cardCountOf(pdc, "MAG_BRUK_SZCZESCIE");
-        int instynkt = cardCountOf(pdc, "MAG_BRUK_INSTYNKT");
-        double szansa = brukSurowceManager.calkowitaSzansa(tier, szczescie);
-        Set<String> wylaczone = brukSurowceManager.wylaczoneSurowce(pdc);
+        double szansa = totalBrukSzansa(null, pdc);
+        var wylaczone = brukSurowceManager.wylaczoneSurowce(pdc);
         List<SurowiecDrop> pula = BrukSurowce.pulaDlaTieru(tier);
 
         List<Component> lore = new ArrayList<>();
@@ -582,19 +660,15 @@ public class PickaxeSkillManager extends ToolSkillManager {
         lore.add(Component.empty());
         lore.add(Component.text("Kopiąc bruk (cobblestone) masz szansę", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
         lore.add(Component.text("na dodatkowy surowiec w dropie:", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text(formatPercent(szansa) + "% łącznie" + (szczescie > 0 ? " (w tym +" + formatPercent(szczescie) + "% z kart)" : ""),
-                NamedTextColor.AQUA, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.text(formatPercent(szansa) + "% łącznie", NamedTextColor.AQUA, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
         lore.add(Component.empty());
         lore.add(Component.text("Losowo jeden z (tier " + tierName(tier) + "):", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
         for (SurowiecDrop drop : pula) {
             boolean dropEnabled = !wylaczone.contains(drop.id());
-            double udzial = brukSurowceManager.udzialSurowca(tier, drop, instynkt, wylaczone);
+            double udzial = brukSurowceManager.udzialSurowca(tier, drop, 0, wylaczone);
             String linia = "• " + drop.nazwa() + " — " + (dropEnabled ? formatPercent(szansa * udzial) + "%" : "wyłączony");
             lore.add(Component.text(linia, dropEnabled ? (drop.cenny() ? NamedTextColor.LIGHT_PURPLE : NamedTextColor.YELLOW) : NamedTextColor.DARK_GRAY)
                     .decoration(TextDecoration.ITALIC, false));
-        }
-        if (instynkt > 0) {
-            lore.add(Component.text("Głębinowy Instynkt: cenne surowce x" + formatPercent(1 + 0.5 * instynkt), NamedTextColor.LIGHT_PURPLE).decoration(TextDecoration.ITALIC, false));
         }
         lore.add(Component.empty());
         lore.add(Component.text("Kliknij, aby skonfigurować (włącz/wyłącz cały bonus lub pojedyncze surowce)", NamedTextColor.LIGHT_PURPLE).decoration(TextDecoration.ITALIC, false));
@@ -605,8 +679,6 @@ public class PickaxeSkillManager extends ToolSkillManager {
     }
 
     // ============================================== Konfiguracja bonusu z bruku ====
-    // Osobny ekran (nie zwykłe Info) - trzeba móc KLIKAĆ pojedyncze surowce, nie tylko je
-    // oglądać, stąd własny Holder/listener zamiast wpinania się w launcher Informacji.
 
     private static final int BRUK_CONFIG_SIZE = 36;
     private static final int BRUK_CONFIG_MASTER_SLOT = 4;
@@ -617,10 +689,8 @@ public class PickaxeSkillManager extends ToolSkillManager {
         PersistentDataContainer pdc = tool.getItemMeta().getPersistentDataContainer();
         int tier = tierOf(pdc);
         boolean enabled = pdc.getOrDefault(pkBrukOn, PersistentDataType.BYTE, (byte) 1) != 0;
-        int szczescie = cardCountOf(pdc, "MAG_BRUK_SZCZESCIE");
-        int instynkt = cardCountOf(pdc, "MAG_BRUK_INSTYNKT");
-        double szansa = brukSurowceManager.calkowitaSzansa(tier, szczescie);
-        Set<String> wylaczone = brukSurowceManager.wylaczoneSurowce(pdc);
+        double szansa = totalBrukSzansa(player, pdc);
+        var wylaczone = brukSurowceManager.wylaczoneSurowce(pdc);
         List<SurowiecDrop> pula = BrukSurowce.pulaDlaTieru(tier);
 
         BrukConfigHolder holder = new BrukConfigHolder(this);
@@ -632,7 +702,7 @@ public class PickaxeSkillManager extends ToolSkillManager {
         for (int i = 0; i < pula.size() && BRUK_CONFIG_CONTENT_START + i < BRUK_CONFIG_BACK_SLOT; i++) {
             SurowiecDrop drop = pula.get(i);
             boolean dropEnabled = !wylaczone.contains(drop.id());
-            double udzial = brukSurowceManager.udzialSurowca(tier, drop, instynkt, wylaczone);
+            double udzial = brukSurowceManager.udzialSurowca(tier, drop, 0, wylaczone);
             gui.setItem(BRUK_CONFIG_CONTENT_START + i, surowiecToggleIcon(drop, dropEnabled, szansa, udzial));
         }
 
@@ -706,7 +776,7 @@ public class PickaxeSkillManager extends ToolSkillManager {
         if (idx < 0 || idx >= pula.size()) return;
 
         SurowiecDrop drop = pula.get(idx);
-        Set<String> wylaczone = csvToSet(pdc.getOrDefault(pkBrukDisabled, PersistentDataType.STRING, ""));
+        var wylaczone = csvToSet(pdc.getOrDefault(pkBrukDisabled, PersistentDataType.STRING, ""));
         boolean wasEnabled = !wylaczone.contains(drop.id());
         if (wasEnabled) wylaczone.add(drop.id()); else wylaczone.remove(drop.id());
         pdc.set(pkBrukDisabled, PersistentDataType.STRING, String.join(",", wylaczone));

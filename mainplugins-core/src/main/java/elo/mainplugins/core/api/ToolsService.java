@@ -11,7 +11,12 @@ import org.bukkit.entity.Player;
  */
 public interface ToolsService {
 
-    /** Daje graczowi jego startowy, ewoluujący kilof (tier drewno, poziom 1) - patrz LevelableToolsManager. */
+    /**
+     * Daje graczowi jego startowy kilof - typ Wydajnościowy, poziom 1 (patrz
+     * elo.mainplugins.tools.pickaxe.PickaxeType w mainplugins-tools). Kilof NIE ma już
+     * jednej ewoluującej linii tierów (drewno→netheryt) - gracz może posiadać kilka
+     * RÓŻNYCH typów naraz, każdy z własną, dedykowaną progresją.
+     */
     void dajEwoluujacyKilof(Player player);
 
     /** Jak {@link #dajEwoluujacyKilof(Player)}, ale siekiera - nagroda za quest "Drwal i Siewca" Głównej Ścieżki. */
@@ -33,10 +38,10 @@ public interface ToolsService {
     void dajEwoluujacaLopate(Player player);
 
     /**
-     * Poziom (globalny, rośnie 1,2,3...) ewoluującego kilofa gracza, gdziekolwiek w
-     * ekwipunku - 0, jeśli gracz w ogóle go nie ma. Kilof ma OSOBNY system poziomowania
-     * (drzewko umiejętności, PickaxeSkillManager) niż reszta narzędzi - stąd osobna
-     * metoda zamiast ogólnego "poziom narzędzia".
+     * NAJWYŻSZY poziom (1-100) wśród WSZYSTKICH kilofów gracza (dowolnego typu,
+     * gdziekolwiek w ekwipunku) - 0, jeśli gracz nie ma żadnego. Kilof ma OSOBNY system
+     * poziomowania (PickaxeSkillManager) niż reszta narzędzi - stąd osobna metoda
+     * zamiast ogólnego "poziom narzędzia".
      */
     int poziomKilofa(Player player);
 }

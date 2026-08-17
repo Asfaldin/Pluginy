@@ -6,6 +6,7 @@
       <module fileurl="file://$PROJECT_DIR$/mainplugins-announcer/mainplugins-announcer.iml" filepath="$PROJECT_DIR$/mainplugins-announcer/mainplugins-announcer.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-core/mainplugins-core.iml" filepath="$PROJECT_DIR$/mainplugins-core/mainplugins-core.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-crates/mainplugins-crates.iml" filepath="$PROJECT_DIR$/mainplugins-crates/mainplugins-crates.iml" />
+      <module fileurl="file://$PROJECT_DIR$/mainplugins-dungeons/mainplugins-dungeons.iml" filepath="$PROJECT_DIR$/mainplugins-dungeons/mainplugins-dungeons.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-farming/mainplugins-farming.iml" filepath="$PROJECT_DIR$/mainplugins-farming/mainplugins-farming.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-fishing/mainplugins-fishing.iml" filepath="$PROJECT_DIR$/mainplugins-fishing/mainplugins-fishing.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-hud/mainplugins-hud.iml" filepath="$PROJECT_DIR$/mainplugins-hud/mainplugins-hud.iml" />

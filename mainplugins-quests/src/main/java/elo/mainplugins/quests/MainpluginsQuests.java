@@ -21,6 +21,9 @@ public final class MainpluginsQuests extends JavaPlugin {
         getServer().getPluginManager().registerEvents(generatorManager, this);
         zarejestrujReceptureGeneratora();
 
+        GeneratorBrukuManager generatorBrukuManager = new GeneratorBrukuManager(this);
+        getServer().getPluginManager().registerEvents(generatorBrukuManager, this);
+
         if (getCommand("quest") != null) {
             getCommand("quest").setExecutor((sender, command, label, args) -> {
                 if (!(sender instanceof Player player)) {
@@ -57,21 +60,38 @@ public final class MainpluginsQuests extends JavaPlugin {
                 return true;
             });
         }
+
+        if (getCommand("dajbrukgen") != null) {
+            getCommand("dajbrukgen").setExecutor((sender, command, label, args) -> {
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage("Tylko gracz moze uzyc tej komendy.");
+                    return true;
+                }
+                player.getInventory().addItem(GeneratorBrukuManager.stworzGenerator());
+                player.sendMessage("Otrzymales Generator Bruku.");
+                return true;
+            });
+        }
     }
 
     /**
-     * ShapelessRecipe (nie Shaped) - opisany układ składników (patrz
-     * GeneratorKruchychManager.stworzKsiazkaPrzewodnik) ma więcej "warstw" niż mieści
-     * 3x3 siatka rzemieślnicza, więc liczą się tylko ILOŚCI, nie pozycje w stole.
+     * ShapelessRecipe (nie Shaped) - składniki bez ustalonych pozycji w siatce 3x3.
+     *
+     * NAPRAWIONY BUG: addIngredient(count, Material) NIE oznacza "wymagaj count sztuk" -
+     * KAŻDA sztuka zajmuje osobny slot siatki rzemieślniczej, a cały ShapelessRecipe może
+     * mieć MAKSYMALNIE 9 składników łącznie (twardy limit Minecrafta, siatka 3x3). Oryginał
+     * próbował wymagać 64+64+10+5+10=153 sztuk naraz - fizycznie niemożliwe, crashowało
+     * MainpluginsQuests już przy starcie. Przeskalowane proporcjonalnie do 9 slotów
+     * (4 Kamień + 2 Węgiel + 1 Miedź + 2 Ziemia), zachowując względne proporcje oryginału
+     * (kamień dominujący, miedź najrzadsza) - jeśli chcesz inny balans, to jedyne miejsce do zmiany.
      */
     private void zarejestrujReceptureGeneratora() {
         NamespacedKey klucz = new NamespacedKey(this, "generator_kruchy_t1");
         ShapelessRecipe receptura = new ShapelessRecipe(klucz, GeneratorKruchychManager.stworzGenerator());
-        receptura.addIngredient(64, Material.STONE);
-        receptura.addIngredient(64, Material.STONE);
-        receptura.addIngredient(10, Material.COAL);
-        receptura.addIngredient(5, Material.COPPER_INGOT);
-        receptura.addIngredient(10, Material.DIRT);
+        receptura.addIngredient(4, Material.STONE);
+        receptura.addIngredient(2, Material.COAL);
+        receptura.addIngredient(1, Material.COPPER_INGOT);
+        receptura.addIngredient(2, Material.DIRT);
         Bukkit.addRecipe(receptura);
     }
 

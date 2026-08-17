@@ -1,0 +1,18 @@
+# ==========================================================================
+# Resourcepack Mainplugins - custom tekstury itemow (np. Ewoluujacy Kilof).
+#
+# Jak wgrac nowa/zmieniona paczke:
+#   1. Spakuj ZAWARTOSC folderu mainplugins-core/resourcepack/ (pack.mcmeta +
+#      assets/... w korzeniu zipa, NIE sam folder "resourcepack") do pliku zip.
+#   2. Wgraj zip na hosting resourcepackow (np. https://mc-packs.net) i skopiuj
+#      wygenerowany link + hash.
+#   3. Wklej je ponizej i zrestartuj/zreloaduj serwer.
+#
+# Ten plik generuje sie automatycznie przy pierwszym uruchomieniu i POTEM NIE
+# jest nadpisywany - bezpiecznie zmieniaj wartosci recznie.
+# Puste url = paczka WYLACZONA (nic nie jest wysylane graczom).
+# ==========================================================================
+
+url: "https://download.mc-packs.net/pack/4cab6d8b0aca6b83c77e9605ba62876e0e3d3651.zip"
+hash: "4cab6d8b0aca6b83c77e9605ba62876e0e3d3651"
+wymagany: false

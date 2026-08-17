@@ -13,7 +13,7 @@ import java.util.TreeMap;
 /**
  * Buduje listę wszystkich komend zarejestrowanych przez pluginy z rodziny
  * Mainplugins, pogrupowaną per plugin (segment) - używane przez /komendy
- * (publiczne) i /adminhelp (dla operatora, z dodatkowymi informacjami).
+ * (publiczne) i /wszystkiekomendy (dla operatora, z dodatkowymi informacjami).
  *
  * Segmentacja "za darmo": każdy z naszych 10 pluginów już z natury reprezentuje
  * osobną kategorię (Sklep, Wyspa, Targ...), więc nie trzeba niczego ręcznie

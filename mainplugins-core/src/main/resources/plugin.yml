@@ -4,18 +4,38 @@ main: elo.mainplugins.core.MainpluginsCore
 api-version: '1.20'
 
 commands:
-  adminhelp:
+  wszystkiekomendy:
     description: Panel administratora - moduły, statystyki i wszystkie komendy
     permission: mainplugins.core.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
   komendy:
-    description: Lista wszystkich komend serwera, pogrupowana segmentami
-  moneyadd:
+    description: Lista komend dla gracza (strona 1/3)
+    aliases: [pomoc, help]
+  komendy2:
+    description: Lista komend dla gracza (strona 2/3)
+  komendy3:
+    description: Lista komend dla gracza (strona 3/3)
+  "@komendy":
+    description: Lista komend dla admina (strona 1/3)
+    permission: mainplugins.core.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@komendy2":
+    description: Lista komend dla admina (strona 2/3)
+    permission: mainplugins.core.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@komendy3":
+    description: Lista komend dla admina (strona 3/3)
+    permission: mainplugins.core.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@moneyadd":
     description: "[TEST] Dodaj kasę graczowi"
     permission: mainplugins.core.moneyadd
+    permission-message: "&cNie masz permisji do tej komendy!"
     usage: /<command> [gracz] <kwota>
-  moneyundo:
+  "@moneyundo":
     description: "[TEST] Wyzeruj kasę graczowi"
     permission: mainplugins.core.moneyadd
+    permission-message: "&cNie masz permisji do tej komendy!"
     usage: /<command> [gracz]
   pay:
     description: Przelej pieniądze innemu graczowi
@@ -27,7 +47,7 @@ commands:
 
 permissions:
   mainplugins.core.admin:
-    description: Dostęp do /adminhelp
+    description: Dostęp do /wszystkiekomendy i /@komendy
     default: op
   mainplugins.core.moneyadd:
     description: Dostęp do testowego doładowania/zerowania ekonomii

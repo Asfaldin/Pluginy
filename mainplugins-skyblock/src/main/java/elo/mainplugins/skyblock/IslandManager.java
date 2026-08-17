@@ -221,6 +221,12 @@ public class IslandManager implements Listener, IslandService {
     /** Identyfikator musi się zgadzać z SpawnerType.name() w mainplugins-spawners - patrz komentarz przy IslandData.spawnerLevels. */
     private record SpawnerTypInfo(String id, String nazwaOdmieniona, Material ikona) {}
 
+    /** Ile razy gracz w sumie utworzył wyspę (create+delete się liczy) i kiedy ostatnio - patrz historiaTworzeniaWysp. */
+    private static class HistoriaTworzenia {
+        int ilosc;
+        long ostatnieMillis;
+    }
+
     private static final int SPAWNER_MAX_LEVEL = 5;
 
     /**
@@ -312,6 +318,9 @@ public class IslandManager implements Listener, IslandService {
     private final Map<UUID, Map<Integer, UUID>> slotyCzlonkow = new HashMap<>();
     // Który typ spawnera gracz aktualnie ma otwarty w podmenu "Spawner: X" (Ilość/Szybkość)
     private final Map<UUID, String> otwartySpawnerTyp = new HashMap<>();
+    // Historia tworzenia wysp per gracz - anty-spam cooldown na create/delete (patrz kolejnyCooldownTworzenia).
+    // Liczba NIGDY się nie zeruje - to celowo licznik na całe życie konta, nie okno czasowe.
+    private final Map<UUID, HistoriaTworzenia> historiaTworzeniaWysp = new HashMap<>();
     private int nextIslandId = 0;
 
     private final File plikWysp;
@@ -379,6 +388,7 @@ public class IslandManager implements Listener, IslandService {
         }
         this.configWysp = YamlConfiguration.loadConfiguration(plikWysp);
         wczytajWyspy();
+        wczytajHistorieTworzenia();
     }
 
     /**
@@ -527,10 +537,35 @@ public class IslandManager implements Listener, IslandService {
             }
         }
 
+        // Historia tworzenia (cooldown anty-spam) - NIE czyścimy sekcji przed zapisem jak "wyspy"
+        // wyżej, bo wpisy tu żyją niezależnie od tego czy gracz aktualnie ma wyspę.
+        for (Map.Entry<UUID, HistoriaTworzenia> entry : historiaTworzeniaWysp.entrySet()) {
+            String path = "historiaTworzenia." + entry.getKey() + ".";
+            configWysp.set(path + "ilosc", entry.getValue().ilosc);
+            configWysp.set(path + "ostatnie", entry.getValue().ostatnieMillis);
+        }
+
         try {
             configWysp.save(plikWysp);
         } catch (IOException e) {
             plugin.getLogger().warning("Nie można zapisać wyspy.yml: " + e.getMessage());
+        }
+    }
+
+    /** Wczytuje historię tworzenia wysp (cooldown anty-spam) - osobno od wczytajWyspy(), bo dotyczy
+     *  graczy niezależnie od tego czy aktualnie mają wyspę (ta metoda ma early-return gdy jej brak). */
+    private void wczytajHistorieTworzenia() {
+        ConfigurationSection sekcja = configWysp.getConfigurationSection("historiaTworzenia");
+        if (sekcja == null) return;
+
+        for (String key : sekcja.getKeys(false)) {
+            try {
+                UUID uuid = UUID.fromString(key);
+                HistoriaTworzenia historia = new HistoriaTworzenia();
+                historia.ilosc = configWysp.getInt("historiaTworzenia." + key + ".ilosc", 0);
+                historia.ostatnieMillis = configWysp.getLong("historiaTworzenia." + key + ".ostatnie", 0L);
+                historiaTworzeniaWysp.put(uuid, historia);
+            } catch (IllegalArgumentException ignored) {}
         }
     }
 
@@ -934,11 +969,54 @@ public class IslandManager implements Listener, IslandService {
         usunCzlonka(player, targetUUID);
     }
 
+    /**
+     * Cooldown przed N-tym utworzeniem wyspy w życiu gracza (numerProby = ile już było + ta próba).
+     * Pierwsze dwa razy za darmo (normalne "nie spodobała mi się, zrobię drugą raz"), potem kara
+     * za nadużywanie cyklu stwórz/usuń rośnie schodkowo, a od 7. próby w górę zostaje płasko na
+     * dobę - żeby zniechęcić do robienia tego na bieżąco (np. pod jakieś nadużycia).
+     */
+    private static long cooldownDlaProby(int numerProby) {
+        return switch (numerProby) {
+            case 1, 2 -> 0L;
+            case 3 -> 60_000L;                  // 1 minuta
+            case 4 -> 5 * 60_000L;               // 5 minut
+            case 5 -> 30 * 60_000L;              // 30 minut
+            case 6 -> 60 * 60_000L;              // 1 godzina
+            default -> 24 * 60 * 60_000L;        // 7 i więcej -> 1 dzień, na stałe
+        };
+    }
+
+    /** Formatuje pozostały czas oczekiwania jedną, największą pasującą jednostką ("X minut" itd.), z grubsza poprawną polską odmianą. */
+    private static String formatujCzasOczekiwania(long millis) {
+        long sekundy = (millis + 999) / 1000; // w górę, żeby nie pokazać "0 sekund" tuż przed końcem
+        if (sekundy >= 86400) return odmianaLiczby(sekundy / 86400, "dzień", "dni", "dni");
+        if (sekundy >= 3600) return odmianaLiczby(sekundy / 3600, "godzinę", "godziny", "godzin");
+        if (sekundy >= 60) return odmianaLiczby(sekundy / 60, "minutę", "minuty", "minut");
+        return odmianaLiczby(sekundy, "sekundę", "sekundy", "sekund");
+    }
+
+    private static String odmianaLiczby(long n, String jedna, String kilka, String wiele) {
+        boolean pasujeKilka = n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20);
+        String forma = n == 1 ? jedna : pasujeKilka ? kilka : wiele;
+        return n + " " + forma;
+    }
+
     private void stworzWyspe(Player player, boolean zMenu) {
         if (!schemFile.exists()) {
             player.sendMessage(Component.text("Błąd: Brak pliku wyspa_startowa.schem w FastAsyncWorldEdit/schematics!", NamedTextColor.RED));
             return;
         }
+
+        HistoriaTworzenia historia = historiaTworzeniaWysp.computeIfAbsent(player.getUniqueId(), k -> new HistoriaTworzenia());
+        long cooldown = cooldownDlaProby(historia.ilosc + 1);
+        long odMillis = System.currentTimeMillis() - historia.ostatnieMillis;
+        if (cooldown > 0 && odMillis < cooldown) {
+            player.sendMessage(Component.text("Musisz jeszcze poczekać " + formatujCzasOczekiwania(cooldown - odMillis)
+                    + ", zanim będziesz mógł założyć kolejną wyspę.", NamedTextColor.RED));
+            return;
+        }
+        historia.ilosc++;
+        historia.ostatnieMillis = System.currentTimeMillis();
 
         player.sendMessage(Component.text("Tworzenie Twojej wyspy...", NamedTextColor.YELLOW));
 
@@ -1765,18 +1843,13 @@ public class IslandManager implements Listener, IslandService {
             else if (slot == 22) { otworzMenuPermisji(player); } // Permisje
             else if (slot == 24) { otworzMenuTopkiWysp(player); } // Topka Wysp
             else if (slot == 53 && panelIsOwner) { // Kosz / Usunięcie - decyzja po serwerowym isOwner, nie po ikonie klienta
-                if (oczekujeNaPotwierdzenie(player.getUniqueId())) {
-                    player.closeInventory();
-                    potwierdzUsuniecie(player);
-                } else {
-                    ustawOczekiwanieNaPotwierdzenie(player.getUniqueId());
-                    ItemStack item = event.getCurrentItem();
-                    if (item != null) {
-                        ItemMeta meta = item.getItemMeta();
-                        meta.displayName(Component.text("KLIKNIJ PONOWNIE BY USUNĄĆ!", NamedTextColor.DARK_RED, TextDecoration.BOLD));
-                        item.setItemMeta(meta);
-                    }
-                }
+                // Jedno kliknięcie zamiast dawnego "kliknij dwa razy" - potwierdzenie idzie
+                // teraz przez czat (wpisanie "usun"), żeby przypadkowy drugi klik (np. przy
+                // zamykaniu GUI) nie mógł już bezpowrotnie skasować wyspy.
+                player.closeInventory();
+                ustawOczekiwanieNaPotwierdzenie(player.getUniqueId());
+                player.sendMessage(Component.text("UWAGA: Twoja wyspa zostanie usunięta bezpowrotnie!", NamedTextColor.RED, TextDecoration.BOLD));
+                player.sendMessage(Component.text("Wpisz \"usun\" na czacie w ciągu 15 sekund, aby potwierdzić (cokolwiek innego anuluje).", NamedTextColor.YELLOW));
             }
             else if (slot == 53) { // Opuść Wyspę (nie-właściciel)
                 if (pendingLeaveConfirmation.contains(player.getUniqueId())) {
@@ -2041,6 +2114,21 @@ public class IslandManager implements Listener, IslandService {
     public void onChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
+
+        // Potwierdzenie usunięcia wyspy przez czat - wspólne dla kliknięcia w GUI (kosz)
+        // i komendy /is delete, obie tylko uzbrajają pendingDeleteConfirmation (patrz
+        // ustawOczekiwanieNaPotwierdzenie). Cokolwiek innego niż dokładnie "usun" anuluje.
+        if (pendingDeleteConfirmation.contains(uuid)) {
+            event.setCancelled(true);
+            pendingDeleteConfirmation.remove(uuid);
+
+            if (event.getMessage().equalsIgnoreCase("usun")) {
+                potwierdzUsuniecie(player);
+            } else {
+                player.sendMessage(Component.text("Anulowano usuwanie wyspy.", NamedTextColor.YELLOW));
+            }
+            return;
+        }
 
         if (pendingInviteChat.contains(uuid)) {
             event.setCancelled(true);

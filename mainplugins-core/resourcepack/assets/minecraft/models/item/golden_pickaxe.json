@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:item/handheld",
+  "textures": {
+    "layer0": "minecraft:item/golden_pickaxe"
+  },
+  "overrides": [
+    {
+      "predicate": { "custom_model_data": 2002 },
+      "model": "mainplugins:item/kilof_pieniezny"
+    }
+  ]
+}

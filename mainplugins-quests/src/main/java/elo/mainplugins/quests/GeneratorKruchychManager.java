@@ -37,11 +37,10 @@ import java.util.Set;
  * zwykłe narzędzie), więc ta gałąź jest chwilowo martwym kodem, gotowym na później.
  *
  * Drugi sposób zdobycia kolejnych generatorów (poza jednorazową nagrodą questu) to
- * REALNA receptura w stole rzemieślniczym (patrz stworzRecepture we wywołaniu z
- * MainpluginsQuests) - ShapelessRecipe, bo opisany układ (2 stacki kamienia po bokach,
- * węgiel na środku, miedź i ziemia niżej) ma więcej "warstw" niż mieści 3x3 siatka
- * (patrz komentarz w stworzKsiazkaPrzewodnik) - liczą się tylko ILOŚCI składników,
- * nie ich pozycja w siatce.
+ * REALNA receptura w stole rzemieślniczym (patrz zarejestrujReceptureGeneratora w
+ * MainpluginsQuests) - ShapelessRecipe (liczą się tylko ILOŚCI składników, nie ich
+ * pozycja w siatce), zmieszczona w twardym limicie 9 składników 3x3 siatki - patrz
+ * komentarz w stworzKsiazkaPrzewodnik dla dokładnych ilości.
  */
 public class GeneratorKruchychManager implements Listener {
 
@@ -70,6 +69,7 @@ public class GeneratorKruchychManager implements Listener {
                 Component.text("można wykopać z niego piasek i żwir.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
                 Component.text("Blok sam się odbudowuje po wykopaniu.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
                 Component.empty(),
+                Component.text("Kopie się WYŁĄCZNIE łopatą.", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false),
                 Component.text("Narzędzie ze specjalnym Silk Touchem", NamedTextColor.LIGHT_PURPLE).decoration(TextDecoration.ITALIC, false),
                 Component.text("(np. ewoluująca łopata) zbiera cały blok.", NamedTextColor.LIGHT_PURPLE).decoration(TextDecoration.ITALIC, false)
         ));
@@ -80,11 +80,11 @@ public class GeneratorKruchychManager implements Listener {
 
     /**
      * Książka-przewodnik po recepturze - CZYSTO informacyjna (lore), nie prawdziwa
-     * wanilijska receptura odkrywana w Recipe Book. Opisany układ (kamień po bokach,
-     * węgiel na środku, miedź NIŻEJ, ziemia na samym dole) ma logicznie 3 "poziomy" pod
-     * jedną kolumną plus boczne kolumny kamienia - więcej pozycji niż mieści 3x3 siatka
-     * rzemieślnicza, więc realna receptura (patrz stworzRecepture) jest SHAPELESS: liczą
-     * się tylko ilości, gracz może je rozłożyć w dowolne wolne sloty stołu.
+     * wanilijska receptura odkrywana w Recipe Book. Receptura (patrz
+     * MainpluginsQuests#zarejestrujReceptureGeneratora) jest SHAPELESS: liczą się tylko
+     * ilości, gracz może je rozłożyć w dowolne wolne sloty stołu. Ilości NAPRAWIONE, żeby
+     * łącznie mieściły się w twardym limicie 9 składników 3x3 siatki (Minecraft nie
+     * pozwala na więcej - patrz komentarz przy zarejestrujReceptureGeneratora).
      */
     public static ItemStack stworzKsiazkaPrzewodnik() {
         ItemStack item = new ItemStack(Material.BOOK);
@@ -93,10 +93,10 @@ public class GeneratorKruchychManager implements Listener {
         meta.lore(List.of(
                 Component.text("Skład receptury (dowolny układ w stole):", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
                 Component.empty(),
-                Component.text("▪ 2x Stack Kamienia (128x)", NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false),
-                Component.text("▪ 10x Węgiel", NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false),
-                Component.text("▪ 5x Sztabka Miedzi", NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false),
-                Component.text("▪ 10x Ziemia", NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false),
+                Component.text("▪ 4x Kamień", NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false),
+                Component.text("▪ 2x Węgiel", NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false),
+                Component.text("▪ 1x Sztabka Miedzi", NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false),
+                Component.text("▪ 2x Ziemia", NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false),
                 Component.empty(),
                 Component.text("Wrzuć wszystko do stołu rzemieślniczego -", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false),
                 Component.text("pozycja w siatce nie ma znaczenia.", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
@@ -119,6 +119,12 @@ public class GeneratorKruchychManager implements Listener {
 
         Player player = event.getPlayer();
         ItemStack narzedzie = player.getInventory().getItemInMainHand();
+
+        if (!jestLopata(narzedzie)) {
+            event.setCancelled(true);
+            player.sendMessage(Component.text("Ten blok trzeba kopać łopatą!", NamedTextColor.RED));
+            return;
+        }
         event.setDropItems(false);
 
         if (maSpecjalnySilkTouch(narzedzie)) {
@@ -148,5 +154,10 @@ public class GeneratorKruchychManager implements Listener {
     private boolean maSpecjalnySilkTouch(ItemStack item) {
         if (item == null || !item.hasItemMeta()) return false;
         return Boolean.TRUE.equals(item.getItemMeta().getPersistentDataContainer().get(CustomItemKeys.SPECJALNY_SILK_TOUCH, PersistentDataType.BOOLEAN));
+    }
+
+    /** Generator kopie się WYŁĄCZNIE łopatą (dowolny tier, w tym ewoluująca) - inne narzędzia są blokowane, patrz onBreak. */
+    private boolean jestLopata(ItemStack item) {
+        return item != null && item.getType().name().endsWith("_SHOVEL");
     }
 }

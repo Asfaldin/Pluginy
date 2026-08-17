@@ -1,0 +1,16 @@
+{
+  "parent": "minecraft:item/handheld",
+  "textures": {
+    "layer0": "minecraft:item/diamond_pickaxe"
+  },
+  "overrides": [
+    {
+      "predicate": { "custom_model_data": 2001 },
+      "model": "mainplugins:item/kilof_wydajnosciowy"
+    },
+    {
+      "predicate": { "custom_model_data": 2005 },
+      "model": "mainplugins:item/kilof_testowy"
+    }
+  ]
+}

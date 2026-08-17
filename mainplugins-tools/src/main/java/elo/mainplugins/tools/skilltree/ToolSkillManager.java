@@ -231,7 +231,9 @@ public abstract class ToolSkillManager implements Listener {
             level++;
             leveledUp = true;
 
-            offerRolled = rollCardOffer(pdc);
+            if (level % offerCadence(pdc) == 0) {
+                offerRolled = rollCardOffer(pdc);
+            }
             int tierAfter = tierForLevel(level);
             if (tierAfter != tierBefore) {
                 pdc.set(pkTier, PersistentDataType.INTEGER, tierAfter);
@@ -246,13 +248,14 @@ public abstract class ToolSkillManager implements Listener {
         refreshDisplay(item);
 
         if (leveledUp) {
+            String nazwa = displayNameFor(pdc);
             player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.4f);
-            player.sendActionBar(Component.text(displayName + ": poziom " + level, NamedTextColor.AQUA));
+            player.sendActionBar(Component.text(nazwa + ": poziom " + level, NamedTextColor.AQUA));
 
             if (tierUp) {
                 int tier = pdc.getOrDefault(pkTier, PersistentDataType.INTEGER, 0);
                 player.showTitle(Title.title(
-                        Component.text(displayName + " Ewoluował!", NamedTextColor.GOLD, TextDecoration.BOLD),
+                        Component.text(nazwa + " Ewoluował!", NamedTextColor.GOLD, TextDecoration.BOLD),
                         Component.text("Nowy tier: " + tierName(tier), NamedTextColor.YELLOW)
                 ));
                 player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
@@ -263,7 +266,7 @@ public abstract class ToolSkillManager implements Listener {
                 player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1f, 1f);
             }
             if (level >= MAX_LEVEL) {
-                player.sendMessage(Component.text("★ " + displayName + " osiągnęła maksymalny poziom (" + MAX_LEVEL + ")!",
+                player.sendMessage(Component.text("★ " + nazwa + " osiągnęła maksymalny poziom (" + MAX_LEVEL + ")!",
                         NamedTextColor.GOLD, TextDecoration.BOLD));
             }
         }
@@ -324,11 +327,11 @@ public abstract class ToolSkillManager implements Listener {
         List<String> candidates = new ArrayList<>();
         if (tier == Rarity.LEGENDARY) {
             Set<String> owned = csvToSet(pdc.getOrDefault(pkRare, PersistentDataType.STRING, ""));
-            for (RarePerk perk : rarePerks) {
+            for (RarePerk perk : rarePerksFor(pdc)) {
                 if (perk.minTier() <= currentTier && !owned.contains(perk.id()) && !exclude.contains(perk.id())) candidates.add(perk.id());
             }
         } else {
-            for (SkillBranch b : branches) {
+            for (SkillBranch b : branchesFor(pdc)) {
                 for (SkillCard c : b.cards()) {
                     if (c.rarity() == tier && c.minTier() <= currentTier && !exclude.contains(c.id()) && cardCountOf(pdc, c.id()) < c.maxStacks()) {
                         candidates.add(c.id());
@@ -367,7 +370,8 @@ public abstract class ToolSkillManager implements Listener {
         ItemMeta metaBefore = item.getItemMeta();
         PersistentDataContainer pdcBefore = metaBefore.getPersistentDataContainer();
         int tier = pdcBefore.getOrDefault(pkTier, PersistentDataType.INTEGER, 0);
-        Material correctMaterial = materialForTier(tier);
+        Material correctMaterial = materialOverride(pdcBefore);
+        if (correctMaterial == null) correctMaterial = materialForTier(tier);
         if (item.getType() != correctMaterial) {
             item.setType(correctMaterial);
         }
@@ -380,7 +384,7 @@ public abstract class ToolSkillManager implements Listener {
         String pending = pdc.getOrDefault(pkPendingOffer, PersistentDataType.STRING, "");
         int queuedOffers = pdc.getOrDefault(pkPendingOfferQueue, PersistentDataType.INTEGER, 0);
 
-        meta.displayName(Component.text(displayName + " ", NamedTextColor.AQUA, TextDecoration.BOLD)
+        meta.displayName(Component.text(displayNameFor(pdc) + " ", NamedTextColor.AQUA, TextDecoration.BOLD)
                 .append(Component.text("[Poziom " + level + "]", NamedTextColor.YELLOW, TextDecoration.BOLD)));
 
         List<Component> lore = new ArrayList<>();
@@ -439,6 +443,66 @@ public abstract class ToolSkillManager implements Listener {
     /** Materiał narzędzia dla danego tieru (0=drewno .. 4=netheryt) - dostarcza podklasa. */
     protected abstract Material materialForTier(int tier);
 
+    /**
+     * Hook: Material NIEZALEŻNY od tieru (np. kilof: stały Material per typ - Pieniężny/
+     * Wydajnościowy/Szczęścia/Obszarowy, patrz PickaxeType). Zwraca null domyślnie - wtedy
+     * refreshDisplay/openHub wracają do materialForTier(tier) jak dotychczas (siekiera/
+     * motyka/miecz/łopata bez zmian). Podklasa nadpisuje TYLKO jeśli identyczność narzędzia
+     * nie jest już tierowa.
+     */
+    protected Material materialOverride(PersistentDataContainer pdc) {
+        return null;
+    }
+
+    /**
+     * Hook: nazwa NIEZALEŻNA od pdc, do których wraca się domyślnie (null = stała nazwa
+     * z konstruktora, jak dotychczas). Kilof nadpisuje, żeby każdy PickaxeType miał
+     * WŁASNĄ nazwę ("Kilof Wydajnościowy" zamiast samego "Kilof") - inaczej wszystkie
+     * typy wyglądają identycznie w ekwipunku/tytułach GUI.
+     */
+    protected String displayNameFor(PersistentDataContainer pdc) {
+        return displayName;
+    }
+
+    /**
+     * Hook: tytuł okna huba - domyślnie zwykły tekstowy tytuł (jak dotychczas). Kilof
+     * nadpisuje na tytuł złożony z niestandardowej czcionki (patrz hubUsesCustomBackground)
+     * - dwa niewidzialne/obrazkowe znaki zamiast czytelnego tekstu, renderujące duży
+     * obrazek tła zamiast zwykłego napisu.
+     */
+    protected Component hubTitleFor(PersistentDataContainer pdc, String nazwa) {
+        return Component.text(nazwa + " — Umiejętności", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD);
+    }
+
+    /**
+     * Hook: czy hub ma w pełni customowe tło (obrazek renderowany przez tytuł zamiast
+     * zwykłego szkła w tle) - domyślnie false (siekiera/motyka/miecz bez zmian). Gdy true,
+     * openHub NIE wypełnia tła szkłem (GuiUtils.fillBackground) - obrazek z hubTitleFor
+     * sam pełni rolę tła, a puste sloty zostają prawdziwie puste (AIR), żeby przez nie
+     * "prześwitywał" obrazek.
+     */
+    protected boolean hubUsesCustomBackground(PersistentDataContainer pdc) {
+        return false;
+    }
+
+    /**
+     * Hook: co ile poziomów gracz dostaje ofertę karty do wyboru - domyślnie 1 (każdy
+     * poziom, jak dotychczas). Kilof nadpisuje na 5 (auto-staty co level, wybór co 5 lvl).
+     */
+    protected int offerCadence(PersistentDataContainer pdc) {
+        return 1;
+    }
+
+    /** Hook: pula gałęzi/kart do losowania ofert - domyślnie stała pula z konstruktora. Kilof zwraca pulę WŁAŚCIWĄ dla pk_type danego przedmiotu. */
+    protected List<SkillBranch> branchesFor(PersistentDataContainer pdc) {
+        return branches;
+    }
+
+    /** Jak {@link #branchesFor(PersistentDataContainer)}, ale dla rzadkich (legendarnych) perków. */
+    protected List<RarePerk> rarePerksFor(PersistentDataContainer pdc) {
+        return rarePerks;
+    }
+
     protected String tierName(int tier) {
         return switch (tier) {
             case 0 -> "Drewno";
@@ -476,8 +540,8 @@ public abstract class ToolSkillManager implements Listener {
 
     // ==================================================== Karty - odczyt ====
 
-    protected SkillCard findCard(String id) {
-        for (SkillBranch b : branches) {
+    protected SkillCard findCard(PersistentDataContainer pdc, String id) {
+        for (SkillBranch b : branchesFor(pdc)) {
             for (SkillCard c : b.cards()) {
                 if (c.id().equals(id)) return c;
             }
@@ -485,8 +549,8 @@ public abstract class ToolSkillManager implements Listener {
         return null;
     }
 
-    protected RarePerk findRarePerk(String id) {
-        for (RarePerk perk : rarePerks) {
+    protected RarePerk findRarePerk(PersistentDataContainer pdc, String id) {
+        for (RarePerk perk : rarePerksFor(pdc)) {
             if (perk.id().equals(id)) return perk;
         }
         return null;
@@ -578,7 +642,7 @@ public abstract class ToolSkillManager implements Listener {
     }
 
     private void grantCard(PersistentDataContainer pdc, String cardId) {
-        SkillCard card = findCard(cardId);
+        SkillCard card = findCard(pdc, cardId);
         if (card != null) {
             Map<String, Integer> counts = parseCardCounts(pdc.getOrDefault(pkCardCounts, PersistentDataType.STRING, ""));
             counts.merge(cardId, 1, Integer::sum);
@@ -774,18 +838,23 @@ public abstract class ToolSkillManager implements Listener {
         String pending = pdc.getOrDefault(pkPendingOffer, PersistentDataType.STRING, "");
         int queuedOffers = pdc.getOrDefault(pkPendingOfferQueue, PersistentDataType.INTEGER, 0);
 
+        String nazwa = displayNameFor(pdc);
         HubHolder holder = new HubHolder(this);
-        Inventory gui = Bukkit.createInventory(holder, hubSize, Component.text(displayName + " — Umiejętności", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD));
+        Inventory gui = Bukkit.createInventory(holder, hubSize, hubTitleFor(pdc, nazwa));
         holder.inventory = gui;
-        GuiUtils.fillBackground(gui, Material.PURPLE_STAINED_GLASS_PANE);
+        if (!hubUsesCustomBackground(pdc)) {
+            GuiUtils.fillBackground(gui, Material.PURPLE_STAINED_GLASS_PANE);
+        }
 
-        gui.setItem(slotToolIcon, GuiUtils.namedItem(materialForTier(tier),
-                Component.text(displayName + " [Poziom " + level + "]", NamedTextColor.AQUA, TextDecoration.BOLD),
+        Material toolIconMaterial = materialOverride(pdc);
+        if (toolIconMaterial == null) toolIconMaterial = materialForTier(tier);
+        gui.setItem(slotToolIcon, GuiUtils.namedItem(toolIconMaterial,
+                Component.text(nazwa + " [Poziom " + level + "]", NamedTextColor.AQUA, TextDecoration.BOLD),
                 Component.text("Tier: " + tierName(tier), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
 
         gui.setItem(slotInfo, GuiUtils.namedItem(Material.BEACON,
                 Component.text("Informacje", NamedTextColor.GOLD, TextDecoration.BOLD),
-                Component.text("Statystyki, umiejętności i kombinacje.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text(synergies.isEmpty() ? "Statystyki i umiejętności." : "Statystyki, umiejętności i kombinacje.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
                 Component.text("Kliknij, aby otworzyć.", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)));
         populateExtraHubIcons(gui, pdc);
 
@@ -821,8 +890,12 @@ public abstract class ToolSkillManager implements Listener {
     // danej statystyki/karty, gdzie to ma sens.
 
     protected void openInfo(Player player, ItemStack tool) {
+        PersistentDataContainer pdc = tool.getItemMeta().getPersistentDataContainer();
         InfoLauncherHolder holder = new InfoLauncherHolder(this);
-        Inventory gui = Bukkit.createInventory(holder, INFO_LAUNCHER_SIZE, Component.text(displayName + " — Informacje", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD));
+        // Bez nazwy narzędzia w tytule (kilof: nazwy typów jak "Kilof Wydajnościowy" + ten
+        // dopisek wychodziły poza ramkę GUI - tytuł kontenera, w odróżnieniu od dymka
+        // podpowiedzi przy najechaniu, jest realnie ograniczony szerokością okna).
+        Inventory gui = Bukkit.createInventory(holder, INFO_LAUNCHER_SIZE, Component.text("Informacje", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD));
         holder.inventory = gui;
         GuiUtils.fillBackground(gui, Material.BLACK_STAINED_GLASS_PANE);
 
@@ -832,9 +905,12 @@ public abstract class ToolSkillManager implements Listener {
         gui.setItem(INFO_LAUNCHER_SKILLS_SLOT, GuiUtils.namedItem(Material.ENCHANTED_BOOK,
                 Component.text("Umiejętności", NamedTextColor.AQUA, TextDecoration.BOLD),
                 Component.text("Wykupione karty i rzadkie perki.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
-        gui.setItem(INFO_LAUNCHER_SYNERGY_SLOT, GuiUtils.namedItem(Material.BEACON,
-                Component.text("Kombinacje", NamedTextColor.GOLD, TextDecoration.BOLD),
-                Component.text("Bonusy za jednoczesne zainwestowanie w kilka kart.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+        // Kombinacje - tylko jeśli narzędzie w ogóle ma zdefiniowane synergie (kilof: pusta lista, patrz PickaxeSkillManager).
+        if (!synergies.isEmpty()) {
+            gui.setItem(INFO_LAUNCHER_SYNERGY_SLOT, GuiUtils.namedItem(Material.BEACON,
+                    Component.text("Kombinacje", NamedTextColor.GOLD, TextDecoration.BOLD),
+                    Component.text("Bonusy za jednoczesne zainwestowanie w kilka kart.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+        }
 
         gui.setItem(INFO_LAUNCHER_BACK_SLOT, GuiUtils.namedItem(Material.ARROW, Component.text("« Wróć", NamedTextColor.GOLD, TextDecoration.BOLD)));
         player.openInventory(gui);
@@ -923,7 +999,7 @@ public abstract class ToolSkillManager implements Listener {
         Set<String> owned = csvToSet(pdc.getOrDefault(pkRare, PersistentDataType.STRING, ""));
         List<ItemStack> blocks = new ArrayList<>();
         for (String id : owned) {
-            RarePerk perk = findRarePerk(id);
+            RarePerk perk = findRarePerk(pdc, id);
             if (perk == null) continue;
             ItemStack icon = GuiUtils.namedItem(perk.icon(),
                     Component.text(perk.displayName(), Rarity.LEGENDARY.color, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false),
@@ -940,7 +1016,7 @@ public abstract class ToolSkillManager implements Listener {
 
     private List<ItemStack> ownedCardBlocks(PersistentDataContainer pdc) {
         List<ItemStack> blocks = new ArrayList<>();
-        for (SkillBranch b : branches) {
+        for (SkillBranch b : branchesFor(pdc)) {
             for (SkillCard c : b.cards()) {
                 int count = cardCountOf(pdc, c.id());
                 if (count <= 0) continue;
@@ -965,7 +1041,7 @@ public abstract class ToolSkillManager implements Listener {
         lore.add(Component.text(s.opis(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
         lore.add(Component.empty());
         for (Map.Entry<String, Integer> req : s.wymagania().entrySet()) {
-            SkillCard card = findCard(req.getKey());
+            SkillCard card = findCard(pdc, req.getKey());
             String name = card != null ? card.displayName() : req.getKey();
             int have = cardCountOf(pdc, req.getKey());
             int need = req.getValue();
@@ -994,6 +1070,7 @@ public abstract class ToolSkillManager implements Listener {
     }
 
     private void openOfferChoice(Player player, String pendingCsv) {
+        PersistentDataContainer pdc = player.getInventory().getItemInMainHand().getItemMeta().getPersistentDataContainer();
         List<String> ids = Arrays.asList(pendingCsv.split(","));
         OfferHolder holder = new OfferHolder(this);
         Inventory gui = Bukkit.createInventory(holder, OFFER_HUB_SIZE, Component.text("Wybierz Ulepszenie", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
@@ -1002,9 +1079,9 @@ public abstract class ToolSkillManager implements Listener {
 
         for (int i = 0; i < ids.size() && i < OFFER_CHOICE_SLOTS.length; i++) {
             String id = ids.get(i);
-            ItemStack glass = categoryGlass(id);
+            ItemStack glass = categoryGlass(pdc, id);
             gui.setItem(OFFER_CHOICE_SLOTS[i] - 9, glass);
-            gui.setItem(OFFER_CHOICE_SLOTS[i], offerCardIcon(player, id));
+            gui.setItem(OFFER_CHOICE_SLOTS[i], offerCardIcon(pdc, id));
             gui.setItem(OFFER_CHOICE_SLOTS[i] + 9, glass.clone());
         }
 
@@ -1017,8 +1094,8 @@ public abstract class ToolSkillManager implements Listener {
      * do której należy karta, żeby gracz od razu widział "skąd" jest dana oferta bez
      * czytania opisu. Rzadkie perki nie należą do żadnej gałęzi - dostają żółtą szybkę.
      */
-    private ItemStack categoryGlass(String id) {
-        SkillBranch branch = branchOfCard(id);
+    private ItemStack categoryGlass(PersistentDataContainer pdc, String id) {
+        SkillBranch branch = branchOfCard(pdc, id);
         if (branch == null) {
             return GuiUtils.namedItem(Material.YELLOW_STAINED_GLASS_PANE,
                     Component.text("Kategoria: " + Rarity.LEGENDARY.label, Rarity.LEGENDARY.color).decoration(TextDecoration.ITALIC, false));
@@ -1028,8 +1105,8 @@ public abstract class ToolSkillManager implements Listener {
     }
 
     /** Gałąź (kategoria), do której należy karta o danym id - null, jeśli to rzadki perk (bez gałęzi). */
-    private SkillBranch branchOfCard(String id) {
-        for (SkillBranch b : branches) {
+    private SkillBranch branchOfCard(PersistentDataContainer pdc, String id) {
+        for (SkillBranch b : branchesFor(pdc)) {
             for (SkillCard c : b.cards()) {
                 if (c.id().equals(id)) return b;
             }
@@ -1048,10 +1125,10 @@ public abstract class ToolSkillManager implements Listener {
         return Material.GRAY_STAINED_GLASS_PANE;
     }
 
-    private ItemStack offerCardIcon(Player player, String id) {
-        SkillCard card = findCard(id);
+    private ItemStack offerCardIcon(PersistentDataContainer pdc, String id) {
+        SkillCard card = findCard(pdc, id);
         if (card != null) {
-            int current = cardCountOf(player.getInventory().getItemInMainHand().getItemMeta().getPersistentDataContainer(), id);
+            int current = cardCountOf(pdc, id);
             List<Component> lore = new ArrayList<>();
             lore.add(Component.text(card.rarity().label, card.rarity().color, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
             lore.add(Component.empty());
@@ -1068,7 +1145,7 @@ public abstract class ToolSkillManager implements Listener {
             return icon;
         }
 
-        RarePerk perk = findRarePerk(id);
+        RarePerk perk = findRarePerk(pdc, id);
         if (perk == null) return GuiUtils.namedItem(Material.BARRIER, Component.text("???", NamedTextColor.RED));
         List<Component> lore = new ArrayList<>();
         lore.add(Component.text(Rarity.LEGENDARY.label, Rarity.LEGENDARY.color, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
@@ -1154,7 +1231,7 @@ public abstract class ToolSkillManager implements Listener {
             openInfoStats(player, tool);
         } else if (slot == INFO_LAUNCHER_SKILLS_SLOT) {
             openInfoSkills(player, tool);
-        } else if (slot == INFO_LAUNCHER_SYNERGY_SLOT) {
+        } else if (slot == INFO_LAUNCHER_SYNERGY_SLOT && !synergies.isEmpty()) {
             openInfoSynergies(player, tool, null);
         }
     }
@@ -1202,8 +1279,8 @@ public abstract class ToolSkillManager implements Listener {
         if (idx < 0 || idx >= ids.size()) return;
 
         String chosenId = ids.get(idx);
-        SkillCard chosenCard = findCard(chosenId);
-        RarePerk chosenRare = chosenCard == null ? findRarePerk(chosenId) : null;
+        SkillCard chosenCard = findCard(pdc, chosenId);
+        RarePerk chosenRare = chosenCard == null ? findRarePerk(pdc, chosenId) : null;
         if (chosenCard == null && chosenRare == null) return;
 
         Set<String> synergiesBefore = activeSynergyIds(pdc);

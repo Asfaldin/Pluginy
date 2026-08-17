@@ -2,14 +2,9 @@ package elo.mainplugins.quests;
 
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.CrateService;
-import elo.mainplugins.core.api.IslandService;
-import elo.mainplugins.core.api.IslandSummary;
-import elo.mainplugins.core.api.Rank;
-import elo.mainplugins.core.api.RankService;
 import elo.mainplugins.core.api.ToolsService;
 import elo.mainplugins.core.api.TytulService;
 import elo.mainplugins.core.util.CustomItemKeys;
-import elo.mainplugins.core.util.MoneyFormat;
 import org.bukkit.persistence.PersistentDataType;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
@@ -43,16 +38,18 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * /quest w całości - menu kategorii w kształcie gwiazdy, wszystkie kategorie (włącznie
- * z Główną Ścieżką na środku) to ten sam mechanizm "przynieś przedmiot, oddaj, dostań
- * nagrodę". Zero zależności od zewnętrznych pluginów (bez NPC/Citizens) - to świadomy
- * powrót do prostszego modelu, patrz komentarz w pom.xml tego modułu.
+ * /quest w całości - menu kategorii w kształcie diamentu/brylantu (romb: wąsko u góry,
+ * najszerzej w środku, znów wąsko na dole, patrz SLOTY_DIAMENTU), wszystkie kategorie
+ * (włącznie z Główną Ścieżką na dolnym wierzchołku) to ten sam mechanizm "przynieś
+ * przedmiot, oddaj, dostań nagrodę". Zero zależności od zewnętrznych pluginów (bez
+ * NPC/Citizens) - to świadomy powrót do prostszego modelu, patrz komentarz w pom.xml
+ * tego modułu.
  *
- * Środek gwiazdy = Główna Ścieżka (KATEGORIA_GLOWNA_SCIEZKA) - jedyna kategoria, w
- * której zadania odblokowują się PO KOLEI (patrz ustalStan) i renderują się jako
- * wężyk (SLOTY_WEZYK), a nie siatka. Ramiona dookoła = zwykłe zadania poboczne w
+ * Dolny wierzchołek diamentu = Główna Ścieżka (KATEGORIA_GLOWNA_SCIEZKA) - jedyna
+ * kategoria, w której zadania odblokowują się PO KOLEI (patrz ustalStan) i renderują się
+ * jako wężyk (SLOTY_WEZYK), a nie siatka. Kategorie powyżej = zwykłe zadania poboczne w
  * dowolnej kolejności (siatka, slotySrodkowe), tak samo jak "Questy Specjalne" -
- * to po prostu kolejne ramię z trudniejszą/rzadszą treścią, bez specjalnej logiki.
+ * to po prostu kolejna kategoria z trudniejszą/rzadszą treścią, bez specjalnej logiki.
  */
 public class QuestManager implements Listener, TytulService {
 
@@ -62,13 +59,17 @@ public class QuestManager implements Listener, TytulService {
      * DARMOWY - brak wymogu, kliknięcie od razu zdaje quest (np. "sprawdź spawn").
      * MONETY - zamiast przedmiotów, prog to koszt w monetach (EconomyService).
      * NARZEDZIE - jak PRZEDMIOT, ale NIE zabiera przedmiotu po zdaniu. Wyłącznie do
-     * questów "awansuj narzędzie na tier X" - ewoluujące narzędzia z mainplugins-tools
-     * zmieniają realny Material przy awansie tieru (LevelableToolsManager.pobierzMaterial),
-     * więc containsAtLeast(DIAMOND_PICKAXE, 1) wystarcza do weryfikacji tieru. Zwykłe
-     * removeItem() by tu ZABRAŁO graczowi jego jedyny, prawdziwy (nie placeholder)
-     * ewoluujący kilof/siekierę/miecz jako "zapłatę" za quest - stąd osobny typ.
-     * POZIOM_KILOFA - prog to minimalny poziom kilofa (ToolsService.poziomKilofa) - kilof
-     * ma osobny system poziomowania (PickaxeSkillManager) niż reszta narzędzi.
+     * questów "awansuj narzędzie na tier X" - ewoluujące narzędzia (siekiera/motyka/miecz,
+     * mainplugins-tools) zmieniają realny Material przy awansie tieru
+     * (LevelableToolsManager.pobierzMaterial), więc containsAtLeast(DIAMOND_AXE, 1)
+     * wystarcza do weryfikacji tieru. Zwykłe removeItem() by tu ZABRAŁO graczowi jego
+     * jedyne, prawdziwe (nie placeholder) narzędzie jako "zapłatę" za quest - stąd osobny
+     * typ. Kilof NIE używa już tego typu (patrz POZIOM_KILOFA) - odkąd ma kilka
+     * odrębnych TYPÓW zamiast tierów (PickaxeType), nie ma już jednego "Material tieru X"
+     * do sprawdzenia.
+     * POZIOM_KILOFA - prog to minimalny poziom kilofa (ToolsService.poziomKilofa, TERAZ:
+     * najwyższy poziom wśród WSZYSTKICH trzymanych kilofów, dowolnego typu) - kilof ma
+     * osobny system poziomowania (PickaxeSkillManager) niż reszta narzędzi.
      */
     private enum TypWymogu { PRZEDMIOT, DARMOWY, MONETY, NARZEDZIE, POZIOM_KILOFA }
 
@@ -217,27 +218,30 @@ public class QuestManager implements Listener, TytulService {
             37, 38, 39, 40, 41, 42, 43
     };
 
-    private static final int SLOT_CENTRUM_GWIAZDY = 22; // Główna Ścieżka - środek gwiazdy
-    private static final int SLOT_POWROT = 45; // wolny róg, poza wszystkimi ramionami gwiazdy
+    private static final int SLOT_DOL_DIAMENTU = 40; // Główna Ścieżka - dolny wierzchołek diamentu, wyśrodkowany, widoczny na KAŻDEJ stronie
     private static final String KATEGORIA_GLOWNA_SCIEZKA = "Główna Ścieżka";
 
     // Tag CustomItemKeys.CUSTOM_ITEM_ID nagrody questu 9 - patrz placzacyObsydian()/onPlaceObsydian().
     private static final String CUSTOM_ID_PLACZACY_OBSYDIAN = "QUEST_PLACZACY_OBSYDIAN";
 
-    // 8 ramion od SLOT_CENTRUM_GWIAZDY na zewnątrz (N,S,E,W,NE,NW,SE,SW) - różnej długości,
-    // ograniczone geometrią 54-slotowego (6x9) GUI: pion mieści tylko 2 kroki w każdą stronę
-    // od centralnego rzędu bez wchodzenia na SLOT_POWROT, poziom/przekątne w dół mieszczą 3-4.
-    // Kolejność w tablicy = kolejność przypisywania kategorii z KATEGORIE_GWIAZDY niżej.
-    private static final int[] SLOTY_GWIAZDY = {
-            13, 4,           // N
-            31, 40, 49,      // S
-            23, 24, 25, 26,  // E
-            21, 20, 19, 18,  // W
-            14, 6,           // NE
-            12, 2,           // NW
-            32, 42, 52,      // SE
-            30, 38, 46       // SW
+    /**
+     * Kategorie boczne układają się nad SLOT_DOL_DIAMENTU jako romb (diament/brylant) -
+     * pełne, wyśrodkowane pasy, które rosną do środka i znów zwężają się ku dołowi:
+     * rząd 1 (góra) → 1 slot (wierzchołek), rząd 2 → 3, rząd 3 → 5 (najszerszy środek),
+     * rząd 4 → 3, zbiegając się w Główną Ścieżkę w rzędzie 5 (drugi wierzchołek) - każdy
+     * rząd wyśrodkowany na kolumnie 5 (9-kolumnowe, 54-slotowe GUI). To 12 slotów na stronę;
+     * 22 kategorie boczne nie mieszczą się naraz, więc stronicujemy (patrz
+     * KATEGORII_NA_STRONE/otworzMenuQuestow). Kolejność w tablicy = kolejność przypisywania
+     * kategorii z KATEGORIE_GWIAZDY niżej.
+     */
+    private static final int[] SLOTY_DIAMENTU = {
+            4,
+            12, 13, 14,
+            20, 21, 22, 23, 24,
+            30, 31, 32
     };
+
+    private static final int KATEGORII_NA_STRONE = SLOTY_DIAMENTU.length; // 12
 
     public QuestManager(Plugin plugin) {
         this.plugin = plugin;
@@ -254,7 +258,7 @@ public class QuestManager implements Listener, TytulService {
     }
 
     private void zaladujQuesty() {
-        // GŁÓWNA ŚCIEŻKA - centrum gwiazdy, 40 zadań PO KOLEI (patrz ustalStan), od
+        // GŁÓWNA ŚCIEŻKA - dolny wierzchołek diamentu, 40 zadań PO KOLEI (patrz ustalStan), od
         // pierwszego dnia na wyspie aż po pokonanie Enderdragona. Quest 40 dorzuca do
         // swojej zwykłej nagrody (trofeum) jeszcze Beacon w wreczNagrode() - jedyny
         // wyjątek w całej ścieżce, gdzie nagroda to więcej niż lista q.nagrody().
@@ -289,14 +293,15 @@ public class QuestManager implements Listener, TytulService {
         // zwykłą nagrodę niżej) daje jeszcze Płaczący Obsydian Wezwania - patrz sekcja
         // "Płaczący Obsydian" niżej w pliku.
         //
-        // Późniejsze questy tych narzędzi (12, 21, 30, 31) NIE dają ich ponownie -
-        // weryfikują AWANS TIERU (np. "STONE_PICKAXE x1" = kilof faktycznie doszedł do
-        // tieru Kamień), bo ewoluujące narzędzia zmieniają realny Material przy awansie
-        // tieru (patrz LevelableToolsManager.pobierzMaterial) - żadnego nowego
-        // mechanizmu nie trzeba, to ten sam containsAtLeast() co reszta questów.
+        // Późniejsze questy tych narzędzi (12, 30) NIE dają ich ponownie - weryfikują
+        // AWANS TIERU (np. "IRON_AXE x1" = siekiera faktycznie doszła do tieru Żelazo),
+        // bo ewoluujące narzędzia zmieniają realny Material przy awansie tieru (patrz
+        // LevelableToolsManager.pobierzMaterial) - ten sam containsAtLeast() co reszta
+        // questów. Kilof (21, 31) już NIE ma tierów (patrz PickaxeType) - te dwa questy
+        // zamiast tego wymagają konkretnego POZIOMU kilofa (Quest.poziomKilofa).
         questyKategorii.put(KATEGORIA_GLOWNA_SCIEZKA, List.of(
-                Quest.darmowy(1, "Witaj na Wyspie", List.of("Twoja przygoda właśnie się zaczyna - odbierz swój pierwszy, ewoluujący kilof."),
-                        new ItemStack(Material.WOODEN_PICKAXE, 1), "1x Ewoluujący Kilof"),
+                Quest.darmowy(1, "Witaj na Wyspie", List.of("Twoja przygoda właśnie się zaczyna - odbierz swój pierwszy kilof."),
+                        new ItemStack(Material.DIAMOND_PICKAXE, 1), "1x Kilof Wydajnościowy"),
                 Quest.poziomKilofa(2, "Zaczynamy", List.of("Wykop kilofem wystarczająco dużo, by zdobyć swój pierwszy poziom."),
                         1, List.of(new ItemStack(Material.DIRT, 16)), "16x Ziemia"),
                 Quest.przedmioty(3, "Kamienny Fundament", List.of("Zbierz stack kamienia - podwaliny pod całą resztę wyspy."),
@@ -314,7 +319,7 @@ public class QuestManager implements Listener, TytulService {
                         List.of(Wymog.zwykly(Material.MELON_SLICE, 16), Wymog.zwykly(Material.WHEAT, 16), Wymog.zwykly(Material.CARROT, 16)),
                         200),
                 Quest.przedmiot(8, "Ciacho na Szczęście", List.of("Upiecz i zdobądź ciastka - drobna nagroda za słodki gest."),
-                        Material.COOKIE, 32, new ItemStack(Material.EMERALD, 10), "Podstawowa Skrzynka + Klucz (słaby drop)"),
+                        Material.COOKIE, 32, new ItemStack(Material.CHEST, 1), "Podstawowa Skrzynka + Klucz (słaby drop)"),
                 Quest.zaMonety(9, "Fundusz Obronny", List.of("Wpłać pierwsze oszczędności do banku wyspy.", "Coś w mrocznym obsydianie już się budzi..."),
                         100, placzacyObsydian(), "Płaczący Obsydian Wezwania + 1x Ewoluujący Miecz"),
                 Quest.przedmiot(10, "Egzamin Początkującego", List.of("Sprzedaj dowód stoczonych walk z nieumarłymi.", "Kamień milowy - pierwszy etap za Tobą!"),
@@ -342,8 +347,8 @@ public class QuestManager implements Listener, TytulService {
                 Quest.przedmiot(20, "Filar Wyspy", List.of("Udowodnij, że Twoja wyspa stoi na solidnych fundamentach.", "Kamień milowy - połowa ścieżki za Tobą!"),
                         Material.DIAMOND, 32, trofeum(Material.PLAYER_HEAD, "Głowa Górnika", "Za setki wykopanych bloków."), "Trofeum: Głowa Górnika"),
 
-                Quest.narzedzie(21, "Diamentowa Żyła", List.of("Ulepsz kilof do tieru Diament."),
-                        Material.DIAMOND_PICKAXE, new ItemStack(Material.DIAMOND_BLOCK, 1), "1x Blok Diamentu"),
+                Quest.poziomKilofa(21, "Diamentowa Żyła", List.of("Wbij swojemu kilofowi 30 poziom."),
+                        30, List.of(new ItemStack(Material.DIAMOND_BLOCK, 1)), "1x Blok Diamentu"),
                 Quest.przedmiot(22, "Obsydianowy Mur", List.of("Zbierz obsydian pod portal do Netheru."),
                         Material.OBSIDIAN, 10, new ItemStack(Material.FLINT_AND_STEEL, 1), "1x Krzesiwo"),
                 Quest.przedmiot(23, "Za Bramą", List.of("Wejdź do Netheru i zbierz netherrack."),
@@ -363,8 +368,8 @@ public class QuestManager implements Listener, TytulService {
                 Quest.narzedzie(30, "Pogromca Netheru", List.of("Wróć żywy z Netheru z mieczem gotowym na diamentowy tier walki.", "Kamień milowy - Nether zdobyty!"),
                         Material.DIAMOND_SWORD, trofeum(Material.WITHER_SKELETON_SKULL, "Głowa Wojownika Netheru", "Za przetrwanie Netheru."), "Trofeum: Głowa Wojownika Netheru"),
 
-                Quest.narzedzie(31, "Netherytowy Rycerz", List.of("Ulepsz kilof do tieru Netheryt."),
-                        Material.NETHERITE_PICKAXE, new ItemStack(Material.PHANTOM_MEMBRANE, 4), "4x Błona Fantoma"),
+                Quest.poziomKilofa(31, "Netherytowy Rycerz", List.of("Wbij swojemu kilofowi 60 poziom."),
+                        60, List.of(new ItemStack(Material.PHANTOM_MEMBRANE, 4)), "4x Błona Fantoma"),
                 Quest.przedmiot(32, "Brama do Endu", List.of("Zgromadź perły endermana na oczy endera."),
                         Material.ENDER_PEARL, 12, new ItemStack(Material.ENDER_EYE, 4), "4x Oko Endera"),
                 Quest.przedmiot(33, "Purpurowy Architekt", List.of("Zbierz purpurowe bloki z miast Endu."),
@@ -504,14 +509,14 @@ public class QuestManager implements Listener, TytulService {
 
         // Inicjalizacja pustych list dla kategorii narzędziowych, aby nie rzucały błędem.
         // "Mistrz Siekiery/Motyki/Łopaty" celowo usunięte z listy - to były czyste,
-        // nierozróżnialne puste duplikaty (patrz KATEGORIE_GWIAZDY: gwiazda w 54-slotowym
-        // GUI ma twardy geometryczny limit ~23 ramion bez zachodzenia na siebie/przycisk
-        // powrotu, więc trzeba było skonsolidować najbardziej redundantne puste kategorie).
+        // nierozróżnialne puste duplikaty (patrz KATEGORIE_GWIAZDY - diament stronicuje się
+        // automatycznie, więc limit slotów już nie wymusza konsolidacji, ale zostały usunięte
+        // wcześniej i nie ma powodu ich przywracać).
         questyKategorii.put("Mistrz Kilofa", new ArrayList<>());
         questyKategorii.put("Mistrz Miecza", new ArrayList<>());
     }
 
-    /** Ikona/nazwa/opis kategorii z siatki gwiazdy - kolejność MUSI się zgadzać z SLOTY_GWIAZDY. */
+    /** Ikona/nazwa/opis kategorii bocznej - kolejność MUSI się zgadzać z SLOTY_DIAMENTU (patrz stronicowanie w otworzMenuQuestow). */
     private record KategoriaGwiazdy(Material ikona, String nazwa, String opis) {}
 
     private static final List<KategoriaGwiazdy> KATEGORIE_GWIAZDY = List.of(
@@ -550,9 +555,9 @@ public class QuestManager implements Listener, TytulService {
 
     /**
      * Kategoria odblokowuje się dopiero po ukończeniu danego questu Głównej Ścieżki -
-     * "woda rozlewająca się na boki" od centrum gwiazdy, zamiast wszystkiego dostępnego
-     * od razu. Tylko kategorie z REALNĄ treścią questową mają tu wpis - pozostałe ~16 ikon
-     * w gwieździe (Drwal, Alchemik, Kowal, ...) to i tak puste placeholdery bez questów
+     * "woda rozlewająca się na boki" od dolnego wierzchołka diamentu, zamiast wszystkiego
+     * dostępnego od razu. Tylko kategorie z REALNĄ treścią questową mają tu wpis - pozostałe
+     * ~16 ikon w diamencie (Drwal, Alchemik, Kowal, ...) to i tak puste placeholdery bez questów
      * (patrz questyKategorii/getOrDefault w otworzKategorie), więc gating byłby bez sensu,
      * dopóki ktoś nie doda im treści. Dopasowanie tematyczne:
      * - Górnictwo po queście 3 (stack kamienia w kieszeni - realnie zaczął już kopać).
@@ -589,7 +594,7 @@ public class QuestManager implements Listener, TytulService {
     }
 
     /**
-     * Czy kategoria ma jakąkolwiek realną treść questową. ~16 ikon w gwieździe (Drwal,
+     * Czy kategoria ma jakąkolwiek realną treść questową. ~16 ikon w diamencie (Drwal,
      * Alchemik, Kowal, Mag, Odkrywca, Mistrz Kilofa/Miecza...) to czyste, puste
      * placeholdery bez ani jednego questu - bez tego rozróżnienia kliknięcie w nie
      * otwierało całkowicie pustą siatkę bez wyjaśnienia. Patrz stworzIkoneKategorii/W_BUDOWIE.
@@ -659,12 +664,22 @@ public class QuestManager implements Listener, TytulService {
     // ---- GUI ----
 
     public void otworzMenuQuestow(Player player, boolean zMenu) {
+        otworzMenuQuestow(player, zMenu, 0);
+    }
+
+    /**
+     * strona > 0 tylko dla kategorii bocznych (patrz SLOTY_DIAMENTU/KATEGORII_NA_STRONE) -
+     * Główna Ścieżka na SLOT_DOL_DIAMENTU jest PRZYPIĘTA i widoczna identycznie na każdej
+     * stronie, bo to stały punkt startowy, a nie coś do stronicowania.
+     */
+    private void otworzMenuQuestow(Player player, boolean zMenu, int strona) {
         otwartoZMenu.put(player.getUniqueId(), zMenu);
-        Inventory gui = Bukkit.createInventory(null, 54, Component.text("Kategorie Zadań", NamedTextColor.DARK_GREEN, TextDecoration.BOLD));
+        String tytulMenu = strona == 0 ? "Kategorie Zadań" : "Kategorie Zadań (Strona " + (strona + 1) + ")";
+        Inventory gui = Bukkit.createInventory(null, 54, Component.text(tytulMenu, NamedTextColor.DARK_GREEN, TextDecoration.BOLD));
         wypelnijTlo(gui);
 
-        // Główna Ścieżka na SAMYM ŚRODKU gwiazdy - to punkt startowy dla nowych graczy,
-        // reszta kategorii promieniście dookoła (patrz SLOTY_GWIAZDY/KATEGORIE_GWIAZDY).
+        // Główna Ścieżka na DOLNYM WIERZCHOŁKU diamentu - to punkt startowy dla nowych graczy,
+        // reszta kategorii układa się nad nią jako romb, najszerzej w środku (patrz SLOTY_DIAMENTU/KATEGORIE_GWIAZDY).
         ItemStack glownaSciezkaIkona = stworzIkoneKategorii(Material.KNOWLEDGE_BOOK, "Główna Ścieżka", "Zacznij tutaj - zadania po kolei!");
         ItemMeta metaGlowna = glownaSciezkaIkona.getItemMeta();
         metaGlowna.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
@@ -677,18 +692,17 @@ public class QuestManager implements Listener, TytulService {
             metaGlowna.lore(loreGlowna);
         }
         glownaSciezkaIkona.setItemMeta(metaGlowna);
-        gui.setItem(SLOT_CENTRUM_GWIAZDY, glownaSciezkaIkona);
+        gui.setItem(SLOT_DOL_DIAMENTU, glownaSciezkaIkona);
 
-        for (int i = 0; i < SLOTY_GWIAZDY.length && i < KATEGORIE_GWIAZDY.size(); i++) {
-            KategoriaGwiazdy k = KATEGORIE_GWIAZDY.get(i);
-            gui.setItem(SLOTY_GWIAZDY[i], stworzIkoneKategorii(player, k));
+        int startIndex = strona * KATEGORII_NA_STRONE;
+        for (int i = 0; i < SLOTY_DIAMENTU.length && startIndex + i < KATEGORIE_GWIAZDY.size(); i++) {
+            KategoriaGwiazdy k = KATEGORIE_GWIAZDY.get(startIndex + i);
+            gui.setItem(SLOTY_DIAMENTU[i], stworzIkoneKategorii(player, k));
         }
 
-        if (zMenu) {
-            gui.setItem(SLOT_POWROT, stworzPrzycisk(Material.NETHER_STAR, "« Wróć do Menu głównego", NamedTextColor.RED));
-        } else {
-            gui.setItem(SLOT_POWROT, stworzPrzycisk(Material.BARRIER, "Zamknij Menu", NamedTextColor.RED));
-        }
+        // Bez przycisku zamknięcia/powrotu - gracz po prostu wychodzi klawiszem Escape.
+        if (strona > 0) gui.setItem(45, stworzPrzycisk(Material.ARROW, "Poprzednia Strona", NamedTextColor.YELLOW));
+        if (startIndex + KATEGORII_NA_STRONE < KATEGORIE_GWIAZDY.size()) gui.setItem(53, stworzPrzycisk(Material.ARROW, "Następna Strona", NamedTextColor.YELLOW));
 
         player.openInventory(gui);
     }
@@ -700,7 +714,6 @@ public class QuestManager implements Listener, TytulService {
         String tytulMenu = "Strona " + (strona + 1) + " | " + nazwaKategorii;
         Inventory gui = Bukkit.createInventory(null, 54, Component.text(tytulMenu, NamedTextColor.DARK_GREEN, TextDecoration.BOLD));
         wypelnijTlo(gui);
-        wypelnijPanelStatystyk(gui, player, nazwaKategorii);
 
         Set<Integer> postepy = postepyDlaKategorii(player, nazwaKategorii);
 
@@ -729,58 +742,14 @@ public class QuestManager implements Listener, TytulService {
         for (int i = 0; i < 54; i++) gui.setItem(i, tlo);
     }
 
-    // Prawa krawędź GUI (kolumna 8, rzędy 0-4) - kolumna 1-7 to zawsze sloty questów
-    // (slotySrodkowe/SLOTY_WEZYK), więc ta krawędź jest zawsze wolna na obu układach.
-    private static final int[] SLOTY_PANELU_STATYSTYK = {8, 17, 26, 35, 44};
-
-    /**
-     * Panel boczny z podstawowymi statystykami gracza - widoczny na każdej stronie listy
-     * questów danej kategorii (patrz otworzKategorie). Każdy opcjonalny serwis (Tools/Rank/
-     * Island) ma sensowny fallback tekstowy, gdyby odpowiedni plugin nie był akurat wgrany -
-     * ten sam wzorzec co reszta pliku (patrz np. wreczSkrzynkeKamienMilowy).
-     */
-    private void wypelnijPanelStatystyk(Inventory gui, Player player, String kategoria) {
-        gui.setItem(SLOTY_PANELU_STATYSTYK[0], ikonaStatystyki(Material.EMERALD, "Saldo",
-                MoneyFormat.kompaktowo(CoreAPI.getEconomyService().getKasa(player.getUniqueId())) + " monet"));
-
-        ToolsService tools = CoreAPI.getToolsService();
-        int poziomKilofa = tools != null ? tools.poziomKilofa(player) : 0;
-        gui.setItem(SLOTY_PANELU_STATYSTYK[1], ikonaStatystyki(Material.DIAMOND_PICKAXE, "Poziom Kilofa",
-                poziomKilofa > 0 ? "Poziom " + poziomKilofa : "Brak ewoluującego kilofa"));
-
-        RankService rankService = CoreAPI.getRankService();
-        Rank ranga = rankService != null ? rankService.getRank(player.getUniqueId()) : Rank.GRACZ;
-        gui.setItem(SLOTY_PANELU_STATYSTYK[2], ikonaStatystyki(Material.NAME_TAG, "Ranga", ranga.name()));
-
-        int ukonczoneWTejKategorii = postepyDlaKategorii(player, kategoria).size();
-        int wszystkichWTejKategorii = questyKategorii.getOrDefault(kategoria, List.of()).size();
-        gui.setItem(SLOTY_PANELU_STATYSTYK[3], ikonaStatystyki(Material.BOOK, "Postęp w Kategorii",
-                ukonczoneWTejKategorii + "/" + wszystkichWTejKategorii + " questów"));
-
-        IslandService islandService = CoreAPI.getIslandService();
-        IslandSummary wyspa = islandService != null ? islandService.getIslandOf(player.getUniqueId()) : null;
-        gui.setItem(SLOTY_PANELU_STATYSTYK[4], ikonaStatystyki(Material.GRASS_BLOCK, "Wyspa",
-                wyspa != null ? "Rozmiar: " + wyspa.borderSize() : "Brak wyspy"));
-    }
-
-    /** Buduje pojedynczą ikonę panelu statystyk - nazwa + jedna linijka wartości w lore. */
-    private ItemStack ikonaStatystyki(Material material, String nazwa, String wartosc) {
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text(nazwa, NamedTextColor.AQUA, TextDecoration.BOLD));
-        meta.lore(List.of(Component.text(wartosc, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
-        item.setItemMeta(meta);
-        return item;
-    }
-
     private enum StanKategorii { DOSTEPNA, ZABLOKOWANA, W_BUDOWIE }
 
-    /** Ikona Głównej Ścieżki - zawsze dostępna, jedyny wywołujący spoza pętli gwiazdy. */
+    /** Ikona Głównej Ścieżki - zawsze dostępna, jedyny wywołujący spoza pętli diamentu. */
     private ItemStack stworzIkoneKategorii(Material material, String nazwa, String opis) {
         return stworzIkoneKategoriiZeStanem(material, nazwa, opis, StanKategorii.DOSTEPNA, null);
     }
 
-    /** Ustala stan (dostępna/zablokowana/w budowie) jednej ikony ramienia gwiazdy i buduje jej item. */
+    /** Ustala stan (dostępna/zablokowana/w budowie) jednej ikony kategorii bocznej w diamencie i buduje jej item. */
     private ItemStack stworzIkoneKategorii(Player player, KategoriaGwiazdy k) {
         if (!kategoriaMaTresc(k.nazwa())) {
             return stworzIkoneKategoriiZeStanem(k.ikona(), k.nazwa(), k.opis(), StanKategorii.W_BUDOWIE, null);
@@ -1012,21 +981,24 @@ public class QuestManager implements Listener, TytulService {
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         String title = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(event.getView().title());
-        if (!title.equals("Kategorie Zadań") && !title.startsWith("Strona ")) return;
+        boolean jestKategoriami = title.equals("Kategorie Zadań") || title.startsWith("Kategorie Zadań (Strona ");
+        if (!jestKategoriami && !title.startsWith("Strona ")) return;
         event.setCancelled(true);
 
         if (!(event.getWhoClicked() instanceof Player player)) return;
         int slot = event.getRawSlot();
 
-        if (title.equals("Kategorie Zadań")) {
-            if (slot == SLOT_POWROT) {
-                player.closeInventory();
-                // Sprawdzamy czy gracz wszedł z menu, jeśli tak - cofamy go tam
-                if (otwartoZMenu.getOrDefault(player.getUniqueId(), false)) {
-                    player.performCommand("menu");
-                }
+        if (jestKategoriami) {
+            // "Kategorie Zadań" = strona 0, "Kategorie Zadań (Strona N)" = strona N-1 (patrz otworzMenuQuestow).
+            int stronaKategorii = title.equals("Kategorie Zadań") ? 0 : Integer.parseInt(title.replaceAll("\\D+", "")) - 1;
+
+            if (slot == 45 && stronaKategorii > 0) {
+                otworzMenuQuestow(player, otwartoZMenu.getOrDefault(player.getUniqueId(), false), stronaKategorii - 1);
             }
-            else if (slot == SLOT_CENTRUM_GWIAZDY) {
+            else if (slot == 53 && (stronaKategorii + 1) * KATEGORII_NA_STRONE < KATEGORIE_GWIAZDY.size()) {
+                otworzMenuQuestow(player, otwartoZMenu.getOrDefault(player.getUniqueId(), false), stronaKategorii + 1);
+            }
+            else if (slot == SLOT_DOL_DIAMENTU) {
                 otworzKategorie(player, KATEGORIA_GLOWNA_SCIEZKA, 0);
             }
             else if (event.getCurrentItem() != null && event.getCurrentItem().getType() != Material.GRAY_STAINED_GLASS_PANE) {
@@ -1051,7 +1023,7 @@ public class QuestManager implements Listener, TytulService {
             String kategoria = parts[1].trim();
 
             if (slot == 49) {
-                // Główna Ścieżka i boczne kategorie mają wspólny "cofnij" - zawsze do gwiazdy głównej.
+                // Główna Ścieżka i boczne kategorie mają wspólny "cofnij" - zawsze do diamentu głównego (strona 0).
                 otworzMenuQuestow(player, otwartoZMenu.getOrDefault(player.getUniqueId(), false));
             }
             else if (slot == 53 && event.getCurrentItem() != null) otworzKategorie(player, kategoria, strona + 1);

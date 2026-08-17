@@ -20,6 +20,7 @@
         <module name="mainplugins-fishing" />
         <module name="mainplugins-spawn" />
         <module name="mainplugins-ranks" />
+        <module name="mainplugins-dungeons" />
         <module name="mainplugins-core" />
         <module name="mainplugins-shop" />
         <module name="mainplugins-spawners" />

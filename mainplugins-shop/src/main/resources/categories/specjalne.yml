@@ -51,3 +51,17 @@ items:
       - "Służy tylko do kopania - nic więcej"
     amount: 1
     buy-price: 150000
+  6:
+    material: MOSSY_COBBLESTONE
+    slot: 6
+    custom-id: GENERATOR_BRUK_T1
+    display-name: "Generator Bruku"
+    lore:
+      - "Postaw na wyspie - co jakiś czas"
+      - "można wykopać z niego bruk (cobblestone)"
+      - "Blok sam się odbudowuje po wykopaniu"
+      - "Kopie się WYŁĄCZNIE łopatą"
+      - "Narzędzie ze specjalnym Silk Touchem"
+      - "zbiera cały generator zamiast dropu"
+    amount: 1
+    buy-price: 8000

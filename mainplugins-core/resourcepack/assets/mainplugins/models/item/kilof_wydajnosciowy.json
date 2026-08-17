@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/handheld",
+  "textures": {
+    "layer0": "mainplugins:item/kilof_wydajnosciowy"
+  }
+}

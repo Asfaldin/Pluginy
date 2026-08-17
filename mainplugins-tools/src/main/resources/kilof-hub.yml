@@ -13,9 +13,10 @@
 # wybor_karty - centralny przycisk: swieci, gdy czeka oferta 4 kart do wyboru (po
 # kazdym levelu). info - beacon otwierajacy menu Informacje (Statystyki/Rzadkie Perki/
 # Umiejetnosci/Kombinacje, wszystko jako bloczki - patrz ToolSkillManager#openInfo).
-# bonus_bruku - jedyna ikonka specyficzna dla kilofa: podglad/przelacznik bonusowego
-# surowca z kopanego bruku (patrz BrukSurowceManager), stoi po lewej od wyjdz, info po
-# prawej.
+# bonus_bruku - podglad/przelacznik bonusowego surowca z kopanego bruku (patrz
+# BrukSurowceManager), stoi po lewej od wyjdz, info po prawej. Gemy (patrz PickaxeType/
+# GemType) NIE maja juz wlasnej ikonki tutaj - 3 gniazda pokazuja sie w ekranie
+# Statystyki (menu Informacje), patrz PickaxeSkillManager#statsBlocks.
 # ==========================================================================
 
 rozmiar: 27

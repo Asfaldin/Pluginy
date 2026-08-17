@@ -222,7 +222,35 @@ public class IslandManager implements Listener, IslandService {
     private record SpawnerTypInfo(String id, String nazwaOdmieniona, Material ikona) {}
 
     private static final int SPAWNER_MAX_LEVEL = 5;
-    private static final int SPAWNER_KOSZT_ZA_POZIOM = 5000;
+
+    /**
+     * Koszt awansu z danego poziomu na kolejny (1->2, 2->3, 3->4, 4->5) - z banku wyspy.
+     * Ilość i Szybkość mają OSOBNE krzywe kosztu (na razie te same liczby, ale rozdzielone
+     * funkcje - żeby dało się zmienić jedną bez ruszania drugiej).
+     */
+    private static int kosztUlepszeniaIlosci(int obecnyPoziom) {
+        return switch (obecnyPoziom) {
+            case 1 -> 3000;
+            case 2 -> 6000;
+            case 3 -> 10000;
+            default -> 20000; // 4 (i wszystko powyżej, na wszelki wypadek)
+        };
+    }
+
+    private static int kosztUlepszeniaSzybkosci(int obecnyPoziom) {
+        return switch (obecnyPoziom) {
+            case 1 -> 3000;
+            case 2 -> 6000;
+            case 3 -> 10000;
+            default -> 20000; // 4 (i wszystko powyżej, na wszelki wypadek)
+        };
+    }
+
+    private static int kosztUlepszeniaSpawnera(String sufiks, int obecnyPoziom) {
+        return sufiks.equals(SUFIKS_ILOSC)
+                ? kosztUlepszeniaIlosci(obecnyPoziom)
+                : kosztUlepszeniaSzybkosci(obecnyPoziom);
+    }
 
     // MUSZĄ się zgadzać 1:1 z tymi samymi literałami w SpawnerManager (mainplugins-spawners).
     private static final String SUFIKS_ILOSC = "_ILOSC";
@@ -1625,8 +1653,8 @@ public class IslandManager implements Listener, IslandService {
         int poziomIlosci = data.getSpawnerLevel(typId + SUFIKS_ILOSC);
         int poziomSzybkosci = data.getSpawnerLevel(typId + SUFIKS_SZYBKOSC);
 
-        gui.setItem(11, itemUlepszeniaStatystyki("Ilość", "Więcej mobków na jeden cykl spawnu", typ.ikona(), poziomIlosci));
-        gui.setItem(15, itemUlepszeniaStatystyki("Szybkość", "Krótszy odstęp między cyklami spawnu", Material.CLOCK, poziomSzybkosci));
+        gui.setItem(11, itemUlepszeniaStatystyki("Ilość", "Więcej mobków na jeden cykl spawnu", typ.ikona(), poziomIlosci, SUFIKS_ILOSC));
+        gui.setItem(15, itemUlepszeniaStatystyki("Szybkość", "Krótszy odstęp między cyklami spawnu", Material.CLOCK, poziomSzybkosci, SUFIKS_SZYBKOSC));
 
         ItemStack itemBack = new ItemStack(Material.ARROW);
         ItemMeta metaBack = itemBack.getItemMeta();
@@ -1637,7 +1665,7 @@ public class IslandManager implements Listener, IslandService {
         player.openInventory(gui);
     }
 
-    private ItemStack itemUlepszeniaStatystyki(String nazwa, String opis, Material ikona, int level) {
+    private ItemStack itemUlepszeniaStatystyki(String nazwa, String opis, Material ikona, int level, String sufiks) {
         boolean maksimum = level >= SPAWNER_MAX_LEVEL;
 
         ItemStack item = new ItemStack(ikona);
@@ -1651,7 +1679,7 @@ public class IslandManager implements Listener, IslandService {
         if (maksimum) {
             lore.add(Component.text("Osiągnięto maksymalny poziom!", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
         } else {
-            lore.add(Component.text("Koszt (z banku wyspy): " + (level * SPAWNER_KOSZT_ZA_POZIOM) + " $", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Koszt (z banku wyspy): " + kosztUlepszeniaSpawnera(sufiks, level) + " $", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
             lore.add(Component.text("Kliknij, aby ulepszyć", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
         }
         meta.lore(lore);
@@ -1670,7 +1698,7 @@ public class IslandManager implements Listener, IslandService {
             return;
         }
 
-        int cost = level * SPAWNER_KOSZT_ZA_POZIOM;
+        int cost = kosztUlepszeniaSpawnera(sufiks, level);
         if (!data.odejmijZBanku(cost)) {
             player.sendMessage(Component.text("Bank wyspy nie ma tyle pieniędzy! Potrzeba " + cost + " $, w banku jest " + formatKwote(data.getBankBalance()) + " $. Wpłać przez /is deposit.", NamedTextColor.RED));
             return;

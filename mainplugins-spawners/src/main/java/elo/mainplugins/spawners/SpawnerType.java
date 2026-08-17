@@ -40,18 +40,21 @@ public enum SpawnerType {
     /** Np. "Krowa" (mianownik, l. pojedyncza) - do nametaga stosu, np. "Krowa x5". */
     public String getNazwaPojedyncza() { return nazwaPojedyncza; }
 
-    /** Sekundy między cyklami spawnu przy danym poziomie (1-5) - im wyższy poziom, tym częściej. */
+    /** Sekundy między cyklami spawnu przy danym poziomie (1-5) - im wyższy poziom, tym częściej. 32/28/24/20/16. */
     public static int interwalSekund(int level) {
-        return Math.max(60 - (level - 1) * 10, 20);
+        return 36 - level * 4;
     }
 
-    /** Ile mobków naraz spawnuje się w jednym cyklu przy danym poziomie. */
+    /** Ile mobków dorzuca do kolejki jeden cykl spawnu przy danym poziomie. 5/6/7/8/9. */
     public static int iloscNaCykl(int level) {
-        return 1 + level / 2;
+        return level + 4;
     }
 
-    /** Limit mobków tego typu w pobliżu, powyżej którego spawner czeka aż gracz je przetrzebi. */
-    public static int limitPobliskich(int level) {
-        return 4 + level;
-    }
+    /**
+     * Sufit kolejki spawnera - stały, NIE zależy od poziomu Ilości/Szybkości - powyżej tego
+     * przestaje dorzucać, dopóki gracz nie przetrzebi. Bezpiecznie wysoko, bo stackowanie
+     * (patrz SpawnerManager) i tak trzyma najwyżej 1 żywą encję na spawner niezależnie od
+     * tego, ile jest w kolejce.
+     */
+    public static final int LIMIT_KOLEJKI = 50;
 }

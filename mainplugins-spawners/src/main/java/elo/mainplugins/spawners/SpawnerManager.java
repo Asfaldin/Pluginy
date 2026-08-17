@@ -12,6 +12,7 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.CreatureSpawner;
+import org.bukkit.entity.Ageable;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -30,6 +31,7 @@ import org.bukkit.plugin.Plugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -236,7 +238,7 @@ public class SpawnerManager implements Listener {
 
             int poziomIlosci = pobierzPoziom(instancja, SUFIKS_ILOSC);
             int poziomSzybkosci = pobierzPoziom(instancja, SUFIKS_SZYBKOSC);
-            int limit = SpawnerType.limitPobliskich(poziomIlosci);
+            int limit = SpawnerType.LIMIT_KOLEJKI;
             int iloscDoSpawnu = SpawnerType.iloscNaCykl(poziomIlosci);
 
             if (instancja.rozmiarStosu < limit) {
@@ -244,6 +246,10 @@ public class SpawnerManager implements Listener {
             }
             if (instancja.zywyMobId == null && instancja.rozmiarStosu > 0) {
                 odrodzMoba(instancja, losowyPunktObokSpawnera(loc));
+            } else {
+                // Encja już żyje, ale stos jej urósł w tym cyklu - bez tego nametag pokazywałby
+                // starą liczbę aż do najbliższego zabicia (wtedy dopiero leciał respawn z nowym tagiem).
+                aktualizujNametag(instancja);
             }
 
             instancja.nastepnySpawnMillis = teraz + SpawnerType.interwalSekund(poziomSzybkosci) * 1000L;
@@ -288,15 +294,41 @@ public class SpawnerManager implements Listener {
         if (encja instanceof LivingEntity zywa) {
             zywa.setRemoveWhenFarAway(true); // ma despawnować jak zwykły dziki mob (zwierzęta domyślnie by NIE despawnowały)
         }
-        encja.getPersistentDataContainer().set(CustomItemKeys.SPAWNER_MOB_SOURCE, PersistentDataType.STRING, instancja.typ.name());
-
-        if (instancja.rozmiarStosu > 1 && encja instanceof LivingEntity zywa) {
-            zywa.customName(Component.text(instancja.typ.getNazwaPojedyncza() + " x" + instancja.rozmiarStosu, NamedTextColor.YELLOW));
-            zywa.setCustomNameVisible(true);
+        if (encja instanceof Ageable ageable) {
+            // Zawsze dorosły - bez tego np. Zombie ma losową szansę wyjść jako "baby zombie"
+            // (dotyczy też Cow/Pig/Sheep/Chicken, choć u nich to i tak rzadkie przy zwykłym spawnie).
+            ageable.setAdult();
         }
+        // Zero jockeyów (zombie na kurczaku, szkielet na pająku) - to normalny wanilijski
+        // spawn-bonus dla tych typów, ale u nas ma spawnować dokładnie to, co kupione, nic więcej.
+        // Usuwamy niezależnie w obie strony: gdyby nasza encja była wierzchowcem LUB jeźdźcem.
+        for (Entity pasazer : new ArrayList<>(encja.getPassengers())) {
+            pasazer.remove();
+        }
+        Entity pojazd = encja.getVehicle();
+        if (pojazd != null) {
+            encja.eject();
+            pojazd.remove();
+        }
+        encja.getPersistentDataContainer().set(CustomItemKeys.SPAWNER_MOB_SOURCE, PersistentDataType.STRING, instancja.typ.name());
 
         instancja.zywyMobId = encja.getUniqueId();
         mobyDoSpawnera.put(encja.getUniqueId(), instancja);
+        aktualizujNametag(instancja);
+    }
+
+    /** Odświeża nametag "TypNazwa xN" na żywej encji stosu - albo go chowa, gdy stos ma tylko 1 sztukę. */
+    private void aktualizujNametag(Instancja instancja) {
+        if (instancja.zywyMobId == null) return;
+        if (!(Bukkit.getEntity(instancja.zywyMobId) instanceof LivingEntity zywa)) return;
+
+        if (instancja.rozmiarStosu > 1) {
+            zywa.customName(Component.text(instancja.typ.getNazwaPojedyncza() + " x" + instancja.rozmiarStosu, NamedTextColor.YELLOW));
+            zywa.setCustomNameVisible(true);
+        } else {
+            zywa.customName(null);
+            zywa.setCustomNameVisible(false);
+        }
     }
 
     private int pobierzPoziom(Instancja instancja, String sufiks) {

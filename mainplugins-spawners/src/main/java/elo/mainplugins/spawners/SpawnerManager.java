@@ -243,6 +243,24 @@ public class SpawnerManager implements Listener {
         zapisz();
     }
 
+    /**
+     * Usuwa żywą encję stosu tego spawnera i zeruje kolejkę - używane gdy nikt już nie jest
+     * w zasięgu aktywacji (patrz gracsAktywujeSpawner), zarówno z tick() (gracz zwyczajnie
+     * odszedł/poszedł na spawn) jak i z onQuit (gracz się wylogował).
+     *
+     * Zerowanie kolejki (nie tylko usunięcie encji) jest celowe: nastepnySpawnMillis liczy się
+     * na realnym czasie i leci dalej w tle niezależnie od aktywności - gdyby kolejka zostawała
+     * "należna", po powrocie gracza tick() doliczyłby kolejny pełny cykl NA WIERZCH tego co już
+     * czekało (np. 9 starych + 9 nowych = 18 zamiast normalnych 9). Zerowanie daje czysty start.
+     */
+    private void wygasZywegoMoba(Instancja instancja) {
+        Entity mob = Bukkit.getEntity(instancja.zywyMobId);
+        if (mob != null) mob.remove(); // bez EntityDeathEvent - zero dropów, zwykłe zniknięcie
+        mobyDoSpawnera.remove(instancja.zywyMobId);
+        instancja.zywyMobId = null;
+        instancja.rozmiarStosu = 0;
+    }
+
     @EventHandler(ignoreCancelled = true)
     public void onZniszczenie(BlockBreakEvent event) {
         if (event.getBlock().getType() != Material.SPAWNER) return;
@@ -303,13 +321,24 @@ public class SpawnerManager implements Listener {
             if (!loc.isChunkLoaded()) continue;
             if (loc.getBlock().getType() != Material.SPAWNER) continue; // usunięty poza BlockBreakEvent (np. explozja)
 
+            // Sprzątanie żywej encji, gdy nikt już nie jest w zasięgu - CO SEKUNDĘ, niezależnie
+            // od tego czy akurat minął interwał cyklu (ten warunek jest NIŻEJ). Bez tego czekalibyśmy
+            // aż zegar cyklu odpali (kilkanaście-kilkadziesiąt sekund) albo aż zadziała wanilijski
+            // despawn (setRemoveWhenFarAway) - a ten nigdy się nie uruchomi, jeśli chunk zdąży się
+            // wyładować zanim despawn zdąży zajść (gracz poszedł na spawn/wylogował się i chunk
+            // przestaje tickować, zamrażając moba na zawsze zamiast go usuwać).
+            if (instancja.zywyMobId != null && !gracsAktywujeSpawner(loc)) {
+                wygasZywegoMoba(instancja);
+                continue;
+            }
+
             if (teraz < instancja.nastepnySpawnMillis) continue;
             if (!gracsAktywujeSpawner(loc)) continue; // nikt w promieniu ani na tym samym chunku - śpi, nie zużywa cyklu
 
-            // Jeśli żywa encja stosu zniknęła bez zabicia (naturalny despawn - setRemoveWhenFarAway
-            // nie odpala EntityDeathEvent), tylko zapominamy o niej. rozmiarStosu zostaje - to wciąż
-            // "należny" limit temu spawnerowi, po prostu ktoś inny go zaraz odrodzi (poniżej albo w
-            // kolejnym cyklu).
+            // Jeśli żywa encja stosu zniknęła bez zabicia (np. zabita przez coś innego niż nasz
+            // onSmierc - rzadkie, ale na wszelki wypadek), tylko zapominamy o niej. rozmiarStosu
+            // zostaje - to wciąż "należny" limit temu spawnerowi (gracz jest tu i teraz aktywny,
+            // więc to nie jest przypadek z wygasZywegoMoba wyżej).
             if (instancja.zywyMobId != null) {
                 Entity mob = Bukkit.getEntity(instancja.zywyMobId);
                 if (mob == null || !mob.isValid()) {
@@ -481,13 +510,9 @@ public class SpawnerManager implements Listener {
     /**
      * Gdy gracz wychodzi z serwera, znikamy od razu każdą żywą encję stosu, którą trzymał
      * aktywną - czyli tam, gdzie po jego wyjściu nikt inny nie stoi w promieniu/na chunku
-     * (patrz gracsAktywujeSpawner). Bez tego mob zostałby zamrożony w nieaktywnym chunku:
-     * unloaded chunk nie tickuje, więc wanilijski despawn (setRemoveWhenFarAway) nigdy by
-     * się nie uruchomił i mob wisiałby tam bezterminowo aż ktoś wróci.
-     *
-     * Stos NIE jest zerowany - to wciąż "należne" mobki, po prostu czekają na kolejny
-     * cykl/gracza zamiast trzymać żywą encję w tle (tak samo jak przy naturalnym despawnie
-     * w tick()).
+     * (patrz gracsAktywujeSpawner). To duplikuje sprzątanie, które i tak zrobi najbliższy
+     * tick() (patrz tam) - ale onQuit robi to NATYCHMIAST, zamiast czekać do 1 sekundy na
+     * najbliższy przebieg tick().
      *
      * Optymalizacja: NAJPIERW tani filtr matematyczny (odległość do lokalizacji wychodzącego
      * gracza, bez żadnego zapytania do Bukkita) - spawner poza jego zasięgiem aktywacji i tak
@@ -505,10 +530,7 @@ public class SpawnerManager implements Listener {
             if (!wZasiegu(instancja.lokalizacja, gdzie)) continue; // ten gracz i tak nie był w zasięgu tego spawnera
             if (gracsAktywujeSpawner(instancja.lokalizacja, wychodzacy)) continue; // ktoś inny nadal tam jest
 
-            Entity mob = Bukkit.getEntity(instancja.zywyMobId);
-            if (mob != null) mob.remove(); // bez EntityDeathEvent - zero dropów, zwykłe zniknięcie
-            mobyDoSpawnera.remove(instancja.zywyMobId);
-            instancja.zywyMobId = null;
+            wygasZywegoMoba(instancja);
         }
     }
 

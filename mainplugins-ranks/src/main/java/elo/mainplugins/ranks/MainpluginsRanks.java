@@ -15,9 +15,9 @@ public final class MainpluginsRanks extends JavaPlugin {
         getServer().getServicesManager().register(RankService.class, rankManager, this, ServicePriority.Normal);
 
         RankCommands executor = new RankCommands(rankManager);
-        if (getCommand("setranga") != null) getCommand("setranga").setExecutor(executor);
-        if (getCommand("setranga") != null) getCommand("setranga").setTabCompleter(executor);
-        if (getCommand("ranga") != null) getCommand("ranga").setExecutor(executor);
+        if (getCommand("@setranga") != null) getCommand("@setranga").setExecutor(executor);
+        if (getCommand("@setranga") != null) getCommand("@setranga").setTabCompleter(executor);
+        if (getCommand("@ranga") != null) getCommand("@ranga").setExecutor(executor);
     }
 
     @Override

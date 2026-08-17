@@ -9,7 +9,7 @@ items:
     amount: 1
     buy-price: 10
     sell-amount: 64
-    sell-price: 250
+    sell-price: 200
   1:
     material: ARROW
     slot: 1
@@ -17,7 +17,7 @@ items:
     amount: 1
     buy-price: 20
     sell-amount: 64
-    sell-price: 220
+    sell-price: 150
   2:
     material: WHITE_WOOL
     slot: 2
@@ -25,7 +25,7 @@ items:
     amount: 1
     buy-price: 25
     sell-amount: 64
-    sell-price: 300
+    sell-price: 270
   3:
     material: FEATHER
     slot: 3
@@ -33,7 +33,7 @@ items:
     amount: 1
     buy-price: 25
     sell-amount: 64
-    sell-price: 240
+    sell-price: 280
   4:
     material: BONE
     slot: 4
@@ -41,7 +41,7 @@ items:
     amount: 1
     buy-price: 30
     sell-amount: 64
-    sell-price: 200
+    sell-price: 150
   5:
     material: STRING
     slot: 5
@@ -49,7 +49,7 @@ items:
     amount: 1
     buy-price: 30
     sell-amount: 64
-    sell-price: 270
+    sell-price: 340
   6:
     material: EGG
     slot: 6
@@ -65,7 +65,7 @@ items:
     amount: 1
     buy-price: 40
     sell-amount: 64
-    sell-price: 300
+    sell-price: 130
   8:
     material: SPIDER_EYE
     slot: 8
@@ -73,7 +73,7 @@ items:
     amount: 1
     buy-price: 100
     sell-amount: 64
-    sell-price: 350
+    sell-price: 340
   9:
     material: INK_SAC
     slot: 9
@@ -87,7 +87,7 @@ items:
     amount: 1
     buy-price: 150
     sell-amount: 64
-    sell-price: 350
+    sell-price: 670
   11:
     material: GUNPOWDER
     slot: 11
@@ -95,7 +95,7 @@ items:
     amount: 1
     buy-price: 200
     sell-amount: 64
-    sell-price: 250
+    sell-price: 600
   12:
     material: ENDER_PEARL
     slot: 12

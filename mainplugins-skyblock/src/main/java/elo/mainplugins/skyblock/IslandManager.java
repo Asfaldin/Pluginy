@@ -228,28 +228,61 @@ public class IslandManager implements Listener, IslandService {
      * Ilość i Szybkość mają OSOBNE krzywe kosztu (na razie te same liczby, ale rozdzielone
      * funkcje - żeby dało się zmienić jedną bez ruszania drugiej).
      */
-    private static int kosztUlepszeniaIlosci(int obecnyPoziom) {
+    /** Baza dla najtańszego spawnera. Suma 1->5: 33 000 $. */
+    private static int bazowyKosztIlosci(int obecnyPoziom) {
         return switch (obecnyPoziom) {
-            case 1 -> 3000;
-            case 2 -> 6000;
-            case 3 -> 10000;
-            default -> 20000; // 4 (i wszystko powyżej, na wszelki wypadek)
+            case 1 -> 2500;
+            case 2 -> 5000;
+            case 3 -> 8500;
+            default -> 17000;   // 4 i wyżej
         };
     }
 
-    private static int kosztUlepszeniaSzybkosci(int obecnyPoziom) {
+    /** Baza dla najtańszego spawnera. Suma 1->5: 46 500 $ — drożej niż Ilość,
+     *  bo Szybkość daje większy przyrost mobów na godzinę. */
+    private static int bazowyKosztSzybkosci(int obecnyPoziom) {
         return switch (obecnyPoziom) {
-            case 1 -> 3000;
-            case 2 -> 6000;
-            case 3 -> 10000;
-            default -> 20000; // 4 (i wszystko powyżej, na wszelki wypadek)
+            case 1 -> 3500;
+            case 2 -> 7000;
+            case 3 -> 12000;
+            default -> 24000;   // 4 i wyżej
         };
     }
 
-    private static int kosztUlepszeniaSpawnera(String sufiks, int obecnyPoziom) {
-        return sufiks.equals(SUFIKS_ILOSC)
-                ? kosztUlepszeniaIlosci(obecnyPoziom)
-                : kosztUlepszeniaSzybkosci(obecnyPoziom);
+    /** Cena spawnera w sklepie — musi się zgadzać z categories/spawnery.yml. */
+    private static int cenaSpawnera(String typId) {
+        return switch (typId) {
+            case "ZOMBIE"   -> 20000;
+            case "PIG"      -> 25000;
+            case "SKELETON" -> 30000;
+            case "COW"      -> 40000;
+            case "SPIDER"   -> 45000;
+            case "CHICKEN"  -> 55000;
+            case "CREEPER"  -> 60000;
+            case "SHEEP"    -> 67000;
+            case "BREEZE"   -> 100000;
+            default         -> 20000;   // nieznany typ -> traktujemy jak najtańszy
+        };
+    }
+
+    /** Najtańszy spawner wyznacza skalę — jego mnożnik wynosi 1.0. */
+    private static final int CENA_BAZOWEGO_SPAWNERA = 20000;
+
+    /**
+     * Ile razy drożej ulepsza się ten spawner względem najtańszego.
+     * Pierwiastek spłaszcza różnicę: breeze jest 5x droższy od zombie,
+     * ale jego ulepszenia tylko 2.24x.
+     */
+    private static double mnoznikKosztu(String typId) {
+        return Math.sqrt((double) cenaSpawnera(typId) / CENA_BAZOWEGO_SPAWNERA);
+    }
+
+    private static int kosztUlepszeniaSpawnera(String typId, String sufiks, int obecnyPoziom) {
+        int baza = sufiks.equals(SUFIKS_ILOSC)
+                ? bazowyKosztIlosci(obecnyPoziom)
+                : bazowyKosztSzybkosci(obecnyPoziom);
+        // zaokrąglenie do pełnych setek, żeby w GUI nie było kwot typu 8437 $
+        return (int) (Math.round(baza * mnoznikKosztu(typId) / 100.0) * 100);
     }
 
     // MUSZĄ się zgadzać 1:1 z tymi samymi literałami w SpawnerManager (mainplugins-spawners).
@@ -1653,8 +1686,8 @@ public class IslandManager implements Listener, IslandService {
         int poziomIlosci = data.getSpawnerLevel(typId + SUFIKS_ILOSC);
         int poziomSzybkosci = data.getSpawnerLevel(typId + SUFIKS_SZYBKOSC);
 
-        gui.setItem(11, itemUlepszeniaStatystyki("Ilość", "Więcej mobków na jeden cykl spawnu", typ.ikona(), poziomIlosci, SUFIKS_ILOSC));
-        gui.setItem(15, itemUlepszeniaStatystyki("Szybkość", "Krótszy odstęp między cyklami spawnu", Material.CLOCK, poziomSzybkosci, SUFIKS_SZYBKOSC));
+        gui.setItem(11, itemUlepszeniaStatystyki(typId, "Ilość", "Więcej mobków na jeden cykl spawnu", typ.ikona(), poziomIlosci, SUFIKS_ILOSC));
+        gui.setItem(15, itemUlepszeniaStatystyki(typId, "Szybkość", "Krótszy odstęp między cyklami spawnu", Material.CLOCK, poziomSzybkosci, SUFIKS_SZYBKOSC));
 
         ItemStack itemBack = new ItemStack(Material.ARROW);
         ItemMeta metaBack = itemBack.getItemMeta();
@@ -1665,7 +1698,7 @@ public class IslandManager implements Listener, IslandService {
         player.openInventory(gui);
     }
 
-    private ItemStack itemUlepszeniaStatystyki(String nazwa, String opis, Material ikona, int level, String sufiks) {
+    private ItemStack itemUlepszeniaStatystyki(String typId, String nazwa, String opis, Material ikona, int level, String sufiks) {
         boolean maksimum = level >= SPAWNER_MAX_LEVEL;
 
         ItemStack item = new ItemStack(ikona);
@@ -1679,7 +1712,7 @@ public class IslandManager implements Listener, IslandService {
         if (maksimum) {
             lore.add(Component.text("Osiągnięto maksymalny poziom!", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
         } else {
-            lore.add(Component.text("Koszt (z banku wyspy): " + kosztUlepszeniaSpawnera(sufiks, level) + " $", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Koszt (z banku wyspy): " + kosztUlepszeniaSpawnera(typId, sufiks, level) + " $", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
             lore.add(Component.text("Kliknij, aby ulepszyć", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
         }
         meta.lore(lore);
@@ -1698,7 +1731,7 @@ public class IslandManager implements Listener, IslandService {
             return;
         }
 
-        int cost = kosztUlepszeniaSpawnera(sufiks, level);
+        int cost = kosztUlepszeniaSpawnera(typId, sufiks, level);
         if (!data.odejmijZBanku(cost)) {
             player.sendMessage(Component.text("Bank wyspy nie ma tyle pieniędzy! Potrzeba " + cost + " $, w banku jest " + formatKwote(data.getBankBalance()) + " $. Wpłać przez /is deposit.", NamedTextColor.RED));
             return;

@@ -50,14 +50,14 @@ items:
     custom-id: CREEPER
     display-name: "Spawner: Creeperów"
     amount: 1
-    buy-price: 67000
+    buy-price: 60000
   7:
     material: SPAWNER
     slot: 7
     custom-id: SHEEP
     display-name: "Spawner: Owiec"
     amount: 1
-    buy-price: 75000
+    buy-price: 67000
   8:
     material: SPAWNER
     slot: 8

@@ -6,6 +6,7 @@ import elo.mainplugins.core.command.MoneyAddCommand;
 import elo.mainplugins.core.command.MoneyUndoCommand;
 import elo.mainplugins.core.command.PayCommand;
 import elo.mainplugins.core.command.PomocCommand;
+import elo.mainplugins.core.command.PortfelCommand;
 import elo.mainplugins.core.economy.EconomyManager;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -43,6 +44,9 @@ public final class MainpluginsCore extends JavaPlugin {
         }
         if (getCommand("pay") != null) {
             getCommand("pay").setExecutor(new PayCommand(economyManager));
+        }
+        if (getCommand("portfel") != null) {
+            getCommand("portfel").setExecutor(new PortfelCommand(economyManager));
         }
 
         getLogger().info("MainpluginsCore włączony - EconomyService dostępny dla innych pluginów.");

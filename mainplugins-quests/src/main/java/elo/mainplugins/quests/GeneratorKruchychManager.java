@@ -7,10 +7,12 @@ import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -20,6 +22,7 @@ import org.bukkit.plugin.Plugin;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Generator "Kruchych Surowców" (piasek/żwir, poziom 1) - planowana nagroda questu 11
@@ -29,12 +32,13 @@ import java.util.Set;
  *
  * Gracz stawia blok (CHISELED_SANDSTONE, otagowany CUSTOM_ID_GENERATOR - zwykły,
  * kupiony/wydobyty rzeźbiony piaskowiec NIE jest generatorem, patrz jestGeneratorem).
- * Wykopanie go ZWYKŁYM narzędziem daje piasek+żwir, a blok sam się odbudowuje po
- * ODNOWA_TICKOW (jak stacjonarny "Sniffer Farmera" z mainplugins-skyblock, tylko blok
- * zamiast moba). Wykopanie narzędziem z flagą CustomItemKeys.SPECJALNY_SILK_TOUCH daje
- * z powrotem CAŁY generator jako przenośny przedmiot, bez regeneracji na starym miejscu -
- * na razie ŻADNE narzędzie tej flagi nie dostaje (świadomie odłożone, łopata działa jak
- * zwykłe narzędzie), więc ta gałąź jest chwilowo martwym kodem, gotowym na później.
+ * Wykopanie go ŁOPATĄ (naturalny dobór narzędzia dla piasku/żwiru) daje losowo piasek ALBO
+ * żwir (nigdy oba naraz, 50/50 - patrz onBreak), a blok wraca po krótkim, celowo
+ * minimalnym opóźnieniu (ODNOWA_TICKOW - patrz onBreak). Wykopanie narzędziem z flagą
+ * CustomItemKeys.SPECJALNY_SILK_TOUCH to jedyny sposób, żeby blok zniknął na stałe -
+ * wtedy daje z powrotem CAŁY generator jako przenośny przedmiot, bez odbudowy na starym
+ * miejscu - na razie ŻADNE narzędzie tej flagi nie dostaje (świadomie odłożone, łopata
+ * działa jak zwykłe narzędzie), więc ta gałąź jest chwilowo martwym kodem, gotowym na później.
  *
  * Drugi sposób zdobycia kolejnych generatorów (poza jednorazową nagrodą questu) to
  * REALNA receptura w stole rzemieślniczym (patrz zarejestrujReceptureGeneratora w
@@ -46,13 +50,16 @@ public class GeneratorKruchychManager implements Listener {
 
     private static final String CUSTOM_ID_GENERATOR = "GENERATOR_KRUCHY_T1";
     private static final Material MATERIAL_GENERATORA = Material.CHISELED_SANDSTONE;
-    private static final long ODNOWA_TICKOW = 20L * 60; // 60s
+    private static final int ILOSC_SUROWCA_ZA_WYKOP = 2;
+    // Celowo minimalne - blok ma się odnawiać "prawie od razu", nie stać pusty przez
+    // dłuższą chwilę jak w starej wersji (60s), patrz GeneratorBrukuManager#ODNOWA_TICKOW.
+    private static final long ODNOWA_TICKOW = 15L;
 
     private final Plugin plugin;
 
     // Lokalizacje aktywnych generatorów - CZYSTO w pamięci (jak sesje fal zombie w
-    // QuestManager), bez zapisu do pliku. Nie przetrwa restartu serwera w trakcie
-    // odnowy - świadomy kompromis prostoty, ten sam co reszta questowych mechanik.
+    // QuestManager), bez zapisu do pliku. Nie przetrwa restartu serwera w trakcie odnowy -
+    // świadomy kompromis prostoty, ten sam co reszta questowych mechanik.
     private final Set<Location> aktywneGeneratory = new HashSet<>();
 
     public GeneratorKruchychManager(Plugin plugin) {
@@ -66,7 +73,7 @@ public class GeneratorKruchychManager implements Listener {
         meta.displayName(Component.text("Generator Kruchych Surowców [T1]", NamedTextColor.GOLD, TextDecoration.BOLD));
         meta.lore(List.of(
                 Component.text("Postaw na wyspie - co jakiś czas", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                Component.text("można wykopać z niego piasek i żwir.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("można wykopać z niego piasek lub żwir.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
                 Component.text("Blok sam się odbudowuje po wykopaniu.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
                 Component.empty(),
                 Component.text("Kopie się WYŁĄCZNIE łopatą.", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false),
@@ -111,6 +118,20 @@ public class GeneratorKruchychManager implements Listener {
         aktywneGeneratory.add(event.getBlock().getLocation());
     }
 
+    /**
+     * CHISELED_SANDSTONE jest wanilijsko "kilofowy" - kopanie go łopatą (wymagane przez
+     * onBreak) nie dostaje żadnego bonusu prędkości, więc bez tego handlera kopanie
+     * ciągnęłoby się realnie długo mimo pozornie miękkiego bloku. InstaBreak na starcie
+     * kopania łopatą naprawia to bez zmiany samego bloku (patrz jestLopata).
+     */
+    @EventHandler
+    public void onDamage(BlockDamageEvent event) {
+        if (!aktywneGeneratory.contains(event.getBlock().getLocation())) return;
+        if (jestLopata(event.getPlayer().getInventory().getItemInMainHand())) {
+            event.setInstaBreak(true);
+        }
+    }
+
     @EventHandler
     public void onBreak(BlockBreakEvent event) {
         var block = event.getBlock();
@@ -128,14 +149,18 @@ public class GeneratorKruchychManager implements Listener {
         event.setDropItems(false);
 
         if (maSpecjalnySilkTouch(narzedzie)) {
+            // Jedyny przypadek, gdzie blok znika na stałe - gracz zabiera go ze sobą.
             aktywneGeneratory.remove(lokalizacja);
             block.getWorld().dropItemNaturally(lokalizacja.clone().add(0.5, 0.5, 0.5), stworzGenerator());
             player.sendMessage(Component.text("Zebrałeś cały generator - możesz postawić go gdzie indziej!", NamedTextColor.GREEN));
             return;
         }
 
-        block.getWorld().dropItemNaturally(lokalizacja.clone().add(0.5, 0.5, 0.5), new ItemStack(Material.SAND, 2));
-        block.getWorld().dropItemNaturally(lokalizacja.clone().add(0.5, 0.5, 0.5), new ItemStack(Material.GRAVEL, 2));
+        // Losowo piasek ALBO żwir, nigdy oba naraz - jak wanilijskie kopanie tych bloków.
+        boolean piasek = ThreadLocalRandom.current().nextBoolean();
+        Material surowiec = piasek ? Material.SAND : Material.GRAVEL;
+        block.getWorld().dropItemNaturally(lokalizacja.clone().add(0.5, 0.5, 0.5), new ItemStack(surowiec, ILOSC_SUROWCA_ZA_WYKOP));
+        player.playSound(lokalizacja, piasek ? Sound.BLOCK_SAND_BREAK : Sound.BLOCK_GRAVEL_BREAK, 1.0f, 1.0f);
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             // Ktoś w międzyczasie zebrał go specjalnym silk touchem - nie odbudowuj pustego miejsca.

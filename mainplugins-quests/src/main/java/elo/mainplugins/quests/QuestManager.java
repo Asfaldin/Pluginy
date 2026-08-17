@@ -10,6 +10,7 @@ import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -38,18 +39,19 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * /quest w całości - menu kategorii w kształcie diamentu/brylantu (romb: wąsko u góry,
- * najszerzej w środku, znów wąsko na dole, patrz SLOTY_DIAMENTU), wszystkie kategorie
- * (włącznie z Główną Ścieżką na dolnym wierzchołku) to ten sam mechanizm "przynieś
- * przedmiot, oddaj, dostań nagrodę". Zero zależności od zewnętrznych pluginów (bez
- * NPC/Citizens) - to świadomy powrót do prostszego modelu, patrz komentarz w pom.xml
- * tego modułu.
+ * /quest w całości - Menu Główne ("Kategorie Zadań") to wężyk narysowany ręcznie na pełnym
+ * ekwipunku (patrz SLOTY_KATEGORII_BOCZNYCH), pierwszy slot to zawsze Główna Ścieżka
+ * (SLOT_GLOWNEJ_SCIEZKI_W_MENU - "zacznij tutaj"), reszta to 16 kategorii bocznych. Ten sam
+ * mechanizm "przynieś przedmiot, oddaj, dostań nagrodę" dla wszystkich kategorii. Zero
+ * zależności od zewnętrznych pluginów (bez NPC/Citizens) - to świadomy powrót do
+ * prostszego modelu, patrz komentarz w pom.xml tego modułu.
  *
- * Dolny wierzchołek diamentu = Główna Ścieżka (KATEGORIA_GLOWNA_SCIEZKA) - jedyna
- * kategoria, w której zadania odblokowują się PO KOLEI (patrz ustalStan) i renderują się
- * jako wężyk (SLOTY_WEZYK), a nie siatka. Kategorie powyżej = zwykłe zadania poboczne w
- * dowolnej kolejności (siatka, slotySrodkowe), tak samo jak "Questy Specjalne" -
- * to po prostu kolejna kategoria z trudniejszą/rzadszą treścią, bez specjalnej logiki.
+ * Główna Ścieżka (KATEGORIA_GLOWNA_SCIEZKA) - jedyna kategoria, w której zadania
+ * odblokowują się PO KOLEI (patrz ustalStan) i renderuje się jako wężyk-spirala
+ * (SLOTY_WEZYK_C - ten sam kształt co kategorie boczne, patrz niżej). Kategorie boczne =
+ * zwykłe zadania poboczne w dowolnej kolejności, renderowane tą samą spiralą, tak samo jak
+ * "Questy Specjalne" - to po prostu kolejna kategoria z trudniejszą/rzadszą treścią, bez
+ * specjalnej logiki.
  */
 public class QuestManager implements Listener, TytulService {
 
@@ -190,58 +192,41 @@ public class QuestManager implements Listener, TytulService {
     private final Map<UUID, StanFali> aktywneFaleZombie = new HashMap<>();
     private final NamespacedKey kluczSesjiFali;
 
-    // Definiujemy 35 slotów na środku (7 kolumn x 5 rzędów) - kategorie zwykłe (dowolna kolejność).
-    private final int[] slotySrodkowe = {
-            1, 2, 3, 4, 5, 6, 7,
-            10, 11, 12, 13, 14, 15, 16,
-            19, 20, 21, 22, 23, 24, 25,
-            28, 29, 30, 31, 32, 33, 34,
-            37, 38, 39, 40, 41, 42, 43
+    /**
+     * Wężyk-spirala, 29 slotów - kolejność w tablicy = kolejność wizualna (i, dla Głównej
+     * Ścieżki, kolejność odblokowywania kolejnych zadań, patrz ustalStan). Ten sam kształt
+     * dla Głównej Ścieżki i wszystkich kategorii bocznych (patrz otworzKategorie) -
+     * narysowany ręcznie na pełnym 54-slotowym ekwipunku, stąd sloty przy samej krawędzi
+     * (0-8...) też się tu pojawiają. Wszystko poza tą tablicą dostaje czarne szkło
+     * automatycznie (patrz wypelnijPrzerwy/panelCzarny) - nie ma osobnej tablicy "przerw"
+     * do ręcznego przeliczania przy każdej zmianie kształtu.
+     */
+    private static final int[] SLOTY_WEZYK_C = {
+            0, 1, 2, 3, 4, 5, 6, 7, 8,
+            17, 26, 23, 22, 25, 24, 21, 19, 18,
+            20, 27, 36, 37, 38, 39, 40, 42, 41,
+            44, 43
     };
 
     /**
-     * 23 sloty (nie 35 jak slotySrodkowe) - Główna Ścieżka ma teraz "wężyk z przerwą":
-     * pełny rząd (7 slotów) → JEDEN łącznik na krawędzi w następnym rzędzie (reszta tego
-     * rzędu to czyste tło, przerwa) → znów pełny rząd, itd. Łącznik naprzemiennie po prawej
-     * (slot 16) i lewej (slot 28) stronie, żeby dotykał sąsiedniego rzędu W TEJ SAMEJ
-     * kolumnie co koniec poprzedniego/początek następnego odcinka - wężyk fizycznie się
-     * styka na bokach, tylko środek każdego "pustego" rzędu zostaje pusty. Reszta rzędu 1/3
-     * (poza łącznikiem) NIE ma wpisu tutaj - wypelnijTlo() i tak wypełnia całe GUI szarym
-     * szkłem jako tło PRZED ustawieniem ikon questów, więc pominięte sloty automatycznie
-     * zostają "przerwą" bez dodatkowego kodu.
+     * Menu Główne ("Kategorie Zadań") - kształt narysowany ręcznie, 17 slotów na pełnym
+     * ekwipunku. Pierwszy slot to zawsze Główna Ścieżka (SLOT_GLOWNEJ_SCIEZKI_W_MENU,
+     * "zacznij tutaj"), pozostałe 16 to kategorie boczne w kolejności z KATEGORIE_GWIAZDY
+     * (stąd lista tam ma dokładnie 16 pozycji - tyle ile tu slotów). Wszystko poza tymi
+     * slotami dostaje czarne szkło (patrz wypelnijPrzerwy/panelCzarny), tak samo jak w
+     * Głównej Ścieżce.
      */
-    private static final int[] SLOTY_WEZYK = {
-            1, 2, 3, 4, 5, 6, 7,
-            16,
-            25, 24, 23, 22, 21, 20, 19,
-            28,
-            37, 38, 39, 40, 41, 42, 43
+    private static final int SLOT_GLOWNEJ_SCIEZKI_W_MENU = 22;
+
+    private static final int[] SLOTY_KATEGORII_BOCZNYCH = {
+            31, 49, 40, 13, 21, 11, 29, 19,
+            28, 37, 23, 15, 33, 25, 34, 43
     };
 
-    private static final int SLOT_DOL_DIAMENTU = 40; // Główna Ścieżka - dolny wierzchołek diamentu, wyśrodkowany, widoczny na KAŻDEJ stronie
     private static final String KATEGORIA_GLOWNA_SCIEZKA = "Główna Ścieżka";
 
     // Tag CustomItemKeys.CUSTOM_ITEM_ID nagrody questu 9 - patrz placzacyObsydian()/onPlaceObsydian().
     private static final String CUSTOM_ID_PLACZACY_OBSYDIAN = "QUEST_PLACZACY_OBSYDIAN";
-
-    /**
-     * Kategorie boczne układają się nad SLOT_DOL_DIAMENTU jako romb (diament/brylant) -
-     * pełne, wyśrodkowane pasy, które rosną do środka i znów zwężają się ku dołowi:
-     * rząd 1 (góra) → 1 slot (wierzchołek), rząd 2 → 3, rząd 3 → 5 (najszerszy środek),
-     * rząd 4 → 3, zbiegając się w Główną Ścieżkę w rzędzie 5 (drugi wierzchołek) - każdy
-     * rząd wyśrodkowany na kolumnie 5 (9-kolumnowe, 54-slotowe GUI). To 12 slotów na stronę;
-     * 22 kategorie boczne nie mieszczą się naraz, więc stronicujemy (patrz
-     * KATEGORII_NA_STRONE/otworzMenuQuestow). Kolejność w tablicy = kolejność przypisywania
-     * kategorii z KATEGORIE_GWIAZDY niżej.
-     */
-    private static final int[] SLOTY_DIAMENTU = {
-            4,
-            12, 13, 14,
-            20, 21, 22, 23, 24,
-            30, 31, 32
-    };
-
-    private static final int KATEGORII_NA_STRONE = SLOTY_DIAMENTU.length; // 12
 
     public QuestManager(Plugin plugin) {
         this.plugin = plugin;
@@ -258,7 +243,7 @@ public class QuestManager implements Listener, TytulService {
     }
 
     private void zaladujQuesty() {
-        // GŁÓWNA ŚCIEŻKA - dolny wierzchołek diamentu, 40 zadań PO KOLEI (patrz ustalStan), od
+        // GŁÓWNA ŚCIEŻKA - 40 zadań PO KOLEI (patrz ustalStan), od
         // pierwszego dnia na wyspie aż po pokonanie Enderdragona. Quest 40 dorzuca do
         // swojej zwykłej nagrody (trofeum) jeszcze Beacon w wreczNagrode() - jedyny
         // wyjątek w całej ścieżce, gdzie nagroda to więcej niż lista q.nagrody().
@@ -507,57 +492,53 @@ public class QuestManager implements Listener, TytulService {
                         Material.DRAGON_BREATH, 16, new ItemStack(Material.NETHER_STAR, 1), "1x Gwiazda Netheru")
         ));
 
-        // Inicjalizacja pustych list dla kategorii narzędziowych, aby nie rzucały błędem.
-        // "Mistrz Siekiery/Motyki/Łopaty" celowo usunięte z listy - to były czyste,
-        // nierozróżnialne puste duplikaty (patrz KATEGORIE_GWIAZDY - diament stronicuje się
-        // automatycznie, więc limit slotów już nie wymusza konsolidacji, ale zostały usunięte
-        // wcześniej i nie ma powodu ich przywracać).
-        questyKategorii.put("Mistrz Kilofa", new ArrayList<>());
-        questyKategorii.put("Mistrz Miecza", new ArrayList<>());
+        // "Mistrz Siekiery/Motyki/Łopaty/Kilofa/Miecza" celowo NIE ma w KATEGORIE_GWIAZDY -
+        // to były czyste, nierozróżnialne puste duplikaty, a kilof/miecz mają już własne,
+        // prawdziwe drzewka umiejętności w mainplugins-tools, więc osobna pusta kategoria
+        // questowa byłaby zbędna. Menu Główne ma tylko 17 slotów (wężyk narysowany ręcznie -
+        // patrz SLOTY_KATEGORII_BOCZNYCH), więc KATEGORIE_GWIAZDY trzyma się świadomie
+        // krótkiej listy 16 kategorii zamiast wszystkich możliwych pomysłów na przyszłość.
     }
 
-    /** Ikona/nazwa/opis kategorii bocznej - kolejność MUSI się zgadzać z SLOTY_DIAMENTU (patrz stronicowanie w otworzMenuQuestow). */
+    /** Ikona/nazwa/opis kategorii bocznej - kolejność MUSI się zgadzać z SLOTY_KATEGORII_BOCZNYCH (patrz otworzMenuQuestow). */
     private record KategoriaGwiazdy(Material ikona, String nazwa, String opis) {}
 
+    /**
+     * DOKŁADNIE 16 pozycji - tyle samo, ile slotów zostaje w Menu Głównym po odjęciu
+     * Głównej Ścieżki (17 slotów wężyka - 1 = 16, patrz SLOTY_KATEGORII_BOCZNYCH). Górnictwo/
+     * Hodowla/Łowca/Rybak/Questy Specjalne mają realną treść questową (patrz
+     * questyKategorii/WYMOG_ODBLOKOWANIA_KATEGORII) - reszta to placeholdery na przyszłość.
+     * Świadomie WYCIĘTE z tej listy (żeby zmieścić się w 17 slotach, patrz rozmowa przy
+     * wprowadzaniu ręcznie rysowanego kształtu menu): Kowal (dublował system tworzenia/
+     * levelowania narzędzi z mainplugins-tools), Wojownik i Zabójca (dublowały Łowcę -
+     * trzy kategorie "walka z potworami" naraz), Handlarz (dubluje cały moduł
+     * mainplugins-market), Zbieracz (zbyt ogólny, dublował właściwie każdą inną kategorię
+     * zbierania surowców), Mistrz Kilofa/Miecza (patrz komentarz w zaladujQuesty()).
+     */
     private static final List<KategoriaGwiazdy> KATEGORIE_GWIAZDY = List.of(
-            // N
             new KategoriaGwiazdy(Material.IRON_PICKAXE, "Górnictwo", "Zadania w kopalni"),
             new KategoriaGwiazdy(Material.WHEAT, "Hodowla", "Zadania rolnicze"),
-            // S
             new KategoriaGwiazdy(Material.BOW, "Łowca", "Zadania z potworami"),
             new KategoriaGwiazdy(Material.OAK_LOG, "Drwal", "Zadania z drewnem"),
             new KategoriaGwiazdy(Material.FISHING_ROD, "Rybak", "Zadania wędkarskie"),
-            // E
             new KategoriaGwiazdy(Material.BREWING_STAND, "Alchemik", "Warzenie mikstur"),
-            new KategoriaGwiazdy(Material.ANVIL, "Kowal", "Tworzenie narzędzi"),
             new KategoriaGwiazdy(Material.COOKED_BEEF, "Kucharz", "Zadania kulinarne"),
             new KategoriaGwiazdy(Material.BRICKS, "Budowniczy", "Budowa wyspy"),
-            // W
             new KategoriaGwiazdy(Material.ENCHANTING_TABLE, "Mag", "Zaklęcia"),
             new KategoriaGwiazdy(Material.COMPASS, "Odkrywca", "Eksploracja mapy"),
             new KategoriaGwiazdy(Material.PORKCHOP, "Rzeźnik", "Zdobywanie mięsa"),
             new KategoriaGwiazdy(Material.OAK_SAPLING, "Ogrodnik", "Sadzenie drzew"),
-            // NE
             new KategoriaGwiazdy(Material.DIAMOND, "Jubiler", "Cenne kruszce"),
             new KategoriaGwiazdy(Material.GOLD_NUGGET, "Złodziej", "Kradzież (Zadania)"),
-            // NW
-            new KategoriaGwiazdy(Material.DIAMOND_SWORD, "Wojownik", "Walka PvP/PvE"),
-            new KategoriaGwiazdy(Material.EMERALD, "Handlarz", "Wymiana handlowa"),
-            // SE
             new KategoriaGwiazdy(Material.REDSTONE, "Inżynier", "Mechanizmy"),
-            new KategoriaGwiazdy(Material.ZOMBIE_HEAD, "Zabójca", "Eliminacje"),
-            new KategoriaGwiazdy(Material.BONE_MEAL, "Zbieracz", "Zbieranie surowców"),
-            // SW
-            new KategoriaGwiazdy(Material.NETHER_STAR, "Questy Specjalne", "Trudne wyzwania dla weteranów"),
-            new KategoriaGwiazdy(Material.DIAMOND_PICKAXE, "Mistrz Kilofa", "Zadania dla kilofa"),
-            new KategoriaGwiazdy(Material.DIAMOND_SWORD, "Mistrz Miecza", "Zadania dla miecza")
+            new KategoriaGwiazdy(Material.NETHER_STAR, "Questy Specjalne", "Trudne wyzwania dla weteranów")
     );
 
     /**
      * Kategoria odblokowuje się dopiero po ukończeniu danego questu Głównej Ścieżki -
-     * "woda rozlewająca się na boki" od dolnego wierzchołka diamentu, zamiast wszystkiego
+     * "woda rozlewająca się w bok" od pierwszego slotu wężyka, zamiast wszystkiego
      * dostępnego od razu. Tylko kategorie z REALNĄ treścią questową mają tu wpis - pozostałe
-     * ~16 ikon w diamencie (Drwal, Alchemik, Kowal, ...) to i tak puste placeholdery bez questów
+     * 11 ikon w menu (Drwal, Alchemik, Kucharz, ...) to i tak puste placeholdery bez questów
      * (patrz questyKategorii/getOrDefault w otworzKategorie), więc gating byłby bez sensu,
      * dopóki ktoś nie doda im treści. Dopasowanie tematyczne:
      * - Górnictwo po queście 3 (stack kamienia w kieszeni - realnie zaczął już kopać).
@@ -594,10 +575,10 @@ public class QuestManager implements Listener, TytulService {
     }
 
     /**
-     * Czy kategoria ma jakąkolwiek realną treść questową. ~16 ikon w diamencie (Drwal,
-     * Alchemik, Kowal, Mag, Odkrywca, Mistrz Kilofa/Miecza...) to czyste, puste
-     * placeholdery bez ani jednego questu - bez tego rozróżnienia kliknięcie w nie
-     * otwierało całkowicie pustą siatkę bez wyjaśnienia. Patrz stworzIkoneKategorii/W_BUDOWIE.
+     * Czy kategoria ma jakąkolwiek realną treść questową. 11 ikon w menu (Drwal, Alchemik,
+     * Kucharz, Mag, Odkrywca...) to czyste, puste placeholdery bez ani jednego questu - bez
+     * tego rozróżnienia kliknięcie w nie otwierało całkowicie pustą siatkę bez wyjaśnienia.
+     * Patrz stworzIkoneKategorii/W_BUDOWIE.
      */
     private boolean kategoriaMaTresc(String kategoria) {
         return !questyKategorii.getOrDefault(kategoria, List.of()).isEmpty();
@@ -657,29 +638,16 @@ public class QuestManager implements Listener, TytulService {
         return postepy.contains(poprzedni.id()) ? StanQuestu.DOSTEPNY : StanQuestu.ZABLOKOWANY;
     }
 
-    private int[] slotyDlaKategorii(String kategoria) {
-        return kategoria.equals(KATEGORIA_GLOWNA_SCIEZKA) ? SLOTY_WEZYK : slotySrodkowe;
-    }
-
     // ---- GUI ----
 
     public void otworzMenuQuestow(Player player, boolean zMenu) {
-        otworzMenuQuestow(player, zMenu, 0);
-    }
-
-    /**
-     * strona > 0 tylko dla kategorii bocznych (patrz SLOTY_DIAMENTU/KATEGORII_NA_STRONE) -
-     * Główna Ścieżka na SLOT_DOL_DIAMENTU jest PRZYPIĘTA i widoczna identycznie na każdej
-     * stronie, bo to stały punkt startowy, a nie coś do stronicowania.
-     */
-    private void otworzMenuQuestow(Player player, boolean zMenu, int strona) {
         otwartoZMenu.put(player.getUniqueId(), zMenu);
-        String tytulMenu = strona == 0 ? "Kategorie Zadań" : "Kategorie Zadań (Strona " + (strona + 1) + ")";
-        Inventory gui = Bukkit.createInventory(null, 54, Component.text(tytulMenu, NamedTextColor.DARK_GREEN, TextDecoration.BOLD));
+        Inventory gui = Bukkit.createInventory(null, 54, Component.text("Kategorie Zadań", NamedTextColor.DARK_GREEN, TextDecoration.BOLD));
         wypelnijTlo(gui);
+        wypelnijPrzerwy(gui, new int[]{SLOT_GLOWNEJ_SCIEZKI_W_MENU}, SLOTY_KATEGORII_BOCZNYCH);
 
-        // Główna Ścieżka na DOLNYM WIERZCHOŁKU diamentu - to punkt startowy dla nowych graczy,
-        // reszta kategorii układa się nad nią jako romb, najszerzej w środku (patrz SLOTY_DIAMENTU/KATEGORIE_GWIAZDY).
+        // Główna Ścieżka na PIERWSZYM slocie wężyka - to punkt startowy dla nowych
+        // graczy, reszta kategorii ciągnie się od niej w prawo (patrz SLOTY_KATEGORII_BOCZNYCH/KATEGORIE_GWIAZDY).
         ItemStack glownaSciezkaIkona = stworzIkoneKategorii(Material.KNOWLEDGE_BOOK, "Główna Ścieżka", "Zacznij tutaj - zadania po kolei!");
         ItemMeta metaGlowna = glownaSciezkaIkona.getItemMeta();
         metaGlowna.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
@@ -692,33 +660,32 @@ public class QuestManager implements Listener, TytulService {
             metaGlowna.lore(loreGlowna);
         }
         glownaSciezkaIkona.setItemMeta(metaGlowna);
-        gui.setItem(SLOT_DOL_DIAMENTU, glownaSciezkaIkona);
+        gui.setItem(SLOT_GLOWNEJ_SCIEZKI_W_MENU, glownaSciezkaIkona);
 
-        int startIndex = strona * KATEGORII_NA_STRONE;
-        for (int i = 0; i < SLOTY_DIAMENTU.length && startIndex + i < KATEGORIE_GWIAZDY.size(); i++) {
-            KategoriaGwiazdy k = KATEGORIE_GWIAZDY.get(startIndex + i);
-            gui.setItem(SLOTY_DIAMENTU[i], stworzIkoneKategorii(player, k));
+        // 16 slotów na 16 kategorii bocznych - wszystkie mieszczą się naraz, bez stronicowania.
+        for (int i = 0; i < SLOTY_KATEGORII_BOCZNYCH.length && i < KATEGORIE_GWIAZDY.size(); i++) {
+            KategoriaGwiazdy k = KATEGORIE_GWIAZDY.get(i);
+            gui.setItem(SLOTY_KATEGORII_BOCZNYCH[i], stworzIkoneKategorii(player, k));
         }
 
         // Bez przycisku zamknięcia/powrotu - gracz po prostu wychodzi klawiszem Escape.
-        if (strona > 0) gui.setItem(45, stworzPrzycisk(Material.ARROW, "Poprzednia Strona", NamedTextColor.YELLOW));
-        if (startIndex + KATEGORII_NA_STRONE < KATEGORIE_GWIAZDY.size()) gui.setItem(53, stworzPrzycisk(Material.ARROW, "Następna Strona", NamedTextColor.YELLOW));
-
         player.openInventory(gui);
     }
 
     public void otworzKategorie(Player player, String nazwaKategorii, int strona) {
         List<Quest> questy = questyKategorii.getOrDefault(nazwaKategorii, new ArrayList<>());
-        int[] sloty = slotyDlaKategorii(nazwaKategorii);
+        int[] sloty = SLOTY_WEZYK_C;
 
         String tytulMenu = "Strona " + (strona + 1) + " | " + nazwaKategorii;
         Inventory gui = Bukkit.createInventory(null, 54, Component.text(tytulMenu, NamedTextColor.DARK_GREEN, TextDecoration.BOLD));
         wypelnijTlo(gui);
+        // Każda kategoria renderuje się jako ten sam wężyk-spirala (SLOTY_WEZYK_C), więc
+        // przerwy liczą się tak samo dla wszystkich.
+        wypelnijPrzerwy(gui, sloty);
 
         Set<Integer> postepy = postepyDlaKategorii(player, nazwaKategorii);
 
-        // sloty.length zamiast sztywnej 35 - Główna Ścieżka (SLOTY_WEZYK) ma teraz 23
-        // sloty/stronę (wężyk z przerwą), reszta kategorii (slotySrodkowe) nadal 35.
+        // sloty.length zamiast sztywnej liczby - SLOTY_WEZYK_C ma 29 slotów/stronę.
         int startIndex = strona * sloty.length;
         for (int i = 0; i < sloty.length; i++) {
             if (startIndex + i < questy.size()) {
@@ -742,9 +709,34 @@ public class QuestManager implements Listener, TytulService {
         for (int i = 0; i < 54; i++) gui.setItem(i, tlo);
     }
 
+    /** Czarne szkło dla świadomych przerw wężyka (menu i Główna Ścieżka) - odróżnia je od szarej ramki GUI z wypelnijTlo(). */
+    private ItemStack panelCzarny() {
+        ItemStack panel = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
+        ItemMeta meta = panel.getItemMeta();
+        meta.displayName(Component.empty());
+        panel.setItemMeta(meta);
+        return panel;
+    }
+
+    /**
+     * Czarne szkło na KAŻDYM slocie spoza podanych ścieżek - uniwersalne dla dowolnego
+     * ręcznie narysowanego kształtu wężyka, więc nie trzeba osobno przeliczać "przerw"
+     * za każdym razem, gdy kształt się zmienia. Wywołuj PRZED ustawieniem ikon questów/
+     * kategorii, bo inaczej nadpisze je czarnym szkłem.
+     */
+    private void wypelnijPrzerwy(Inventory gui, int[]... sciezki) {
+        Set<Integer> sciezka = new HashSet<>();
+        for (int[] tablica : sciezki) {
+            for (int slot : tablica) sciezka.add(slot);
+        }
+        for (int slot = 0; slot < 54; slot++) {
+            if (!sciezka.contains(slot)) gui.setItem(slot, panelCzarny());
+        }
+    }
+
     private enum StanKategorii { DOSTEPNA, ZABLOKOWANA, W_BUDOWIE }
 
-    /** Ikona Głównej Ścieżki - zawsze dostępna, jedyny wywołujący spoza pętli diamentu. */
+    /** Ikona Głównej Ścieżki - zawsze dostępna, jedyny wywołujący spoza pętli wężyka menu. */
     private ItemStack stworzIkoneKategorii(Material material, String nazwa, String opis) {
         return stworzIkoneKategoriiZeStanem(material, nazwa, opis, StanKategorii.DOSTEPNA, null);
     }
@@ -764,7 +756,7 @@ public class QuestManager implements Listener, TytulService {
      * Buduje ikonę kategorii dla danego stanu - szary barwnik + kłódka w lore, gdy
      * zablokowana (patrz WYMOG_ODBLOKOWANIA_KATEGORII), albo barierka + "w budowie",
      * gdy kategoria nie ma jeszcze ani jednego questu (patrz kategoriaMaTresc) - bez
-     * tego rozróżnienia kliknięcie w ~16 pustych ikon gwiazdy (Drwal, Alchemik, Kowal...)
+     * tego rozróżnienia kliknięcie w 11 pustych ikon gwiazdy (Drwal, Alchemik, Kucharz...)
      * otwierało zupełnie pustą siatkę bez wyjaśnienia. Nazwa kategorii w displayName
      * ZOSTAJE prawdziwa nawet zablokowana (nie "???" jak przy questach Głównej Ścieżki) -
      * onInventoryClick() odczytuje z niej nazwę kategorii do routingu, a poza tym sama
@@ -981,7 +973,7 @@ public class QuestManager implements Listener, TytulService {
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         String title = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(event.getView().title());
-        boolean jestKategoriami = title.equals("Kategorie Zadań") || title.startsWith("Kategorie Zadań (Strona ");
+        boolean jestKategoriami = title.equals("Kategorie Zadań");
         if (!jestKategoriami && !title.startsWith("Strona ")) return;
         event.setCancelled(true);
 
@@ -989,19 +981,12 @@ public class QuestManager implements Listener, TytulService {
         int slot = event.getRawSlot();
 
         if (jestKategoriami) {
-            // "Kategorie Zadań" = strona 0, "Kategorie Zadań (Strona N)" = strona N-1 (patrz otworzMenuQuestow).
-            int stronaKategorii = title.equals("Kategorie Zadań") ? 0 : Integer.parseInt(title.replaceAll("\\D+", "")) - 1;
-
-            if (slot == 45 && stronaKategorii > 0) {
-                otworzMenuQuestow(player, otwartoZMenu.getOrDefault(player.getUniqueId(), false), stronaKategorii - 1);
-            }
-            else if (slot == 53 && (stronaKategorii + 1) * KATEGORII_NA_STRONE < KATEGORIE_GWIAZDY.size()) {
-                otworzMenuQuestow(player, otwartoZMenu.getOrDefault(player.getUniqueId(), false), stronaKategorii + 1);
-            }
-            else if (slot == SLOT_DOL_DIAMENTU) {
+            if (slot == SLOT_GLOWNEJ_SCIEZKI_W_MENU) {
                 otworzKategorie(player, KATEGORIA_GLOWNA_SCIEZKA, 0);
             }
-            else if (event.getCurrentItem() != null && event.getCurrentItem().getType() != Material.GRAY_STAINED_GLASS_PANE) {
+            else if (event.getCurrentItem() != null
+                    && event.getCurrentItem().getType() != Material.GRAY_STAINED_GLASS_PANE
+                    && event.getCurrentItem().getType() != Material.BLACK_STAINED_GLASS_PANE) {
                 String kategoria = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(event.getCurrentItem().getItemMeta().displayName());
                 if (!kategoriaMaTresc(kategoria)) {
                     player.sendMessage(Component.text("Ta kategoria jest jeszcze w budowie - wróć później!", NamedTextColor.YELLOW));
@@ -1023,13 +1008,13 @@ public class QuestManager implements Listener, TytulService {
             String kategoria = parts[1].trim();
 
             if (slot == 49) {
-                // Główna Ścieżka i boczne kategorie mają wspólny "cofnij" - zawsze do diamentu głównego (strona 0).
+                // Główna Ścieżka i boczne kategorie mają wspólny "cofnij" - zawsze do Menu Głównego (strona 0).
                 otworzMenuQuestow(player, otwartoZMenu.getOrDefault(player.getUniqueId(), false));
             }
             else if (slot == 53 && event.getCurrentItem() != null) otworzKategorie(player, kategoria, strona + 1);
             else if (slot == 45 && event.getCurrentItem() != null) otworzKategorie(player, kategoria, strona - 1);
             else {
-                int[] sloty = slotyDlaKategorii(kategoria);
+                int[] sloty = SLOTY_WEZYK_C;
                 for (int i = 0; i < sloty.length; i++) {
                     if (slot == sloty[i]) {
                         List<Quest> questy = questyKategorii.get(kategoria);
@@ -1126,6 +1111,25 @@ public class QuestManager implements Listener, TytulService {
                     .append(Component.text(q.tytul(), NamedTextColor.GOLD, TextDecoration.BOLD))
                     .append(Component.text("! Otrzymałeś: ", NamedTextColor.GREEN))
                     .append(Component.text(q.nazwaNagrody(), NamedTextColor.AQUA)));
+
+            // Quest 1 ("Witaj na Wyspie") to pierwsza rzecz, jaką nowy gracz robi na
+            // serwerze - zamiast zwykłego powrotu do GUI, zamykamy ekwipunek (zostaje
+            // sam pulpit wyspy) i witamy dużym tytułem + fanfarą, żeby ten moment
+            // faktycznie zapadł w pamięć i zachęcił do dalszej gry.
+            if (kategoria.equals(KATEGORIA_GLOWNA_SCIEZKA) && q.id() == 1) {
+                player.closeInventory();
+                player.showTitle(Title.title(
+                        Component.text("Witaj na Wyspie", NamedTextColor.GOLD, TextDecoration.BOLD),
+                        Component.text("Twoja opowieść zaczyna się teraz.", NamedTextColor.YELLOW)
+                ));
+                // Własna fanfara (freesound "medieval fanfare") zamiast wbudowanego dźwięku -
+                // patrz mainplugins-core/resourcepack/assets/mainplugins/sounds.json +
+                // sounds/quest_welcome.ogg. Wymaga wgranej paczki resourcepack u gracza
+                // (patrz ResourcePackManager) - jeśli paczka się nie załaduje, klient po
+                // prostu nic nie odtworzy (cichy no-op, bez błędu).
+                player.playSound(player.getLocation(), "mainplugins:quest_welcome", 1.0f, 1.0f);
+                return;
+            }
 
             player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
             otworzKategorie(player, kategoria, strona);

@@ -6,6 +6,7 @@ import elo.mainplugins.core.api.IslandSummary;
 import elo.mainplugins.core.util.CustomItemKeys;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -18,12 +19,16 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -69,6 +74,12 @@ public class SpawnerManager implements Listener {
     // bez tego spawner mielił bez sensu nawet gdy właściciel jest na drugim końcu mapy
     // (chunk czasem zostaje wczytany z innych powodów niż obecność gracza). Jak w vanilla.
     private static final int PROMIEN_AKTYWNOSCI_GRACZA = 16;
+
+    /** Ile spawnerów łącznie może stać na jednej wyspie. */
+    private static final int LIMIT_SPAWNEROW_NA_WYSPE = 10;
+
+    /** Czym się zbiera spawner. */
+    private static final Material NARZEDZIE_ZBIERANIA = Material.STICK;
 
     // Sufiksy kluczy w IslandSummary.spawnerLevels() - MUSZĄ się zgadzać 1:1 z tymi
     // samymi literałami w IslandManager (mainplugins-skyblock). Dwa osobne poziomy
@@ -194,6 +205,15 @@ public class SpawnerManager implements Listener {
             if (summary != null) ownerUUID = summary.ownerUUID();
         }
 
+        int juzPostawione = policzSpawneryWyspy(ownerUUID);
+        if (juzPostawione >= LIMIT_SPAWNEROW_NA_WYSPE) {
+            player.sendMessage(Component.text("Limit spawnerów na wyspę: "
+                    + LIMIT_SPAWNEROW_NA_WYSPE + " (masz już " + juzPostawione + ").",
+                    NamedTextColor.RED));
+            event.setCancelled(true);   // blok nie zostaje postawiony, item wraca do ekwipunku
+            return;
+        }
+
         Location loc = block.getLocation();
         Instancja instancja = new Instancja(loc, typ, ownerUUID);
         zainicjujKolejnySpawn(instancja); // pełny interwał, nie spawnuje natychmiast po postawieniu
@@ -203,14 +223,94 @@ public class SpawnerManager implements Listener {
         player.sendMessage(Component.text("Postawiono spawner: " + typ.getNazwaOdmieniona() + "!", NamedTextColor.GREEN));
     }
 
+    /**
+     * Zdejmuje spawner z ewidencji i sprząta po nim wszystko: wpis w mapie
+     * instancji, wpis w mobyDoSpawnera oraz żywą encję stosu.
+     *
+     * Bez wyczyszczenia mobyDoSpawnera osierocony mob dalej wskazywałby na
+     * usuniętą instancję i przy zabiciu odradzałby kolejne sztuki ze stosu.
+     */
+    private void usunSpawner(Location loc) {
+        Instancja instancja = instancje.remove(kluczLokalizacji(loc));
+        if (instancja == null) return;
+
+        if (instancja.zywyMobId != null) {
+            mobyDoSpawnera.remove(instancja.zywyMobId);
+            Entity mob = Bukkit.getEntity(instancja.zywyMobId);
+            if (mob != null) mob.remove();   // remove() nie odpala EntityDeathEvent - żadnych dropów
+        }
+        instancja.rozmiarStosu = 0;
+        zapisz();
+    }
+
+    /**
+     * Usuwa żywą encję stosu tego spawnera i zeruje kolejkę - używane gdy nikt już nie jest
+     * w zasięgu aktywacji (patrz gracsAktywujeSpawner), zarówno z tick() (gracz zwyczajnie
+     * odszedł/poszedł na spawn) jak i z onQuit (gracz się wylogował).
+     *
+     * Zerowanie kolejki (nie tylko usunięcie encji) jest celowe: nastepnySpawnMillis liczy się
+     * na realnym czasie i leci dalej w tle niezależnie od aktywności - gdyby kolejka zostawała
+     * "należna", po powrocie gracza tick() doliczyłby kolejny pełny cykl NA WIERZCH tego co już
+     * czekało (np. 9 starych + 9 nowych = 18 zamiast normalnych 9). Zerowanie daje czysty start.
+     */
+    private void wygasZywegoMoba(Instancja instancja) {
+        Entity mob = Bukkit.getEntity(instancja.zywyMobId);
+        if (mob != null) mob.remove(); // bez EntityDeathEvent - zero dropów, zwykłe zniknięcie
+        mobyDoSpawnera.remove(instancja.zywyMobId);
+        instancja.zywyMobId = null;
+        instancja.rozmiarStosu = 0;
+    }
+
     @EventHandler(ignoreCancelled = true)
     public void onZniszczenie(BlockBreakEvent event) {
         if (event.getBlock().getType() != Material.SPAWNER) return;
+        usunSpawner(event.getBlock().getLocation());
+    }
 
-        String klucz = kluczLokalizacji(event.getBlock().getLocation());
-        if (instancje.remove(klucz) != null) {
-            zapisz();
+    @EventHandler
+    public void onZbieranieSpawnera(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+        // Zdarzenie odpala się raz na każdą rękę - bez tego kod poszedłby dwa razy.
+        if (event.getHand() != EquipmentSlot.HAND) return;
+
+        Block block = event.getClickedBlock();
+        if (block == null || block.getType() != Material.SPAWNER) return;
+
+        Player player = event.getPlayer();
+        if (player.getInventory().getItemInMainHand().getType() != NARZEDZIE_ZBIERANIA) return;
+
+        Instancja instancja = instancje.get(kluczLokalizacji(block.getLocation()));
+        if (instancja == null) return;   // wanilijski spawner - nie nasz, zostaw w spokoju
+
+        // Zbierać może właściciel wyspy albo ktokolwiek z tej samej wyspy.
+        UUID wyspaGracza = wyspaGracza(player.getUniqueId());
+        if (!instancja.ownerUUID.equals(wyspaGracza)) {
+            player.sendMessage(Component.text("To nie jest spawner z Twojej wyspy!", NamedTextColor.RED));
+            event.setCancelled(true);
+            return;
         }
+
+        event.setCancelled(true);   // nie otwieraj GUI spawnera ani nic innego
+
+        Location loc = block.getLocation();
+        SpawnerType typ = instancja.typ;
+
+        usunSpawner(loc);
+        block.setType(Material.AIR);
+
+        // Item z custom-id, żeby po podniesieniu i postawieniu był tym samym typem.
+        ItemStack drop = new ItemStack(Material.SPAWNER);
+        ItemMeta meta = drop.getItemMeta();
+        meta.displayName(Component.text("Spawner: " + typ.getNazwaOdmieniona(),
+                NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
+        meta.getPersistentDataContainer()
+                .set(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING, typ.name());
+        meta.setEnchantmentGlintOverride(true);
+        drop.setItemMeta(meta);
+
+        loc.getWorld().dropItemNaturally(loc.clone().add(0.5, 0.5, 0.5), drop);
+        player.sendMessage(Component.text("Zebrano spawner: " + typ.getNazwaOdmieniona() + "!",
+                NamedTextColor.GREEN));
     }
 
     private void tick() {
@@ -221,13 +321,24 @@ public class SpawnerManager implements Listener {
             if (!loc.isChunkLoaded()) continue;
             if (loc.getBlock().getType() != Material.SPAWNER) continue; // usunięty poza BlockBreakEvent (np. explozja)
 
+            // Sprzątanie żywej encji, gdy nikt już nie jest w zasięgu - CO SEKUNDĘ, niezależnie
+            // od tego czy akurat minął interwał cyklu (ten warunek jest NIŻEJ). Bez tego czekalibyśmy
+            // aż zegar cyklu odpali (kilkanaście-kilkadziesiąt sekund) albo aż zadziała wanilijski
+            // despawn (setRemoveWhenFarAway) - a ten nigdy się nie uruchomi, jeśli chunk zdąży się
+            // wyładować zanim despawn zdąży zajść (gracz poszedł na spawn/wylogował się i chunk
+            // przestaje tickować, zamrażając moba na zawsze zamiast go usuwać).
+            if (instancja.zywyMobId != null && !gracsAktywujeSpawner(loc)) {
+                wygasZywegoMoba(instancja);
+                continue;
+            }
+
             if (teraz < instancja.nastepnySpawnMillis) continue;
             if (!gracsAktywujeSpawner(loc)) continue; // nikt w promieniu ani na tym samym chunku - śpi, nie zużywa cyklu
 
-            // Jeśli żywa encja stosu zniknęła bez zabicia (naturalny despawn - setRemoveWhenFarAway
-            // nie odpala EntityDeathEvent), tylko zapominamy o niej. rozmiarStosu zostaje - to wciąż
-            // "należny" limit temu spawnerowi, po prostu ktoś inny go zaraz odrodzi (poniżej albo w
-            // kolejnym cyklu).
+            // Jeśli żywa encja stosu zniknęła bez zabicia (np. zabita przez coś innego niż nasz
+            // onSmierc - rzadkie, ale na wszelki wypadek), tylko zapominamy o niej. rozmiarStosu
+            // zostaje - to wciąż "należny" limit temu spawnerowi (gracz jest tu i teraz aktywny,
+            // więc to nie jest przypadek z wygasZywegoMoba wyżej).
             if (instancja.zywyMobId != null) {
                 Entity mob = Bukkit.getEntity(instancja.zywyMobId);
                 if (mob == null || !mob.isValid()) {
@@ -277,11 +388,34 @@ public class SpawnerManager implements Listener {
      * przekątna chunka (16x16) ma ~22,6 bloku, więc gracz w rogu chunka mógłby się nie łapać.
      */
     private boolean gracsAktywujeSpawner(Location loc) {
-        if (!loc.getWorld().getNearbyPlayers(loc, PROMIEN_AKTYWNOSCI_GRACZA).isEmpty()) return true;
+        return gracsAktywujeSpawner(loc, null);
+    }
+
+    /**
+     * Tania wersja "czy ten JEDEN znany punkt jest w zasięgu aktywacji spawnera" - bez żadnego
+     * zapytania do Bukkita (getNearbyPlayers/getPlayers), sama arytmetyka na współrzędnych.
+     * Używana jako wstępny filtr w onQuit, żeby nie sprawdzać spawnerów, na które wyjście
+     * akurat TEGO gracza i tak nie ma wpływu.
+     */
+    private boolean wZasiegu(Location spawnerLoc, Location punkt) {
+        if (!spawnerLoc.getWorld().equals(punkt.getWorld())) return false;
+        if (spawnerLoc.distanceSquared(punkt) <= (double) PROMIEN_AKTYWNOSCI_GRACZA * PROMIEN_AKTYWNOSCI_GRACZA) return true;
+
+        return (spawnerLoc.getBlockX() >> 4) == (punkt.getBlockX() >> 4)
+                && (spawnerLoc.getBlockZ() >> 4) == (punkt.getBlockZ() >> 4);
+    }
+
+    /** Jak wyżej, ale pozwala pominąć jednego gracza przy liczeniu - używane przy PlayerQuitEvent,
+     *  gdzie w momencie sprawdzania wychodzący gracz wciąż widnieje jako "online". */
+    private boolean gracsAktywujeSpawner(Location loc, UUID wyklucz) {
+        for (Player gracz : loc.getWorld().getNearbyPlayers(loc, PROMIEN_AKTYWNOSCI_GRACZA)) {
+            if (!gracz.getUniqueId().equals(wyklucz)) return true;
+        }
 
         int chunkX = loc.getBlockX() >> 4;
         int chunkZ = loc.getBlockZ() >> 4;
         for (Player gracz : loc.getWorld().getPlayers()) {
+            if (gracz.getUniqueId().equals(wyklucz)) continue;
             Location poz = gracz.getLocation();
             if ((poz.getBlockX() >> 4) == chunkX && (poz.getBlockZ() >> 4) == chunkZ) return true;
         }
@@ -331,6 +465,27 @@ public class SpawnerManager implements Listener {
         }
     }
 
+    /** Ile spawnerów stoi już na wyspie danego właściciela. */
+    private int policzSpawneryWyspy(UUID ownerUUID) {
+        int licznik = 0;
+        for (Instancja i : instancje.values()) {
+            if (i.ownerUUID.equals(ownerUUID)) licznik++;
+        }
+        return licznik;
+    }
+
+    /**
+     * UUID właściciela wyspy, na której gracz jest członkiem. Gdy modułu wysp
+     * nie ma albo gracz nie ma wyspy — zwraca jego własne UUID, tak samo jak
+     * robi to onSadzenie() przy przypisywaniu właściciela.
+     */
+    private UUID wyspaGracza(UUID playerUUID) {
+        IslandService islandService = CoreAPI.getIslandService();
+        if (islandService == null) return playerUUID;
+        IslandSummary summary = islandService.getIslandOf(playerUUID);
+        return summary != null ? summary.ownerUUID() : playerUUID;
+    }
+
     private int pobierzPoziom(Instancja instancja, String sufiks) {
         IslandService islandService = CoreAPI.getIslandService();
         if (islandService == null) return 1;
@@ -350,6 +505,33 @@ public class SpawnerManager implements Listener {
     private void zainicjujKolejnySpawn(Instancja instancja) {
         int poziomSzybkosci = pobierzPoziom(instancja, SUFIKS_SZYBKOSC);
         instancja.nastepnySpawnMillis = System.currentTimeMillis() + SpawnerType.interwalSekund(poziomSzybkosci) * 1000L;
+    }
+
+    /**
+     * Gdy gracz wychodzi z serwera, znikamy od razu każdą żywą encję stosu, którą trzymał
+     * aktywną - czyli tam, gdzie po jego wyjściu nikt inny nie stoi w promieniu/na chunku
+     * (patrz gracsAktywujeSpawner). To duplikuje sprzątanie, które i tak zrobi najbliższy
+     * tick() (patrz tam) - ale onQuit robi to NATYCHMIAST, zamiast czekać do 1 sekundy na
+     * najbliższy przebieg tick().
+     *
+     * Optymalizacja: NAJPIERW tani filtr matematyczny (odległość do lokalizacji wychodzącego
+     * gracza, bez żadnego zapytania do Bukkita) - spawner poza jego zasięgiem aktywacji i tak
+     * nie mógł być "trzymany" przez tego gracza, więc jego wyjście nic tam nie zmienia i nie ma
+     * sensu w ogóle odpalać gracsAktywujeSpawner (getNearbyPlayers/pętla po graczach) dla niego.
+     * Na serwerze z wieloma wyspami to zwykle 0-1 spawnerów zamiast całej mapy instancje.
+     */
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        Location gdzie = event.getPlayer().getLocation();
+        UUID wychodzacy = event.getPlayer().getUniqueId();
+
+        for (Instancja instancja : instancje.values()) {
+            if (instancja.zywyMobId == null) continue;
+            if (!wZasiegu(instancja.lokalizacja, gdzie)) continue; // ten gracz i tak nie był w zasięgu tego spawnera
+            if (gracsAktywujeSpawner(instancja.lokalizacja, wychodzacy)) continue; // ktoś inny nadal tam jest
+
+            wygasZywegoMoba(instancja);
+        }
     }
 
     /**

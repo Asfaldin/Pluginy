@@ -22,7 +22,7 @@ public final class MainpluginsSkyblock extends JavaPlugin {
 
         islandManager = new IslandManager(this, economyService);
         borderManager = new BorderManager(this, islandManager);
-        IslandProtectionManager islandProtectionManager = new IslandProtectionManager(islandManager);
+        IslandProtectionManager islandProtectionManager = new IslandProtectionManager(this, islandManager);
         SnifferManager snifferManager = new SnifferManager(this, islandManager);
         PoradnikManager poradnikManager = new PoradnikManager();
 

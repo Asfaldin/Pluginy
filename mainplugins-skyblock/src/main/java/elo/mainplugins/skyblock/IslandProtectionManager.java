@@ -2,12 +2,15 @@ package elo.mainplugins.skyblock;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Tag;
 import org.bukkit.block.Block;
 import org.bukkit.block.Container;
+import org.bukkit.entity.EnderPearl;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LightningStrike;
 import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
@@ -17,16 +20,23 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDamageEvent;
+import org.bukkit.event.block.BlockExplodeEvent;
+import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
+import org.bukkit.event.entity.EntityCombustByEntityEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
@@ -42,9 +52,11 @@ import java.util.UUID;
  */
 public class IslandProtectionManager implements Listener {
 
+    private final Plugin plugin;
     private final IslandManager islandManager;
 
-    public IslandProtectionManager(IslandManager islandManager) {
+    public IslandProtectionManager(Plugin plugin, IslandManager islandManager) {
+        this.plugin = plugin;
         this.islandManager = islandManager;
     }
 
@@ -102,6 +114,96 @@ public class IslandProtectionManager implements Listener {
             event.setCancelled(true);
             event.getPlayer().sendMessage(Component.text("Nie możesz stawiać bloków na cudzej wyspie!", NamedTextColor.RED));
         }
+    }
+
+    /**
+     * Dowolny wybuch (creeper, naładowany creeper od pioruna, TNT, wither, łódka z TNT) -
+     * filtrujemy TYLKO bloki wewnątrz JAKIEJKOLWIEK wyspy z listy zniszczeń, reszta wybuchu
+     * (poza granicami wysp) działa normalnie zamiast całkiem anulować event. Twarda ochrona,
+     * bez wyjątku dla właściciela - na wyspach po prostu nic nie wybucha, więc spawnery
+     * (i wszystko inne) są bezpieczne nawet przed creeperem, który podszedł pod nos właścicielowi.
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onEntityExplode(EntityExplodeEvent event) {
+        event.blockList().removeIf(block -> islandManager.znajdzWyspePod(block.getLocation()) != null);
+    }
+
+    /** To samo co wyżej, ale dla wybuchów bez encji-sprawcy (łóżko w Netherze, kotwica odrodzenia w Overworldzie). */
+    @EventHandler(ignoreCancelled = true)
+    public void onBlockExplode(BlockExplodeEvent event) {
+        event.blockList().removeIf(block -> islandManager.znajdzWyspePod(block.getLocation()) != null);
+    }
+
+    /**
+     * Dopełnienie ochrony przed wybuchami wyżej - sam wybuch na wyspie ma być czysto
+     * kosmetyczny (błysk/dźwięk), więc oprócz bloków chronimy też WSZYSTKIE encje w jego
+     * zasięgu: graczy, potwory, zwierzęta, itemframe'y itd. Bez tego TNT/creeper wciąż
+     * dawałoby obrażenia/odrzut mimo że bloki są już nietykalne.
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onExplosionDamage(EntityDamageEvent event) {
+        EntityDamageEvent.DamageCause cause = event.getCause();
+        if (cause != EntityDamageEvent.DamageCause.ENTITY_EXPLOSION
+                && cause != EntityDamageEvent.DamageCause.BLOCK_EXPLOSION) return;
+
+        if (islandManager.znajdzWyspePod(event.getEntity().getLocation()) != null) {
+            event.setCancelled(true);
+        }
+    }
+
+    /**
+     * Piorun na wyspie ma tylko "uderzyć" (błysk/dźwięk) - nie podpala bloków ani encji
+     * i nie zadaje obrażeń. Bez wyjątku dla właściciela, tak samo jak ochrona przed
+     * wybuchami wyżej - to jeden i ten sam pomysł (efekt bez realnych konsekwencji).
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onLightningIgnite(BlockIgniteEvent event) {
+        if (event.getCause() != BlockIgniteEvent.IgniteCause.LIGHTNING) return;
+        if (islandManager.znajdzWyspePod(event.getBlock().getLocation()) != null) {
+            event.setCancelled(true);
+        }
+    }
+
+    /** Piorun potrafi podpalić trafioną encję bezpośrednio (nie przez blok) - to ten przypadek. */
+    @EventHandler(ignoreCancelled = true)
+    public void onLightningCombust(EntityCombustByEntityEvent event) {
+        if (!(event.getCombuster() instanceof LightningStrike)) return;
+        if (islandManager.znajdzWyspePod(event.getEntity().getLocation()) != null) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onLightningDamage(EntityDamageEvent event) {
+        if (event.getCause() != EntityDamageEvent.DamageCause.LIGHTNING) return;
+        if (islandManager.znajdzWyspePod(event.getEntity().getLocation()) != null) {
+            event.setCancelled(true);
+        }
+    }
+
+    private static final long MAX_LOT_PERLY_TICKS = 10 * 20L;
+
+    /**
+     * Blokada na "Ender Pearl chunk loading" - wanilijski trik, gdzie perła w locie zmusza
+     * silnik do dalszego tickowania chunku pod sobą niezależnie od tego, czy jakikolwiek
+     * gracz jest w pobliżu (albo nawet online) - efektywnie darmowy chunk loader, dopóki
+     * perła nie wyląduje. Twardy limit czasu lotu likwiduje to niezależnie od wariantu
+     * (rzuć+wyloguj się, rzuć+odejdź na drugi koniec wyspy, perła utknięta w bloku) - po
+     * prostu znika sama, jeśli nie wyląduje w rozsądnym czasie.
+     *
+     * Bez wyjątku dla właściciela (tak samo jak wybuchy/pioruny wyżej) - to nie jest kara za
+     * coś złego, tylko twardy limit fizyki, więc nie ma powodu robić wyjątków.
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onPearlLaunch(ProjectileLaunchEvent event) {
+        if (!(event.getEntity() instanceof EnderPearl perla)) return;
+        if (!islandManager.jestSwiatemWysp(perla.getWorld())) return;
+
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (perla.isValid() && !perla.isDead()) {
+                perla.remove();
+            }
+        }, MAX_LOT_PERLY_TICKS);
     }
 
     /**

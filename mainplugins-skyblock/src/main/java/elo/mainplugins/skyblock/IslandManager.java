@@ -221,6 +221,12 @@ public class IslandManager implements Listener, IslandService {
     /** Identyfikator musi się zgadzać z SpawnerType.name() w mainplugins-spawners - patrz komentarz przy IslandData.spawnerLevels. */
     private record SpawnerTypInfo(String id, String nazwaOdmieniona, Material ikona) {}
 
+    /** Ile razy gracz w sumie utworzył wyspę (create+delete się liczy) i kiedy ostatnio - patrz historiaTworzeniaWysp. */
+    private static class HistoriaTworzenia {
+        int ilosc;
+        long ostatnieMillis;
+    }
+
     private static final int SPAWNER_MAX_LEVEL = 5;
 
     /**
@@ -228,28 +234,61 @@ public class IslandManager implements Listener, IslandService {
      * Ilość i Szybkość mają OSOBNE krzywe kosztu (na razie te same liczby, ale rozdzielone
      * funkcje - żeby dało się zmienić jedną bez ruszania drugiej).
      */
-    private static int kosztUlepszeniaIlosci(int obecnyPoziom) {
+    /** Baza dla najtańszego spawnera. Suma 1->5: 33 000 $. */
+    private static int bazowyKosztIlosci(int obecnyPoziom) {
         return switch (obecnyPoziom) {
-            case 1 -> 3000;
-            case 2 -> 6000;
-            case 3 -> 10000;
-            default -> 20000; // 4 (i wszystko powyżej, na wszelki wypadek)
+            case 1 -> 2500;
+            case 2 -> 5000;
+            case 3 -> 8500;
+            default -> 17000;   // 4 i wyżej
         };
     }
 
-    private static int kosztUlepszeniaSzybkosci(int obecnyPoziom) {
+    /** Baza dla najtańszego spawnera. Suma 1->5: 46 500 $ — drożej niż Ilość,
+     *  bo Szybkość daje większy przyrost mobów na godzinę. */
+    private static int bazowyKosztSzybkosci(int obecnyPoziom) {
         return switch (obecnyPoziom) {
-            case 1 -> 3000;
-            case 2 -> 6000;
-            case 3 -> 10000;
-            default -> 20000; // 4 (i wszystko powyżej, na wszelki wypadek)
+            case 1 -> 3500;
+            case 2 -> 7000;
+            case 3 -> 12000;
+            default -> 24000;   // 4 i wyżej
         };
     }
 
-    private static int kosztUlepszeniaSpawnera(String sufiks, int obecnyPoziom) {
-        return sufiks.equals(SUFIKS_ILOSC)
-                ? kosztUlepszeniaIlosci(obecnyPoziom)
-                : kosztUlepszeniaSzybkosci(obecnyPoziom);
+    /** Cena spawnera w sklepie — musi się zgadzać z categories/spawnery.yml. */
+    private static int cenaSpawnera(String typId) {
+        return switch (typId) {
+            case "ZOMBIE"   -> 20000;
+            case "PIG"      -> 25000;
+            case "SKELETON" -> 30000;
+            case "COW"      -> 40000;
+            case "SPIDER"   -> 45000;
+            case "CHICKEN"  -> 55000;
+            case "CREEPER"  -> 60000;
+            case "SHEEP"    -> 67000;
+            case "BREEZE"   -> 100000;
+            default         -> 20000;   // nieznany typ -> traktujemy jak najtańszy
+        };
+    }
+
+    /** Najtańszy spawner wyznacza skalę — jego mnożnik wynosi 1.0. */
+    private static final int CENA_BAZOWEGO_SPAWNERA = 20000;
+
+    /**
+     * Ile razy drożej ulepsza się ten spawner względem najtańszego.
+     * Pierwiastek spłaszcza różnicę: breeze jest 5x droższy od zombie,
+     * ale jego ulepszenia tylko 2.24x.
+     */
+    private static double mnoznikKosztu(String typId) {
+        return Math.sqrt((double) cenaSpawnera(typId) / CENA_BAZOWEGO_SPAWNERA);
+    }
+
+    private static int kosztUlepszeniaSpawnera(String typId, String sufiks, int obecnyPoziom) {
+        int baza = sufiks.equals(SUFIKS_ILOSC)
+                ? bazowyKosztIlosci(obecnyPoziom)
+                : bazowyKosztSzybkosci(obecnyPoziom);
+        // zaokrąglenie do pełnych setek, żeby w GUI nie było kwot typu 8437 $
+        return (int) (Math.round(baza * mnoznikKosztu(typId) / 100.0) * 100);
     }
 
     // MUSZĄ się zgadzać 1:1 z tymi samymi literałami w SpawnerManager (mainplugins-spawners).
@@ -279,6 +318,9 @@ public class IslandManager implements Listener, IslandService {
     private final Map<UUID, Map<Integer, UUID>> slotyCzlonkow = new HashMap<>();
     // Który typ spawnera gracz aktualnie ma otwarty w podmenu "Spawner: X" (Ilość/Szybkość)
     private final Map<UUID, String> otwartySpawnerTyp = new HashMap<>();
+    // Historia tworzenia wysp per gracz - anty-spam cooldown na create/delete (patrz kolejnyCooldownTworzenia).
+    // Liczba NIGDY się nie zeruje - to celowo licznik na całe życie konta, nie okno czasowe.
+    private final Map<UUID, HistoriaTworzenia> historiaTworzeniaWysp = new HashMap<>();
     private int nextIslandId = 0;
 
     private final File plikWysp;
@@ -346,6 +388,7 @@ public class IslandManager implements Listener, IslandService {
         }
         this.configWysp = YamlConfiguration.loadConfiguration(plikWysp);
         wczytajWyspy();
+        wczytajHistorieTworzenia();
     }
 
     /**
@@ -494,10 +537,35 @@ public class IslandManager implements Listener, IslandService {
             }
         }
 
+        // Historia tworzenia (cooldown anty-spam) - NIE czyścimy sekcji przed zapisem jak "wyspy"
+        // wyżej, bo wpisy tu żyją niezależnie od tego czy gracz aktualnie ma wyspę.
+        for (Map.Entry<UUID, HistoriaTworzenia> entry : historiaTworzeniaWysp.entrySet()) {
+            String path = "historiaTworzenia." + entry.getKey() + ".";
+            configWysp.set(path + "ilosc", entry.getValue().ilosc);
+            configWysp.set(path + "ostatnie", entry.getValue().ostatnieMillis);
+        }
+
         try {
             configWysp.save(plikWysp);
         } catch (IOException e) {
             plugin.getLogger().warning("Nie można zapisać wyspy.yml: " + e.getMessage());
+        }
+    }
+
+    /** Wczytuje historię tworzenia wysp (cooldown anty-spam) - osobno od wczytajWyspy(), bo dotyczy
+     *  graczy niezależnie od tego czy aktualnie mają wyspę (ta metoda ma early-return gdy jej brak). */
+    private void wczytajHistorieTworzenia() {
+        ConfigurationSection sekcja = configWysp.getConfigurationSection("historiaTworzenia");
+        if (sekcja == null) return;
+
+        for (String key : sekcja.getKeys(false)) {
+            try {
+                UUID uuid = UUID.fromString(key);
+                HistoriaTworzenia historia = new HistoriaTworzenia();
+                historia.ilosc = configWysp.getInt("historiaTworzenia." + key + ".ilosc", 0);
+                historia.ostatnieMillis = configWysp.getLong("historiaTworzenia." + key + ".ostatnie", 0L);
+                historiaTworzeniaWysp.put(uuid, historia);
+            } catch (IllegalArgumentException ignored) {}
         }
     }
 
@@ -901,11 +969,54 @@ public class IslandManager implements Listener, IslandService {
         usunCzlonka(player, targetUUID);
     }
 
+    /**
+     * Cooldown przed N-tym utworzeniem wyspy w życiu gracza (numerProby = ile już było + ta próba).
+     * Pierwsze dwa razy za darmo (normalne "nie spodobała mi się, zrobię drugą raz"), potem kara
+     * za nadużywanie cyklu stwórz/usuń rośnie schodkowo, a od 7. próby w górę zostaje płasko na
+     * dobę - żeby zniechęcić do robienia tego na bieżąco (np. pod jakieś nadużycia).
+     */
+    private static long cooldownDlaProby(int numerProby) {
+        return switch (numerProby) {
+            case 1, 2 -> 0L;
+            case 3 -> 60_000L;                  // 1 minuta
+            case 4 -> 5 * 60_000L;               // 5 minut
+            case 5 -> 30 * 60_000L;              // 30 minut
+            case 6 -> 60 * 60_000L;              // 1 godzina
+            default -> 24 * 60 * 60_000L;        // 7 i więcej -> 1 dzień, na stałe
+        };
+    }
+
+    /** Formatuje pozostały czas oczekiwania jedną, największą pasującą jednostką ("X minut" itd.), z grubsza poprawną polską odmianą. */
+    private static String formatujCzasOczekiwania(long millis) {
+        long sekundy = (millis + 999) / 1000; // w górę, żeby nie pokazać "0 sekund" tuż przed końcem
+        if (sekundy >= 86400) return odmianaLiczby(sekundy / 86400, "dzień", "dni", "dni");
+        if (sekundy >= 3600) return odmianaLiczby(sekundy / 3600, "godzinę", "godziny", "godzin");
+        if (sekundy >= 60) return odmianaLiczby(sekundy / 60, "minutę", "minuty", "minut");
+        return odmianaLiczby(sekundy, "sekundę", "sekundy", "sekund");
+    }
+
+    private static String odmianaLiczby(long n, String jedna, String kilka, String wiele) {
+        boolean pasujeKilka = n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20);
+        String forma = n == 1 ? jedna : pasujeKilka ? kilka : wiele;
+        return n + " " + forma;
+    }
+
     private void stworzWyspe(Player player, boolean zMenu) {
         if (!schemFile.exists()) {
             player.sendMessage(Component.text("Błąd: Brak pliku wyspa_startowa.schem w FastAsyncWorldEdit/schematics!", NamedTextColor.RED));
             return;
         }
+
+        HistoriaTworzenia historia = historiaTworzeniaWysp.computeIfAbsent(player.getUniqueId(), k -> new HistoriaTworzenia());
+        long cooldown = cooldownDlaProby(historia.ilosc + 1);
+        long odMillis = System.currentTimeMillis() - historia.ostatnieMillis;
+        if (cooldown > 0 && odMillis < cooldown) {
+            player.sendMessage(Component.text("Musisz jeszcze poczekać " + formatujCzasOczekiwania(cooldown - odMillis)
+                    + ", zanim będziesz mógł założyć kolejną wyspę.", NamedTextColor.RED));
+            return;
+        }
+        historia.ilosc++;
+        historia.ostatnieMillis = System.currentTimeMillis();
 
         player.sendMessage(Component.text("Tworzenie Twojej wyspy...", NamedTextColor.YELLOW));
 
@@ -1653,8 +1764,8 @@ public class IslandManager implements Listener, IslandService {
         int poziomIlosci = data.getSpawnerLevel(typId + SUFIKS_ILOSC);
         int poziomSzybkosci = data.getSpawnerLevel(typId + SUFIKS_SZYBKOSC);
 
-        gui.setItem(11, itemUlepszeniaStatystyki("Ilość", "Więcej mobków na jeden cykl spawnu", typ.ikona(), poziomIlosci, SUFIKS_ILOSC));
-        gui.setItem(15, itemUlepszeniaStatystyki("Szybkość", "Krótszy odstęp między cyklami spawnu", Material.CLOCK, poziomSzybkosci, SUFIKS_SZYBKOSC));
+        gui.setItem(11, itemUlepszeniaStatystyki(typId, "Ilość", "Więcej mobków na jeden cykl spawnu", typ.ikona(), poziomIlosci, SUFIKS_ILOSC));
+        gui.setItem(15, itemUlepszeniaStatystyki(typId, "Szybkość", "Krótszy odstęp między cyklami spawnu", Material.CLOCK, poziomSzybkosci, SUFIKS_SZYBKOSC));
 
         ItemStack itemBack = new ItemStack(Material.ARROW);
         ItemMeta metaBack = itemBack.getItemMeta();
@@ -1665,7 +1776,7 @@ public class IslandManager implements Listener, IslandService {
         player.openInventory(gui);
     }
 
-    private ItemStack itemUlepszeniaStatystyki(String nazwa, String opis, Material ikona, int level, String sufiks) {
+    private ItemStack itemUlepszeniaStatystyki(String typId, String nazwa, String opis, Material ikona, int level, String sufiks) {
         boolean maksimum = level >= SPAWNER_MAX_LEVEL;
 
         ItemStack item = new ItemStack(ikona);
@@ -1679,7 +1790,7 @@ public class IslandManager implements Listener, IslandService {
         if (maksimum) {
             lore.add(Component.text("Osiągnięto maksymalny poziom!", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
         } else {
-            lore.add(Component.text("Koszt (z banku wyspy): " + kosztUlepszeniaSpawnera(sufiks, level) + " $", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Koszt (z banku wyspy): " + kosztUlepszeniaSpawnera(typId, sufiks, level) + " $", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
             lore.add(Component.text("Kliknij, aby ulepszyć", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
         }
         meta.lore(lore);
@@ -1698,7 +1809,7 @@ public class IslandManager implements Listener, IslandService {
             return;
         }
 
-        int cost = kosztUlepszeniaSpawnera(sufiks, level);
+        int cost = kosztUlepszeniaSpawnera(typId, sufiks, level);
         if (!data.odejmijZBanku(cost)) {
             player.sendMessage(Component.text("Bank wyspy nie ma tyle pieniędzy! Potrzeba " + cost + " $, w banku jest " + formatKwote(data.getBankBalance()) + " $. Wpłać przez /is deposit.", NamedTextColor.RED));
             return;
@@ -1732,18 +1843,13 @@ public class IslandManager implements Listener, IslandService {
             else if (slot == 22) { otworzMenuPermisji(player); } // Permisje
             else if (slot == 24) { otworzMenuTopkiWysp(player); } // Topka Wysp
             else if (slot == 53 && panelIsOwner) { // Kosz / Usunięcie - decyzja po serwerowym isOwner, nie po ikonie klienta
-                if (oczekujeNaPotwierdzenie(player.getUniqueId())) {
-                    player.closeInventory();
-                    potwierdzUsuniecie(player);
-                } else {
-                    ustawOczekiwanieNaPotwierdzenie(player.getUniqueId());
-                    ItemStack item = event.getCurrentItem();
-                    if (item != null) {
-                        ItemMeta meta = item.getItemMeta();
-                        meta.displayName(Component.text("KLIKNIJ PONOWNIE BY USUNĄĆ!", NamedTextColor.DARK_RED, TextDecoration.BOLD));
-                        item.setItemMeta(meta);
-                    }
-                }
+                // Jedno kliknięcie zamiast dawnego "kliknij dwa razy" - potwierdzenie idzie
+                // teraz przez czat (wpisanie "usun"), żeby przypadkowy drugi klik (np. przy
+                // zamykaniu GUI) nie mógł już bezpowrotnie skasować wyspy.
+                player.closeInventory();
+                ustawOczekiwanieNaPotwierdzenie(player.getUniqueId());
+                player.sendMessage(Component.text("UWAGA: Twoja wyspa zostanie usunięta bezpowrotnie!", NamedTextColor.RED, TextDecoration.BOLD));
+                player.sendMessage(Component.text("Wpisz \"usun\" na czacie w ciągu 15 sekund, aby potwierdzić (cokolwiek innego anuluje).", NamedTextColor.YELLOW));
             }
             else if (slot == 53) { // Opuść Wyspę (nie-właściciel)
                 if (pendingLeaveConfirmation.contains(player.getUniqueId())) {
@@ -2008,6 +2114,21 @@ public class IslandManager implements Listener, IslandService {
     public void onChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
+
+        // Potwierdzenie usunięcia wyspy przez czat - wspólne dla kliknięcia w GUI (kosz)
+        // i komendy /is delete, obie tylko uzbrajają pendingDeleteConfirmation (patrz
+        // ustawOczekiwanieNaPotwierdzenie). Cokolwiek innego niż dokładnie "usun" anuluje.
+        if (pendingDeleteConfirmation.contains(uuid)) {
+            event.setCancelled(true);
+            pendingDeleteConfirmation.remove(uuid);
+
+            if (event.getMessage().equalsIgnoreCase("usun")) {
+                potwierdzUsuniecie(player);
+            } else {
+                player.sendMessage(Component.text("Anulowano usuwanie wyspy.", NamedTextColor.YELLOW));
+            }
+            return;
+        }
 
         if (pendingInviteChat.contains(uuid)) {
             event.setCancelled(true);

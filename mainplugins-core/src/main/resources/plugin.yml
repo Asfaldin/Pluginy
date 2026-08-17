@@ -20,6 +20,10 @@ commands:
   pay:
     description: Przelej pieniądze innemu graczowi
     usage: /<command> <gracz> <kwota>
+    aliases: [daj]
+  portfel:
+    description: Sprawdź ile masz pieniędzy
+    aliases: [p, money]
 
 permissions:
   mainplugins.core.admin:

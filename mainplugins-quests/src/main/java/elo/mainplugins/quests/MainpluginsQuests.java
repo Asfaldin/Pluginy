@@ -38,8 +38,8 @@ public final class MainpluginsQuests extends JavaPlugin {
             });
         }
 
-        if (getCommand("addfale") != null) {
-            getCommand("addfale").setExecutor((sender, command, label, args) -> {
+        if (getCommand("@addfale") != null) {
+            getCommand("@addfale").setExecutor((sender, command, label, args) -> {
                 if (!(sender instanceof Player player)) {
                     sender.sendMessage("Tylko gracz moze uzyc tej komendy.");
                     return true;
@@ -49,8 +49,8 @@ public final class MainpluginsQuests extends JavaPlugin {
             });
         }
 
-        if (getCommand("addkruchy") != null) {
-            getCommand("addkruchy").setExecutor((sender, command, label, args) -> {
+        if (getCommand("@addkruchy") != null) {
+            getCommand("@addkruchy").setExecutor((sender, command, label, args) -> {
                 if (!(sender instanceof Player player)) {
                     sender.sendMessage("Tylko gracz moze uzyc tej komendy.");
                     return true;
@@ -61,8 +61,8 @@ public final class MainpluginsQuests extends JavaPlugin {
             });
         }
 
-        if (getCommand("dajbrukgen") != null) {
-            getCommand("dajbrukgen").setExecutor((sender, command, label, args) -> {
+        if (getCommand("@dajbrukgen") != null) {
+            getCommand("@dajbrukgen").setExecutor((sender, command, label, args) -> {
                 if (!(sender instanceof Player player)) {
                     sender.sendMessage("Tylko gracz moze uzyc tej komendy.");
                     return true;

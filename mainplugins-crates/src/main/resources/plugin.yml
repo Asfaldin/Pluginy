@@ -5,24 +5,30 @@ api-version: '1.20'
 depend: [MainpluginsCore]
 
 commands:
-  dajklucz:
+  "@dajklucz":
     description: "[TEST] Daj sobie klucz do skrzynki"
     permission: mainplugins.crates.admin
-  dajskrzynia:
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@dajskrzynia":
     description: "[TEST] Daj sobie tajemniczą skrzynkę (tier 1)"
     permission: mainplugins.crates.admin
-  dajskrzynie1:
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@dajskrzynie1":
     description: "[TEST] Daj sobie Tajemniczą Skrzynkę (tier 1)"
     permission: mainplugins.crates.admin
-  dajskrzynie2:
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@dajskrzynie2":
     description: "[TEST] Daj sobie Otchłanną Skrzynkę (tier 2, rzadsza)"
     permission: mainplugins.crates.admin
-  dajskrzynie3:
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@dajskrzynie3":
     description: "[TEST] Daj sobie Skrzynkę DARKSTAR (tier 3, najrzadsza)"
     permission: mainplugins.crates.admin
-  reloadcrates:
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@reloadcrates":
     description: Wczytaj pule nagród wszystkich tierów na nowo, bez restartu serwera
     permission: mainplugins.crates.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.crates.admin:

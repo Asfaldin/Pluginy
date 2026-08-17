@@ -55,8 +55,8 @@ public final class MainpluginsTools extends JavaPlugin {
             });
         }
 
-        if (getCommand("addlvl") != null) {
-            getCommand("addlvl").setExecutor((sender, command, label, args) -> {
+        if (getCommand("@addlvl") != null) {
+            getCommand("@addlvl").setExecutor((sender, command, label, args) -> {
                 if (!(sender instanceof Player player)) {
                     sender.sendMessage("Tylko gracz moze uzyc tej komendy.");
                     return true;
@@ -67,7 +67,7 @@ public final class MainpluginsTools extends JavaPlugin {
                     try {
                         amount = Integer.parseInt(args[0]);
                     } catch (NumberFormatException e) {
-                        player.sendMessage("§cPodaj liczbę, np. /addlvl 5");
+                        player.sendMessage("§cPodaj liczbę, np. /@addlvl 5");
                         return true;
                     }
                 }
@@ -96,8 +96,8 @@ public final class MainpluginsTools extends JavaPlugin {
             });
         }
 
-        if (getCommand("addcustompickaxe") != null) {
-            getCommand("addcustompickaxe").setExecutor((sender, command, label, args) -> {
+        if (getCommand("@addcustompickaxe") != null) {
+            getCommand("@addcustompickaxe").setExecutor((sender, command, label, args) -> {
                 Player target;
                 if (args.length > 0) {
                     target = Bukkit.getPlayer(args[0]);
@@ -108,7 +108,7 @@ public final class MainpluginsTools extends JavaPlugin {
                 } else if (sender instanceof Player player) {
                     target = player;
                 } else {
-                    sender.sendMessage("§cPodaj nick gracza: /addcustompickaxe <gracz>");
+                    sender.sendMessage("§cPodaj nick gracza: /@addcustompickaxe <gracz>");
                     return true;
                 }
 
@@ -120,8 +120,8 @@ public final class MainpluginsTools extends JavaPlugin {
             });
         }
 
-        if (getCommand("dajwszystko") != null) {
-            getCommand("dajwszystko").setExecutor((sender, command, label, args) -> {
+        if (getCommand("@dajwszystko") != null) {
+            getCommand("@dajwszystko").setExecutor((sender, command, label, args) -> {
                 Player target;
                 if (args.length > 0) {
                     target = Bukkit.getPlayer(args[0]);
@@ -132,7 +132,7 @@ public final class MainpluginsTools extends JavaPlugin {
                 } else if (sender instanceof Player player) {
                     target = player;
                 } else {
-                    sender.sendMessage("§cPodaj nick gracza: /dajwszystko <gracz>");
+                    sender.sendMessage("§cPodaj nick gracza: /@dajwszystko <gracz>");
                     return true;
                 }
 

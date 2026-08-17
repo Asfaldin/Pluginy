@@ -12,8 +12,8 @@ public final class MainpluginsFishing extends JavaPlugin {
         fishingManager = new FishingManager(this);
         getServer().getPluginManager().registerEvents(fishingManager, this);
 
-        if (getCommand("dajwedke") != null) {
-            getCommand("dajwedke").setExecutor((sender, command, label, args) -> {
+        if (getCommand("@dajwedke") != null) {
+            getCommand("@dajwedke").setExecutor((sender, command, label, args) -> {
                 if (!(sender instanceof Player player)) {
                     sender.sendMessage("Tylko gracz moze uzyc tej komendy.");
                     return true;
@@ -25,8 +25,8 @@ public final class MainpluginsFishing extends JavaPlugin {
             });
         }
 
-        if (getCommand("dajrecepture") != null) {
-            getCommand("dajrecepture").setExecutor((sender, command, label, args) -> {
+        if (getCommand("@dajrecepture") != null) {
+            getCommand("@dajrecepture").setExecutor((sender, command, label, args) -> {
                 if (!(sender instanceof Player player)) {
                     sender.sendMessage("Tylko gracz moze uzyc tej komendy.");
                     return true;

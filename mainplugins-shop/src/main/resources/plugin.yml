@@ -12,9 +12,10 @@ commands:
     description: Sprzedaj trzymany przedmiot
   sellall:
     description: Sprzedaj wszystkie przedmioty tego typu z ekwipunku
-  reloadsklep:
+  "@reloadsklep":
     description: Wczytaj sklep.yml na nowo, bez restartu serwera
     permission: mainplugins.shop.reload
+    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.shop.reload:

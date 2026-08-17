@@ -16,7 +16,7 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * /spawn (każdy), /setspawn [info] i /obszar <wand|usun|lista|info|moby|border> ... - te
+ * /spawn (każdy), /@setspawn [info] i /@obszar <wand|usun|lista|info|moby|border> ... - te
  * dwie ostatnie chronione uprawnieniem mainplugins.spawn.admin (patrz plugin.yml - Bukkit
  * sam odrzuca wywołanie zanim trafi do onCommand). Cała logika w SpawnManager/ObszarManager.
  * Ta sama klasa dostarcza też podpowiedzi Tab (patrz onTabComplete) - żeby admin nie musiał
@@ -48,8 +48,8 @@ public class SpawnCommands implements CommandExecutor, TabCompleter {
 
         switch (command.getName().toLowerCase()) {
             case "spawn" -> spawnManager.teleportujNaSpawn(player);
-            case "setspawn" -> handleSetspawn(player, args);
-            case "obszar" -> handleObszar(player, args);
+            case "@setspawn" -> handleSetspawn(player, args);
+            case "@obszar" -> handleObszar(player, args);
         }
         return true;
     }
@@ -60,34 +60,34 @@ public class SpawnCommands implements CommandExecutor, TabCompleter {
         } else if (args[0].equalsIgnoreCase("info")) {
             player.sendMessage(Component.text("Punkt spawnu: " + spawnManager.opisPunktu(), NamedTextColor.YELLOW));
         } else {
-            player.sendMessage(Component.text("Użycie: /setspawn [info]", NamedTextColor.RED));
+            player.sendMessage(Component.text("Użycie: /@setspawn [info]", NamedTextColor.RED));
         }
     }
 
     private void handleObszar(Player player, String[] args) {
         if (args.length == 0) {
-            player.sendMessage(Component.text("Użycie: /obszar <wand|usun|lista|info|moby|border> ...", NamedTextColor.RED));
+            player.sendMessage(Component.text("Użycie: /@obszar <wand|usun|lista|info|moby|border> ...", NamedTextColor.RED));
             return;
         }
 
         switch (args[0].toLowerCase()) {
             case "border" -> {
                 if (args.length < 2) {
-                    player.sendMessage(Component.text("Użycie: /obszar border <nazwa>", NamedTextColor.RED));
+                    player.sendMessage(Component.text("Użycie: /@obszar border <nazwa>", NamedTextColor.RED));
                     return;
                 }
                 obszarManager.pokazGranice(player, args[1]);
             }
             case "wand" -> {
                 if (args.length < 2) {
-                    player.sendMessage(Component.text("Użycie: /obszar wand <nazwa>", NamedTextColor.RED));
+                    player.sendMessage(Component.text("Użycie: /@obszar wand <nazwa>", NamedTextColor.RED));
                     return;
                 }
                 obszarManager.dajRozdzke(player, args[1]);
             }
             case "usun" -> {
                 if (args.length < 2) {
-                    player.sendMessage(Component.text("Użycie: /obszar usun <nazwa>", NamedTextColor.RED));
+                    player.sendMessage(Component.text("Użycie: /@obszar usun <nazwa>", NamedTextColor.RED));
                     return;
                 }
                 obszarManager.usun(player, args[1]);
@@ -95,19 +95,19 @@ public class SpawnCommands implements CommandExecutor, TabCompleter {
             case "lista" -> obszarManager.listuj(player);
             case "info" -> {
                 if (args.length < 2) {
-                    player.sendMessage(Component.text("Użycie: /obszar info <nazwa>", NamedTextColor.RED));
+                    player.sendMessage(Component.text("Użycie: /@obszar info <nazwa>", NamedTextColor.RED));
                     return;
                 }
                 obszarManager.info(player, args[1]);
             }
             case "moby" -> handleObszarMoby(player, args);
-            default -> player.sendMessage(Component.text("Użycie: /obszar <wand|usun|lista|info|moby|border> ...", NamedTextColor.RED));
+            default -> player.sendMessage(Component.text("Użycie: /@obszar <wand|usun|lista|info|moby|border> ...", NamedTextColor.RED));
         }
     }
 
     private void handleObszarMoby(Player player, String[] args) {
         if (args.length < 4 || !isTyp(args[2]) || !isStan(args[3])) {
-            player.sendMessage(Component.text("Użycie: /obszar moby <nazwa> <pasywne|agresywne> <on|off>", NamedTextColor.RED));
+            player.sendMessage(Component.text("Użycie: /@obszar moby <nazwa> <pasywne|agresywne> <on|off>", NamedTextColor.RED));
             return;
         }
         boolean pasywne = args[2].equalsIgnoreCase("pasywne");
@@ -129,10 +129,10 @@ public class SpawnCommands implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
         String nazwaKomendy = command.getName().toLowerCase();
 
-        if (nazwaKomendy.equals("setspawn")) {
+        if (nazwaKomendy.equals("@setspawn")) {
             return args.length == 1 ? dopasuj(args[0], PODKOMENDY_SETSPAWN) : List.of();
         }
-        if (!nazwaKomendy.equals("obszar")) return List.of();
+        if (!nazwaKomendy.equals("@obszar")) return List.of();
 
         if (args.length == 1) {
             return dopasuj(args[0], PODKOMENDY_OBSZAR);

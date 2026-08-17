@@ -32,7 +32,7 @@ import java.util.*;
  * (jeden plik na kategorię, nazwa pliku = klucz kategorii) - sklep.yml trzyma już tylko
  * globalne ustawienia. Ta klasa tylko RENDERUJE scaloną konfigurację (patrz
  * wczytajSklepZFolderow()) i obsługuje kliknięcia; scalanie jest odświeżane na żywo
- * przez /reloadsklep. Pliki kategorii są generowane zewnętrznie (cennik) i dostarczane
+ * przez /@reloadsklep. Pliki kategorii są generowane zewnętrznie (cennik) i dostarczane
  * jako domyślne zasoby w resources/categories/ - przy pierwszym uruchomieniu (brak
  * folderu w data folderze) są kopiowane 1:1 przez saveResource(); jeśli folder już
  * istnieje (admin coś zmienił / serwer już działał), nic w nim nie ruszamy.
@@ -97,7 +97,7 @@ public class ShopManager implements Listener {
     }
 
     /**
-     * Wczytuje sklep.yml z dysku od nowa, bez restartu serwera - pod komendę /reloadsklep.
+     * Wczytuje sklep.yml z dysku od nowa, bez restartu serwera - pod komendę /@reloadsklep.
      * Nie rusza otwartych aktualnie GUI graczy (te po prostu pokazują poprzedni stan
      * do czasu, aż gracz je zamknie i otworzy ponownie).
      */

@@ -4,9 +4,10 @@ main: elo.mainplugins.announcer.MainpluginsAnnouncer
 api-version: '1.20'
 
 commands:
-  reloadannouncer:
+  "@reloadannouncer":
     description: Wczytaj ogloszenia.yml na nowo, bez restartu serwera
     permission: mainplugins.announcer.reload
+    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.announcer.reload:

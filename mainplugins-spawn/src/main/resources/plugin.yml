@@ -6,14 +6,16 @@ api-version: '1.20'
 commands:
   spawn:
     description: Teleportuj się na spawn (odradzasz się tam też po śmierci)
-  setspawn:
+  "@setspawn":
     description: Ustaw główny punkt spawnu (miejsce teleportu)
-    usage: "/setspawn [info]"
+    usage: "/@setspawn [info]"
     permission: mainplugins.spawn.admin
-  obszar:
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@obszar":
     description: Zarządzaj chronionymi obszarami serwera (spawn, w przyszłości też warpy)
-    usage: "/obszar <wand|usun|lista|info|moby|border> <nazwa> ..."
+    usage: "/@obszar <wand|usun|lista|info|moby|border> <nazwa> ..."
     permission: mainplugins.spawn.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.spawn.admin:

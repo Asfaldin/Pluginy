@@ -38,10 +38,10 @@ public final class MainpluginsShop extends JavaPlugin {
         if (getCommand("sell") != null) getCommand("sell").setExecutor(executor);
         if (getCommand("sellall") != null) getCommand("sellall").setExecutor(executor);
 
-        // Osobny executor: /reloadsklep ma sens też z konsoli, nie tylko od gracza.
+        // Osobny executor: /@reloadsklep ma sens też z konsoli, nie tylko od gracza.
         // Uprawnienie (mainplugins.shop.reload, domyślnie op) pilnuje tego plugin.yml.
-        if (getCommand("reloadsklep") != null) {
-            getCommand("reloadsklep").setExecutor((sender, command, label, args) -> {
+        if (getCommand("@reloadsklep") != null) {
+            getCommand("@reloadsklep").setExecutor((sender, command, label, args) -> {
                 shopManager.przeladujKonfiguracje();
                 sender.sendMessage("§aSklep.yml został przeładowany.");
                 return true;

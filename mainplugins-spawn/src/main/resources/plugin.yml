@@ -2,6 +2,7 @@ name: MainpluginsSpawn
 version: ${project.version}
 main: elo.mainplugins.spawn.MainpluginsSpawn
 api-version: '1.20'
+depend: [MainpluginsCore]
 
 commands:
   spawn:
@@ -14,8 +15,19 @@ commands:
     description: Zarządzaj chronionymi obszarami serwera (spawn, w przyszłości też warpy)
     usage: "/obszar <wand|usun|lista|info|moby|border> <nazwa> ..."
     permission: mainplugins.spawn.admin
+  warp:
+    description: Teleportuj się do nazwanego warpu (niektóre wymagają ukończenia questa)
+    usage: "/warp <nazwa>"
+  setwarp:
+    description: Ustaw/nadpisz warp w swojej aktualnej lokalizacji
+    usage: "/setwarp <nazwa>"
+    permission: mainplugins.spawn.admin
+  delwarp:
+    description: Usuń istniejący warp
+    usage: "/delwarp <nazwa>"
+    permission: mainplugins.spawn.admin
 
 permissions:
   mainplugins.spawn.admin:
-    description: Pozwala zarządzać spawnem/obszarami (punkt, wand, moby) i omija ich ochronę przed budowaniem/niszczeniem
+    description: Pozwala zarządzać spawnem/obszarami/warpami (punkt, wand, moby) i omija ich ochronę przed budowaniem/niszczeniem
     default: op

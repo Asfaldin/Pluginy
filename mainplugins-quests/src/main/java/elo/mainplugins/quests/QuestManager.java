@@ -2,6 +2,8 @@ package elo.mainplugins.quests;
 
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.CrateService;
+import elo.mainplugins.core.api.MarketService;
+import elo.mainplugins.core.api.QuestService;
 import elo.mainplugins.core.api.ToolsService;
 import elo.mainplugins.core.api.TytulService;
 import elo.mainplugins.core.util.CustomItemKeys;
@@ -14,19 +16,13 @@ import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
-import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Zombie;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.Inventory;
@@ -53,27 +49,31 @@ import java.util.*;
  * "Questy Specjalne" - to po prostu kolejna kategoria z trudniejszą/rzadszą treścią, bez
  * specjalnej logiki.
  */
-public class QuestManager implements Listener, TytulService {
+public class QuestManager implements Listener, TytulService, QuestService {
 
     /**
      * PRZEDMIOT - klasyczne "przynieś N sztuk materiału (jednego lub kilku naraz), zostaje
      * zabrane" (domyślne, większość questów).
      * DARMOWY - brak wymogu, kliknięcie od razu zdaje quest (np. "sprawdź spawn").
      * MONETY - zamiast przedmiotów, prog to koszt w monetach (EconomyService).
-     * NARZEDZIE - jak PRZEDMIOT, ale NIE zabiera przedmiotu po zdaniu. Wyłącznie do
-     * questów "awansuj narzędzie na tier X" - ewoluujące narzędzia (siekiera/motyka/miecz,
-     * mainplugins-tools) zmieniają realny Material przy awansie tieru
-     * (LevelableToolsManager.pobierzMaterial), więc containsAtLeast(DIAMOND_AXE, 1)
-     * wystarcza do weryfikacji tieru. Zwykłe removeItem() by tu ZABRAŁO graczowi jego
-     * jedyne, prawdziwe (nie placeholder) narzędzie jako "zapłatę" za quest - stąd osobny
-     * typ. Kilof NIE używa już tego typu (patrz POZIOM_KILOFA) - odkąd ma kilka
-     * odrębnych TYPÓW zamiast tierów (PickaxeType), nie ma już jednego "Material tieru X"
-     * do sprawdzenia.
-     * POZIOM_KILOFA - prog to minimalny poziom kilofa (ToolsService.poziomKilofa, TERAZ:
-     * najwyższy poziom wśród WSZYSTKICH trzymanych kilofów, dowolnego typu) - kilof ma
-     * osobny system poziomowania (PickaxeSkillManager) niż reszta narzędzi.
+     * NARZEDZIE - jak PRZEDMIOT, ale NIE zabiera przedmiotu po zdaniu. Sprawdza samo
+     * POSIADANIE konkretnego wanilijskiego Materiału (np. quest 6 - "masz w ekwipunku
+     * kamienną motykę?") - zwykłe removeItem() by tu ZABRAŁO graczowi jedyny egzemplarz
+     * jako "zapłatę" za quest, stąd osobny typ. NIE służy już do weryfikacji tieru
+     * ewoluujących narzędzi (siekiera/motyka/miecz/kilof) - żadne z nich nie zmienia już
+     * realnego Materiału przy levelowaniu (patrz *SkillManager#materialOverride w
+     * mainplugins-tools), więc "tier" sprawdza się przez POZIOM (patrz niżej), nie Material.
+     * POZIOM_KILOFA/POZIOM_SIEKIERY/POZIOM_MIECZA - prog to minimalny poziom (1-100) danego
+     * narzędzia (ToolsService.poziomKilofa/poziomSiekiery/poziomMiecza - NAJWYŻSZY poziom
+     * wśród WSZYSTKICH trzymanych egzemplarzy tego typu). Każde z tych trzech narzędzi ma
+     * WŁASNY silnik poziomowania (Pickaxe/Axe/SwordSkillManager) - stąd osobne wymogi
+     * zamiast jednego ogólnego "poziom narzędzia". Motyka na razie nie ma odpowiednika -
+     * żaden quest jeszcze nie sprawdza jej poziomu.
+     * OFERTA_NA_TARGU - sprawdza (MarketService.maAktywnaOferte) czy gracz ma choć jedną
+     * AKTYWNĄ ofertę na rynku graczy (mainplugins-market) w chwili kliknięcia - nic nie
+     * zabiera, quest tylko potwierdza, że gracz faktycznie czegoś tam wystawił.
      */
-    private enum TypWymogu { PRZEDMIOT, DARMOWY, MONETY, NARZEDZIE, POZIOM_KILOFA }
+    private enum TypWymogu { PRZEDMIOT, DARMOWY, MONETY, NARZEDZIE, POZIOM_KILOFA, POZIOM_SIEKIERY, POZIOM_MIECZA, OFERTA_NA_TARGU }
 
     /**
      * Pojedynczy wymagany materiał + ilość - quest może mieć ich kilka naraz (np. "16x dąb + 16x brzoza").
@@ -156,6 +156,21 @@ public class QuestManager implements Listener, TytulService {
         static Quest poziomKilofa(int id, String tytul, List<String> opis, int minPoziom, List<ItemStack> nagrody, String nazwaNagrody) {
             return new Quest(id, tytul, opis, TypWymogu.POZIOM_KILOFA, List.of(), minPoziom, nagrody, nazwaNagrody, 0);
         }
+
+        /** Jak {@link #poziomKilofa}, ale siekiera - patrz TypWymogu.POZIOM_SIEKIERY. */
+        static Quest poziomSiekiery(int id, String tytul, List<String> opis, int minPoziom, ItemStack nagroda, String nazwaNagrody) {
+            return new Quest(id, tytul, opis, TypWymogu.POZIOM_SIEKIERY, List.of(), minPoziom, List.of(nagroda), nazwaNagrody, 0);
+        }
+
+        /** Jak {@link #poziomKilofa}, ale miecz - patrz TypWymogu.POZIOM_MIECZA. */
+        static Quest poziomMiecza(int id, String tytul, List<String> opis, int minPoziom, ItemStack nagroda, String nazwaNagrody) {
+            return new Quest(id, tytul, opis, TypWymogu.POZIOM_MIECZA, List.of(), minPoziom, List.of(nagroda), nazwaNagrody, 0);
+        }
+
+        /** Quest "wystaw coś na rynku graczy" - patrz TypWymogu.OFERTA_NA_TARGU. */
+        static Quest wymagaOfertyNaTargu(int id, String tytul, List<String> opis, ItemStack nagroda, String nazwaNagrody) {
+            return new Quest(id, tytul, opis, TypWymogu.OFERTA_NA_TARGU, List.of(), 0, List.of(nagroda), nazwaNagrody, 0);
+        }
     }
 
     private enum StanQuestu { ZABLOKOWANY, DOSTEPNY, UKONCZONY }
@@ -169,28 +184,6 @@ public class QuestManager implements Listener, TytulService {
 
     // Zmienna zapamiętująca czy gracz wszedł z poziomu /menu
     private final Map<UUID, Boolean> otwartoZMenu = new HashMap<>();
-
-    /**
-     * Stan jednego aktywnego "ataku" Płaczącego Obsydianu - pasek bossbara resetuje się
-     * do pełna na starcie każdej fali i zmniejsza się wraz z zabijaniem TYLKO zombie z TEJ
-     * fali (patrz onZombieDeath/kluczSesjiFali). Klucz mapy aktywneFale to losowe UUID sesji
-     * (nie gracza), żeby dwóch graczy mogło jednocześnie odpalić własny Płaczący Obsydian
-     * bez kolizji stanu. zywoZombie śledzi UUID-y aktualnie żywych zombie tej sesji - patrz
-     * pilnujSpadajacychZombie(), który co sekundę teleportuje je z powrotem, gdyby spadły
-     * za krawędź wyspy w otchłań (kotwica = blok, przy którym siedzą wszystkie fale).
-     */
-    private static final class StanFali {
-        final BossBar pasek;
-        final Block kotwica;
-        int numerFali;
-        int wFaliLacznie;
-        int pozostaliWFali;
-        final Set<UUID> zywoZombie = new HashSet<>();
-        StanFali(BossBar pasek, Block kotwica) { this.pasek = pasek; this.kotwica = kotwica; }
-    }
-
-    private final Map<UUID, StanFali> aktywneFaleZombie = new HashMap<>();
-    private final NamespacedKey kluczSesjiFali;
 
     /**
      * Wężyk-spirala, 29 slotów - kolejność w tablicy = kolejność wizualna (i, dla Głównej
@@ -225,12 +218,12 @@ public class QuestManager implements Listener, TytulService {
 
     private static final String KATEGORIA_GLOWNA_SCIEZKA = "Główna Ścieżka";
 
-    // Tag CustomItemKeys.CUSTOM_ITEM_ID nagrody questu 9 - patrz placzacyObsydian()/onPlaceObsydian().
-    private static final String CUSTOM_ID_PLACZACY_OBSYDIAN = "QUEST_PLACZACY_OBSYDIAN";
+    // Tag CustomItemKeys.CUSTOM_ITEM_ID trofeum questu 9 - patrz DungeonManager (mainplugins-dungeons),
+    // które wręcza je przy zabiciu "Władcy Lochu".
+    private static final String CUSTOM_ID_TROFEUM_LOCHU = "DUNGEON_TROFEUM_WLADCA_LOCHU";
 
     public QuestManager(Plugin plugin) {
         this.plugin = plugin;
-        this.kluczSesjiFali = new NamespacedKey(plugin, "siege-session");
         this.plikPostepow = new File(plugin.getDataFolder(), "quests.yml");
         if (!plikPostepow.exists()) {
             plikPostepow.getParentFile().mkdirs();
@@ -239,7 +232,6 @@ public class QuestManager implements Listener, TytulService {
         this.configPostepow = YamlConfiguration.loadConfiguration(plikPostepow);
         zaladujQuesty();
         wczytajPostep();
-        Bukkit.getScheduler().runTaskTimer(plugin, this::pilnujSpadajacychZombie, 20L, 20L);
     }
 
     private void zaladujQuesty() {
@@ -272,18 +264,21 @@ public class QuestManager implements Listener, TytulService {
         // questach to tylko placeholder do wyświetlenia w GUI, zanim gracz je ukończy.
         // Quest 2 to WYJĄTEK od wyjątku - sprawdza faktyczny POZIOM kilofa
         // (TypWymogu.POZIOM_KILOFA, ToolsService.poziomKilofa), a nagrodą są zwykłe
-        // przedmioty (ziemia), nie kolejne narzędzie. Quest 9 to DRUGI wyjątek od
-        // wzorca "1 quest = 1 narzędzie" - oprócz miecza (wręczanego w wreczNagrode(),
-        // BEZ return po tools.dajEwoluujacyMiecz(), żeby quest wciąż dorzucił swoją
-        // zwykłą nagrodę niżej) daje jeszcze Płaczący Obsydian Wezwania - patrz sekcja
-        // "Płaczący Obsydian" niżej w pliku.
+        // przedmioty (ziemia), nie kolejne narzędzie. Quest 9 ("Pierwszy Loch") wymaga
+        // przyniesienia Serca Władcy Lochu - custom-tagowanego trofeum (patrz
+        // CUSTOM_ID_TROFEUM_LOCHU), które DungeonManager (mainplugins-dungeons) wręcza
+        // przy zabiciu "Władcy Lochu" (/tpdun albo /tpboss). To pierwsze zetknięcie
+        // gracza z systemem lochów w grze - a skoro boss płaci $500 + klucz do skrzynki
+        // przy KAŻDYM zabiciu (nie tylko pierwszym), quest zostawia graczowi gotowy,
+        // powtarzalny cel na długo po ukończeniu Głównej Ścieżki.
         //
-        // Późniejsze questy tych narzędzi (12, 30) NIE dają ich ponownie - weryfikują
-        // AWANS TIERU (np. "IRON_AXE x1" = siekiera faktycznie doszła do tieru Żelazo),
-        // bo ewoluujące narzędzia zmieniają realny Material przy awansie tieru (patrz
-        // LevelableToolsManager.pobierzMaterial) - ten sam containsAtLeast() co reszta
-        // questów. Kilof (21, 31) już NIE ma tierów (patrz PickaxeType) - te dwa questy
-        // zamiast tego wymagają konkretnego POZIOMU kilofa (Quest.poziomKilofa).
+        // Późniejsze questy tych narzędzi (12, 21, 30, 31) NIE dają ich ponownie - żadne z
+        // czterech duszozłączonych narzędzi (kilof/siekiera/motyka/miecz) nie zmienia już
+        // realnego Materiału przy levelowaniu (patrz *SkillManager#materialOverride w
+        // mainplugins-tools - stały Material, tylko statystyki rosną z poziomem), więc
+        // "czy narzędzie jest wystarczająco mocne" sprawdza się przez POZIOM (1-100), nie
+        // przez Material/tier: 12 i 21 to POZIOM_SIEKIERY/POZIOM_KILOFA w pierwszej połowie
+        // ścieżki, 30 i 31 to POZIOM_MIECZA/POZIOM_KILOFA przy zamknięciu wątku Netheru.
         questyKategorii.put(KATEGORIA_GLOWNA_SCIEZKA, List.of(
                 Quest.darmowy(1, "Witaj na Wyspie", List.of("Twoja przygoda właśnie się zaczyna - odbierz swój pierwszy kilof."),
                         new ItemStack(Material.DIAMOND_PICKAXE, 1), "1x Kilof Wydajnościowy"),
@@ -305,30 +300,34 @@ public class QuestManager implements Listener, TytulService {
                         200),
                 Quest.przedmiot(8, "Ciacho na Szczęście", List.of("Upiecz i zdobądź ciastka - drobna nagroda za słodki gest."),
                         Material.COOKIE, 32, new ItemStack(Material.CHEST, 1), "Podstawowa Skrzynka + Klucz (słaby drop)"),
-                Quest.zaMonety(9, "Fundusz Obronny", List.of("Wpłać pierwsze oszczędności do banku wyspy.", "Coś w mrocznym obsydianie już się budzi..."),
-                        100, placzacyObsydian(), "Płaczący Obsydian Wezwania + 1x Ewoluujący Miecz"),
+                Quest.przedmiotCustom(9, "Pierwszy Loch", List.of("Udaj się do lochu (/tpdun) i pokonaj Władcę Lochu.", "Przynieś dowód zwycięstwa - jego serce wciąż bije."),
+                        Material.HEART_OF_THE_SEA, 1, CUSTOM_ID_TROFEUM_LOCHU, "Serce Władcy Lochu",
+                        new ItemStack(Material.WOODEN_SWORD, 1), "1x Ewoluujący Miecz"),
                 Quest.przedmiot(10, "Egzamin Początkującego", List.of("Sprzedaj dowód stoczonych walk z nieumarłymi.", "Kamień milowy - pierwszy etap za Tobą!"),
                         Material.ROTTEN_FLESH, 5, trofeum(Material.PLAYER_HEAD, "Głowa Początkującego", "Za pierwsze pokonane zombie.", "Odblokowuje tytuł \"Początkujący\" na czacie!"), "Trofeum: Głowa Początkującego + Tytuł"),
 
-                Quest.przedmiot(11, "Żelazna Gorączka", List.of("Wykop surowe żelazo w kopalni."),
-                        Material.RAW_IRON, 24, new ItemStack(Material.IRON_BLOCK, 2), "2x Blok Żelaza"),
-                Quest.narzedzie(12, "Zbrojmistrz", List.of("Ulepsz siekierę do tieru Żelazo."),
-                        Material.IRON_AXE, new ItemStack(Material.IRON_CHESTPLATE, 1), "1x Żelazny Napierśnik"),
-                Quest.przedmiot(13, "Sniffer na Etacie", List.of("Zdobądź jajo sniffera i uruchom automatyczną farmę."),
-                        Material.SNIFFER_EGG, 1, new ItemStack(Material.TORCHFLOWER_SEEDS, 8), "8x Nasiona Kwiatu Pochodni"),
+                Quest.przedmioty(11, "Piaskowy Mozół", List.of("Zbierz piasek i żwir ręcznie - żmudne zajęcie.",
+                                "Na szczęście istnieje na to lepszy sposób..."),
+                        List.of(Wymog.zwykly(Material.SAND, 64), Wymog.zwykly(Material.GRAVEL, 64)),
+                        List.of(GeneratorKruchychManager.stworzGenerator(), GeneratorKruchychManager.stworzKsiazkaPrzewodnik()),
+                        "1x Generator Kruchych Surowców + Przewodnik"),
+                Quest.poziomSiekiery(12, "Zbrojmistrz", List.of("Wbij swojej siekierze 15 poziom."),
+                        15, new ItemStack(Material.IRON_CHESTPLATE, 1), "1x Żelazny Napierśnik"),
+                Quest.przedmiot(13, "Nad Wodą", List.of("Twoja wyspa stoi już na solidnych nogach - czas na hobby.", "Zbierz wodorosty rosnące przy brzegu."),
+                        Material.KELP, 32, new ItemStack(Material.TORCHFLOWER_SEEDS, 8), "8x Nasiona Kwiatu Pochodni"),
                 Quest.przedmiot(14, "Pierwsze Zakupy", List.of("Zgromadź szmaragdy na zakupy w sklepie w gwieździe."),
                         Material.EMERALD, 10, new ItemStack(Material.EXPERIENCE_BOTTLE, 10), "10x Butelka Doświadczenia"),
                 Quest.przedmiot(15, "Prąd w Ścianach", List.of("Zbierz redstone pod pierwsze mechanizmy."),
                         Material.REDSTONE, 32, new ItemStack(Material.PISTON, 8), "8x Tłok"),
-                Quest.przedmiot(16, "Zaklinacz", List.of("Zbierz lapis lazuli pod stół zaklęć."),
-                        Material.LAPIS_LAZULI, 32, new ItemStack(Material.ENCHANTING_TABLE, 1), "1x Stół Zaklęć"),
+                Quest.przedmiot(16, "Kowal Wyspy", List.of("Zbierz lapis lazuli na zapłatę dla kowala.", "Odblokowuje /warp kowal!"),
+                        Material.LAPIS_LAZULI, 32, new ItemStack(Material.ANVIL, 1), "1x Kowadło + odblokowanie /warp kowal"),
                 Quest.zaMonety(17, "Skarbnik", List.of("Wpłać spory depozyt do banku wyspy."),
                         5000, new ItemStack(Material.GOLD_INGOT, 10), "10x Sztabka Złota (odsetki)"),
-                Quest.zaMonety(18, "Pierwsza Inwestycja", List.of("Udowodnij, że stać Cię na coś poważniejszego niż podstawy.",
-                                "Nie kupujemy Ci tego za Ciebie - po prostu pokaż, że masz na to środki."),
-                        20000, trofeum(Material.PLAYER_HEAD, "Głowa Inwestora", "Za pierwszy powazny kapital."), "Trofeum: Głowa Inwestora"),
-                Quest.darmowy(19, "Czytelnik", List.of("Otwórz Poradnik Wyspiarza i poznaj resztę systemów wyspy."),
-                        new ItemStack(Material.BOOK, 3), "3x Książka"),
+                Quest.zaMonety(18, "Pierwsza Inwestycja", List.of("Zainwestuj w prawdziwą infrastrukturę wyspy.",
+                                "Ten sam Generator Bruku, co w sklepie - tu zdobędziesz go quest'owo."),
+                        8000, GeneratorBrukuManager.stworzGenerator(), "1x Generator Bruku"),
+                Quest.wymagaOfertyNaTargu(19, "Kupiec Wyspy", List.of("Wystaw dowolny przedmiot na Targu (/targ wystaw <cena>).", "Ekonomia wyspy to nie tylko sklep w gwieździe."),
+                        new ItemStack(Material.DIAMOND, 1), "1x Diament"),
                 Quest.przedmiot(20, "Filar Wyspy", List.of("Udowodnij, że Twoja wyspa stoi na solidnych fundamentach.", "Kamień milowy - połowa ścieżki za Tobą!"),
                         Material.DIAMOND, 32, trofeum(Material.PLAYER_HEAD, "Głowa Górnika", "Za setki wykopanych bloków."), "Trofeum: Głowa Górnika"),
 
@@ -338,20 +337,20 @@ public class QuestManager implements Listener, TytulService {
                         Material.OBSIDIAN, 10, new ItemStack(Material.FLINT_AND_STEEL, 1), "1x Krzesiwo"),
                 Quest.przedmiot(23, "Za Bramą", List.of("Wejdź do Netheru i zbierz netherrack."),
                         Material.NETHERRACK, 16, new ItemStack(Material.SOUL_TORCH, 16), "16x Duszowa Pochodnia"),
-                Quest.przedmiot(24, "Łowca Blaze'ów", List.of("Zapoluj na blaze w Netherowej twierdzy."),
-                        Material.BLAZE_ROD, 8, new ItemStack(Material.BLAZE_POWDER, 16), "16x Proch Blaze'a"),
+                Quest.nagrodaMonety(24, "Łowca Blaze'ów", List.of("Zapoluj na blaze w Netherowej twierdzy."),
+                        Material.BLAZE_ROD, 8, 1500),
                 Quest.przedmiot(25, "Dusza Netheru", List.of("Zbierz duszowy piasek z Netheru."),
                         Material.SOUL_SAND, 32, new ItemStack(Material.SOUL_LANTERN, 1), "1x Duszowa Latarnia"),
                 Quest.przedmiot(26, "Kwarcowy Górnik", List.of("Wydobądź kwarc netherowy."),
-                        Material.QUARTZ, 32, new ItemStack(Material.QUARTZ_BLOCK, 8), "8x Blok Kwarcu"),
+                        Material.QUARTZ, 32, new ItemStack(Material.GLOWSTONE_DUST, 16), "16x Blask Poświaty"),
                 Quest.przedmiot(27, "Pogromca Ghastów", List.of("Zapoluj na ghasty i zbierz ich łzy."),
                         Material.GHAST_TEAR, 4, new ItemStack(Material.FIRE_CHARGE, 8), "8x Ognista Kula"),
                 Quest.przedmiot(28, "Netherytowy Traker", List.of("Znajdź złom netherytu w głębi Netheru."),
                         Material.NETHERITE_SCRAP, 4, new ItemStack(Material.GOLD_INGOT, 4), "4x Sztabka Złota"),
                 Quest.przedmiot(29, "Kowal Netherytu", List.of("Wykuj pierwszą sztabkę netherytu w kuźni."),
                         Material.NETHERITE_INGOT, 1, new ItemStack(Material.NETHERITE_UPGRADE_SMITHING_TEMPLATE, 1), "1x Szablon Kowalski"),
-                Quest.narzedzie(30, "Pogromca Netheru", List.of("Wróć żywy z Netheru z mieczem gotowym na diamentowy tier walki.", "Kamień milowy - Nether zdobyty!"),
-                        Material.DIAMOND_SWORD, trofeum(Material.WITHER_SKELETON_SKULL, "Głowa Wojownika Netheru", "Za przetrwanie Netheru."), "Trofeum: Głowa Wojownika Netheru"),
+                Quest.poziomMiecza(30, "Pogromca Netheru", List.of("Wróć żywy z Netheru z mieczem wbitym na 50 poziom.", "Kamień milowy - Nether zdobyty!"),
+                        50, trofeum(Material.WITHER_SKELETON_SKULL, "Głowa Wojownika Netheru", "Za przetrwanie Netheru."), "Trofeum: Głowa Wojownika Netheru"),
 
                 Quest.poziomKilofa(31, "Netherytowy Rycerz", List.of("Wbij swojemu kilofowi 60 poziom."),
                         60, List.of(new ItemStack(Material.PHANTOM_MEMBRANE, 4)), "4x Błona Fantoma"),
@@ -360,7 +359,7 @@ public class QuestManager implements Listener, TytulService {
                 Quest.przedmiot(33, "Purpurowy Architekt", List.of("Zbierz purpurowe bloki z miast Endu."),
                         Material.PURPUR_BLOCK, 32, new ItemStack(Material.END_ROD, 8), "8x Pręt Endu"),
                 Quest.przedmiot(34, "Owoc Chorusu", List.of("Zbierz owoce chorusu w Endzie."),
-                        Material.CHORUS_FRUIT, 32, new ItemStack(Material.POPPED_CHORUS_FRUIT, 16), "16x Prażony Owoc Chorusu"),
+                        Material.CHORUS_FRUIT, 32, new ItemStack(Material.EXPERIENCE_BOTTLE, 24), "24x Butelka Doświadczenia"),
                 Quest.przedmiot(35, "Łowca Shulkerów", List.of("Pokonaj shulkery w miastach Endu."),
                         Material.SHULKER_SHELL, 4, new ItemStack(Material.SHULKER_BOX, 1), "1x Shulker Box"),
                 Quest.przedmiot(36, "Skrzydła Wolności", List.of("Zbierz błony fantomów na coś specjalnego."),
@@ -370,7 +369,7 @@ public class QuestManager implements Listener, TytulService {
                 Quest.przedmiot(38, "Smoczy Oddech", List.of("Zbierz oddech smoka podczas walki z Enderdragonem."),
                         Material.DRAGON_BREATH, 8, new ItemStack(Material.NETHER_STAR, 1), "1x Gwiazda Netheru"),
                 Quest.przedmiot(39, "Mistrz Farmera", List.of("Udowodnij, że Twoja farma stoi na najwyższym poziomie."),
-                        Material.MELON_SLICE, 64, new ItemStack(Material.GOLDEN_HOE, 1), "1x Złota Motyka"),
+                        Material.MELON_SLICE, 64, new ItemStack(Material.ENCHANTED_GOLDEN_APPLE, 1), "1x Notch Apple"),
                 Quest.przedmiot(40, "Mistrz Wyspy", List.of("Oddaj zdobytą Gwiazdę Netheru i ukończ ścieżkę!"),
                         Material.NETHER_STAR, 1, trofeum(Material.PLAYER_HEAD, "Głowa Smoka", "Za pokonanie Enderdragona.", "Otrzymujesz też Beacon!"), "Trofeum: Głowa Smoka + Beacon")
         ));
@@ -543,10 +542,10 @@ public class QuestManager implements Listener, TytulService {
      * dopóki ktoś nie doda im treści. Dopasowanie tematyczne:
      * - Górnictwo po queście 3 (stack kamienia w kieszeni - realnie zaczął już kopać).
      * - Hodowla po queście 7 (pierwsze duże zbiory - gracz ma już czym rozkręcić farmę).
-     * - Łowca po queście 9 (Ewoluujący Miecz - pierwsza walka, plus fale zombie z
-     *   Płaczącego Obsydianu, za nim).
-     * - Rybak po queście 13 (Sniffer postawiony - wyspa na tyle ogarnięta, że gracz
-     *   ma czas na poboczne hobby).
+     * - Łowca po queście 9 (Ewoluujący Miecz - pierwszy loch pokonany, gracz jest
+     *   już gotowy na realną walkę).
+     * - Rybak po queście 13 (Nad Wodą - wyspa na tyle ogarnięta, że gracz ma czas na
+     *   poboczne hobby).
      * - Questy Specjalne po queście 30 (Nether pokonany) - prawdziwy endgame dla
      *   weteranów, zgodnie z własnym opisem kategorii.
      */
@@ -830,8 +829,10 @@ public class QuestManager implements Listener, TytulService {
             Map.entry(Material.COOKIE, "Ciastko"),
             Map.entry(Material.ROTTEN_FLESH, "Zgniłe Mięso"),
             Map.entry(Material.RAW_IRON, "Surowe Żelazo"),
+            Map.entry(Material.SAND, "Piasek"),
+            Map.entry(Material.GRAVEL, "Żwir"),
             Map.entry(Material.IRON_AXE, "Żelazna Siekiera"),
-            Map.entry(Material.SNIFFER_EGG, "Jajo Sniffera"),
+            Map.entry(Material.KELP, "Wodorosty"),
             Map.entry(Material.EMERALD, "Szmaragd"),
             Map.entry(Material.REDSTONE, "Redstone"),
             Map.entry(Material.LAPIS_LAZULI, "Lapis Lazuli"),
@@ -904,24 +905,6 @@ public class QuestManager implements Listener, TytulService {
         return item;
     }
 
-    /**
-     * Nagroda questu 9 - zwykły CRYING_OBSIDIAN, ale otagowany CustomItemKeys.CUSTOM_ITEM_ID
-     * (patrz {@link #CUSTOM_ID_PLACZACY_OBSYDIAN}), żeby onPlaceObsydian() odróżnił go od
-     * dowolnego innego płaczącego obsydianu, jaki gracz mógłby kiedyś zdobyć/postawić.
-     */
-    private static ItemStack placzacyObsydian() {
-        ItemStack item = new ItemStack(Material.CRYING_OBSIDIAN);
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text("Płaczący Obsydian Wezwania", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD));
-        meta.lore(List.of(
-                Component.text("Postaw go na wyspie, by przywołać", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                Component.text("5 fal zombie broniących Twojej bazy.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
-        ));
-        meta.getPersistentDataContainer().set(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING, CUSTOM_ID_PLACZACY_OBSYDIAN);
-        meta.setEnchantmentGlintOverride(true);
-        item.setItemMeta(meta);
-        return item;
-    }
 
     /** Czerwony barwnik = dostępne, zielony (lime) = ukończone, szary = zablokowane (tylko Główna Ścieżka). */
     private ItemStack stworzIkoneQuesta(Quest q, StanQuestu stan) {
@@ -953,6 +936,9 @@ public class QuestManager implements Listener, TytulService {
                 case DARMOWY -> "Wymaga: nic - kliknij, by odebrać!";
                 case MONETY -> "Wymaga: " + (int) q.prog() + " monet";
                 case POZIOM_KILOFA -> "Wymaga: kilofa na poziomie " + (int) q.prog();
+                case POZIOM_SIEKIERY -> "Wymaga: siekiery na poziomie " + (int) q.prog();
+                case POZIOM_MIECZA -> "Wymaga: miecza na poziomie " + (int) q.prog();
+                case OFERTA_NA_TARGU -> "Wymaga: aktywnej oferty na Targu (/targ wystaw)";
                 case PRZEDMIOT -> "Wymaga: " + opisWymogow(q.wymogi());
                 case NARZEDZIE -> "Wymaga: posiadania " + opisWymogow(q.wymogi()) + " (zostaje przy Tobie)";
             };
@@ -1093,12 +1079,24 @@ public class QuestManager implements Listener, TytulService {
                 ToolsService tools = CoreAPI.getToolsService();
                 yield tools != null && tools.poziomKilofa(player) >= q.prog();
             }
+            case POZIOM_SIEKIERY -> {
+                ToolsService tools = CoreAPI.getToolsService();
+                yield tools != null && tools.poziomSiekiery(player) >= q.prog();
+            }
+            case POZIOM_MIECZA -> {
+                ToolsService tools = CoreAPI.getToolsService();
+                yield tools != null && tools.poziomMiecza(player) >= q.prog();
+            }
+            case OFERTA_NA_TARGU -> {
+                MarketService market = CoreAPI.getMarketService();
+                yield market != null && market.maAktywnaOferte(player.getUniqueId());
+            }
             case PRZEDMIOT, NARZEDZIE -> q.wymogi().stream().allMatch(w -> posiadaWymaganaIlosc(player, w));
         };
 
         if (spelnionyWymog) {
             switch (q.typWymogu()) {
-                case DARMOWY, NARZEDZIE, POZIOM_KILOFA -> {} // te typy tylko sprawdzają - nic nie zabierają graczowi
+                case DARMOWY, NARZEDZIE, POZIOM_KILOFA, POZIOM_SIEKIERY, POZIOM_MIECZA, OFERTA_NA_TARGU -> {} // te typy tylko sprawdzają - nic nie zabierają graczowi
                 case MONETY -> CoreAPI.getEconomyService().odejmijKase(player.getUniqueId(), q.prog());
                 case PRZEDMIOT -> q.wymogi().forEach(w -> zabierzWymog(player, w));
             }
@@ -1136,8 +1134,11 @@ public class QuestManager implements Listener, TytulService {
         } else {
             String powod = switch (q.typWymogu()) {
                 case MONETY -> "Nie masz wystarczająco monet!";
-                case NARZEDZIE -> "Twoje narzędzie nie jest jeszcze na wymaganym tierze!";
+                case NARZEDZIE -> "Nie masz wymaganego narzędzia!";
                 case POZIOM_KILOFA -> "Twój kilof nie jest jeszcze na wymaganym poziomie!";
+                case POZIOM_SIEKIERY -> "Twoja siekiera nie jest jeszcze na wymaganym poziomie!";
+                case POZIOM_MIECZA -> "Twój miecz nie jest jeszcze na wymaganym poziomie!";
+                case OFERTA_NA_TARGU -> "Nie masz jeszcze żadnej aktywnej oferty na Targu! Wpisz /targ wystaw <cena>.";
                 case PRZEDMIOT, DARMOWY -> "Nie masz wymaganych przedmiotów!";
             };
             player.sendMessage(Component.text(powod, NamedTextColor.RED));
@@ -1162,9 +1163,7 @@ public class QuestManager implements Listener, TytulService {
                     case 1 -> { tools.dajEwoluujacyKilof(player); return; }
                     case 4 -> { tools.dajEwoluujacaSiekiere(player); return; }
                     case 6 -> { tools.dajEwoluujacaMotyke(player); return; }
-                    // Brak "return" celowo - quest 9 poza mieczem dorzuca jeszcze zwykłą
-                    // nagrodę (Płaczący Obsydian Wezwania) z listy q.nagrody() niżej.
-                    case 9 -> tools.dajEwoluujacyMiecz(player);
+                    case 9 -> { tools.dajEwoluujacyMiecz(player); return; }
                 }
             }
             // Quest 8 ("Ciacho na Szczęście") - JEDYNA widoczna nagroda to podstawowa
@@ -1261,206 +1260,6 @@ public class QuestManager implements Listener, TytulService {
         Bukkit.getScheduler().runTaskLater(plugin, () -> player.hideBossBar(pasek), 20L * 6);
     }
 
-    // ---- Płaczący Obsydian: fale zombie (nagroda questu 9 "Fundusz Obronny") ----
-
-    /**
-     * Rozpoznaje nagrodę questu 9 po CustomItemKeys.CUSTOM_ITEM_ID (patrz placzacyObsydian()) -
-     * zwykły, kupiony/wydobyty płaczący obsydian NIE wywołuje fal. ignoreCancelled=true, żeby
-     * np. IslandProtectionManager (postawienie poza granicami własnej wyspy) mógł zablokować
-     * samo postawienie bloku bez odpalenia fal na lokacji, gdzie fizycznie nic nie stanęło.
-     */
-    @EventHandler(ignoreCancelled = true)
-    public void onPlaceObsydian(BlockPlaceEvent event) {
-        ItemStack reka = event.getItemInHand();
-        if (!reka.hasItemMeta()) return;
-        String customId = reka.getItemMeta().getPersistentDataContainer().get(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING);
-        if (!CUSTOM_ID_PLACZACY_OBSYDIAN.equals(customId)) return;
-
-        rozpocznijFaleZombie(event.getPlayer(), event.getBlock(), true);
-    }
-
-    /**
-     * (Admin) /addfale - testowe odpalenie 5 fal pod nogami gracza, bez zużywania
-     * questowego Płaczącego Obsydianu. prawdziwaNagroda=false, więc blok pod graczem
-     * NIE znika po piątej fali i gracz NIE dostaje 200 monet ani finałowego lootu -
-     * to czysto testowe narzędzie do sprawdzania balansu fal/lootu/paska, nie sposób
-     * na farmienie nagrody questu 9 w kółko.
-     */
-    public void wywolajTestoweFale(Player player) {
-        Block podNogami = player.getLocation().getBlock().getRelative(0, -1, 0);
-        rozpocznijFaleZombie(player, podNogami, false);
-    }
-
-    /**
-     * 5 fal zombie w stałych, z góry ustalonych odstępach (NIE czekamy, aż gracz zabije
-     * poprzednią falę - prostsza i przewidywalna sekwencja, koniec zawsze po ~85s).
-     * Zombie spawnują WYŁĄCZNIE na solidnym gruncie w promieniu bloku (patrz
-     * znajdzMiejsceNaZiemi) - nigdy w powietrzu, i są otagowane sesją (kluczSesjiFali) +
-     * dopisane do StanFali.zywoZombie, żeby pilnujSpadajacychZombie() mogło je teleportować
-     * z powrotem, gdyby spadły za krawędź wyspy w otchłań. To zwykłe, nieuzbrojone zombie
-     * (żadnego pancerza/broni), więc mają tylko domyślne wanilijskie dropy - świeży gracz
-     * z drewnianym/kamiennym mieczem ma z tym realną szansę. KAŻDA fala (nie tylko ostatnia)
-     * dorzuca małą premię lootu + 1x zgniłe mięso (5 fal x 1 = dokładnie 5, tyle ile wymaga
-     * quest 10 "Egzamin Początkującego" - celowe powiązanie fabularne). prawdziwaNagroda
-     * steruje TYLKO efektami "to jest realna nagroda questu 9": zniszczeniem bloku po
-     * piątej fali i wypłatą 200 monet - patrz wywolajTestoweFale (/addfale).
-     *
-     * Pasek bossbara (StanFali) resetuje się do pełna na starcie każdej fali i zmniejsza
-     * się o krok przy KAŻDYM zabitym zombie tej sesji (patrz onZombieDeath). Sesja
-     * identyfikowana losowym UUID (nie graczem), żeby dwie osoby mogły odpalić własny
-     * Płaczący Obsydian (albo /addfale) jednocześnie bez wzajemnego mieszania stanu.
-     */
-    private void rozpocznijFaleZombie(Player player, Block block, boolean prawdziwaNagroda) {
-        block.getWorld().setTime(13000);
-        player.sendMessage(Component.text("Płaczący Obsydian budzi się do życia... nadchodzą fale zombie!", NamedTextColor.DARK_RED, TextDecoration.BOLD));
-
-        UUID sesjaId = UUID.randomUUID();
-        StanFali stan = new StanFali(BossBar.bossBar(Component.text("Fala 1/5"), 1.0f, BossBar.Color.RED, BossBar.Overlay.NOTCHED_10), block);
-        aktywneFaleZombie.put(sesjaId, stan);
-        player.showBossBar(stan.pasek);
-
-        int[] rozmiaryFal = {2, 2, 3, 3, 4};
-        List<List<ItemStack>> premieFal = List.of(
-                List.of(new ItemStack(Material.BREAD, 8), new ItemStack(Material.ROTTEN_FLESH, 1)),
-                List.of(new ItemStack(Material.ARROW, 12), new ItemStack(Material.ROTTEN_FLESH, 1)),
-                List.of(new ItemStack(Material.SHIELD, 1), new ItemStack(Material.ROTTEN_FLESH, 1)),
-                List.of(new ItemStack(Material.ARROW, 16), new ItemStack(Material.ROTTEN_FLESH, 1)),
-                List.of(new ItemStack(Material.IRON_INGOT, 3), new ItemStack(Material.GOLDEN_APPLE, 1), new ItemStack(Material.ROTTEN_FLESH, 1))
-        );
-        long odstepMiedzyFalami = 20L * 15; // 15 sekund na falę
-
-        for (int fala = 0; fala < rozmiaryFal.length; fala++) {
-            int numerFali = fala + 1;
-            int iloscZombie = rozmiaryFal[fala];
-            List<ItemStack> premia = premieFal.get(fala);
-            boolean ostatnia = numerFali == rozmiaryFal.length;
-
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                int zespawnowane = 0;
-                for (int i = 0; i < iloscZombie; i++) {
-                    Location miejsce = znajdzMiejsceNaZiemi(block, 6);
-                    if (miejsce != null) {
-                        Zombie zombie = block.getWorld().spawn(miejsce, Zombie.class, z -> {
-                            z.setBaby(false);
-                            z.getPersistentDataContainer().set(kluczSesjiFali, PersistentDataType.STRING, sesjaId.toString());
-                        });
-                        stan.zywoZombie.add(zombie.getUniqueId());
-                        zespawnowane++;
-                    }
-                }
-                // Reset paska do pełna na start tej fali - liczy TYLKO zombie faktycznie
-                // zespawnowane teraz (jeśli znajdzMiejsceNaZiemi zawiodło kilka razy, pasek
-                // i tak trafnie odzwierciedla realną liczbę przeciwników do zabicia).
-                stan.numerFali = numerFali;
-                stan.wFaliLacznie = zespawnowane;
-                stan.pozostaliWFali = zespawnowane;
-                odswiezPasekFali(stan);
-
-                for (ItemStack item : premia) {
-                    block.getWorld().dropItemNaturally(block.getLocation(), item);
-                }
-                if (player.isOnline()) {
-                    player.sendMessage(Component.text("Fala " + numerFali + "/5 nadchodzi!", NamedTextColor.RED));
-                }
-
-                if (ostatnia) {
-                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        if (prawdziwaNagroda) {
-                            block.setType(Material.AIR);
-                            block.getWorld().dropItemNaturally(block.getLocation(), new ItemStack(Material.IRON_INGOT, 5));
-                            block.getWorld().dropItemNaturally(block.getLocation(), new ItemStack(Material.GOLDEN_CARROT, 4));
-                            if (player.isOnline()) {
-                                CoreAPI.getEconomyService().dodajKase(player.getUniqueId(), 200);
-                                player.sendMessage(Component.text("Ostatnia fala odparta! Obsydian rozpada się, zostawiając nagrodę i 200 monet.", NamedTextColor.GREEN, TextDecoration.BOLD));
-                            }
-                        } else if (player.isOnline()) {
-                            player.sendMessage(Component.text("Ostatnia fala odparta! (test /addfale - bez nagrody)", NamedTextColor.GREEN, TextDecoration.BOLD));
-                        }
-                        if (player.isOnline()) player.hideBossBar(stan.pasek);
-                        aktywneFaleZombie.remove(sesjaId);
-                    }, 20L * 10); // 10 sekund na dobicie ostatnich zombie, zanim blok zniknie
-                }
-            }, odstepMiedzyFalami * numerFali);
-        }
-    }
-
-    /** Odświeża tytuł i wypełnienie paska StanFali na podstawie pozostaliWFali/wFaliLacznie. */
-    private void odswiezPasekFali(StanFali stan) {
-        float postep = stan.wFaliLacznie == 0 ? 0f : (float) stan.pozostaliWFali / stan.wFaliLacznie;
-        stan.pasek.progress(Math.max(0f, Math.min(1f, postep)));
-        stan.pasek.name(Component.text("⚔ Fala " + stan.numerFali + "/5 - pozostało " + stan.pozostaliWFali + " zombie",
-                NamedTextColor.RED, TextDecoration.BOLD));
-    }
-
-    /** Zmniejsza pasek aktywnej fali, gdy ginie zombie oznaczone kluczSesjiFali (patrz rozpocznijFaleZombie) - obce zombie ignorujemy. */
-    @EventHandler
-    public void onZombieDeath(EntityDeathEvent event) {
-        if (!(event.getEntity() instanceof Zombie zombie)) return;
-        String sesjaStr = zombie.getPersistentDataContainer().get(kluczSesjiFali, PersistentDataType.STRING);
-        if (sesjaStr == null) return;
-
-        UUID sesjaId;
-        try {
-            sesjaId = UUID.fromString(sesjaStr);
-        } catch (IllegalArgumentException e) {
-            return;
-        }
-        StanFali stan = aktywneFaleZombie.get(sesjaId);
-        if (stan == null) return;
-
-        stan.zywoZombie.remove(zombie.getUniqueId());
-        stan.pozostaliWFali = Math.max(0, stan.pozostaliWFali - 1);
-        odswiezPasekFali(stan);
-    }
-
-    /**
-     * Co sekundę sprawdza wszystkie żywe zombie aktywnych fal (StanFali.zywoZombie) - jeśli
-     * któreś spadło ponad 10 bloków poniżej kotwicy (typowo: za krawędź wyspy w otchłań),
-     * teleportuje je z powrotem na solidny grunt obok kotwicy (patrz znajdzMiejsceNaZiemi).
-     * Przy okazji sprząta z zestawu zombie, które już zginęły gdzie indziej (np. od upadku,
-     * zanim zdążyliśmy je złapać) - onZombieDeath by je i tak usunął, to tylko dodatkowe
-     * zabezpieczenie przeciw wyciekowi pamięci, gdyby event się nie odpalił.
-     */
-    private void pilnujSpadajacychZombie() {
-        for (StanFali stan : aktywneFaleZombie.values()) {
-            if (stan.zywoZombie.isEmpty()) continue;
-            for (UUID id : new ArrayList<>(stan.zywoZombie)) {
-                Entity encja = Bukkit.getEntity(id);
-                if (!(encja instanceof Zombie zombie) || zombie.isDead()) {
-                    stan.zywoZombie.remove(id);
-                    continue;
-                }
-                if (zombie.getLocation().getY() < stan.kotwica.getY() - 10) {
-                    Location powrot = znajdzMiejsceNaZiemi(stan.kotwica, 6);
-                    zombie.teleport(powrot != null ? powrot : stan.kotwica.getLocation().add(0.5, 1, 0.5));
-                }
-            }
-        }
-    }
-
-    /**
-     * Szuka losowego miejsca na solidnym gruncie (2 bloki powietrza nad nim) w promieniu
-     * wokół bloku - zombie NIGDY nie spawnują w powietrzu. Zwraca null po 20 nieudanych
-     * próbach (np. teren bez żadnego pasującego miejsca w zasięgu) - wołający po prostu
-     * pomija tę sztukę zombie zamiast rzucać błędem.
-     */
-    private Location znajdzMiejsceNaZiemi(Block centrum, int promien) {
-        Random random = new Random();
-        for (int probka = 0; probka < 20; probka++) {
-            int dx = random.nextInt(promien * 2 + 1) - promien;
-            int dz = random.nextInt(promien * 2 + 1) - promien;
-            for (int dy = -3; dy <= 3; dy++) {
-                Block podstawa = centrum.getRelative(dx, dy, dz);
-                Block powietrze1 = podstawa.getRelative(0, 1, 0);
-                Block powietrze2 = podstawa.getRelative(0, 2, 0);
-                if (podstawa.getType().isSolid() && powietrze1.getType().isAir() && powietrze2.getType().isAir()) {
-                    return powietrze1.getLocation().add(0.5, 0, 0.5);
-                }
-            }
-        }
-        return null;
-    }
-
     // ---- TytulService: tytuł na czacie za ukończenie questu 10 (patrz komentarz w interfejsie) ----
 
     /**
@@ -1475,5 +1274,16 @@ public class QuestManager implements Listener, TytulService {
         Set<Integer> glownaSciezka = kategorie.get(KATEGORIA_GLOWNA_SCIEZKA);
         if (glownaSciezka == null || !glownaSciezka.contains(10)) return null;
         return Component.text("[Początkujący] ", NamedTextColor.GRAY, TextDecoration.BOLD);
+    }
+
+    // ---- QuestService: postęp Głównej Ścieżki dla innych modułów (np. mainplugins-spawn, /warp kowal) ----
+
+    /** {@inheritDoc} Zero mutacji stanu (w przeciwieństwie do postepyDlaKategorii) - to czysty odczyt pod bramki innych modułów. */
+    @Override
+    public boolean ukonczylGlownaSciezke(UUID uuid, int questId) {
+        Map<String, Set<Integer>> kategorie = postepyGraczy.get(uuid);
+        if (kategorie == null) return false;
+        Set<Integer> glownaSciezka = kategorie.get(KATEGORIA_GLOWNA_SCIEZKA);
+        return glownaSciezka != null && glownaSciezka.contains(questId);
     }
 }

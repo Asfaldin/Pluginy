@@ -3,6 +3,7 @@ package elo.mainplugins.dungeons;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.CrateService;
 import elo.mainplugins.core.api.EconomyService;
+import elo.mainplugins.core.util.CustomItemKeys;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -27,6 +28,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
@@ -59,8 +62,12 @@ import java.util.concurrent.ThreadLocalRandom;
  *
  * Sesje są PER GRACZ (nie globalne) - każdy, kto wejdzie komendą, dostaje własne moby/
  * bossa otagowane jego UUID (PDC), więc kilku graczy może korzystać z tej samej fizycznej
- * areny naraz bez mieszania sobie postępu/nagród - ten sam wzorzec co "Płaczący Obsydian"
- * w mainplugins-quests (QuestManager#aktywneFaleZombie).
+ * areny naraz bez mieszania sobie postępu/nagród.
+ *
+ * Zabicie bossa wręcza CUSTOM_ID_TROFEUM_LOCHU (Serce Władcy Lochu, patrz trofeumLochu())
+ * obok monet/klucza - mainplugins-quests czyta ten tag bez twardej zależności między
+ * modułami (patrz CustomItemKeys), żeby quest Głównej Ścieżki "Pierwszy Loch" mógł go
+ * przyjąć jako dowód zwycięstwa.
  */
 public class DungeonManager implements Listener {
 
@@ -80,6 +87,10 @@ public class DungeonManager implements Listener {
     private static final double BOSS_PROJECTILE_DMG = 6.0;
     private static final long BOSS_SKILL_OKRES_TICKS = 60L; // co ile ticków (3s) odpala się cykl umiejętności
     private static final double NAGRODA_MONETY = 500.0;
+
+    // Tag CustomItemKeys.CUSTOM_ITEM_ID trofeum bossa - odczytywany przez mainplugins-quests
+    // (QuestManager, quest Głównej Ścieżki "Pierwszy Loch") bez twardej zależności między modułami.
+    private static final String CUSTOM_ID_TROFEUM_LOCHU = "DUNGEON_TROFEUM_WLADCA_LOCHU";
 
     private final Plugin plugin;
     private final NamespacedKey pkDungeonOwner;
@@ -383,9 +394,40 @@ public class DungeonManager implements Listener {
                 nieZmieszczone.values().forEach(i -> player.getWorld().dropItemNaturally(player.getLocation(), i));
                 player.sendMessage(Component.text("Nagroda: 1x Klucz do Skrzynki", NamedTextColor.GREEN));
             }
+
+            var nieZmieszczoneTrofeum = player.getInventory().addItem(trofeumLochu());
+            nieZmieszczoneTrofeum.values().forEach(i -> player.getWorld().dropItemNaturally(player.getLocation(), i));
+            player.sendMessage(Component.text("Nagroda: 1x Serce Władcy Lochu", NamedTextColor.GREEN));
+
+            // Zwykła łopata - gwarantowany drop (nie loot na farmienie jak reszta nagród bossa,
+            // tylko jednorazowe "pierwsze narzędzie tego typu w grze", patrz mainplugins-quests
+            // quest Głównej Ścieżki #11 "Piaskowy Mozół", który uczy kopania piasku/żwiru nią).
+            var nieZmieszczonaLopata = player.getInventory().addItem(new ItemStack(Material.WOODEN_SHOVEL));
+            nieZmieszczonaLopata.values().forEach(i -> player.getWorld().dropItemNaturally(player.getLocation(), i));
+            player.sendMessage(Component.text("Nagroda: 1x Zwykła Łopata", NamedTextColor.GREEN));
         }
         zakonczBossa(player, true);
         aktywneLochy.remove(ownerId); // jeśli to był finał /tpdun, kończymy też sesję lochu
+    }
+
+    /**
+     * Trofeum bossa - wręczane przy KAŻDYM zabiciu (nie tylko pierwszym), tak jak monety i
+     * klucz do skrzynki wyżej. Pierwsza sztuka zamyka quest Głównej Ścieżki "Pierwszy Loch"
+     * (mainplugins-quests), kolejne to zwykły, niewymagany bonus - loch zostaje w pełni
+     * powtarzalnym źródłem dochodu na długo po ukończeniu tego questu.
+     */
+    private static ItemStack trofeumLochu() {
+        ItemStack item = new ItemStack(Material.HEART_OF_THE_SEA);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.text("Serce Władcy Lochu", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
+        meta.lore(java.util.List.of(
+                Component.text("Wciąż bije mrocznym rytmem.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("Dowód pokonania Władcy Lochu.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        meta.getPersistentDataContainer().set(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING, CUSTOM_ID_TROFEUM_LOCHU);
+        meta.setEnchantmentGlintOverride(true);
+        item.setItemMeta(meta);
+        return item;
     }
 
     // ==================================================== Sprzątanie ====

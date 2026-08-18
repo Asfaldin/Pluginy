@@ -1,8 +1,11 @@
 package elo.mainplugins.tools;
 
 import elo.mainplugins.core.api.ToolsService;
+import elo.mainplugins.tools.axe.AxeSkillManager;
+import elo.mainplugins.tools.hoe.HoeSkillManager;
 import elo.mainplugins.tools.pickaxe.PickaxeSkillManager;
 import elo.mainplugins.tools.pickaxe.PickaxeType;
+import elo.mainplugins.tools.sword.SwordSkillManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -52,6 +55,17 @@ public class LevelableToolsManager implements Listener, ToolsService {
      */
     private PickaxeSkillManager pickaxeSkillManager;
 
+    /**
+     * Jak pickaxeSkillManager wyżej - siekiera/motyka/miecz też mają już własny silnik
+     * progresji (ToolSkillManager) z ustalonym, niezmiennym Materiałem (patrz
+     * materialOverride w każdym z trzech managerów) zamiast starego systemu tierów
+     * poniżej. Setter zamiast konstruktora z tego samego powodu co pickaxeSkillManager -
+     * MainpluginsTools konstruuje LevelableToolsManager jako pierwszy.
+     */
+    private AxeSkillManager axeSkillManager;
+    private HoeSkillManager hoeSkillManager;
+    private SwordSkillManager swordSkillManager;
+
     public LevelableToolsManager(Plugin plugin) {
         this.plugin = plugin;
         this.keyType = new NamespacedKey(plugin, "tool_type");
@@ -65,6 +79,18 @@ public class LevelableToolsManager implements Listener, ToolsService {
         this.pickaxeSkillManager = pickaxeSkillManager;
     }
 
+    public void setAxeSkillManager(AxeSkillManager axeSkillManager) {
+        this.axeSkillManager = axeSkillManager;
+    }
+
+    public void setHoeSkillManager(HoeSkillManager hoeSkillManager) {
+        this.hoeSkillManager = hoeSkillManager;
+    }
+
+    public void setSwordSkillManager(SwordSkillManager swordSkillManager) {
+        this.swordSkillManager = swordSkillManager;
+    }
+
     /**
      * Awaryjne/administracyjne danie kompletu narzędzi pod komendę /narzedzia (np. gracz
      * zgubił postęp, testy). NIE jest już wołane automatycznie przy pierwszym wejściu -
@@ -73,9 +99,9 @@ public class LevelableToolsManager implements Listener, ToolsService {
      */
     public void dajStartoweNarzedzia(Player player) {
         player.getInventory().addItem(pickaxeSkillManager.stworzKilof(player, PickaxeType.WYDAJNOSCIOWY));
-        player.getInventory().addItem(stworzNarzedzie(player, "axe", 0));
-        player.getInventory().addItem(stworzNarzedzie(player, "sword", 0));
-        player.getInventory().addItem(stworzNarzedzie(player, "hoe", 0));
+        player.getInventory().addItem(axeSkillManager.stworzSiekiere(player));
+        player.getInventory().addItem(swordSkillManager.stworzMiecz(player));
+        player.getInventory().addItem(hoeSkillManager.stworzMotyke(player));
         player.getInventory().addItem(stworzNarzedzie(player, "shovel", 0));
         player.sendMessage(Component.text("Otrzymałeś startowe narzędzia przypisane do Twojej duszy!", NamedTextColor.GREEN, TextDecoration.BOLD));
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
@@ -94,26 +120,26 @@ public class LevelableToolsManager implements Listener, ToolsService {
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
     }
 
-    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Drwal i Siewca". */
+    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Drwal i Siewca". Delegacja do AxeSkillManager (patrz komentarz przy polu). */
     @Override
     public void dajEwoluujacaSiekiere(Player player) {
-        player.getInventory().addItem(stworzNarzedzie(player, "axe", 0));
+        player.getInventory().addItem(axeSkillManager.stworzSiekiere(player));
         player.sendMessage(Component.text("Otrzymałeś swoją pierwszą, ewoluującą siekierę!", NamedTextColor.GREEN, TextDecoration.BOLD));
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
     }
 
-    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Rolniczy Krok". */
+    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Rolniczy Krok". Delegacja do HoeSkillManager (patrz komentarz przy polu). */
     @Override
     public void dajEwoluujacaMotyke(Player player) {
-        player.getInventory().addItem(stworzNarzedzie(player, "hoe", 0));
+        player.getInventory().addItem(hoeSkillManager.stworzMotyke(player));
         player.sendMessage(Component.text("Otrzymałeś swoją pierwszą, ewoluującą motykę!", NamedTextColor.GREEN, TextDecoration.BOLD));
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
     }
 
-    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Fundusz Obronny". */
+    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Pierwszy Loch". Delegacja do SwordSkillManager (patrz komentarz przy polu). */
     @Override
     public void dajEwoluujacyMiecz(Player player) {
-        player.getInventory().addItem(stworzNarzedzie(player, "sword", 0));
+        player.getInventory().addItem(swordSkillManager.stworzMiecz(player));
         player.sendMessage(Component.text("Otrzymałeś swój pierwszy, ewoluujący miecz!", NamedTextColor.GREEN, TextDecoration.BOLD));
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
     }
@@ -138,6 +164,18 @@ public class LevelableToolsManager implements Listener, ToolsService {
     @Override
     public int poziomKilofa(Player player) {
         return pickaxeSkillManager.poziomNajlepszegoKilofa(player);
+    }
+
+    /** {@inheritDoc} Delegacja do AxeSkillManager - siekiera ma ten sam wzorzec "brak tierów" co kilof. */
+    @Override
+    public int poziomSiekiery(Player player) {
+        return axeSkillManager.poziomNajlepszejSiekiery(player);
+    }
+
+    /** {@inheritDoc} Delegacja do SwordSkillManager - miecz ma ten sam wzorzec "brak tierów" co kilof. */
+    @Override
+    public int poziomMiecza(Player player) {
+        return swordSkillManager.poziomNajlepszegoMiecza(player);
     }
 
     @EventHandler

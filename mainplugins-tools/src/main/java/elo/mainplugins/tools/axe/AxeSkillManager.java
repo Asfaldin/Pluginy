@@ -56,6 +56,36 @@ public class AxeSkillManager extends ToolSkillManager {
         this.pkSpeedPassiveModifierKey = new NamespacedKey(plugin, "pk_axe_speed_passive");
     }
 
+    /**
+     * Tworzy w pełni zainicjalizowaną siekierę, poziom 1 - jedyne wejście do tworzenia
+     * siekier (quest "Drwal i Siewca" Głównej Ścieżki, /dajwszystko). Zastępuje starą
+     * LevelableToolsManager#stworzNarzedzie - ta siekiera od razu żyje na silniku
+     * ToolSkillManager (pk_level/pk_tier), bez tymczasowego "drewnianego" stanu.
+     */
+    public ItemStack stworzSiekiere(Player player) {
+        ItemStack item = new ItemStack(Material.DIAMOND_AXE);
+        ItemMeta meta = item.getItemMeta();
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        pdc.set(keyType, PersistentDataType.STRING, "axe");
+        pdc.set(keyOwner, PersistentDataType.STRING, player.getUniqueId().toString());
+        item.setItemMeta(meta);
+        ensureInitialized(item);
+        return item;
+    }
+
+    /** Maksymalny poziom wśród WSZYSTKICH trzymanych siekier gracza - pod ToolsService#poziomSiekiery. */
+    public int poziomNajlepszejSiekiery(Player player) {
+        int max = 0;
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item == null || item.getItemMeta() == null) continue;
+            PersistentDataContainer pdc = item.getItemMeta().getPersistentDataContainer();
+            if (!"axe".equals(pdc.get(keyType, PersistentDataType.STRING))) continue;
+            int lvl = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
+            if (lvl > max) max = lvl;
+        }
+        return max;
+    }
+
     // ============================================================ Rąbanie ====
 
     @EventHandler(ignoreCancelled = true)
@@ -265,15 +295,16 @@ public class AxeSkillManager extends ToolSkillManager {
 
     // ==================================================== Statystyki/wygląd ====
 
+    /** Stały Material niezależny od tieru (patrz baza ToolSkillManager#materialOverride) - siekiera już nie ewoluuje wizualnie, tylko statystycznie. */
+    @Override
+    protected Material materialOverride(PersistentDataContainer pdc) {
+        return Material.DIAMOND_AXE;
+    }
+
+    /** Nigdy realnie użyte (materialOverride zawsze wygrywa) - musi istnieć, bo abstrakcyjne w bazie. */
     @Override
     protected Material materialForTier(int tier) {
-        return switch (tier) {
-            case 0 -> Material.WOODEN_AXE;
-            case 1 -> Material.STONE_AXE;
-            case 2 -> Material.IRON_AXE;
-            case 3 -> Material.DIAMOND_AXE;
-            default -> Material.NETHERITE_AXE;
-        };
+        return Material.DIAMOND_AXE;
     }
 
     private int effLevelOf(PersistentDataContainer pdc) {

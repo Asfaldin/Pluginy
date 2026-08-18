@@ -14,5 +14,16 @@
     <packaging>jar</packaging>
     <name>Mainplugins - Spawn</name>
 
-    <!-- Główny spawn serwera (punkt teleportu + chroniony obszar) - czysta logika Bukkit, zero zależności od Core. -->
+    <!--
+        Główny spawn serwera (punkt teleportu + chroniony obszar) + /warp. Do questu #16
+        Głównej Ścieżki (mainplugins-quests) trzeba zależności od Core (provided) - warp
+        "kowal" sprawdza ukonczylGlownaSciezke przez QuestService/CoreAPI, patrz WarpManager.
+        Reszta modułu (spawn/obszar) nadal nie potrzebuje niczego z Core.
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>elo</groupId>
+            <artifactId>mainplugins-core</artifactId>
+        </dependency>
+    </dependencies>
 </project>

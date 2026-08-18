@@ -1,5 +1,6 @@
 package elo.mainplugins.spawn;
 
+import elo.mainplugins.core.api.SpawnService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -24,7 +25,7 @@ import java.io.IOException;
  * warpów) to osobny, ogólny mechanizm niezwiązany z konkretnym punktem - patrz
  * {@link ObszarManager}.
  */
-public class SpawnManager implements Listener {
+public class SpawnManager implements Listener, SpawnService {
 
     private final Plugin plugin;
     private final File plikSpawnu;
@@ -71,6 +72,7 @@ public class SpawnManager implements Listener {
     }
 
     /** Ustawiony spawn, albo domyślny spawn pierwszego świata, jeśli nikt jeszcze nic nie ustawił. */
+    @Override
     public Location getSpawn() {
         return spawnPoint != null ? spawnPoint : Bukkit.getWorlds().get(0).getSpawnLocation();
     }

@@ -1,16 +1,16 @@
 package elo.mainplugins.chatfilter;
 
+import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Cooldown między kolejnymi wiadomościami na czacie tego samego gracza - blokuje spam.
@@ -29,10 +29,14 @@ public class ChatSpamManager implements Listener {
     private static final long COOLDOWN_MILLIS = 5000L;
     private static final String PERMISJA_BYPASS = "mainplugins.chatfilter.bypass";
 
-    private final Map<UUID, Long> ostatniaWiadomoscMillis = new HashMap<>();
+    // ConcurrentHashMap, nie HashMap - AsyncChatEvent leci na puli wątków czatu (nie
+    // gwarantowane, że kolejne wiadomości tego samego gracza trafią na ten sam wątek),
+    // więc zwykła HashMap ma tu realne ryzyko niewidoczności zapisu między wątkami -
+    // patrz ten sam problem w IslandManager (pendingDeleteConfirmation).
+    private final Map<UUID, Long> ostatniaWiadomoscMillis = new ConcurrentHashMap<>();
 
     @EventHandler
-    public void onChat(AsyncPlayerChatEvent event) {
+    public void onChat(AsyncChatEvent event) {
         Player player = event.getPlayer();
         if (player.hasPermission(PERMISJA_BYPASS)) return;
 

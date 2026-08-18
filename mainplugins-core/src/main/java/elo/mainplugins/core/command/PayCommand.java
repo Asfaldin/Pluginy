@@ -61,18 +61,36 @@ public class PayCommand implements CommandExecutor {
             player.sendMessage(Component.text("Kwota musi być większa od zera.", NamedTextColor.RED));
             return true;
         }
-        if (!economyService.maWystarczajaco(player.getUniqueId(), kwota)) {
+
+        // Od razu na grosze - unikamy drugiego zaokrąglenia i pracujemy w dokładnej
+        // jednostce, w której faktycznie liczy EconomyManager.
+        long grosze = Math.round(kwota * 100);
+        if (grosze <= 0) {
+            player.sendMessage(Component.text("Kwota musi być większa od zera.", NamedTextColor.RED));
+            return true;
+        }
+
+        // pobierzGrosze sprawdza saldo i pobiera w jednym kroku, więc nie da się
+        // między sprawdzeniem a pobraniem wcisnąć drugiego /pay tego samego gracza.
+        if (!economyService.pobierzGrosze(player.getUniqueId(), grosze)) {
             player.sendMessage(Component.text("Nie masz wystarczająco pieniędzy!", NamedTextColor.RED));
             return true;
         }
 
-        economyService.odejmijKase(player.getUniqueId(), kwota);
-        economyService.dodajKase(target.getUniqueId(), kwota);
+        economyService.dodajGrosze(target.getUniqueId(), grosze);
 
-        player.sendMessage(Component.text("Przelano " + kwota + " $ dla " + targetName + ".", NamedTextColor.GREEN));
+        String kwotaTekst = formatujGrosze(grosze);
+        player.sendMessage(Component.text("Przelano " + kwotaTekst + "$ dla " + targetName + ".", NamedTextColor.GREEN));
         if (online != null) {
-            online.sendMessage(Component.text("Otrzymałeś " + kwota + " $ od " + player.getName() + "!", NamedTextColor.GREEN));
+            online.sendMessage(Component.text("Otrzymałeś " + kwotaTekst + "$ od " + player.getName() + "!", NamedTextColor.GREEN));
         }
         return true;
+    }
+
+    /** "10000" -> "100", "10050" -> "100.50" - bez ".0" na okrągłych kwotach. */
+    private static String formatujGrosze(long grosze) {
+        long jednostki = grosze / 100;
+        long reszta = grosze % 100;
+        return reszta == 0 ? String.valueOf(jednostki) : String.format("%d.%02d", jednostki, reszta);
     }
 }

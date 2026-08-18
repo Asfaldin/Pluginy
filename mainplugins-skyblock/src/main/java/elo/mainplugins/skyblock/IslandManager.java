@@ -11,9 +11,11 @@ import com.sk89q.worldedit.function.operation.Operation;
 import com.sk89q.worldedit.function.operation.Operations;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.session.ClipboardHolder;
+import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.IslandService;
 import elo.mainplugins.core.api.IslandSummary;
+import elo.mainplugins.core.api.SpawnService;
 import elo.mainplugins.core.world.VoidGenerator;
 import elo.mainplugins.skyblock.event.IslandBankDepositEvent;
 import elo.mainplugins.skyblock.event.IslandCreatedEvent;
@@ -32,7 +34,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
+import io.papermc.paper.event.player.AsyncChatEvent;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -43,6 +46,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class IslandManager implements Listener, IslandService {
 
@@ -310,10 +314,14 @@ public class IslandManager implements Listener, IslandService {
 
     private final Map<UUID, IslandData> islandDatabase = new HashMap<>();
     private final Map<UUID, UUID> playerIslandMap = new HashMap<>();
-    private final Set<UUID> pendingDeleteConfirmation = new HashSet<>();
+    // ConcurrentHashMap-backed (nie HashSet) - te trzy są czytane/zapisywane też
+    // z onChat(), który odpala się na wątku czatu, a nie głównym wątku serwera
+    // (patrz AsyncPlayerChatEvent). pendingLeaveConfirmation nie potrzebuje tego,
+    // bo dotyka go wyłącznie kod z głównego wątku (kliknięcia w GUI).
+    private final Set<UUID> pendingDeleteConfirmation = ConcurrentHashMap.newKeySet();
     private final Set<UUID> pendingLeaveConfirmation = new HashSet<>();
-    private final Set<UUID> pendingInviteChat = new HashSet<>();
-    private final Set<UUID> pendingNameChat = new HashSet<>();
+    private final Set<UUID> pendingInviteChat = ConcurrentHashMap.newKeySet();
+    private final Set<UUID> pendingNameChat = ConcurrentHashMap.newKeySet();
     // Zapamiętuje, który slot w GUI "Członkowie Wyspy" odpowiada za którego gracza
     private final Map<UUID, Map<Integer, UUID>> slotyCzlonkow = new HashMap<>();
     // Który typ spawnera gracz aktualnie ma otwarty w podmenu "Spawner: X" (Ilość/Szybkość)
@@ -581,7 +589,7 @@ public class IslandManager implements Listener, IslandService {
 
         switch (sub) {
             case "menu" -> otworzMenuWyspy(player, zMenu);
-            case "delete" -> obslugaUsuwaniaKomenda(player, args);
+            case "usun" -> obslugaUsuwaniaKomenda(player);
             case "border" -> przelaczWizualnyBorder(player);
             case "guests", "build" -> przelaczBudowanieDlaGosci(player);
             case "pvp" -> przelaczPvP(player);
@@ -611,13 +619,23 @@ public class IslandManager implements Listener, IslandService {
 
     private static final long TIMEOUT_POTWIERDZENIA_TICKS = 15 * 20L;
 
-    /** Wspólne dla GUI (kosz) i komendy (/is delete) - potwierdzenie wygasa po 15s. */
+    /** Wspólne dla GUI (kosz) i komendy (/is usun) - potwierdzenie wygasa po 15s. */
     private void ustawOczekiwanieNaPotwierdzenie(UUID uuid) {
         pendingDeleteConfirmation.add(uuid);
         Bukkit.getScheduler().runTaskLater(plugin, () -> pendingDeleteConfirmation.remove(uuid), TIMEOUT_POTWIERDZENIA_TICKS);
     }
 
-    private void obslugaUsuwaniaKomenda(Player player, String[] args) {
+    /**
+     * Ten sam komunikat dla obu wejść (GUI kosz i komenda /is usun) - obie kończą się
+     * dokładnie tym samym potwierdzeniem na czacie (patrz onChat), więc gracz musi
+     * wpisać "Tak zgadzam się" niezależnie od tego, którędy tu trafił.
+     */
+    private void wyslijOstrzezenieUsuniecia(Player player) {
+        player.sendMessage(Component.text("UWAGA: Czy na pewno chcesz usunąć swoją wyspę? Tej operacji nie da się cofnąć!", NamedTextColor.RED, TextDecoration.BOLD));
+        player.sendMessage(Component.text("Wpisz \"Tak zgadzam się\" na czacie w ciągu 15 sekund, aby potwierdzić (cokolwiek innego anuluje).", NamedTextColor.YELLOW));
+    }
+
+    private void obslugaUsuwaniaKomenda(Player player) {
         UUID uuid = player.getUniqueId();
         if (!playerIslandMap.containsKey(uuid)) {
             player.sendMessage(Component.text("Nie posiadasz wyspy!", NamedTextColor.RED));
@@ -628,18 +646,8 @@ public class IslandManager implements Listener, IslandService {
             return;
         }
 
-        if (args.length > 1 && args[1].equalsIgnoreCase("confirm")) {
-            if (oczekujeNaPotwierdzenie(uuid)) {
-                potwierdzUsuniecie(player);
-            } else {
-                player.sendMessage(Component.text("Najpierw wpisz /is delete, aby rozpocząć usuwanie.", NamedTextColor.RED));
-            }
-            return;
-        }
-
         ustawOczekiwanieNaPotwierdzenie(uuid);
-        player.sendMessage(Component.text("UWAGA: Twoja wyspa zostanie usunięta bezpowrotnie!", NamedTextColor.RED, TextDecoration.BOLD));
-        player.sendMessage(Component.text("Wpisz /is delete confirm w ciągu 15 sekund, aby potwierdzić.", NamedTextColor.YELLOW));
+        wyslijOstrzezenieUsuniecia(player);
     }
 
     private IslandData wlasnaWyspaLubKomunikat(Player player) {
@@ -877,7 +885,7 @@ public class IslandManager implements Listener, IslandService {
             return;
         }
         if (ownerUUID.equals(uuid)) {
-            player.sendMessage(Component.text("Jesteś właścicielem tej wyspy - użyj /is delete, aby ją usunąć.", NamedTextColor.RED));
+            player.sendMessage(Component.text("Jesteś właścicielem tej wyspy - użyj /is usun, aby ją usunąć.", NamedTextColor.RED));
             return;
         }
 
@@ -1844,12 +1852,11 @@ public class IslandManager implements Listener, IslandService {
             else if (slot == 24) { otworzMenuTopkiWysp(player); } // Topka Wysp
             else if (slot == 53 && panelIsOwner) { // Kosz / Usunięcie - decyzja po serwerowym isOwner, nie po ikonie klienta
                 // Jedno kliknięcie zamiast dawnego "kliknij dwa razy" - potwierdzenie idzie
-                // teraz przez czat (wpisanie "usun"), żeby przypadkowy drugi klik (np. przy
+                // przez czat (wpisanie "Tak zgadzam się"), żeby przypadkowy drugi klik (np. przy
                 // zamykaniu GUI) nie mógł już bezpowrotnie skasować wyspy.
                 player.closeInventory();
                 ustawOczekiwanieNaPotwierdzenie(player.getUniqueId());
-                player.sendMessage(Component.text("UWAGA: Twoja wyspa zostanie usunięta bezpowrotnie!", NamedTextColor.RED, TextDecoration.BOLD));
-                player.sendMessage(Component.text("Wpisz \"usun\" na czacie w ciągu 15 sekund, aby potwierdzić (cokolwiek innego anuluje).", NamedTextColor.YELLOW));
+                wyslijOstrzezenieUsuniecia(player);
             }
             else if (slot == 53) { // Opuść Wyspę (nie-właściciel)
                 if (pendingLeaveConfirmation.contains(player.getUniqueId())) {
@@ -2111,20 +2118,40 @@ public class IslandManager implements Listener, IslandService {
     }
 
     @EventHandler
-    public void onChat(AsyncPlayerChatEvent event) {
+    public void onChat(AsyncChatEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
 
+        // Nie łapiemy tych trzech promptów wcale, jeśli gracz akurat na żaden nie czeka -
+        // event.message() do String tylko wtedy, gdy faktycznie trzeba go przeczytać.
+        if (!pendingDeleteConfirmation.contains(uuid) && !pendingInviteChat.contains(uuid) && !pendingNameChat.contains(uuid)) {
+            return;
+        }
+        String wiadomosc = PlainTextComponentSerializer.plainText().serialize(event.message()).trim();
+
         // Potwierdzenie usunięcia wyspy przez czat - wspólne dla kliknięcia w GUI (kosz)
-        // i komendy /is delete, obie tylko uzbrajają pendingDeleteConfirmation (patrz
-        // ustawOczekiwanieNaPotwierdzenie). Cokolwiek innego niż dokładnie "usun" anuluje.
+        // i komendy /is usun, obie tylko uzbrajają pendingDeleteConfirmation (patrz
+        // ustawOczekiwanieNaPotwierdzenie). Cokolwiek innego niż dokładnie "Tak zgadzam się"
+        // anuluje. Akceptujemy też wersję bez polskich znaków ("sie") - część graczy nie
+        // ma wygodnego sposobu wpisania "ę" na czacie.
         if (pendingDeleteConfirmation.contains(uuid)) {
             event.setCancelled(true);
-            pendingDeleteConfirmation.remove(uuid);
 
-            if (event.getMessage().equalsIgnoreCase("usun")) {
-                potwierdzUsuniecie(player);
+            boolean potwierdzone = wiadomosc.equalsIgnoreCase("Tak zgadzam się")
+                    || wiadomosc.equalsIgnoreCase("Tak zgadzam sie");
+            if (potwierdzone) {
+                // NIE usuwamy tu z pendingDeleteConfirmation - to robi samo potwierdzUsuniecie()
+                // po swoim guardzie (patrz niżej). Usuwanie TUTAJ było prawdziwą przyczyną, dla
+                // której usuwanie przez czat nigdy nie działało: potwierdzUsuniecie() wywoływane
+                // chwilę później (na głównym wątku, przez runTask) widziało że wpis już zniknął
+                // i przerywało się natychmiast na własnym guardzie - zero usunięcia, zero błędu.
+                //
+                // AsyncChatEvent leci na wątku czatu, nie na głównym wątku serwera -
+                // potwierdzUsuniecie() teleportuje graczy i czyści chunki wyspy, więc musi
+                // wrócić na główny wątek.
+                Bukkit.getScheduler().runTask(plugin, () -> potwierdzUsuniecie(player));
             } else {
+                pendingDeleteConfirmation.remove(uuid);
                 player.sendMessage(Component.text("Anulowano usuwanie wyspy.", NamedTextColor.YELLOW));
             }
             return;
@@ -2134,7 +2161,7 @@ public class IslandManager implements Listener, IslandService {
             event.setCancelled(true);
             pendingInviteChat.remove(uuid);
 
-            String targetName = event.getMessage();
+            String targetName = wiadomosc;
             if (targetName.equalsIgnoreCase("anuluj")) {
                 player.sendMessage(Component.text("Anulowano zapraszanie gracza.", NamedTextColor.RED));
                 return;
@@ -2157,7 +2184,7 @@ public class IslandManager implements Listener, IslandService {
         if (pendingNameChat.contains(uuid)) {
             event.setCancelled(true);
             pendingNameChat.remove(uuid);
-            ustawNazweWyspyZCzatu(player, event.getMessage());
+            ustawNazweWyspyZCzatu(player, wiadomosc);
         }
     }
 
@@ -2195,6 +2222,16 @@ public class IslandManager implements Listener, IslandService {
         player.sendMessage(Component.text("Ustawiono nazwę wyspy: " + nazwa, NamedTextColor.GREEN));
     }
 
+    /**
+     * Prawdziwy, skonfigurowany przez admina spawn serwera (/@setspawn) - nie surowy
+     * spawn świata Bukkit, który w świecie skyblockowym może być gdziekolwiek. Opcjonalne
+     * (mainplugins-spawn może nie być wgrany), więc z fallbackiem na wypadek jego braku.
+     */
+    private Location spawnLokalizacja() {
+        SpawnService spawnService = CoreAPI.getSpawnService();
+        return spawnService != null ? spawnService.getSpawn() : Bukkit.getWorlds().get(0).getSpawnLocation();
+    }
+
     public void potwierdzUsuniecie(Player player) {
         UUID uuid = player.getUniqueId();
         if (!pendingDeleteConfirmation.contains(uuid)) return;
@@ -2204,7 +2241,7 @@ public class IslandManager implements Listener, IslandService {
         IslandData data = islandDatabase.remove(ownerUUID);
 
         if (data != null) {
-            Location spawnLoc = Bukkit.getWorlds().get(0).getSpawnLocation();
+            Location spawnLoc = spawnLokalizacja();
 
             // Usuń z mapy i teleportuj na spawn wszystkich obecnie online członków - ich
             // przynależność do tej wyspy właśnie znika, więc nie mogą zostać "uwięzieni"
@@ -2228,10 +2265,6 @@ public class IslandManager implements Listener, IslandService {
 
             player.sendMessage(Component.text("Twoja wyspa została bezpowrotnie usunięta ze świata.", NamedTextColor.RED));
         }
-    }
-
-    public boolean oczekujeNaPotwierdzenie(UUID uuid) {
-        return pendingDeleteConfirmation.contains(uuid);
     }
 
     /**

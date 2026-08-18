@@ -3,12 +3,13 @@ package elo.mainplugins.chatfilter;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.Rank;
 import elo.mainplugins.core.api.RankService;
+import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 
 import java.util.regex.Pattern;
 
@@ -35,10 +36,11 @@ public class AntiAdManager implements Listener {
     );
 
     @EventHandler(ignoreCancelled = true)
-    public void onChat(AsyncPlayerChatEvent event) {
+    public void onChat(AsyncChatEvent event) {
         if (pobierzRange(event.getPlayer()) == Rank.ADMIN) return;
 
-        if (WZORZEC_REKLAMY.matcher(event.getMessage()).find()) {
+        String wiadomosc = PlainTextComponentSerializer.plainText().serialize(event.message());
+        if (WZORZEC_REKLAMY.matcher(wiadomosc).find()) {
             event.setCancelled(true);
             event.getPlayer().sendMessage(Component.text(
                     "Nie możesz tego napisać - nie wolno reklamować linków, stron ani innych serwerów na czacie!",

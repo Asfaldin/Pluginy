@@ -3,12 +3,13 @@ package elo.mainplugins.chatfilter;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.Rank;
 import elo.mainplugins.core.api.RankService;
+import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 
 /**
  * Blokuje wiadomości pisane w większości WIELKIMI LITERAMI (>60% liter to caps). Krótkie
@@ -24,10 +25,10 @@ public class CapsLockManager implements Listener {
     private static final double PROG_CAPS = 0.6;
 
     @EventHandler(ignoreCancelled = true)
-    public void onChat(AsyncPlayerChatEvent event) {
+    public void onChat(AsyncChatEvent event) {
         if (pobierzRange(event.getPlayer()) == Rank.ADMIN) return;
 
-        String wiadomosc = event.getMessage();
+        String wiadomosc = PlainTextComponentSerializer.plainText().serialize(event.message());
         if (wiadomosc.length() < MIN_DLUGOSC) return;
 
         int wielkie = 0;

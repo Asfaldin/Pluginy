@@ -14,5 +14,14 @@
     <packaging>jar</packaging>
     <name>Mainplugins - Spawn</name>
 
-    <!-- Główny spawn serwera (punkt teleportu + chroniony obszar) - czysta logika Bukkit, zero zależności od Core. -->
+    <!-- Główny spawn serwera (punkt teleportu + chroniony obszar) - poza tym czysta logika
+         Bukkit. Jedyna zależność od Core to SpawnService (scope=provided, patrz komentarz
+         w mainplugins-skyblock/pom.xml) - żeby inne pluginy (np. skyblock po usunięciu wyspy)
+         mogły teleportować na PRAWDZIWY skonfigurowany spawn, a nie surowy spawn świata. -->
+    <dependencies>
+        <dependency>
+            <groupId>elo</groupId>
+            <artifactId>mainplugins-core</artifactId>
+        </dependency>
+    </dependencies>
 </project>

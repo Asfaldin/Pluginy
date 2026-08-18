@@ -1,12 +1,12 @@
 package elo.mainplugins.chatfilter;
 
+import io.papermc.paper.event.player.AsyncChatEvent;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * wyciszony gracz normalnie pisze na czacie, widzą go wszyscy poza osobą, która go
  * wyciszyła. To NIE jest serwerowy mute (dla wszystkich) - każdy decyduje tylko za siebie.
  *
- * ConcurrentHashMap/concurrent Set celowo - AsyncPlayerChatEvent leci na osobnym wątku
+ * ConcurrentHashMap/concurrent Set celowo - AsyncChatEvent leci na osobnym wątku
  * (nazwa nie kłamie), a komenda /mute wykonuje się na głównym wątku serwera. Zwykły
  * HashMap/HashSet byłby tu realnym wyścigiem (race condition) między tymi dwoma wątkami.
  */
@@ -94,10 +94,13 @@ public class MuteManager implements Listener {
     }
 
     @EventHandler
-    public void onChat(AsyncPlayerChatEvent event) {
+    public void onChat(AsyncChatEvent event) {
         if (wyciszeni.isEmpty()) return; // szybkie wyjście - zdecydowana większość czasu nikt nikogo nie wyciszył
 
         UUID nadawca = event.getPlayer().getUniqueId();
-        event.getRecipients().removeIf(odbiorca -> maWyciszonego(odbiorca.getUniqueId(), nadawca));
+        // viewers() to odpowiednik dawnego getRecipients(), ale List<Audience> zamiast
+        // Set<Player> - odbiorcy niebędący graczem (np. konsola) nie mają UUID, więc nie
+        // mogą mieć nikogo wyciszonego i zostają bez zmian.
+        event.viewers().removeIf(odbiorca -> odbiorca instanceof Player gracz && maWyciszonego(gracz.getUniqueId(), nadawca));
     }
 }

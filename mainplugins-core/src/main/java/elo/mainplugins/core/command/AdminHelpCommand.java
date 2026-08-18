@@ -11,7 +11,7 @@ import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * /adminhelp - "wszystko naraz" dla operatora: status każdego pluginu z rodziny
+ * /wszystkiekomendy - "wszystko naraz" dla operatora: status każdego pluginu z rodziny
  * Mainplugins, podstawowe statystyki serwera i pełna segmentowa lista komend
  * (to samo co /komendy, tylko w jednym miejscu z resztą). Chronione uprawnieniem
  * (domyślnie: op) - w przeciwieństwie do /komendy, które jest dla każdego gracza.

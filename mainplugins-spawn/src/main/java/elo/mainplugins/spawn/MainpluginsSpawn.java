@@ -19,22 +19,22 @@ public final class MainpluginsSpawn extends JavaPlugin {
 
         SpawnCommands executor = new SpawnCommands(spawnManager, obszarManager, warpManager);
         if (getCommand("spawn") != null) getCommand("spawn").setExecutor(executor);
-        if (getCommand("setspawn") != null) {
-            getCommand("setspawn").setExecutor(executor);
-            getCommand("setspawn").setTabCompleter(executor);
+        if (getCommand("@setspawn") != null) {
+            getCommand("@setspawn").setExecutor(executor);
+            getCommand("@setspawn").setTabCompleter(executor);
         }
-        if (getCommand("obszar") != null) {
-            getCommand("obszar").setExecutor(executor);
-            getCommand("obszar").setTabCompleter(executor);
+        if (getCommand("@obszar") != null) {
+            getCommand("@obszar").setExecutor(executor);
+            getCommand("@obszar").setTabCompleter(executor);
         }
         if (getCommand("warp") != null) {
             getCommand("warp").setExecutor(executor);
             getCommand("warp").setTabCompleter(executor);
         }
-        if (getCommand("setwarp") != null) getCommand("setwarp").setExecutor(executor);
-        if (getCommand("delwarp") != null) {
-            getCommand("delwarp").setExecutor(executor);
-            getCommand("delwarp").setTabCompleter(executor);
+        if (getCommand("@setwarp") != null) getCommand("@setwarp").setExecutor(executor);
+        if (getCommand("@delwarp") != null) {
+            getCommand("@delwarp").setExecutor(executor);
+            getCommand("@delwarp").setTabCompleter(executor);
         }
     }
 }

@@ -5,12 +5,14 @@ api-version: '1.20'
 depend: [MainpluginsCore]
 
 commands:
-  dajwedke:
-    description: "[TEST] Daj sobie wędkę danego tieru: /dajwedke <1|2|3>"
+  "@dajwedke":
+    description: "[TEST] Daj sobie wędkę danego tieru: /@dajwedke <1|2|3>"
     permission: mainplugins.fishing.admin
-  dajrecepture:
-    description: "[TEST] Daj sobie recepturę: /dajrecepture <niebianska|kosmiczna>"
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@dajrecepture":
+    description: "[TEST] Daj sobie recepturę: /@dajrecepture <niebianska|kosmiczna>"
     permission: mainplugins.fishing.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.fishing.admin:

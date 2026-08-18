@@ -6,13 +6,16 @@ depend: [MainpluginsCore]
 softdepend: [MainpluginsQuests]
 
 commands:
-  setranga:
+  "@setranga":
     description: Ustaw rangę graczowi (gracz/vip/admin)
     usage: /<command> <gracz> <gracz|vip|admin>
     permission: mainplugins.ranks.admin
-  ranga:
-    description: Sprawdź swoją rangę (lub innego gracza)
-    usage: /<command> [gracz]
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@ranga":
+    description: Sprawdź rangę gracza
+    usage: /<command> <gracz>
+    permission: mainplugins.ranks.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.ranks.admin:

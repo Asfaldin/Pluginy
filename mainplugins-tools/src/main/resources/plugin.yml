@@ -7,18 +7,21 @@ depend: [MainpluginsCore]
 commands:
   narzedzia:
     description: Narzedzia
-  addlvl:
+  "@addlvl":
     description: "[DEBUG] Dodaje poziomy trzymanemu narzedziu (testy)"
     usage: "/<command> [ilosc]"
     permission: mainplugins.tools.addlvl
-  addcustompickaxe:
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@addcustompickaxe":
     description: "[ADMIN] Nadaje startowy kilof (Wydajnosciowy) - jak nagroda questu 1"
     usage: "/<command> [gracz]"
     permission: mainplugins.tools.addcustompickaxe
-  dajwszystko:
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@dajwszystko":
     description: "[DEBUG] Nadaje wszystkie typy kilofa i wszystkie gemy do testow"
     usage: "/<command> [gracz]"
     permission: mainplugins.tools.dajwszystko
+    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.tools.addlvl:

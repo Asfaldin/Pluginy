@@ -7,17 +7,19 @@ depend: [MainpluginsCore]
 commands:
   quest:
     description: Zadania
-  addkruchy:
+  "@addkruchy":
     description: (Admin) Testowe wydanie generatora kruchych surowcow + przewodnika
     permission: mainplugins.quests.addkruchy
-  dajbrukgen:
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@dajbrukgen":
     description: (Admin) Testowe wydanie Generatora Bruku
     permission: mainplugins.quests.dajbrukgen
+    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.quests.addkruchy:
-    description: Testowe wydanie generatora kruchych surowcow (komenda /addkruchy)
+    description: Testowe wydanie generatora kruchych surowcow (komenda /@addkruchy)
     default: op
   mainplugins.quests.dajbrukgen:
-    description: Testowe wydanie Generatora Bruku (komenda /dajbrukgen)
+    description: Testowe wydanie Generatora Bruku (komenda /@dajbrukgen)
     default: op

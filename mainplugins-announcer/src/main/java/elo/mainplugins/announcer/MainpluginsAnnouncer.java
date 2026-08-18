@@ -10,8 +10,8 @@ public final class MainpluginsAnnouncer extends JavaPlugin {
     public void onEnable() {
         announcerManager = new AnnouncerManager(this);
 
-        if (getCommand("reloadannouncer") != null) {
-            getCommand("reloadannouncer").setExecutor((sender, command, label, args) -> {
+        if (getCommand("@reloadannouncer") != null) {
+            getCommand("@reloadannouncer").setExecutor((sender, command, label, args) -> {
                 announcerManager.przeladuj();
                 sender.sendMessage("§aOgloszenia.yml zostały przeładowane.");
                 return true;

@@ -21,7 +21,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * Generyczne, nazwane punkty teleportu (/warp, /setwarp, /delwarp) - ten sam wzorzec
+ * Generyczne, nazwane punkty teleportu (/warp, /@setwarp, /@delwarp) - ten sam wzorzec
  * persystencji co SpawnManager (jeden punkt), tylko trzymany jako mapa nazwa->Location w
  * jednym pliku warps.yml zamiast pojedynczych pól. Nazwy warpów są case-insensitive
  * (przechowywane z małej litery) - "Kowal"/"kowal"/"KOWAL" to ten sam warp.

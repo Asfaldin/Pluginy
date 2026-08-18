@@ -45,6 +45,7 @@
         <module>mainplugins-spawn</module>
         <module>mainplugins-fishing</module>
         <module>mainplugins-dungeons</module>
+        <module>mainplugins-chatfilter</module>
     </modules>
 
     <properties>

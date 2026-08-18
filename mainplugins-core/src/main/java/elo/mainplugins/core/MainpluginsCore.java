@@ -2,6 +2,7 @@ package elo.mainplugins.core;
 
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.command.AdminHelpCommand;
+import elo.mainplugins.core.command.AdminPomocCommand;
 import elo.mainplugins.core.command.MoneyAddCommand;
 import elo.mainplugins.core.command.MoneyUndoCommand;
 import elo.mainplugins.core.command.PayCommand;
@@ -30,17 +31,34 @@ public final class MainpluginsCore extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new ResourcePackManager(this), this);
 
-        if (getCommand("adminhelp") != null) {
-            getCommand("adminhelp").setExecutor(new AdminHelpCommand());
+        if (getCommand("wszystkiekomendy") != null) {
+            getCommand("wszystkiekomendy").setExecutor(new AdminHelpCommand());
         }
+        PomocCommand pomocCommand = new PomocCommand();
         if (getCommand("komendy") != null) {
-            getCommand("komendy").setExecutor(new PomocCommand());
+            getCommand("komendy").setExecutor(pomocCommand);
         }
-        if (getCommand("moneyadd") != null) {
-            getCommand("moneyadd").setExecutor(new MoneyAddCommand(economyManager));
+        if (getCommand("komendy2") != null) {
+            getCommand("komendy2").setExecutor(pomocCommand);
         }
-        if (getCommand("moneyundo") != null) {
-            getCommand("moneyundo").setExecutor(new MoneyUndoCommand(economyManager));
+        if (getCommand("komendy3") != null) {
+            getCommand("komendy3").setExecutor(pomocCommand);
+        }
+        AdminPomocCommand adminPomocCommand = new AdminPomocCommand();
+        if (getCommand("@komendy") != null) {
+            getCommand("@komendy").setExecutor(adminPomocCommand);
+        }
+        if (getCommand("@komendy2") != null) {
+            getCommand("@komendy2").setExecutor(adminPomocCommand);
+        }
+        if (getCommand("@komendy3") != null) {
+            getCommand("@komendy3").setExecutor(adminPomocCommand);
+        }
+        if (getCommand("@moneyadd") != null) {
+            getCommand("@moneyadd").setExecutor(new MoneyAddCommand(economyManager));
+        }
+        if (getCommand("@moneyundo") != null) {
+            getCommand("@moneyundo").setExecutor(new MoneyUndoCommand(economyManager));
         }
         if (getCommand("pay") != null) {
             getCommand("pay").setExecutor(new PayCommand(economyManager));

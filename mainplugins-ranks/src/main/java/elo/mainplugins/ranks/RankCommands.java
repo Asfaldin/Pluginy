@@ -27,10 +27,10 @@ public class RankCommands implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
-        if (command.getName().equalsIgnoreCase("setranga")) {
+        if (command.getName().equalsIgnoreCase("@setranga")) {
             return obslugaSetranga(sender, args);
         }
-        if (command.getName().equalsIgnoreCase("ranga")) {
+        if (command.getName().equalsIgnoreCase("@ranga")) {
             return obslugaRanga(sender, args);
         }
         return false;
@@ -38,7 +38,7 @@ public class RankCommands implements CommandExecutor, TabCompleter {
 
     private boolean obslugaSetranga(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            sender.sendMessage(Component.text("Użycie: /setranga <gracz> <gracz|vip|admin>", NamedTextColor.RED));
+            sender.sendMessage(Component.text("Użycie: /@setranga <gracz> <gracz|vip|admin>", NamedTextColor.RED));
             return true;
         }
 
@@ -67,19 +67,15 @@ public class RankCommands implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    /** Tylko admin (patrz permission "@ranga" w plugin.yml) - zawsze wymaga nicku, bez sprawdzania własnej rangi bez argumentu. */
     private boolean obslugaRanga(CommandSender sender, String[] args) {
-        OfflinePlayer target;
-        if (args.length >= 1) {
-            @SuppressWarnings("deprecation")
-            OfflinePlayer resolved = Bukkit.getOfflinePlayer(args[0]);
-            target = resolved;
-        } else if (sender instanceof Player self) {
-            target = self;
-        } else {
-            sender.sendMessage(Component.text("Użycie: /ranga <gracz>", NamedTextColor.RED));
+        if (args.length < 1) {
+            sender.sendMessage(Component.text("Użycie: /@ranga <gracz>", NamedTextColor.RED));
             return true;
         }
 
+        @SuppressWarnings("deprecation")
+        OfflinePlayer target = Bukkit.getOfflinePlayer(args[0]);
         if (!target.hasPlayedBefore() && !target.isOnline()) {
             sender.sendMessage(Component.text("Nie znaleziono gracza o nicku " + args[0] + ".", NamedTextColor.RED));
             return true;
@@ -92,7 +88,7 @@ public class RankCommands implements CommandExecutor, TabCompleter {
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String[] args) {
-        if (command.getName().equalsIgnoreCase("setranga")) {
+        if (command.getName().equalsIgnoreCase("@setranga")) {
             if (args.length == 1) {
                 return null; // domyślna podpowiedź nicków online od Bukkita
             }

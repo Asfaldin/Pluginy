@@ -1,0 +1,16 @@
+name: MainpluginsChatFilter
+version: ${project.version}
+main: elo.mainplugins.chatfilter.MainpluginsChatFilter
+api-version: '1.20'
+depend: [MainpluginsCore]
+
+commands:
+  mute:
+    description: Osobiste wyciszenie gracza (tylko u Ciebie, nie dla całego serwera)
+    usage: /<command> <gracz>
+    aliases: [wycisz]
+
+permissions:
+  mainplugins.chatfilter.bypass:
+    description: Pomija cooldown na czacie (i przyszłe filtry)
+    default: op

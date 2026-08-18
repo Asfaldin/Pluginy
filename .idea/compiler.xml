@@ -12,6 +12,7 @@
         <module name="mainplugins-menu" />
         <module name="mainplugins-announcer" />
         <module name="mainplugins-farming" />
+        <module name="mainplugins-chatfilter" />
         <module name="mainplugins-market" />
         <module name="mainplugins-skyblock" />
         <module name="mainplugins-tools" />

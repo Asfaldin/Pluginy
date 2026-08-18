@@ -45,7 +45,7 @@ import java.util.UUID;
  * {@link ObszarProtectionManager} - tak samo jak IslandManager/IslandProtectionManager
  * w mainplugins-skyblock.
  *
- * Różdżka jest "przełączalna" - /obszar wand <nazwa> pamięta PER GRACZA, który obszar
+ * Różdżka jest "przełączalna" - /@obszar wand <nazwa> pamięta PER GRACZA, który obszar
  * aktualnie edytuje jego różdżka (edytowanyObszar), więc kilku adminów może jednocześnie
  * zaznaczać różne obszary bez wchodzenia sobie w drogę.
  */
@@ -177,7 +177,7 @@ public class ObszarManager implements Listener {
         meta.lore(List.of(
                 Component.text("LPM bloku - ustaw róg 1", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
                 Component.text("PPM bloku - ustaw róg 2", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                Component.text("Edytuje obszar wybrany przez /obszar wand <nazwa>", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
+                Component.text("Edytuje obszar wybrany przez /@obszar wand <nazwa>", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
         ));
         meta.getPersistentDataContainer().set(wandKey, PersistentDataType.BYTE, (byte) 1);
         item.setItemMeta(meta);
@@ -208,7 +208,7 @@ public class ObszarManager implements Listener {
 
         String nazwa = edytowanyObszar.get(player.getUniqueId());
         if (nazwa == null) {
-            player.sendMessage(Component.text("Ta różdżka nie edytuje żadnego obszaru - użyj /obszar wand <nazwa>.", NamedTextColor.RED));
+            player.sendMessage(Component.text("Ta różdżka nie edytuje żadnego obszaru - użyj /@obszar wand <nazwa>.", NamedTextColor.RED));
             return;
         }
 

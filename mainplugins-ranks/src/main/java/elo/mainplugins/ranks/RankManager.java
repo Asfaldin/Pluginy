@@ -32,7 +32,7 @@ import java.util.UUID;
  * skyblock/IslandProtectionManager i mainplugins-spawn/ObszarProtectionManager).
  *
  * Op NIGDY nie jest automatycznie ODBIERANY przy dołączeniu do gry - tylko przy
- * jawnej zmianie rangi z ADMIN na coś innego przez /setranga (patrz setRank). Dzięki
+ * jawnej zmianie rangi z ADMIN na coś innego przez /@setranga (patrz setRank). Dzięki
  * temu op nadany ręcznie spoza tego systemu (np. przez /op w konsoli, zanim ten
  * moduł istniał) nigdy nie zostaje po cichu zdjęty tylko dlatego, że gracz nie ma
  * wpisu w ranks.yml - jedyne, co się dzieje przy joinie, to "dogranie" opa graczom

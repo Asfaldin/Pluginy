@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>elo</groupId>
+        <artifactId>mainplugins-parent</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>mainplugins-chatfilter</artifactId>
+    <packaging>jar</packaging>
+    <name>Mainplugins - ChatFilter</name>
+
+    <!-- Ochrona czatu (anty-spam, wyciszenia, limit znaków, docelowo tez filtr przeklenstw). -->
+
+    <dependencies>
+        <!-- scope=provided (patrz dependencyManagement w root pom) - Core musi zostac
+             osobnym, wgranym pluginem, nie wolno go zshade'owac do srodka (patrz depend
+             w plugin.yml). Potrzebny wylacznie po RankService (limit znakow per ranga). -->
+        <dependency>
+            <groupId>elo</groupId>
+            <artifactId>mainplugins-core</artifactId>
+        </dependency>
+    </dependencies>
+</project>

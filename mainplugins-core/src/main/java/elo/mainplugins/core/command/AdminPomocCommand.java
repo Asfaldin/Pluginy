@@ -45,7 +45,9 @@ public class AdminPomocCommand implements CommandExecutor {
             )),
             new Sekcja("Spawn i obszary", List.of(
                     new Wpis("/@setspawn [info]", "Ustaw główny punkt spawnu"),
-                    new Wpis("/@obszar <wand|usun|lista|info|moby|border> ...", "Zarządzaj chronionymi obszarami")
+                    new Wpis("/@obszar <wand|usun|lista|info|moby|border> ...", "Zarządzaj chronionymi obszarami"),
+                    new Wpis("/@setwarp <nazwa>", "Ustaw/nadpisz warp w aktualnej lokalizacji"),
+                    new Wpis("/@delwarp <nazwa>", "Usuń istniejący warp")
             ))
     );
 
@@ -66,7 +68,6 @@ public class AdminPomocCommand implements CommandExecutor {
 
     private static final List<Sekcja> STRONA_3 = List.of(
             new Sekcja("Questy (testowe)", List.of(
-                    new Wpis("/@addfale", "Testowe 5 fal zombie pod graczem, bez nagrody"),
                     new Wpis("/@addkruchy", "Testowe wydanie generatora kruchych surowców"),
                     new Wpis("/@dajbrukgen", "Testowe wydanie Generatora Bruku")
             )),

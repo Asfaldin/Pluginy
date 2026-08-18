@@ -60,6 +60,23 @@ public class HoeSkillManager extends ToolSkillManager {
         this.pkSpeedPassiveModifierKey = new NamespacedKey(plugin, "pk_hoe_speed_passive");
     }
 
+    /**
+     * Tworzy w pełni zainicjalizowaną motykę, poziom 1 - jedyne wejście do tworzenia
+     * motyk (quest "Rolniczy Krok" Głównej Ścieżki, /dajwszystko). Zastępuje starą
+     * LevelableToolsManager#stworzNarzedzie - ta motyka od razu żyje na silniku
+     * ToolSkillManager (pk_level/pk_tier), bez tymczasowego "drewnianego" stanu.
+     */
+    public ItemStack stworzMotyke(Player player) {
+        ItemStack item = new ItemStack(Material.DIAMOND_HOE);
+        ItemMeta meta = item.getItemMeta();
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        pdc.set(keyType, PersistentDataType.STRING, "hoe");
+        pdc.set(keyOwner, PersistentDataType.STRING, player.getUniqueId().toString());
+        item.setItemMeta(meta);
+        ensureInitialized(item);
+        return item;
+    }
+
     // ============================================================ Zbiory ====
 
     @EventHandler(ignoreCancelled = true)
@@ -268,15 +285,16 @@ public class HoeSkillManager extends ToolSkillManager {
 
     // ==================================================== Statystyki/wygląd ====
 
+    /** Stały Material niezależny od tieru (patrz baza ToolSkillManager#materialOverride) - motyka już nie ewoluuje wizualnie, tylko statystycznie. */
+    @Override
+    protected Material materialOverride(PersistentDataContainer pdc) {
+        return Material.DIAMOND_HOE;
+    }
+
+    /** Nigdy realnie użyte (materialOverride zawsze wygrywa) - musi istnieć, bo abstrakcyjne w bazie. */
     @Override
     protected Material materialForTier(int tier) {
-        return switch (tier) {
-            case 0 -> Material.WOODEN_HOE;
-            case 1 -> Material.STONE_HOE;
-            case 2 -> Material.IRON_HOE;
-            case 3 -> Material.DIAMOND_HOE;
-            default -> Material.NETHERITE_HOE;
-        };
+        return Material.DIAMOND_HOE;
     }
 
     private int effLevelOf(PersistentDataContainer pdc) {

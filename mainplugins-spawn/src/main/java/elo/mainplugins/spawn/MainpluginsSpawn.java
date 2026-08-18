@@ -8,17 +8,19 @@ public final class MainpluginsSpawn extends JavaPlugin {
 
     private SpawnManager spawnManager;
     private ObszarManager obszarManager;
+    private WarpManager warpManager;
 
     @Override
     public void onEnable() {
         spawnManager = new SpawnManager(this);
         obszarManager = new ObszarManager(this);
+        warpManager = new WarpManager(this);
         getServer().getPluginManager().registerEvents(spawnManager, this);
         getServer().getPluginManager().registerEvents(obszarManager, this);
         getServer().getPluginManager().registerEvents(new ObszarProtectionManager(obszarManager), this);
         getServer().getServicesManager().register(SpawnService.class, spawnManager, this, ServicePriority.Normal);
 
-        SpawnCommands executor = new SpawnCommands(spawnManager, obszarManager);
+        SpawnCommands executor = new SpawnCommands(spawnManager, obszarManager, warpManager);
         if (getCommand("spawn") != null) getCommand("spawn").setExecutor(executor);
         if (getCommand("@setspawn") != null) {
             getCommand("@setspawn").setExecutor(executor);
@@ -27,6 +29,15 @@ public final class MainpluginsSpawn extends JavaPlugin {
         if (getCommand("@obszar") != null) {
             getCommand("@obszar").setExecutor(executor);
             getCommand("@obszar").setTabCompleter(executor);
+        }
+        if (getCommand("warp") != null) {
+            getCommand("warp").setExecutor(executor);
+            getCommand("warp").setTabCompleter(executor);
+        }
+        if (getCommand("@setwarp") != null) getCommand("@setwarp").setExecutor(executor);
+        if (getCommand("@delwarp") != null) {
+            getCommand("@delwarp").setExecutor(executor);
+            getCommand("@delwarp").setTabCompleter(executor);
         }
     }
 

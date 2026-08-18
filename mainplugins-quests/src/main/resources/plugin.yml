@@ -7,10 +7,6 @@ depend: [MainpluginsCore]
 commands:
   quest:
     description: Zadania
-  "@addfale":
-    description: (Admin) Testowe uruchomienie 5 fal zombie Placzacego Obsydianu pod graczem, bez nagrody
-    permission: mainplugins.quests.addfale
-    permission-message: "&cNie masz permisji do tej komendy!"
   "@addkruchy":
     description: (Admin) Testowe wydanie generatora kruchych surowcow + przewodnika
     permission: mainplugins.quests.addkruchy
@@ -21,9 +17,6 @@ commands:
     permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
-  mainplugins.quests.addfale:
-    description: Testowe wywolanie fal zombie (komenda /@addfale)
-    default: op
   mainplugins.quests.addkruchy:
     description: Testowe wydanie generatora kruchych surowcow (komenda /@addkruchy)
     default: op

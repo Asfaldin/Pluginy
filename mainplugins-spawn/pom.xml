@@ -14,10 +14,15 @@
     <packaging>jar</packaging>
     <name>Mainplugins - Spawn</name>
 
-    <!-- Główny spawn serwera (punkt teleportu + chroniony obszar) - poza tym czysta logika
-         Bukkit. Jedyna zależność od Core to SpawnService (scope=provided, patrz komentarz
-         w mainplugins-skyblock/pom.xml) - żeby inne pluginy (np. skyblock po usunięciu wyspy)
-         mogły teleportować na PRAWDZIWY skonfigurowany spawn, a nie surowy spawn świata. -->
+    <!--
+        Główny spawn serwera (punkt teleportu + chroniony obszar) + /warp. Zależność od Core
+        (scope=provided, patrz komentarz w mainplugins-skyblock/pom.xml) ma dwa niezależne
+        powody: (1) SpawnService - żeby inne pluginy (np. skyblock po usunięciu wyspy) mogły
+        teleportować na PRAWDZIWY skonfigurowany spawn, a nie surowy spawn świata; (2) warp
+        "kowal" (quest #16 Głównej Ścieżki) sprawdza ukonczylGlownaSciezke przez
+        QuestService/CoreAPI, patrz WarpManager. Reszta modułu (spawn/obszar) nadal nie
+        potrzebuje niczego z Core.
+    -->
     <dependencies>
         <dependency>
             <groupId>elo</groupId>

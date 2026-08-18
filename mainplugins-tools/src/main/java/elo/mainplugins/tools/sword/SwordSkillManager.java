@@ -60,6 +60,36 @@ public class SwordSkillManager extends ToolSkillManager {
         this.pkAttackSpeedPassiveModifierKey = new NamespacedKey(plugin, "pk_miecz_atkspeed_passive");
     }
 
+    /**
+     * Tworzy w pełni zainicjalizowany miecz, poziom 1 - jedyne wejście do tworzenia
+     * mieczy (quest "Fundusz Obronny" / "Pierwszy Loch" Głównej Ścieżki, /dajwszystko).
+     * Zastępuje starą LevelableToolsManager#stworzNarzedzie - ten miecz od razu żyje na
+     * silniku ToolSkillManager (pk_level/pk_tier), bez tymczasowego "drewnianego" stanu.
+     */
+    public ItemStack stworzMiecz(Player player) {
+        ItemStack item = new ItemStack(Material.DIAMOND_SWORD);
+        ItemMeta meta = item.getItemMeta();
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        pdc.set(keyType, PersistentDataType.STRING, "sword");
+        pdc.set(keyOwner, PersistentDataType.STRING, player.getUniqueId().toString());
+        item.setItemMeta(meta);
+        ensureInitialized(item);
+        return item;
+    }
+
+    /** Maksymalny poziom wśród WSZYSTKICH trzymanych mieczy gracza - pod ToolsService#poziomMiecza. */
+    public int poziomNajlepszegoMiecza(Player player) {
+        int max = 0;
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item == null || item.getItemMeta() == null) continue;
+            PersistentDataContainer pdc = item.getItemMeta().getPersistentDataContainer();
+            if (!"sword".equals(pdc.get(keyType, PersistentDataType.STRING))) continue;
+            int lvl = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
+            if (lvl > max) max = lvl;
+        }
+        return max;
+    }
+
     // ============================================================= Walka ====
 
     @EventHandler(ignoreCancelled = true)
@@ -283,15 +313,16 @@ public class SwordSkillManager extends ToolSkillManager {
 
     // ==================================================== Statystyki/wygląd ====
 
+    /** Stały Material niezależny od tieru (patrz baza ToolSkillManager#materialOverride) - miecz już nie ewoluuje wizualnie, tylko statystycznie. */
+    @Override
+    protected Material materialOverride(PersistentDataContainer pdc) {
+        return Material.DIAMOND_SWORD;
+    }
+
+    /** Nigdy realnie użyte (materialOverride zawsze wygrywa) - musi istnieć, bo abstrakcyjne w bazie. */
     @Override
     protected Material materialForTier(int tier) {
-        return switch (tier) {
-            case 0 -> Material.WOODEN_SWORD;
-            case 1 -> Material.STONE_SWORD;
-            case 2 -> Material.IRON_SWORD;
-            case 3 -> Material.DIAMOND_SWORD;
-            default -> Material.NETHERITE_SWORD;
-        };
+        return Material.DIAMOND_SWORD;
     }
 
     private int sharpnessLevelOf(PersistentDataContainer pdc) {

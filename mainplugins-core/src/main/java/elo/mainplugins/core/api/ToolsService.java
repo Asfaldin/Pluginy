@@ -30,10 +30,9 @@ public interface ToolsService {
 
     /**
      * Jak {@link #dajEwoluujacyKilof(Player)}, ale łopata - piąte ewoluujące narzędzie,
-     * przywrócone do gry jako nagroda za quest "generator kruchych surowców" Głównej
-     * Ścieżki (wcześniej usunięte, patrz historia LevelableToolsManager). Działa
-     * DOKŁADNIE tak jak pozostałe cztery narzędzia - bez żadnej specjalnej flagi/silk
-     * touchu (świadomie odłożone na później).
+     * przywrócone do gry (wcześniej usunięte, patrz historia LevelableToolsManager),
+     * dotąd nie wpięte w żaden quest. Działa DOKŁADNIE tak jak pozostałe cztery narzędzia -
+     * bez żadnej specjalnej flagi/silk touchu (świadomie odłożone na później).
      */
     void dajEwoluujacaLopate(Player player);
 
@@ -44,4 +43,14 @@ public interface ToolsService {
      * zamiast ogólnego "poziom narzędzia".
      */
     int poziomKilofa(Player player);
+
+    /**
+     * NAJWYŻSZY poziom (1-100) wśród WSZYSTKICH siekier gracza - 0, jeśli nie ma żadnej.
+     * Siekiera (jak kilof) nie ma już tierów zmieniających Material - tylko statystyczny
+     * poziom (AxeSkillManager), stąd sprawdzanie POZIOMU zamiast Material w questach.
+     */
+    int poziomSiekiery(Player player);
+
+    /** Jak {@link #poziomSiekiery(Player)}, ale miecz (SwordSkillManager). */
+    int poziomMiecza(Player player);
 }

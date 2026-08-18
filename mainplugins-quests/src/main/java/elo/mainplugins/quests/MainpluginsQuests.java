@@ -1,5 +1,6 @@
 package elo.mainplugins.quests;
 
+import elo.mainplugins.core.api.QuestService;
 import elo.mainplugins.core.api.TytulService;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -16,6 +17,7 @@ public final class MainpluginsQuests extends JavaPlugin {
         QuestManager questManager = new QuestManager(this);
         getServer().getPluginManager().registerEvents(questManager, this);
         getServer().getServicesManager().register(TytulService.class, questManager, this, ServicePriority.Normal);
+        getServer().getServicesManager().register(QuestService.class, questManager, this, ServicePriority.Normal);
 
         GeneratorKruchychManager generatorManager = new GeneratorKruchychManager(this);
         getServer().getPluginManager().registerEvents(generatorManager, this);
@@ -34,17 +36,6 @@ public final class MainpluginsQuests extends JavaPlugin {
                 // podpięte do żadnej logiki (case w switchu był zakomentowany).
                 boolean zMenu = args.length > 0 && args[args.length - 1].equalsIgnoreCase("zmenu");
                 questManager.otworzMenuQuestow(player, zMenu);
-                return true;
-            });
-        }
-
-        if (getCommand("@addfale") != null) {
-            getCommand("@addfale").setExecutor((sender, command, label, args) -> {
-                if (!(sender instanceof Player player)) {
-                    sender.sendMessage("Tylko gracz moze uzyc tej komendy.");
-                    return true;
-                }
-                questManager.wywolajTestoweFale(player);
                 return true;
             });
         }

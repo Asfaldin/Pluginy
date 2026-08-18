@@ -14,13 +14,15 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 /**
- * /spawn (każdy), /@setspawn [info] i /@obszar <wand|usun|lista|info|moby|border> ... - te
- * dwie ostatnie chronione uprawnieniem mainplugins.spawn.admin (patrz plugin.yml - Bukkit
- * sam odrzuca wywołanie zanim trafi do onCommand). Cała logika w SpawnManager/ObszarManager.
- * Ta sama klasa dostarcza też podpowiedzi Tab (patrz onTabComplete) - żeby admin nie musiał
- * pamiętać z głowy dokładnej listy podkomend/nazw obszarów.
+ * /spawn i /warp (każdy), /@setspawn [info], /@obszar <wand|usun|lista|info|moby|border> ...,
+ * /@setwarp <nazwa> i /@delwarp <nazwa> - te ostatnie cztery chronione uprawnieniem
+ * mainplugins.spawn.admin (patrz plugin.yml - Bukkit sam odrzuca wywołanie zanim trafi do
+ * onCommand). Cała logika w SpawnManager/ObszarManager/WarpManager. Ta sama klasa dostarcza
+ * też podpowiedzi Tab (patrz onTabComplete) - żeby admin nie musiał pamiętać z głowy
+ * dokładnej listy podkomend/nazw obszarów/warpów.
  */
 public class SpawnCommands implements CommandExecutor, TabCompleter {
 
@@ -33,10 +35,12 @@ public class SpawnCommands implements CommandExecutor, TabCompleter {
 
     private final SpawnManager spawnManager;
     private final ObszarManager obszarManager;
+    private final WarpManager warpManager;
 
-    public SpawnCommands(SpawnManager spawnManager, ObszarManager obszarManager) {
+    public SpawnCommands(SpawnManager spawnManager, ObszarManager obszarManager, WarpManager warpManager) {
         this.spawnManager = spawnManager;
         this.obszarManager = obszarManager;
+        this.warpManager = warpManager;
     }
 
     @Override
@@ -50,8 +54,36 @@ public class SpawnCommands implements CommandExecutor, TabCompleter {
             case "spawn" -> spawnManager.teleportujNaSpawn(player);
             case "@setspawn" -> handleSetspawn(player, args);
             case "@obszar" -> handleObszar(player, args);
+            case "warp" -> handleWarp(player, args);
+            case "@setwarp" -> handleSetwarp(player, args);
+            case "@delwarp" -> handleDelwarp(player, args);
         }
         return true;
+    }
+
+    private void handleWarp(Player player, String[] args) {
+        if (args.length == 0) {
+            Set<String> nazwy = warpManager.nazwyWarpow();
+            player.sendMessage(Component.text(nazwy.isEmpty() ? "Brak ustawionych warpów." : "Warpy: " + String.join(", ", nazwy), NamedTextColor.YELLOW));
+            return;
+        }
+        warpManager.teleportujDoWarpu(player, args[0]);
+    }
+
+    private void handleSetwarp(Player player, String[] args) {
+        if (args.length == 0) {
+            player.sendMessage(Component.text("Użycie: /@setwarp <nazwa>", NamedTextColor.RED));
+            return;
+        }
+        warpManager.ustawWarp(player, args[0]);
+    }
+
+    private void handleDelwarp(Player player, String[] args) {
+        if (args.length == 0) {
+            player.sendMessage(Component.text("Użycie: /@delwarp <nazwa>", NamedTextColor.RED));
+            return;
+        }
+        warpManager.usunWarp(player, args[0]);
     }
 
     private void handleSetspawn(Player player, String[] args) {
@@ -131,6 +163,9 @@ public class SpawnCommands implements CommandExecutor, TabCompleter {
 
         if (nazwaKomendy.equals("@setspawn")) {
             return args.length == 1 ? dopasuj(args[0], PODKOMENDY_SETSPAWN) : List.of();
+        }
+        if (nazwaKomendy.equals("warp") || nazwaKomendy.equals("@delwarp")) {
+            return args.length == 1 ? dopasuj(args[0], warpManager.nazwyWarpow()) : List.of();
         }
         if (!nazwaKomendy.equals("@obszar")) return List.of();
 

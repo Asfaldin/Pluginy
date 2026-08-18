@@ -34,12 +34,15 @@ public final class MainpluginsTools extends JavaPlugin {
 
         AxeSkillManager axeSkillManager = new AxeSkillManager(this, CoreAPI.getEconomyService());
         getServer().getPluginManager().registerEvents(axeSkillManager, this);
+        levelableToolsManager.setAxeSkillManager(axeSkillManager);
 
         HoeSkillManager hoeSkillManager = new HoeSkillManager(this, CoreAPI.getEconomyService());
         getServer().getPluginManager().registerEvents(hoeSkillManager, this);
+        levelableToolsManager.setHoeSkillManager(hoeSkillManager);
 
         SwordSkillManager swordSkillManager = new SwordSkillManager(this, CoreAPI.getEconomyService());
         getServer().getPluginManager().registerEvents(swordSkillManager, this);
+        levelableToolsManager.setSwordSkillManager(swordSkillManager);
 
         NiszczycielManager niszczycielManager = new NiszczycielManager(this);
         getServer().getPluginManager().registerEvents(niszczycielManager, this);

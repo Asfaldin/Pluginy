@@ -1,6 +1,7 @@
 package elo.mainplugins.market;
 
 import elo.mainplugins.core.api.EconomyService;
+import elo.mainplugins.core.api.MarketService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -25,7 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public class MarketManager implements Listener {
+public class MarketManager implements Listener, MarketService {
 
     private final Plugin plugin;
     private final EconomyService economyManager;
@@ -60,6 +61,17 @@ public class MarketManager implements Listener {
             try { plikRynku.createNewFile(); } catch (IOException ignored) {}
         }
         this.configRynku = YamlConfiguration.loadConfiguration(plikRynku);
+    }
+
+    /** {@inheritDoc} Skanuje wszystkie aktywne oferty po polu "sprzedawca" - pod QuestService/quest #19 Głównej Ścieżki. */
+    @Override
+    public boolean maAktywnaOferte(UUID uuid) {
+        if (!configRynku.contains("przedmioty")) return false;
+        String szukany = uuid.toString();
+        for (String klucz : configRynku.getConfigurationSection("przedmioty").getKeys(false)) {
+            if (szukany.equals(configRynku.getString("przedmioty." + klucz + ".sprzedawca"))) return true;
+        }
+        return false;
     }
 
     private void zapiszRynek() {

@@ -52,6 +52,7 @@ public class PomocCommand implements CommandExecutor {
     private static final List<Sekcja> STRONA_2 = List.of(
             new Sekcja("Teleportacja", List.of(
                     new Wpis("/spawn", "Teleport na spawn serwera"),
+                    new Wpis("/warp [nazwa]", "Teleport do nazwanego warpu (niektóre wymagają ukończenia questa)"),
                     new Wpis("/tp <gracz>", "Wyślij prośbę o teleportację do gracza"),
                     new Wpis("/tpaccept", "Zaakceptuj prośbę o teleport"),
                     new Wpis("/tpdeny", "Odrzuć prośbę o teleport")

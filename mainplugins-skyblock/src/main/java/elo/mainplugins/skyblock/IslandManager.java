@@ -1205,10 +1205,14 @@ public class IslandManager implements Listener, IslandService {
     }
 
     /**
-     * /is deposit <kwota> - wpłaca do banku WYSPY, NA KTÓREJ GRACZ FIZYCZNIE STOI
-     * (nie zawsze jego własnej!) - dzięki temu odwiedzający goście też mogą wesprzeć
-     * cudzą wyspę, zgodnie z ustaleniem że wpłaca każdy. Bank jest teraz JEDYNYM
-     * źródłem pieniędzy na ulepszenia (patrz uprosGranice/ulepszSpawnerStatystyke).
+     * /is deposit <kwota> - wpłaca do banku WŁASNEJ wyspy gracza, niezależnie gdzie
+     * fizycznie stoi w danym momencie. Bank jest JEDYNYM źródłem pieniędzy na
+     * ulepszenia (patrz uprosGranice/ulepszSpawnerStatystyke).
+     *
+     * Wcześniej wpłata leciała do banku wyspy, na której gracz fizycznie stał (pomysł:
+     * goście mogą wesprzeć cudzą wyspę) - w praktyce to było zbyt łatwe do pomylenia:
+     * gracz odwiedzający kolegę i wpisujący /is deposit z odruchu wpłacał kasę na
+     * JEGO bank, nie swój, bez żadnego ostrzeżenia. Zmienione na zawsze-własną wyspę.
      */
     private void wplacDoBankuKomenda(Player player, String[] args) {
         if (args.length < 2) {
@@ -1219,11 +1223,8 @@ public class IslandManager implements Listener, IslandService {
         double kwota = sparsujKwote(player, args[1]);
         if (Double.isNaN(kwota)) return;
 
-        IslandData data = znajdzWyspePod(player.getLocation());
-        if (data == null) {
-            player.sendMessage(Component.text("Musisz stać na terenie jakiejś wyspy, żeby wpłacić do jej banku!", NamedTextColor.RED));
-            return;
-        }
+        IslandData data = wlasnaWyspaLubKomunikat(player);
+        if (data == null) return;
 
         if (!economyManager.maWystarczajaco(player.getUniqueId(), kwota)) {
             player.sendMessage(Component.text("Nie masz wystarczająco pieniędzy!", NamedTextColor.RED));

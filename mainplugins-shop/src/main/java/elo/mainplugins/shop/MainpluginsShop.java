@@ -12,10 +12,12 @@ import org.jetbrains.annotations.NotNull;
 
 public final class MainpluginsShop extends JavaPlugin {
 
+    private ShopManager shopManager;
+
     @Override
     public void onEnable() {
         EconomyService economyService = CoreAPI.getEconomyService();
-        ShopManager shopManager = new ShopManager(this, economyService);
+        shopManager = new ShopManager(this, economyService);
         getServer().getPluginManager().registerEvents(shopManager, this);
 
         CommandExecutor executor = new CommandExecutor() {
@@ -46,6 +48,13 @@ public final class MainpluginsShop extends JavaPlugin {
                 sender.sendMessage("§aSklep.yml został przeładowany.");
                 return true;
             });
+        }
+    }
+
+    @Override
+    public void onDisable() {
+        if (shopManager != null && shopManager.getCeny() != null) {
+            shopManager.getCeny().zamknij();
         }
     }
 }

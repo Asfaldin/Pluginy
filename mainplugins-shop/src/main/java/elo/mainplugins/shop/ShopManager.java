@@ -48,6 +48,7 @@ public class ShopManager implements Listener {
     private final EconomyService economyManager;
     private File sklepFile;
     private FileConfiguration sklepConfig;
+    private final DynamicPriceManager ceny;
 
     private final Map<UUID, String> playerCategory = new HashMap<>();
     private final Map<UUID, Integer> playerPage = new HashMap<>();
@@ -94,6 +95,19 @@ public class ShopManager implements Listener {
         this.plugin = plugin;
         this.economyManager = economyManager;
         stworzLubWczytajPlikSklepu();
+        this.ceny = new DynamicPriceManager(plugin);
+    }
+
+    /** Żeby plugin mógł zamknąć manager cen dynamicznych przy wyłączaniu (patrz MainpluginsShop.onDisable()). */
+    public DynamicPriceManager getCeny() { return ceny; }
+
+    /**
+     * Klucz, pod którym DynamicPriceManager trzyma mnożnik ceny danego itemu.
+     * Custom-id ma pierwszeństwo, bo kilka pozycji dzieli ten sam Material
+     * (9 spawnerów = jeden SPAWNER, 10 ryb = COD/SALMON/...).
+     */
+    private String kluczCeny(String material, String customId) {
+        return customId != null ? customId : material;
     }
 
     /**
@@ -376,6 +390,7 @@ public class ShopManager implements Listener {
             int sellAmount = sklepConfig.getInt(path + "sell-amount", amount);
             int buyPrice = sklepConfig.getInt(path + "buy-price", -1);
             int sellPrice = sklepConfig.getInt(path + "sell-price", -1);
+            String customId = sklepConfig.getString(path + "custom-id", null);
             String customDisplayName = sklepConfig.getString(path + "display-name", null);
             List<String> customLore = sklepConfig.getStringList(path + "lore");
 
@@ -405,8 +420,18 @@ public class ShopManager implements Listener {
                         NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
             }
             if (sellPrice >= 0) {
-                lore.add(Component.text("Skup: " + sellPrice + " $ za " + sellAmount + " szt.",
-                        NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
+                String kluczCenyDyn = kluczCeny(matName, customId);
+                int cenaDyn = ceny.policzCeneSkupu(kluczCenyDyn, sellPrice, buyPrice);
+                String zmianaCeny = ceny.opisZmiany(kluczCenyDyn);
+
+                Component liniaSkup = Component.text("Skup: " + cenaDyn + " $ za " + sellAmount + " szt.",
+                        NamedTextColor.AQUA);
+                if (zmianaCeny != null) {
+                    boolean wzrost = zmianaCeny.startsWith("+");
+                    liniaSkup = liniaSkup.append(Component.text("  " + zmianaCeny,
+                            wzrost ? NamedTextColor.GREEN : NamedTextColor.RED));
+                }
+                lore.add(liniaSkup.decoration(TextDecoration.ITALIC, false));
             }
             lore.add(Component.empty());
 
@@ -744,8 +769,16 @@ public class ShopManager implements Listener {
         return item;
     }
 
-    /** Ile sztuk idzie w jednej transakcji skupu, ile sklep za taki lot płaci i z jakiej jest kategorii. */
-    private record OfertaSkupu(int lot, int cenaZaLot, String kategoria) {}
+    /**
+     * Ile sztuk idzie w jednej transakcji skupu, ile sklep za taki lot płaci (bazowa
+     * cena z cennika, przed korektą DynamicPriceManager) i z jakiej jest kategorii.
+     *
+     * cenaKupnaZaLot: cena kupna PRZELICZONA na ten sam lot co skup (nie zawsze
+     * lot kupna i lot skupu to ta sama ilość — patrz sell-amount) - potrzebna
+     * DynamicPriceManager do pilnowania, żeby skup nigdy nie przebił kupna.
+     * -1, jeśli itemu nie da się kupić.
+     */
+    private record OfertaSkupu(int lot, int cenaZaLot, String kategoria, int cenaKupnaZaLot) {}
 
     /** Jedyna kategoria, w której sprzedaje się pojedyncze sztuki zamiast pełnych lotów. */
     private static final String KATEGORIA_POJEDYNCZE = "mineraly";
@@ -786,7 +819,16 @@ public class ShopManager implements Listener {
                 // sell-amount to lot skupu; gdy go nie ma, spada na amount (lot kupna)
                 int lot = sklepConfig.getInt(path + "sell-amount",
                           sklepConfig.getInt(path + "amount", 1));
-                if (lot > 0) return new OfertaSkupu(lot, cena, catKey);
+                if (lot <= 0) continue;
+
+                // Cena kupna przeliczona na lot skupu - dla ochrony przed odwróceniem
+                // marży w DynamicPriceManager (skup nigdy nie może przebić kupna).
+                int cenaKupna = sklepConfig.getInt(path + "buy-price", -1);
+                int lotKupna = sklepConfig.getInt(path + "amount", 1);
+                int cenaKupnaZaLot = cenaKupna < 0 ? -1
+                        : (int) Math.round((double) cenaKupna / lotKupna * lot);
+
+                return new OfertaSkupu(lot, cena, catKey, cenaKupnaZaLot);
             }
         }
         return null;
@@ -851,6 +893,11 @@ public class ShopManager implements Listener {
 
         boolean pojedynczo = KATEGORIA_POJEDYNCZE.equals(oferta.kategoria());
 
+        // Cena z cennika przechodzi przez DynamicPriceManager - mnożnik reagujący
+        // na obrót tym itemem, z sufitem pilnującym, żeby skup nigdy nie przebił kupna.
+        String kluczCeny = kluczCeny(material.name(), customId);
+        int cenaZaLot = ceny.policzCeneSkupu(kluczCeny, oferta.cenaZaLot(), oferta.cenaKupnaZaLot());
+
         int doZabrania;
         long zarobek;
 
@@ -860,7 +907,7 @@ public class ShopManager implements Listener {
             // nigdy nie przekracza floor(a+b), więc rozbijanie sprzedaży na małe
             // partie nie daje żadnej przewagi - najwyżej gracz straci ułamek.
             doZabrania = posiadane;
-            zarobek = (long) Math.floor((double) posiadane * oferta.cenaZaLot() / oferta.lot());
+            zarobek = (long) Math.floor((double) posiadane * cenaZaLot / oferta.lot());
         } else {
             // Reszta sklepu: wyłącznie pełne loty, jak dotąd.
             int loty = posiadane / oferta.lot();
@@ -871,7 +918,7 @@ public class ShopManager implements Listener {
                 return;
             }
             doZabrania = loty * oferta.lot();
-            zarobek = (long) loty * oferta.cenaZaLot();
+            zarobek = (long) loty * cenaZaLot;
         }
 
         if (zarobek <= 0) {
@@ -892,6 +939,7 @@ public class ShopManager implements Listener {
         }
 
         economyManager.dodajKase(player.getUniqueId(), zarobek);
+        ceny.zarejestrujSprzedaz(kluczCeny, doZabrania);
 
         int reszta = posiadane - doZabrania;
         Component msg = Component.text("Sprzedano " + doZabrania + "x " + material.name()
@@ -1262,6 +1310,7 @@ public class ShopManager implements Listener {
         int sellAmount = sklepConfig.getInt(path + "sell-amount", amount);
         int buyPrice = sklepConfig.getInt(path + "buy-price", -1);
         int sellPrice = sklepConfig.getInt(path + "sell-price", -1);
+        String customId = sklepConfig.getString(path + "custom-id", null);
         String customDisplayName = sklepConfig.getString(path + "display-name", null);
         String katNazwa = sklepConfig.getString("categories." + catKey + ".name", catKey);
 
@@ -1282,8 +1331,18 @@ public class ShopManager implements Listener {
                     NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
         }
         if (sellPrice >= 0) {
-            lore.add(Component.text("Skup: " + sellPrice + " $ za " + sellAmount + " szt.",
-                    NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
+            String kluczCenyDyn = kluczCeny(matName, customId);
+            int cenaDyn = ceny.policzCeneSkupu(kluczCenyDyn, sellPrice, buyPrice);
+            String zmianaCeny = ceny.opisZmiany(kluczCenyDyn);
+
+            Component liniaSkup = Component.text("Skup: " + cenaDyn + " $ za " + sellAmount + " szt.",
+                    NamedTextColor.AQUA);
+            if (zmianaCeny != null) {
+                boolean wzrost = zmianaCeny.startsWith("+");
+                liniaSkup = liniaSkup.append(Component.text("  " + zmianaCeny,
+                        wzrost ? NamedTextColor.GREEN : NamedTextColor.RED));
+            }
+            lore.add(liniaSkup.decoration(TextDecoration.ITALIC, false));
         }
         lore.add(Component.empty());
 

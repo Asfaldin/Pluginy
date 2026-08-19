@@ -2,6 +2,7 @@ package elo.mainplugins.core.economy;
 
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.TopGracz;
+import elo.mainplugins.core.util.AsyncConfigSaver;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -39,6 +40,7 @@ public class EconomyManager implements EconomyService {
     private final Plugin plugin;
     private final File plikEkonomii;
     private final FileConfiguration configEkonomii;
+    private final AsyncConfigSaver saver;
 
     public EconomyManager(Plugin plugin) {
         this.plugin = plugin;
@@ -49,6 +51,7 @@ public class EconomyManager implements EconomyService {
         }
         this.configEkonomii = YamlConfiguration.loadConfiguration(plikEkonomii);
         migrujJesliTrzeba();
+        this.saver = new AsyncConfigSaver(plugin, configEkonomii, plikEkonomii, 30);
     }
 
     // ==================================================== migracja ====
@@ -74,7 +77,11 @@ public class EconomyManager implements EconomyService {
         }
 
         configEkonomii.set(KLUCZ_WERSJI, WERSJA_GROSZE);
-        zapisz();
+        try {
+            configEkonomii.save(plikEkonomii);
+        } catch (IOException e) {
+            plugin.getLogger().severe("KRYTYCZNE: nie zapisano migracji ekonomii! " + e.getMessage());
+        }
         if (przeliczone > 0) {
             plugin.getLogger().info("Ekonomia: przeliczono " + przeliczone
                     + " kont na grosze (long). Stary format double już nieużywany.");
@@ -177,8 +184,21 @@ public class EconomyManager implements EconomyService {
         return wynik.size() > limit ? wynik.subList(0, limit) : wynik;
     }
 
+    // Nie zapisuje od razu — tylko oznacza zmianę. Faktyczny zrzut na dysk
+    // leci asynchronicznie co 30 sekund oraz przy wyłączaniu serwera.
+    //
+    // Wcześniej ta metoda zapisywała cały plik przy KAŻDEJ zmianie salda,
+    // synchronicznie na głównym wątku — przy aktywnym sklepie to były setki
+    // zapisów na minutę.
+    //
+    // Sprawdzenie na null jest mimo to potrzebne: konstruktor może wywołać
+    // inne operacje przed utworzeniem savera, w zależności od kolejności pól.
     private void zapisz() {
-        try { configEkonomii.save(plikEkonomii); }
-        catch (IOException e) { plugin.getLogger().warning("Nie mozna zapisac ekonomii!"); }
+        if (saver != null) saver.oznaczZmiane();
+    }
+
+    /** Wywołaj w onDisable() — zapisuje natychmiast i zatrzymuje cykl. */
+    public void zamknij() {
+        if (saver != null) saver.zamknij();
     }
 }

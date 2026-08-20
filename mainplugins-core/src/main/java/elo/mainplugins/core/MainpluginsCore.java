@@ -67,8 +67,8 @@ public final class MainpluginsCore extends JavaPlugin {
         if (getCommand("@moneyundo") != null) {
             getCommand("@moneyundo").setExecutor(new MoneyUndoCommand(economyManager));
         }
-        if (getCommand("pay") != null) {
-            getCommand("pay").setExecutor(new PayCommand(economyManager));
+        if (getCommand("przelej") != null) {
+            getCommand("przelej").setExecutor(new PayCommand(economyManager));
         }
         if (getCommand("portfel") != null) {
             getCommand("portfel").setExecutor(new PortfelCommand(economyManager));

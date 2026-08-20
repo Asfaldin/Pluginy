@@ -8,16 +8,33 @@ commands:
   sklep:
     description: Sklep
     aliases: [buy]
-  sell:
+  sprzedaj:
     description: Sprzedaj trzymany przedmiot
-  sellall:
+    aliases: [sell]
+  sprzedajwszystko:
     description: Sprzedaj wszystkie przedmioty tego typu z ekwipunku
+    aliases: [sellall]
   "@reloadsklep":
     description: Wczytaj sklep.yml na nowo, bez restartu serwera
     permission: mainplugins.shop.reload
     permission-message: "&cNie masz permisji do tej komendy!"
+  "@statsklep":
+    description: Statystyki sprzedazy z biezacej doby
+    usage: /@statsklep [snapshot]
+    permission: mainplugins.shop.stats
+    permission-message: "&cNie masz permisji do tej komendy!"
+  '@sklep':
+    description: Administracyjna edycja cen sklepu
+    usage: /@sklep <info|cena|reset|resetall|mnoznik>
+    permission: mainplugins.shop.admin
 
 permissions:
   mainplugins.shop.reload:
     description: Pozwala przeładować konfigurację sklepu
+    default: op
+  mainplugins.shop.stats:
+    description: Dostep do statystyk sklepu
+    default: op
+  mainplugins.shop.admin:
+    description: Edycja cen sklepu
     default: op

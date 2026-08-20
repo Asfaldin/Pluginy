@@ -12,9 +12,9 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * /pay <gracz> <kwota> - przelew pieniędzy między graczami, dostępny dla każdego
- * (w przeciwieństwie do /moneyadd, to nie jest narzędzie administratora). Wspiera
- * też odbiorców offline (patrz resolvowanie przez OfflinePlayer/hasPlayedBefore,
+ * /przelej <gracz> <kwota> (alias /pay) - przelew pieniędzy między graczami, dostępny
+ * dla każdego (w przeciwieństwie do /moneyadd, to nie jest narzędzie administratora).
+ * Wspiera też odbiorców offline (patrz resolvowanie przez OfflinePlayer/hasPlayedBefore,
  * ten sam wzorzec co MoneyAddCommand i IslandManager.usunCzlonkaKomenda).
  */
 public class PayCommand implements CommandExecutor {
@@ -33,7 +33,7 @@ public class PayCommand implements CommandExecutor {
         }
 
         if (args.length < 2) {
-            player.sendMessage(Component.text("Użycie: /pay <gracz> <kwota>", NamedTextColor.RED));
+            player.sendMessage(Component.text("Użycie: /" + label + " <gracz> <kwota>", NamedTextColor.RED));
             return true;
         }
 
@@ -71,7 +71,7 @@ public class PayCommand implements CommandExecutor {
         }
 
         // pobierzGrosze sprawdza saldo i pobiera w jednym kroku, więc nie da się
-        // między sprawdzeniem a pobraniem wcisnąć drugiego /pay tego samego gracza.
+        // między sprawdzeniem a pobraniem wcisnąć drugiego /przelej tego samego gracza.
         if (!economyService.pobierzGrosze(player.getUniqueId(), grosze)) {
             player.sendMessage(Component.text("Nie masz wystarczająco pieniędzy!", NamedTextColor.RED));
             return true;

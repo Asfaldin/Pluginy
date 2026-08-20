@@ -9,8 +9,9 @@ commands:
   is:
     description: Wyspa
     usage: "/is [menu|sethome|usun|border|guests|pvp|mobs|upgrade|members|invite <gracz>|accept|deny|leave|promote <gracz>|demote <gracz>|remove <gracz>|deposit <kwota>|withdraw <kwota>]"
-  home:
+  dom:
     description: Dom / Wyspa
+    aliases: [home]
 
 permissions:
   mainplugins.skyblock.bypass:

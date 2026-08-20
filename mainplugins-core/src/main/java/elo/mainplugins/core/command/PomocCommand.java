@@ -35,16 +35,16 @@ public class PomocCommand implements CommandExecutor {
     private static final List<Sekcja> STRONA_1 = List.of(
             new Sekcja("Wyspa", List.of(
                     new Wpis("/is", "Teleport na wyspę (\"/is menu\" otwiera panel ze wszystkimi opcjami)"),
-                    new Wpis("/home", "Teleport na wyspę")
+                    new Wpis("/dom (/home)", "Teleport na wyspę")
             )),
             new Sekcja("Ekonomia", List.of(
                     new Wpis("/portfel (/p, /money)", "Sprawdź ile masz pieniędzy"),
-                    new Wpis("/pay <gracz> <kwota> (/daj)", "Przelej pieniądze innemu graczowi")
+                    new Wpis("/przelej <gracz> <kwota> (/pay)", "Przelej pieniądze innemu graczowi")
             )),
             new Sekcja("Sklep i Targ", List.of(
                     new Wpis("/sklep (/buy)", "Otwórz sklep serwerowy"),
-                    new Wpis("/sell", "Sprzedaj przedmiot trzymany w ręce"),
-                    new Wpis("/sellall", "Sprzedaj wszystkie przedmioty tego typu z ekwipunku"),
+                    new Wpis("/sprzedaj (/sell)", "Sprzedaj przedmiot trzymany w ręce"),
+                    new Wpis("/sprzedajwszystko (/sellall)", "Sprzedaj wszystkie przedmioty tego typu z ekwipunku"),
                     new Wpis("/targ", "Otwórz targ - handel między graczami")
             ))
     );
@@ -53,9 +53,9 @@ public class PomocCommand implements CommandExecutor {
             new Sekcja("Teleportacja", List.of(
                     new Wpis("/spawn", "Teleport na spawn serwera"),
                     new Wpis("/warp [nazwa]", "Teleport do nazwanego warpu (niektóre wymagają ukończenia questa)"),
-                    new Wpis("/tp <gracz>", "Wyślij prośbę o teleportację do gracza"),
-                    new Wpis("/tpaccept", "Zaakceptuj prośbę o teleport"),
-                    new Wpis("/tpdeny", "Odrzuć prośbę o teleport")
+                    new Wpis("/teleportuj <gracz> (/tp)", "Wyślij prośbę o teleportację do gracza"),
+                    new Wpis("/tpakceptuj (/tpaccept)", "Zaakceptuj prośbę o teleport"),
+                    new Wpis("/tpodrzuc (/tpdeny)", "Odrzuć prośbę o teleport")
             )),
             new Sekcja("Lochy i Bossy", List.of(
                     new Wpis("/tpdun", "Teleport do lochu (fale mobów, na końcu boss)"),
@@ -63,14 +63,14 @@ public class PomocCommand implements CommandExecutor {
             )),
             new Sekcja("Narzędzia i Zadania", List.of(
                     new Wpis("/narzedzia", "Odbierz startowe, ulepszalne narzędzia"),
-                    new Wpis("/quest", "Otwórz listę zadań i odbierz nagrody")
+                    new Wpis("/zadania (/quest)", "Otwórz listę zadań i odbierz nagrody")
             ))
     );
 
     private static final List<Sekcja> STRONA_3 = List.of(
             new Sekcja("Inne", List.of(
                     new Wpis("/itemy", "Otwórz schowek - bezpieczne miejsce na przedmioty"),
-                    new Wpis("/mute <gracz> (/wycisz)", "Wycisz gracza tylko dla siebie (ponownie = odcisz)"),
+                    new Wpis("/wycisz <gracz> (/mute)", "Wycisz gracza tylko dla siebie (ponownie = odcisz)"),
                     new Wpis("/menu", "Otwórz główne menu z szybkim dostępem do wszystkiego"),
                     new Wpis("/discord", "Wyślij sobie klikalny link do naszego Discorda")
             ))

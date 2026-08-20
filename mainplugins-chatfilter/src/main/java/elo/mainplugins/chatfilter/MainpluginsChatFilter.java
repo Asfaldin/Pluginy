@@ -21,8 +21,8 @@ public final class MainpluginsChatFilter extends JavaPlugin {
 
         MuteManager muteManager = new MuteManager(this);
         getServer().getPluginManager().registerEvents(muteManager, this);
-        if (getCommand("mute") != null) {
-            getCommand("mute").setExecutor(new MuteCommand(muteManager));
+        if (getCommand("wycisz") != null) {
+            getCommand("wycisz").setExecutor(new MuteCommand(muteManager));
         }
     }
 }

@@ -49,7 +49,7 @@ public final class MainpluginsSkyblock extends JavaPlugin {
         };
 
         if (getCommand("is") != null) getCommand("is").setExecutor(executor);
-        if (getCommand("home") != null) getCommand("home").setExecutor(executor);
+        if (getCommand("dom") != null) getCommand("dom").setExecutor(executor);
     }
 
     @Override

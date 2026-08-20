@@ -41,12 +41,12 @@ public class MenuPomocyManager implements Listener {
         gui.setItem(11, stworzIkone(Material.EMERALD, "Sklep Serwerowy", "Kupuj i sprzedawaj u serwera (/sklep)"));
         gui.setItem(12, stworzIkone(Material.GOLD_INGOT, "Rynek Graczy", "Handluj z innymi graczami (/targ)"));
         gui.setItem(13, stworzIkone(Material.GRASS_BLOCK, "Twoja Wyspa", "Zarządzaj swoją wyspą (/is)"));
-        gui.setItem(14, stworzIkone(Material.BOOK, "Zadania (Questy)", "Odbierz nagrody za zadania (/quest)"));
+        gui.setItem(14, stworzIkone(Material.BOOK, "Zadania (Questy)", "Odbierz nagrody za zadania (/zadania)"));
         gui.setItem(15, stworzIkone(Material.CHEST, "Schowek", "Bezpieczne miejsce na przedmioty (/itemy)"));
 
         // Dolny rząd GUI - Szybkie akcje (bez własnych, zaawansowanych okien z powrotem)
         gui.setItem(29, stworzIkone(Material.DIAMOND_PICKAXE, "Startowe Narzędzia", "Odbierz ulepszalne narzędzia (/narzedzia)"));
-        gui.setItem(33, stworzIkone(Material.HOPPER, "Szybka Sprzedaż", "Sprzedaj masowo przedmioty z eq (/sellall)"));
+        gui.setItem(33, stworzIkone(Material.HOPPER, "Szybka Sprzedaż", "Sprzedaj masowo przedmioty z eq (/sprzedajwszystko)"));
 
         player.openInventory(gui);
     }
@@ -84,10 +84,10 @@ public class MenuPomocyManager implements Listener {
             // "is menu zmenu" (a nie "is zmenu") - od zmiany semantyki /is bare "is" teleportuje
             // bezpośrednio na wyspę zamiast otwierać panel; z głównego /menu chcemy pokazać panel.
             case GRASS_BLOCK -> player.performCommand("is menu zmenu");
-            case BOOK -> player.performCommand("quest zmenu");
+            case BOOK -> player.performCommand("zadania zmenu");
             case CHEST -> player.performCommand("itemy zmenu");
             case DIAMOND_PICKAXE -> player.performCommand("narzedzia");
-            case HOPPER -> player.performCommand("sellall");
+            case HOPPER -> player.performCommand("sprzedajwszystko");
         }
     }
 }

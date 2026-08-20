@@ -19,12 +19,12 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Osobiste wyciszanie graczy - /mute (alias /wycisz) <nick>. Czysto po stronie słuchacza:
+ * Osobiste wyciszanie graczy - /wycisz (alias /mute) <nick>. Czysto po stronie słuchacza:
  * wyciszony gracz normalnie pisze na czacie, widzą go wszyscy poza osobą, która go
  * wyciszyła. To NIE jest serwerowy mute (dla wszystkich) - każdy decyduje tylko za siebie.
  *
  * ConcurrentHashMap/concurrent Set celowo - AsyncChatEvent leci na osobnym wątku
- * (nazwa nie kłamie), a komenda /mute wykonuje się na głównym wątku serwera. Zwykły
+ * (nazwa nie kłamie), a komenda /wycisz wykonuje się na głównym wątku serwera. Zwykły
  * HashMap/HashSet byłby tu realnym wyścigiem (race condition) między tymi dwoma wątkami.
  */
 public class MuteManager implements Listener {

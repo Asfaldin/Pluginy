@@ -1,6 +1,7 @@
 package elo.mainplugins.core.api;
 
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 /**
  * Opcjonalny kontrakt narzędzi - implementuje go i rejestruje w ServicesManager
@@ -53,4 +54,13 @@ public interface ToolsService {
 
     /** Jak {@link #poziomSiekiery(Player)}, ale miecz (SwordSkillManager). */
     int poziomMiecza(Player player);
+
+    /**
+     * Czy dany przedmiot to Kilof Niflheim z odblokowanym ulepszeniem "Wieczna Zima"
+     * (milestone na 30 lvl, patrz PickaxeSkillManager#NIFL_MILESTONES) - używane przez
+     * moduły spoza mainplugins-tools (np. GeneratorBrukuManager w mainplugins-quests),
+     * żeby wiedzieć, czy zamrażać w lód połączone bloki generatora, bez duplikowania
+     * logiki typu/poziomu kilofa poza jego własnym modułem.
+     */
+    boolean maWiecznaZime(ItemStack tool);
 }

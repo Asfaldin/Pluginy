@@ -152,6 +152,56 @@ public final class MainpluginsTools extends JavaPlugin {
                 return true;
             });
         }
+
+        if (getCommand("@dajkilofa") != null) {
+            getCommand("@dajkilofa").setExecutor((sender, command, label, args) -> {
+                Player target;
+                if (args.length > 0) {
+                    target = Bukkit.getPlayer(args[0]);
+                    if (target == null) {
+                        sender.sendMessage("§cNie znaleziono online gracza o nicku: " + args[0]);
+                        return true;
+                    }
+                } else if (sender instanceof Player player) {
+                    target = player;
+                } else {
+                    sender.sendMessage("§cPodaj nick gracza: /@dajkilofa <gracz>");
+                    return true;
+                }
+
+                target.getInventory().addItem(pickaxeSkillManager.stworzKilof(target, PickaxeType.DOSWIADCZENIA));
+                target.sendMessage("§a[DEBUG] Otrzymałeś przykładowy Kilof Doświadczenia (nowy silnik, max 30 lvl).");
+                if (sender != target) {
+                    sender.sendMessage("§aNadano Kilof Doświadczenia graczowi " + target.getName() + ".");
+                }
+                return true;
+            });
+        }
+
+        if (getCommand("@dajsniezny") != null) {
+            getCommand("@dajsniezny").setExecutor((sender, command, label, args) -> {
+                Player target;
+                if (args.length > 0) {
+                    target = Bukkit.getPlayer(args[0]);
+                    if (target == null) {
+                        sender.sendMessage("§cNie znaleziono online gracza o nicku: " + args[0]);
+                        return true;
+                    }
+                } else if (sender instanceof Player player) {
+                    target = player;
+                } else {
+                    sender.sendMessage("§cPodaj nick gracza: /@dajsniezny <gracz>");
+                    return true;
+                }
+
+                target.getInventory().addItem(pickaxeSkillManager.stworzKilof(target, PickaxeType.NIFLHEIM));
+                target.sendMessage("§a[DEBUG] Otrzymałeś legendarny Kilof Niflheim (nowy silnik, max 30 lvl).");
+                if (sender != target) {
+                    sender.sendMessage("§aNadano Kilof Niflheim graczowi " + target.getName() + ".");
+                }
+                return true;
+            });
+        }
     }
 
     @Override

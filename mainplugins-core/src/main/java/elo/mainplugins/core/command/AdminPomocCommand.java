@@ -74,7 +74,9 @@ public class AdminPomocCommand implements CommandExecutor {
             new Sekcja("Narzędzia (testowe/debug)", List.of(
                     new Wpis("/@addlvl [ilość]", "Dodaje poziomy trzymanemu narzędziu"),
                     new Wpis("/@addcustompickaxe [gracz]", "Nadaje startowy kilof (Wydajnościowy)"),
-                    new Wpis("/@dajwszystko [gracz]", "Nadaje komplet kilofów i gemów do testów")
+                    new Wpis("/@dajwszystko [gracz]", "Nadaje komplet kilofów i gemów do testów"),
+                    new Wpis("/@dajkilofa [gracz]", "Nadaje przykładowy Kilof Doświadczenia (nowy silnik, max 30 lvl)"),
+                    new Wpis("/@dajsniezny [gracz]", "Nadaje legendarny Kilof Niflheim (nowy silnik, max 30 lvl)")
             )),
             new Sekcja("Inne", List.of(
                     new Wpis("/wszystkiekomendy", "Pełna techniczna lista WSZYSTKICH komend + status modułów")

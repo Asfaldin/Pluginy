@@ -11,6 +11,10 @@
     {
       "predicate": { "custom_model_data": 2005 },
       "model": "mainplugins:item/kilof_testowy"
+    },
+    {
+      "predicate": { "custom_model_data": 2007 },
+      "model": "mainplugins:item/kilof_niflheim"
     }
   ]
 }

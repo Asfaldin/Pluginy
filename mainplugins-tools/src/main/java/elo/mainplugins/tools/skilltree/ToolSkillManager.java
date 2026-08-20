@@ -206,8 +206,9 @@ public abstract class ToolSkillManager implements Listener {
     /** [DEBUG] Dodaje `levels` poziomów trzymanemu narzędziu - pod /addlvl. */
     public void debugAddLevels(Player player, ItemStack item, int levels) {
         ensureInitialized(item);
-        int startLevel = item.getItemMeta().getPersistentDataContainer().getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
-        int target = Math.min(MAX_LEVEL, startLevel + levels);
+        PersistentDataContainer initialPdc = item.getItemMeta().getPersistentDataContainer();
+        int startLevel = initialPdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
+        int target = Math.min(maxLevel(initialPdc), startLevel + levels);
         while (item.getItemMeta().getPersistentDataContainer().getOrDefault(pkLevel, PersistentDataType.INTEGER, 1) < target) {
             addExp(player, item);
         }
@@ -217,7 +218,8 @@ public abstract class ToolSkillManager implements Listener {
         ItemMeta meta = item.getItemMeta();
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         int level = pdc.getOrDefault(pkLevel, PersistentDataType.INTEGER, 1);
-        if (level >= MAX_LEVEL) return;
+        int cap = maxLevel(pdc);
+        if (level >= cap) return;
 
         int tierBefore = tierOf(pdc);
         int exp = pdc.getOrDefault(pkExp, PersistentDataType.INTEGER, 0) + 1;
@@ -231,10 +233,10 @@ public abstract class ToolSkillManager implements Listener {
             level++;
             leveledUp = true;
 
-            if (level % offerCadence(pdc) == 0) {
+            if (usesCardOffers(pdc) && level % offerCadence(pdc) == 0) {
                 offerRolled = rollCardOffer(pdc);
             }
-            int tierAfter = tierForLevel(level);
+            int tierAfter = tierForLevel(level, pdc);
             if (tierAfter != tierBefore) {
                 pdc.set(pkTier, PersistentDataType.INTEGER, tierAfter);
                 tierUp = true;
@@ -245,6 +247,9 @@ public abstract class ToolSkillManager implements Listener {
         pdc.set(pkExp, PersistentDataType.INTEGER, exp);
         item.setItemMeta(meta);
 
+        if (leveledUp) {
+            onLeveledUp(player, item, level);
+        }
         refreshDisplay(item);
 
         if (leveledUp) {
@@ -265,8 +270,8 @@ public abstract class ToolSkillManager implements Listener {
                         NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
                 player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1f, 1f);
             }
-            if (level >= MAX_LEVEL) {
-                player.sendMessage(Component.text("★ " + nazwa + " osiągnęła maksymalny poziom (" + MAX_LEVEL + ")!",
+            if (level >= cap) {
+                player.sendMessage(Component.text("★ " + nazwa + " osiągnęła maksymalny poziom (" + cap + ")!",
                         NamedTextColor.GOLD, TextDecoration.BOLD));
             }
         }
@@ -384,12 +389,14 @@ public abstract class ToolSkillManager implements Listener {
         String pending = pdc.getOrDefault(pkPendingOffer, PersistentDataType.STRING, "");
         int queuedOffers = pdc.getOrDefault(pkPendingOfferQueue, PersistentDataType.INTEGER, 0);
 
-        meta.displayName(Component.text(displayNameFor(pdc) + " ", NamedTextColor.AQUA, TextDecoration.BOLD)
+        meta.displayName(Component.text(displayNameFor(pdc) + " ", nameColorFor(pdc), TextDecoration.BOLD)
                 .append(Component.text("[Poziom " + level + "]", NamedTextColor.YELLOW, TextDecoration.BOLD)));
 
+        int cap = maxLevel(pdc);
         List<Component> lore = new ArrayList<>();
+        lore.addAll(extraLoreLinesFor(pdc));
         lore.add(Component.text("Tier: " + tierName(tier), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-        if (level >= MAX_LEVEL) {
+        if (level >= cap) {
             lore.add(Component.text("Postęp: MAKSYMALNY POZIOM", NamedTextColor.GOLD, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
         } else {
             int expNeeded = expPerLevel(tier);
@@ -407,7 +414,7 @@ public abstract class ToolSkillManager implements Listener {
 
         if (meta instanceof Damageable damageable) {
             short maxDurability = item.getType().getMaxDurability();
-            double progress = level >= MAX_LEVEL ? 1.0 : (double) exp / expPerLevel(tier);
+            double progress = level >= cap ? 1.0 : (double) exp / expPerLevel(tier);
             int damage = (int) Math.round(maxDurability - maxDurability * progress);
             damageable.setDamage(Math.max(0, Math.min(damage, maxDurability - 1)));
         }
@@ -425,8 +432,40 @@ public abstract class ToolSkillManager implements Listener {
         return EXP_PER_LEVEL_BY_TIER[Math.max(0, Math.min(tier, EXP_PER_LEVEL_BY_TIER.length - 1))];
     }
 
-    protected int tierForLevel(int level) {
+    protected int tierForLevel(int level, PersistentDataContainer pdc) {
         return Math.min((level - 1) / LEVELS_PER_TIER, MAX_TIER);
+    }
+
+    /**
+     * Hook: maksymalny poziom TEGO KONKRETNEGO przedmiotu (nie całego narzędzia) - domyślnie
+     * stała MAX_LEVEL (100), jak dotychczas dla siekiery/motyki/miecza i większości typów
+     * kilofa. Podklasa może zwrócić niższy pułap dla wybranego typu (np. kilof "na krótkim
+     * silniku" kończący progresję na 30) - addExp/refreshDisplay/debugAddLevels liczą się
+     * z tym pułapem zamiast na sztywno z MAX_LEVEL.
+     */
+    protected int maxLevel(PersistentDataContainer pdc) {
+        return MAX_LEVEL;
+    }
+
+    /**
+     * Hook: czy to narzędzie w ogóle korzysta z systemu ofert kart (roguelike wybór co
+     * offerCadence poziomów) - domyślnie true, jak dotychczas. Podklasa zwraca false dla
+     * typu, który zamiast tego ma WŁASNY, deterministyczny mechanizm odblokowywanych
+     * ulepszeń (patrz onLeveledUp) - wtedy addExp nigdy nie losuje/nie kolejkuje oferty
+     * dla takiego przedmiotu.
+     */
+    protected boolean usesCardOffers(PersistentDataContainer pdc) {
+        return true;
+    }
+
+    /**
+     * Hook: wywoływane RAZ na każdy zdobyty poziom (już po zapisaniu nowego pk_level/pk_exp
+     * w przedmiocie, przed odświeżeniem wyświetlania) - domyślnie no-op. Podklasa może tu
+     * np. odblokować stały bonus na konkretnych poziomach-kamieniach milowych, niezależnie
+     * od systemu kart. Implementacja sama odpowiada za zapisanie swoich zmian w PDC
+     * (item.setItemMeta) - refreshDisplay() wywoływane zaraz potem i tak przerysuje przedmiot.
+     */
+    protected void onLeveledUp(Player player, ItemStack item, int newLevel) {
     }
 
     protected String rzymskie(int n) {
@@ -462,6 +501,16 @@ public abstract class ToolSkillManager implements Listener {
      */
     protected String displayNameFor(PersistentDataContainer pdc) {
         return displayName;
+    }
+
+    /** Hook: kolor głównego napisu nazwy (nie licząc "[Poziom X]", zawsze żółty) - domyślnie AQUA, jak dotychczas dla wszystkich narzędzi. */
+    protected NamedTextColor nameColorFor(PersistentDataContainer pdc) {
+        return NamedTextColor.AQUA;
+    }
+
+    /** Hook: dodatkowe linie na SAMEJ GÓRZE opisu przedmiotu (przed "Tier: ...") - domyślnie brak. Np. tag rzadkości. */
+    protected List<Component> extraLoreLinesFor(PersistentDataContainer pdc) {
+        return List.of();
     }
 
     /**

@@ -81,7 +81,31 @@ public enum PickaxeType {
      * Mechanika = 1:1 kopia Wydajnościowego (ta sama gałąź kart), żeby nie projektować
      * osobnego systemu tylko pod item testowy.
      */
-    TESTOWY("Testowy", Material.DIAMOND_PICKAXE, 2005, NamedTextColor.WHITE, WYDAJNOSCIOWY.branch());
+    TESTOWY("Testowy", Material.DIAMOND_PICKAXE, 2005, NamedTextColor.WHITE, WYDAJNOSCIOWY.branch()),
+
+    /**
+     * Prototyp NOWEGO silnika progresji (patrz ToolSkillManager#maxLevel/usesCardOffers/
+     * onLeveledUp) - zamiast puli kart do wyboru ma dokładnie 3 STAŁE ulepszenia,
+     * odblokowywane automatycznie na 10/20/30 lvl (max poziom = 30, patrz
+     * PickaxeSkillManager#maxLevel), plus ciągle rosnącą auto-statę (szansa na bonusowy
+     * orb XP). Gałąź kart poniżej jest CELOWO pusta (List.of()) - ten typ nigdy nie losuje
+     * ofert (usesCardOffers zwraca false dla niego), branch() istnieje tylko żeby spełnić
+     * wymóg konstruktora PickaxeType/ToolSkillManager. Dawany przez /@dajkilofa.
+     */
+    DOSWIADCZENIA("Doświadczenia", Material.STONE_PICKAXE, 2006, NamedTextColor.GREEN,
+            new SkillBranch("DOS", "Doświadczenie", NamedTextColor.GREEN, Material.EXPERIENCE_BOTTLE, List.of())),
+
+    /**
+     * Legendarny, drugi typ na nowym silniku (patrz DOSWIADCZENIA) - max 30 lvl, 3 stałe
+     * ulepszenia na 10/20/30 lvl (patrz PickaxeSkillManager#NIFL_MILESTONES), ZAWSZE
+     * uzbrojony w prawdziwe enchanty Wydajność/Fortuna rosnące z poziomem (patrz
+     * PickaxeSkillManager#niflEfficiencyLevel/niflFortuneLevel) + pasywna szansa na
+     * "zamrożenie" kopanego bloku (bonusowy drop + śnieg obok) i ambientowe cząsteczki
+     * śnieżynek wokół gracza gdy trzymany. Gałąź kart pusta - jak DOSWIADCZENIA, nigdy
+     * nie losuje ofert.
+     */
+    NIFLHEIM("Niflheim", Material.DIAMOND_PICKAXE, 2007, NamedTextColor.DARK_AQUA,
+            new SkillBranch("NIFL", "Mróz", NamedTextColor.DARK_AQUA, Material.PACKED_ICE, List.of()));
 
     private final String displayName;
     private final Material material;

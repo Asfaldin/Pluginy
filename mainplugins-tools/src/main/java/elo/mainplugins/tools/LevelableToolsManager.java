@@ -178,6 +178,12 @@ public class LevelableToolsManager implements Listener, ToolsService {
         return swordSkillManager.poziomNajlepszegoMiecza(player);
     }
 
+    /** {@inheritDoc} Delegacja do PickaxeSkillManager - jedyne miejsce, które zna typ/milestone'y kilofa. */
+    @Override
+    public boolean maWiecznaZime(ItemStack tool) {
+        return pickaxeSkillManager.maWiecznaZime(tool);
+    }
+
     @EventHandler
     public void onDrop(PlayerDropItemEvent event) {
         ItemStack item = event.getItemDrop().getItemStack();

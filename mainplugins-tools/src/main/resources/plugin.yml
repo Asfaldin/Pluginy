@@ -22,6 +22,16 @@ commands:
     usage: "/<command> [gracz]"
     permission: mainplugins.tools.dajwszystko
     permission-message: "&cNie masz permisji do tej komendy!"
+  "@dajkilofa":
+    description: "[DEBUG] Nadaje przykladowy Kilof Doswiadczenia (nowy silnik, max 30 lvl) do testow"
+    usage: "/<command> [gracz]"
+    permission: mainplugins.tools.dajkilofa
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@dajsniezny":
+    description: "[DEBUG] Nadaje legendarny Kilof Niflheim (nowy silnik, max 30 lvl) do testow"
+    usage: "/<command> [gracz]"
+    permission: mainplugins.tools.dajsniezny
+    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.tools.addlvl:
@@ -32,4 +42,10 @@ permissions:
     default: op
   mainplugins.tools.dajwszystko:
     description: Pozwala nadac komplet wszystkich kilofow i gemow do testow
+    default: op
+  mainplugins.tools.dajkilofa:
+    description: Pozwala nadac przykladowy Kilof Doswiadczenia (sobie lub innemu graczowi)
+    default: op
+  mainplugins.tools.dajsniezny:
+    description: Pozwala nadac legendarny Kilof Niflheim (sobie lub innemu graczowi)
     default: op

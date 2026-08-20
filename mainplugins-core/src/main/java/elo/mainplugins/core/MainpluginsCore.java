@@ -3,6 +3,7 @@ package elo.mainplugins.core;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.command.AdminHelpCommand;
 import elo.mainplugins.core.command.AdminPomocCommand;
+import elo.mainplugins.core.command.DiscordCommand;
 import elo.mainplugins.core.command.MoneyAddCommand;
 import elo.mainplugins.core.command.MoneyUndoCommand;
 import elo.mainplugins.core.command.PayCommand;
@@ -65,6 +66,9 @@ public final class MainpluginsCore extends JavaPlugin {
         }
         if (getCommand("portfel") != null) {
             getCommand("portfel").setExecutor(new PortfelCommand(economyManager));
+        }
+        if (getCommand("discord") != null) {
+            getCommand("discord").setExecutor(new DiscordCommand());
         }
 
         getLogger().info("MainpluginsCore włączony - EconomyService dostępny dla innych pluginów.");

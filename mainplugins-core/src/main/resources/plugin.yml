@@ -44,6 +44,8 @@ commands:
   portfel:
     description: Sprawdź ile masz pieniędzy
     aliases: [p, money]
+  discord:
+    description: Wyślij link zaproszenia na Discorda serwera
 
 permissions:
   mainplugins.core.admin:

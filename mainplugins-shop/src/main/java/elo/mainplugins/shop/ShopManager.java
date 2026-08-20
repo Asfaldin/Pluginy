@@ -25,6 +25,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -101,6 +102,9 @@ public class ShopManager implements Listener {
     /** Żeby plugin mógł zamknąć manager cen dynamicznych przy wyłączaniu (patrz MainpluginsShop.onDisable()). */
     public DynamicPriceManager getCeny() { return ceny; }
 
+    /** Sklejona konfiguracja sklepu (sklep.yml + wszystkie categories/*.yml) — do odczytu przez /@sklep. */
+    public FileConfiguration getSklepConfig() { return sklepConfig; }
+
     /**
      * Klucz, pod którym DynamicPriceManager trzyma mnożnik ceny danego itemu.
      * Custom-id ma pierwszeństwo, bo kilka pozycji dzieli ten sam Material
@@ -108,6 +112,99 @@ public class ShopManager implements Listener {
      */
     private String kluczCeny(String material, String customId) {
         return customId != null ? customId : material;
+    }
+
+    /** Gdzie w configu siedzi dany item. */
+    public record LokalizacjaItemu(String kategoria, String itemKey, String path) {}
+
+    /**
+     * Szuka itemu po nazwie materiału ALBO po custom-id.
+     *
+     * Custom-id sprawdzamy pierwsze, bo jest jednoznaczne — kilka pozycji dzieli
+     * ten sam Material (9 spawnerów = SPAWNER, 10 ryb = COD/SALMON/TROPICAL_FISH),
+     * więc szukanie po materiale trafiłoby w przypadkową z nich.
+     */
+    public LokalizacjaItemu znajdzItem(String szukane) {
+        ConfigurationSection cats = sklepConfig.getConfigurationSection("categories");
+        if (cats == null) return null;
+
+        LokalizacjaItemu poMateriale = null;
+
+        for (String catKey : cats.getKeys(false)) {
+            ConfigurationSection items =
+                    sklepConfig.getConfigurationSection("categories." + catKey + ".items");
+            if (items == null) continue;
+
+            for (String itemKey : items.getKeys(false)) {
+                String path = "categories." + catKey + ".items." + itemKey + ".";
+                String customId = sklepConfig.getString(path + "custom-id", null);
+                String material = sklepConfig.getString(path + "material", "");
+
+                if (szukane.equalsIgnoreCase(customId)) {
+                    return new LokalizacjaItemu(catKey, itemKey, path);   // dokładne trafienie
+                }
+                // Zapamiętujemy, ale szukamy dalej — może gdzieś jest custom-id
+                if (poMateriale == null && szukane.equalsIgnoreCase(material) && customId == null) {
+                    poMateriale = new LokalizacjaItemu(catKey, itemKey, path);
+                }
+            }
+        }
+        return poMateriale;
+    }
+
+    /** Wszystkie identyfikatory do tab-completion. */
+    public List<String> wszystkieIdentyfikatory() {
+        List<String> wynik = new ArrayList<>();
+        ConfigurationSection cats = sklepConfig.getConfigurationSection("categories");
+        if (cats == null) return wynik;
+
+        for (String catKey : cats.getKeys(false)) {
+            ConfigurationSection items =
+                    sklepConfig.getConfigurationSection("categories." + catKey + ".items");
+            if (items == null) continue;
+            for (String itemKey : items.getKeys(false)) {
+                String path = "categories." + catKey + ".items." + itemKey + ".";
+                String customId = sklepConfig.getString(path + "custom-id", null);
+                wynik.add(customId != null ? customId : sklepConfig.getString(path + "material", ""));
+            }
+        }
+        return wynik;
+    }
+
+    /**
+     * Zapisuje nową cenę do właściwego pliku w categories/ i przeładowuje sklep.
+     *
+     * KLUCZOWE: sklepConfig w pamięci to SKLEJKA wszystkich plików z categories/.
+     * Zapisanie go z powrotem stworzyłoby jeden wielki plik i zniszczyło podział
+     * na kategorie. Dlatego zapis musi trafić do konkretnego pliku źródłowego.
+     *
+     * @param pole "buy-price" albo "sell-price"
+     * @return komunikat błędu, albo null gdy się udało
+     */
+    public String zmienCeneWPliku(LokalizacjaItemu lok, String pole, int nowaWartosc) {
+        File plikKategorii = new File(plugin.getDataFolder(), "categories/" + lok.kategoria() + ".yml");
+        if (!plikKategorii.exists()) {
+            return "Nie znaleziono pliku kategorii: " + lok.kategoria() + ".yml";
+        }
+
+        YamlConfiguration kat = YamlConfiguration.loadConfiguration(plikKategorii);
+        // W pliku kategorii nie ma przedrostka "categories.<nazwa>." — nazwa pliku
+        // JEST nazwą kategorii, więc ścieżka jest krótsza niż w sklejonym configu.
+        String pathWPliku = "items." + lok.itemKey() + "." + pole;
+
+        if (!kat.contains("items." + lok.itemKey())) {
+            return "Item nie istnieje w pliku " + lok.kategoria() + ".yml";
+        }
+
+        kat.set(pathWPliku, nowaWartosc);
+        try {
+            kat.save(plikKategorii);
+        } catch (IOException e) {
+            return "Blad zapisu: " + e.getMessage();
+        }
+
+        przeladujKonfiguracje();   // ta metoda już istnieje - używa jej /@reloadsklep
+        return null;
     }
 
     /**
@@ -421,15 +518,21 @@ public class ShopManager implements Listener {
             }
             if (sellPrice >= 0) {
                 String kluczCenyDyn = kluczCeny(matName, customId);
-                int cenaDyn = ceny.policzCeneSkupu(kluczCenyDyn, sellPrice, buyPrice);
-                String zmianaCeny = ceny.opisZmiany(kluczCenyDyn);
+                int cenaKupnaZaLot = buyPrice < 0 ? -1
+                        : (int) Math.round((double) buyPrice / amount * sellAmount);
+                int cenaDyn = ceny.policzCeneSkupu(kluczCenyDyn, sellPrice, cenaKupnaZaLot);
 
                 Component liniaSkup = Component.text("Skup: " + cenaDyn + " $ za " + sellAmount + " szt.",
                         NamedTextColor.AQUA);
-                if (zmianaCeny != null) {
-                    boolean wzrost = zmianaCeny.startsWith("+");
-                    liniaSkup = liniaSkup.append(Component.text("  " + zmianaCeny,
-                            wzrost ? NamedTextColor.GREEN : NamedTextColor.RED));
+                int kierunek = ceny.kierunekZmiany(kluczCenyDyn);
+                if (ceny.czyZablokowany(kluczCenyDyn)) {
+                    // Fioletowa gwiazdka zamiast strzalki - inna barwa i inny znak,
+                    // zeby na pierwszy rzut oka bylo widac, ze to nie zwykle wahanie.
+                    liniaSkup = liniaSkup.append(Component.text("  ★ EVENT", NamedTextColor.LIGHT_PURPLE));
+                } else if (kierunek > 0) {
+                    liniaSkup = liniaSkup.append(Component.text("  ▲", NamedTextColor.GREEN));
+                } else if (kierunek < 0) {
+                    liniaSkup = liniaSkup.append(Component.text("  ▼", NamedTextColor.RED));
                 }
                 lore.add(liniaSkup.decoration(TextDecoration.ITALIC, false));
             }
@@ -940,6 +1043,7 @@ public class ShopManager implements Listener {
 
         economyManager.dodajKase(player.getUniqueId(), zarobek);
         ceny.zarejestrujSprzedaz(kluczCeny, doZabrania);
+        ceny.getStatystyki().zapiszTransakcje(kluczCeny, doZabrania, zarobek);
 
         int reszta = posiadane - doZabrania;
         Component msg = Component.text("Sprzedano " + doZabrania + "x " + material.name()
@@ -1332,15 +1436,19 @@ public class ShopManager implements Listener {
         }
         if (sellPrice >= 0) {
             String kluczCenyDyn = kluczCeny(matName, customId);
-            int cenaDyn = ceny.policzCeneSkupu(kluczCenyDyn, sellPrice, buyPrice);
-            String zmianaCeny = ceny.opisZmiany(kluczCenyDyn);
+            int cenaKupnaZaLot = buyPrice < 0 ? -1
+                    : (int) Math.round((double) buyPrice / amount * sellAmount);
+            int cenaDyn = ceny.policzCeneSkupu(kluczCenyDyn, sellPrice, cenaKupnaZaLot);
 
             Component liniaSkup = Component.text("Skup: " + cenaDyn + " $ za " + sellAmount + " szt.",
                     NamedTextColor.AQUA);
-            if (zmianaCeny != null) {
-                boolean wzrost = zmianaCeny.startsWith("+");
-                liniaSkup = liniaSkup.append(Component.text("  " + zmianaCeny,
-                        wzrost ? NamedTextColor.GREEN : NamedTextColor.RED));
+            int kierunek = ceny.kierunekZmiany(kluczCenyDyn);
+            if (ceny.czyZablokowany(kluczCenyDyn)) {
+                liniaSkup = liniaSkup.append(Component.text("  ★ EVENT", NamedTextColor.LIGHT_PURPLE));
+            } else if (kierunek > 0) {
+                liniaSkup = liniaSkup.append(Component.text("  ▲", NamedTextColor.GREEN));
+            } else if (kierunek < 0) {
+                liniaSkup = liniaSkup.append(Component.text("  ▼", NamedTextColor.RED));
             }
             lore.add(liniaSkup.decoration(TextDecoration.ITALIC, false));
         }

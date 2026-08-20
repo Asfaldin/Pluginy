@@ -49,12 +49,12 @@ public class PoradnikManager implements Listener {
                 strona("JAK ZARABIAĆ",
                         "Waluta serwera to zwykłe $.\n\n" +
                         "Zarabiasz sprzedając surowce w sklepie (/sklep) oraz " +
-                        "kończąc zadania (/quest) - obie drogi dają realną kasę."),
+                        "kończąc zadania (/zadania) - obie drogi dają realną kasę."),
 
                 strona("SKLEP SERWEROWY",
                         "/sklep - otwórz sklep\n" +
-                        "/sell - sprzedaj to, co trzymasz w ręce\n" +
-                        "/sellall - sprzedaj WSZYSTKO tego typu z eq\n\n" +
+                        "/sprzedaj - sprzedaj to, co trzymasz w ręce\n" +
+                        "/sprzedajwszystko - sprzedaj WSZYSTKO tego typu z eq\n\n" +
                         "LPM w sklepie = kup, PPM = sprzedaj."),
 
                 strona("BANK WYSPY",
@@ -69,7 +69,7 @@ public class PoradnikManager implements Listener {
                         "opłacane z banku wyspy (patrz poprzednia strona)."),
 
                 strona("ZADANIA (QUESTY)",
-                        "/quest otwiera menu w kształcie gwiazdy.\n\n" +
+                        "/zadania otwiera menu w kształcie gwiazdy.\n\n" +
                         "Środek gwiazdy to GŁÓWNA ŚCIEŻKA - zadania fabularne, " +
                         "jedno po drugim. Ramiona dookoła to zadania poboczne " +
                         "i specjalne, w dowolnej kolejności."),
@@ -103,7 +103,7 @@ public class PoradnikManager implements Listener {
                         "i sadzi dojrzałe uprawy w pobliżu. Max 1 na wyspę."),
 
                 strona("OD CZEGO ZACZĄĆ?",
-                        "1. Otwórz /quest i zrób pierwsze zadanie Głównej Ścieżki\n" +
+                        "1. Otwórz /zadania i zrób pierwsze zadanie Głównej Ścieżki\n" +
                         "2. Zbieraj podstawowe surowce i sprzedawaj w /sklep\n" +
                         "3. Wpłać zarobek do banku wyspy (/is deposit)\n" +
                         "4. Kupuj ulepszenia, gdy zbierzesz kwotę"),

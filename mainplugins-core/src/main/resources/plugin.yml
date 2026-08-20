@@ -37,10 +37,10 @@ commands:
     permission: mainplugins.core.moneyadd
     permission-message: "&cNie masz permisji do tej komendy!"
     usage: /<command> [gracz]
-  pay:
+  przelej:
     description: Przelej pieniądze innemu graczowi
     usage: /<command> <gracz> <kwota>
-    aliases: [daj]
+    aliases: [pay]
   portfel:
     description: Sprawdź ile masz pieniędzy
     aliases: [p, money]

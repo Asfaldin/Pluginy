@@ -4,10 +4,13 @@ main: elo.mainplugins.teleport.MainpluginsTeleport
 api-version: '1.20'
 
 commands:
-  tp:
+  teleportuj:
     description: Wyślij prośbę o teleportację do gracza
-    usage: /tp <gracz>
-  tpaccept:
+    usage: /<command> <gracz>
+    aliases: [tp]
+  tpakceptuj:
     description: Zaakceptuj prośbę o teleportację
-  tpdeny:
+    aliases: [tpaccept]
+  tpodrzuc:
     description: Odrzuć prośbę o teleportację
+    aliases: [tpdeny]

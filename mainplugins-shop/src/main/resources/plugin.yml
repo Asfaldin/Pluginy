@@ -8,10 +8,12 @@ commands:
   sklep:
     description: Sklep
     aliases: [buy]
-  sell:
+  sprzedaj:
     description: Sprzedaj trzymany przedmiot
-  sellall:
+    aliases: [sell]
+  sprzedajwszystko:
     description: Sprzedaj wszystkie przedmioty tego typu z ekwipunku
+    aliases: [sellall]
   "@reloadsklep":
     description: Wczytaj sklep.yml na nowo, bez restartu serwera
     permission: mainplugins.shop.reload

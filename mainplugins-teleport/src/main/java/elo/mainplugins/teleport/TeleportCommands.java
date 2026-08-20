@@ -8,8 +8,9 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * Wcześniej ta klasa (jako "Komendy") w ogóle nie była zarejestrowana w głównym
- * pluginie - żyła w repo jako martwy kod, a jej komendy (/tp, /tpaccept, /tpdeny)
- * nie istniały nawet w plugin.yml. Tutaj jest w końcu realnie podpięta. Case "menu"
+ * pluginie - żyła w repo jako martwy kod, a jej komendy (/teleportuj, /tpakceptuj,
+ * /tpodrzuc - aliasy /tp, /tpaccept, /tpdeny) nie istniały nawet w plugin.yml.
+ * Tutaj jest w końcu realnie podpięta. Case "menu"
  * z oryginału został usunięty - komenda /menu należy wyłącznie do MainpluginsMenu,
  * nie może jej rejestrować drugi plugin.
  */
@@ -29,19 +30,19 @@ public class TeleportCommands implements CommandExecutor {
         }
 
         switch (command.getName().toLowerCase()) {
-            case "tp" -> {
+            case "teleportuj" -> {
                 if (args.length < 1) {
-                    player.sendMessage("Użycie: /tp <gracz>");
+                    player.sendMessage("Użycie: /" + label + " <gracz>");
                     return true;
                 }
                 teleportManager.wyslijProsbe(player, args[0]);
                 return true;
             }
-            case "tpaccept" -> {
+            case "tpakceptuj" -> {
                 teleportManager.zaakceptujProsbe(player);
                 return true;
             }
-            case "tpdeny" -> {
+            case "tpodrzuc" -> {
                 teleportManager.odrzucProsbe(player);
                 return true;
             }

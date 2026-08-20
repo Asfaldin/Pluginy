@@ -5,10 +5,10 @@ api-version: '1.20'
 depend: [MainpluginsCore]
 
 commands:
-  mute:
+  wycisz:
     description: Osobiste wyciszenie gracza (tylko u Ciebie, nie dla całego serwera)
     usage: /<command> <gracz>
-    aliases: [wycisz]
+    aliases: [mute]
 
 permissions:
   mainplugins.chatfilter.bypass:

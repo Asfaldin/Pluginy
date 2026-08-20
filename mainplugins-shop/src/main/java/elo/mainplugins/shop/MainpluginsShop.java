@@ -29,16 +29,16 @@ public final class MainpluginsShop extends JavaPlugin {
                 }
                 switch (command.getName().toLowerCase()) {
                     case "sklep" -> shopManager.otworzSklep(player, MenuBridge.isZMenu(args));
-                    case "sell" -> shopManager.handleSellCommand(player);
-                    case "sellall" -> shopManager.handleSellAllCommand(player);
+                    case "sprzedaj" -> shopManager.handleSellCommand(player);
+                    case "sprzedajwszystko" -> shopManager.handleSellAllCommand(player);
                 }
                 return true;
             }
         };
 
         if (getCommand("sklep") != null) getCommand("sklep").setExecutor(executor);
-        if (getCommand("sell") != null) getCommand("sell").setExecutor(executor);
-        if (getCommand("sellall") != null) getCommand("sellall").setExecutor(executor);
+        if (getCommand("sprzedaj") != null) getCommand("sprzedaj").setExecutor(executor);
+        if (getCommand("sprzedajwszystko") != null) getCommand("sprzedajwszystko").setExecutor(executor);
         if (getCommand("@statsklep") != null) getCommand("@statsklep").setExecutor(new StatSklepCommand(shopManager));
 
         // Osobny executor: /@reloadsklep ma sens też z konsoli, nie tylko od gracza.

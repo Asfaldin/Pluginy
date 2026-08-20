@@ -1254,7 +1254,7 @@ public class QuestManager implements Listener, TytulService, QuestService {
         if (!maDostepnyQuestGlownejSciezki(player)) return;
 
         BossBar pasek = BossBar.bossBar(
-                Component.text("📜 Masz dostępny quest w Głównej Ścieżce! Wpisz /quest", NamedTextColor.GOLD, TextDecoration.BOLD),
+                Component.text("📜 Masz dostępny quest w Głównej Ścieżce! Wpisz /zadania", NamedTextColor.GOLD, TextDecoration.BOLD),
                 1.0f, BossBar.Color.YELLOW, BossBar.Overlay.PROGRESS);
         player.showBossBar(pasek);
         Bukkit.getScheduler().runTaskLater(plugin, () -> player.hideBossBar(pasek), 20L * 6);

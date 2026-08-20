@@ -11,7 +11,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * /mute (alias /wycisz) <gracz> - osobiste wyciszenie, przełącznik (drugie wywołanie na
+ * /wycisz (alias /mute) <gracz> - osobiste wyciszenie, przełącznik (drugie wywołanie na
  * tym samym graczu = odciszenie). Dostępne dla każdego, bez permisji - to nie jest
  * narzędzie moderacji, tylko osobisty filtr czatu.
  */

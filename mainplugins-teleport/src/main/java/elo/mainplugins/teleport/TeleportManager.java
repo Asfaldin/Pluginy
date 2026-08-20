@@ -27,7 +27,7 @@ public class TeleportManager {
 
         wysylajacy.sendMessage("Wysłano prośbę o teleportację do " + odbiorca.getName() + ".");
         odbiorca.sendMessage("Gracz " + wysylajacy.getName() + " chce się do Ciebie przeteleportować!");
-        odbiorca.sendMessage("Wpisz /tpaccept, aby zaakceptować lub /tpdeny, aby odrzucić.");
+        odbiorca.sendMessage("Wpisz /tpakceptuj (/tpaccept), aby zaakceptować lub /tpodrzuc (/tpdeny), aby odrzucić.");
     }
 
     public void zaakceptujProsbe(Player odbiorca) {

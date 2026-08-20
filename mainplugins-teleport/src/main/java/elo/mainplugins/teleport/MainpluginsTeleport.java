@@ -9,8 +9,8 @@ public final class MainpluginsTeleport extends JavaPlugin {
         TeleportManager teleportManager = new TeleportManager();
         TeleportCommands executor = new TeleportCommands(teleportManager);
 
-        if (getCommand("tp") != null) getCommand("tp").setExecutor(executor);
-        if (getCommand("tpaccept") != null) getCommand("tpaccept").setExecutor(executor);
-        if (getCommand("tpdeny") != null) getCommand("tpdeny").setExecutor(executor);
+        if (getCommand("teleportuj") != null) getCommand("teleportuj").setExecutor(executor);
+        if (getCommand("tpakceptuj") != null) getCommand("tpakceptuj").setExecutor(executor);
+        if (getCommand("tpodrzuc") != null) getCommand("tpodrzuc").setExecutor(executor);
     }
 }

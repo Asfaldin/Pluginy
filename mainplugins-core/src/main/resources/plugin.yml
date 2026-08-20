@@ -46,6 +46,15 @@ commands:
     aliases: [p, money]
   discord:
     description: Wyślij link zaproszenia na Discorda serwera
+  "@dajcustom":
+    description: (Admin) Wydaj/testuj custom item z rejestru (custom-items.yml)
+    permission: mainplugins.core.dajcustom
+    permission-message: "&cNie masz permisji do tej komendy!"
+    usage: /<command> <id> [gracz] [ilość]
+  "@reloadcustomitems":
+    description: Wczytaj custom-items.yml na nowo, bez restartu serwera
+    permission: mainplugins.core.reloadcustomitems
+    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.core.admin:
@@ -53,4 +62,10 @@ permissions:
     default: op
   mainplugins.core.moneyadd:
     description: Dostęp do testowego doładowania/zerowania ekonomii
+    default: op
+  mainplugins.core.dajcustom:
+    description: Dostęp do wydawania custom itemów z rejestru
+    default: op
+  mainplugins.core.reloadcustomitems:
+    description: Dostęp do przeładowania custom-items.yml
     default: op

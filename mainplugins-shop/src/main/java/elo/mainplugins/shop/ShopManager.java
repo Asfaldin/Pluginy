@@ -1,5 +1,7 @@
 package elo.mainplugins.shop;
 
+import elo.mainplugins.core.CoreAPI;
+import elo.mainplugins.core.api.CustomItemService;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.util.CustomItemKeys;
 import net.kyori.adventure.text.Component;
@@ -743,11 +745,11 @@ public class ShopManager implements Listener {
 
     /** Buduje kupiony item; jeśli wpis ma custom-id, doczepia PDC tag + display-name + lore (patrz kategorie "spawnery"/"specjalne"). */
     private ItemStack stworzKupionyItem(Material material, int amount, String configPath) {
-        ItemStack item = new ItemStack(material, amount);
-
         String customId = sklepConfig.getString(configPath + "custom-id", null);
         String displayName = sklepConfig.getString(configPath + "display-name", null);
         List<String> lore = sklepConfig.getStringList(configPath + "lore");
+
+        ItemStack item = stworzBazowyItem(material, amount, customId);
         if (customId == null && displayName == null && lore.isEmpty()) return item;
 
         ItemMeta meta = item.getItemMeta();
@@ -767,6 +769,26 @@ public class ShopManager implements Listener {
         }
         item.setItemMeta(meta);
         return item;
+    }
+
+    /**
+     * Baza kupionego itemu - jeśli custom-id pasuje do zarejestrowanego custom itemu
+     * (patrz CustomItemService, mainplugins-core), wydaje DOKŁADNIE ten custom item
+     * (własny material/model/domyślna nazwa/lore z custom-items.yml) zamiast gołego
+     * Materiału ze sklep.yml; sklep.yml nadal może nadpisać display-name/lore na wierzchu
+     * (patrz stworzKupionyItem wyżej). Jeśli custom-id nie jest znane rejestrowi (np.
+     * spawnery/generatory - stare, czysto PDC-tagowe użycie custom-id sprzed rejestru)
+     * albo w ogóle go nie ma, zachowanie jest DOKŁADNIE takie jak wcześniej: goły Material.
+     */
+    private ItemStack stworzBazowyItem(Material material, int amount, String customId) {
+        if (customId != null) {
+            CustomItemService rejestr = CoreAPI.getCustomItemService();
+            if (rejestr != null && rejestr.exists(customId)) {
+                ItemStack custom = rejestr.create(customId, amount);
+                if (custom != null) return custom;
+            }
+        }
+        return new ItemStack(material, amount);
     }
 
     /**

@@ -1,14 +1,17 @@
 package elo.mainplugins.core;
 
+import elo.mainplugins.core.api.CustomItemService;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.command.AdminHelpCommand;
 import elo.mainplugins.core.command.AdminPomocCommand;
+import elo.mainplugins.core.command.DajCustomCommand;
 import elo.mainplugins.core.command.DiscordCommand;
 import elo.mainplugins.core.command.MoneyAddCommand;
 import elo.mainplugins.core.command.MoneyUndoCommand;
 import elo.mainplugins.core.command.PayCommand;
 import elo.mainplugins.core.command.PomocCommand;
 import elo.mainplugins.core.command.PortfelCommand;
+import elo.mainplugins.core.customitem.CustomItemManager;
 import elo.mainplugins.core.economy.EconomyManager;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -29,6 +32,9 @@ public final class MainpluginsCore extends JavaPlugin {
 
         economyManager = new EconomyManager(this);
         getServer().getServicesManager().register(EconomyService.class, economyManager, this, ServicePriority.Normal);
+
+        CustomItemManager customItemManager = new CustomItemManager(this);
+        getServer().getServicesManager().register(CustomItemService.class, customItemManager, this, ServicePriority.Normal);
 
         getServer().getPluginManager().registerEvents(new ResourcePackManager(this), this);
 
@@ -69,6 +75,20 @@ public final class MainpluginsCore extends JavaPlugin {
         }
         if (getCommand("discord") != null) {
             getCommand("discord").setExecutor(new DiscordCommand());
+        }
+        if (getCommand("@dajcustom") != null) {
+            DajCustomCommand dajCustomCommand = new DajCustomCommand(customItemManager);
+            getCommand("@dajcustom").setExecutor(dajCustomCommand);
+            getCommand("@dajcustom").setTabCompleter(dajCustomCommand);
+        }
+        // Osobny executor: /@reloadcustomitems ma sens też z konsoli, nie tylko od gracza
+        // (ten sam wzorzec co /@reloadsklep w mainplugins-shop).
+        if (getCommand("@reloadcustomitems") != null) {
+            getCommand("@reloadcustomitems").setExecutor((sender, command, label, args) -> {
+                customItemManager.reload();
+                sender.sendMessage("§aCustom-items.yml został przeładowany.");
+                return true;
+            });
         }
 
         getLogger().info("MainpluginsCore włączony - EconomyService dostępny dla innych pluginów.");

@@ -678,7 +678,10 @@ public class PickaxeSkillManager extends ToolSkillManager {
             b.getWorld().spawnParticle(Particle.SNOWFLAKE, center, 16, 0.35, 0.35, 0.35, 0.02);
             player.playSound(center, Sound.BLOCK_GLASS_BREAK, 1f, 1.3f);
             if (!member.equals(klikniety)) {
-                b.setType(Material.AIR, false);
+                // BEZ "false" - musi zadziałać fizyka bloków, inaczej klasyczny generator
+                // kamienia z lawą/wodą (patrz komentarz klasy zamrozSasiadow) nigdy nie
+                // dostanie sygnału, żeby odbudować bruk w tym miejscu, i dziura zostaje pusta.
+                b.setType(Material.AIR);
             }
             if (drops != null) {
                 for (ItemStack drop : drops) b.getWorld().dropItemNaturally(center, drop);

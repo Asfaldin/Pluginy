@@ -1,6 +1,7 @@
 package elo.mainplugins.core;
 
 import elo.mainplugins.core.api.CrateService;
+import elo.mainplugins.core.api.CustomItemService;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.IslandService;
 import elo.mainplugins.core.api.MarketService;
@@ -82,6 +83,18 @@ public final class CoreAPI {
     /** Opcjonalny jak {@link #getIslandService()} - zwraca null, jeśli mainplugins-market nie jest wgrany/włączony. */
     public static MarketService getMarketService() {
         RegisteredServiceProvider<MarketService> rsp = Bukkit.getServicesManager().getRegistration(MarketService.class);
+        return rsp != null ? rsp.getProvider() : null;
+    }
+
+    /**
+     * W przeciwieństwie do reszty opcjonalnych serwisów - rejestruje go samo
+     * mainplugins-core (patrz CustomItemService), więc w praktyce jest dostępny
+     * zawsze, gdy tylko core jest włączony. Mimo to zwraca null zamiast rzucać
+     * (jak {@link #getIslandService()}), na wypadek bardzo wczesnego etapu startu -
+     * wołający i tak powinien mieć na to sensowny fallback.
+     */
+    public static CustomItemService getCustomItemService() {
+        RegisteredServiceProvider<CustomItemService> rsp = Bukkit.getServicesManager().getRegistration(CustomItemService.class);
         return rsp != null ? rsp.getProvider() : null;
     }
 }

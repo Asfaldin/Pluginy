@@ -1,0 +1,60 @@
+# ==========================================================================
+# Rejestr custom itemow - kazdy wpis to samodzielny, gotowy do wydania item
+# (material + nazwa + lore + opcjonalny wlasny model z resourcepacka). Zero
+# hardkodowanych stalych w Javie - caly wyglad/tresc itemu zyje TUTAJ.
+#
+# Wydawanie/testowanie: /@dajcustom <id> [gracz] [ilosc]
+# Przeladowanie na zywo, bez restartu serwera: /@reloadcustomitems
+#
+# Pola kazdego wpisu (pod kluczem items.<ID>):
+#   material  - WYMAGANE. Nazwa Materialu Bukkit/Paper, np. DIAMOND_PICKAXE.
+#   name      - opcjonalne. Wlasna nazwa itemu, kody koloru "&" (np. "&b&lNazwa").
+#               Bez tego pola item ma domyslna nazwe swojego Materialu.
+#   lore      - opcjonalne. Lista linii opisu pod nazwa, te same kody koloru "&".
+#   model     - opcjonalne. Referencja do WLASNEGO modelu z resourcepacka jako
+#               Key "<namespace>:<sciezka>" (BEZ ".json"), np. "mainplugins:moj_miecz".
+#               To komponent "minecraft:item_model" (od Minecraft 1.21.4) - WSKAZUJE
+#               NA PLIK DEFINICJI ITEMU, nie bezposrednio na model/mesh:
+#
+#                 1) assets/<namespace>/items/<sciezka>.json  <- TU wskazuje "model"
+#                    { "model": { "type": "minecraft:model",
+#                                 "model": "<namespace>:item/<sciezka>" } }
+#                 2) assets/<namespace>/models/item/<sciezka>.json  <- prawdziwy mesh
+#                    { "parent": "minecraft:item/generated",
+#                      "textures": { "layer0": "<namespace>:item/<sciezka>" } }
+#                 3) assets/<namespace>/textures/item/<sciezka>.png  <- tekstura
+#
+#               (Dokladnie ten sam wzorzec co juz istniejacy
+#               assets/minecraft/items/diamond_pickaxe.json + assets/mainplugins/models/item/kilof_niflheim.json
+#               w tym resourcepacku - tam wskazywany przez custom_model_data zamiast
+#               item_model, ale pliki 2) i 3) wygladaja identycznie).
+#               Bez pola "model" item wyglada jak zwykly Material z pola wyzej.
+#   glint     - opcjonalne, domyslnie false. true = wymuszony blask jak z enczantu,
+#               nawet bez zadnego prawdziwego enczantu na itemie.
+#
+# ID wpisu (klucz pod "items", WIELKIMI LITERAMI) to jednoczesnie:
+#   - identyfikator w /@dajcustom <ID>
+#   - wartosc pola "custom-id" w sklep.yml/categories/*.yml (mainplugins-shop) -
+#     jesli sklep sprzedaje pozycje z custom-id pasujacym do wpisu tutaj, wydaje
+#     DOKLADNIE ten custom item (material/nazwa/lore/model stad), a nie goly
+#     Material z pola "material" w sklep.yml.
+# ==========================================================================
+
+items:
+  PRZYKLADOWY_AMULET:
+    material: NETHER_STAR
+    name: "&d&lAmulet Przykladowy"
+    lore:
+      - "&7To jest przykladowy wpis rejestru -"
+      - "&7podmien go albo usun i dodaj wlasne ponizej."
+    glint: true
+
+  # Przyklad z wlasnym modelem z resourcepacka - odkomentuj i uzupelnij oba pliki
+  # resourcepacka opisane w komentarzu pola "model" wyzej (items/moj_miecz.json +
+  # models/item/moj_miecz.json + textures/item/moj_miecz.png):
+  # MOJ_CUSTOM_MIECZ:
+  #   material: DIAMOND_SWORD
+  #   name: "&b&lMiecz Przykladowy"
+  #   lore:
+  #     - "&7Opis przykladowego miecza."
+  #   model: "mainplugins:moj_miecz"

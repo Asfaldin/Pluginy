@@ -3,12 +3,13 @@ package elo.mainplugins.chatfilter;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.Rank;
 import elo.mainplugins.core.api.RankService;
+import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 
 /**
  * Limit długości wiadomości na czacie - połowa wanilijskiego limitu klienta (256 znaków,
@@ -28,10 +29,10 @@ public class ChatLengthManager implements Listener {
     private static final int LIMIT_GRACZ_VIP = 128;
 
     @EventHandler(ignoreCancelled = true)
-    public void onChat(AsyncPlayerChatEvent event) {
+    public void onChat(AsyncChatEvent event) {
         if (pobierzRange(event.getPlayer()) == Rank.ADMIN) return;
 
-        String wiadomosc = event.getMessage();
+        String wiadomosc = PlainTextComponentSerializer.plainText().serialize(event.message());
         if (wiadomosc.length() <= LIMIT_GRACZ_VIP) return;
 
         event.setCancelled(true);

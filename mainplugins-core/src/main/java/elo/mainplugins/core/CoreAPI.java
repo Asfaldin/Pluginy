@@ -6,6 +6,7 @@ import elo.mainplugins.core.api.IslandService;
 import elo.mainplugins.core.api.MarketService;
 import elo.mainplugins.core.api.QuestService;
 import elo.mainplugins.core.api.RankService;
+import elo.mainplugins.core.api.SpawnService;
 import elo.mainplugins.core.api.ToolsService;
 import elo.mainplugins.core.api.TytulService;
 import org.bukkit.Bukkit;
@@ -63,6 +64,12 @@ public final class CoreAPI {
     /** Opcjonalny jak {@link #getIslandService()} - zwraca null, jeśli mainplugins-quests nie jest wgrany/włączony. */
     public static TytulService getTytulService() {
         RegisteredServiceProvider<TytulService> rsp = Bukkit.getServicesManager().getRegistration(TytulService.class);
+        return rsp != null ? rsp.getProvider() : null;
+    }
+
+    /** Opcjonalny jak {@link #getIslandService()} - zwraca null, jeśli mainplugins-spawn nie jest wgrany/włączony. */
+    public static SpawnService getSpawnService() {
+        RegisteredServiceProvider<SpawnService> rsp = Bukkit.getServicesManager().getRegistration(SpawnService.class);
         return rsp != null ? rsp.getProvider() : null;
     }
 

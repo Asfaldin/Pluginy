@@ -12,6 +12,7 @@ import java.util.UUID;
  */
 public interface EconomyService {
 
+    // ---- dotychczasowe API, bez zmian ----
     double getKasa(UUID uuid);
 
     void setKasa(UUID uuid, double ilosc);
@@ -24,4 +25,25 @@ public interface EconomyService {
 
     /** Najbogatsi gracze posortowani malejąco wg stanu konta (pomija graczy z kasą <= 0). */
     List<TopGracz> getTop(int limit);
+
+    // ---- nowe: dokładne operacje na groszach ----
+
+    /** Saldo w groszach (1 zł = 100). Bez zaokrągleń i dryfu. */
+    long getGrosze(UUID uuid);
+
+    /** Ustawia saldo w groszach. Wartości ujemne są przycinane do zera. */
+    void setGrosze(UUID uuid, long grosze);
+
+    /** Dodaje grosze. Ujemna wartość odejmuje. */
+    void dodajGrosze(UUID uuid, long grosze);
+
+    /**
+     * Pobiera grosze tylko jeśli gracza na to stać.
+     * @return true gdy pobrano, false gdy zabrakło (saldo nietknięte)
+     *
+     * Tego używaj przy transakcjach zamiast pary maWystarczajaco()+odejmijKase() —
+     * sprawdzenie i pobranie w jednym kroku, więc nie da się między nimi wcisnąć
+     * drugiej transakcji tego samego gracza.
+     */
+    boolean pobierzGrosze(UUID uuid, long grosze);
 }

@@ -3,11 +3,12 @@ version: ${project.version}
 main: elo.mainplugins.skyblock.MainpluginsSkyblock
 api-version: '1.20'
 depend: [MainpluginsCore]
+softdepend: [MainpluginsSpawn]
 
 commands:
   is:
     description: Wyspa
-    usage: "/is [menu|sethome|delete|border|guests|pvp|mobs|upgrade|members|invite <gracz>|accept|deny|leave|promote <gracz>|demote <gracz>|remove <gracz>|deposit <kwota>|withdraw <kwota>]"
+    usage: "/is [menu|sethome|usun|border|guests|pvp|mobs|upgrade|members|invite <gracz>|accept|deny|leave|promote <gracz>|demote <gracz>|remove <gracz>|deposit <kwota>|withdraw <kwota>]"
   home:
     description: Dom / Wyspa
 

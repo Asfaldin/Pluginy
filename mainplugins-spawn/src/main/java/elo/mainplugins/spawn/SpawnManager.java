@@ -1,5 +1,6 @@
 package elo.mainplugins.spawn;
 
+import elo.mainplugins.core.api.SpawnService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -19,12 +20,13 @@ import java.io.IOException;
 
 /**
  * Główny punkt teleportu serwera - /spawn, pierwsze wejście na serwer i respawn po
- * śmierci (ZAWSZE tam, celowo ignorując łóżko/kotwicę gracza, nawet jeśli ma je
- * ustawione np. na własnej wyspie). Sama ochrona terenu wokół spawnu (i przyszłych
+ * śmierci, gdy gracz nie ma ustawionego własnego punktu odradzania. Jeśli gracz MA
+ * łóżko/kotwicę (np. na własnej wyspie), respawn ląduje tam - główny spawn jest
+ * tylko fallbackiem, patrz onRespawn(). Sama ochrona terenu wokół spawnu (i przyszłych
  * warpów) to osobny, ogólny mechanizm niezwiązany z konkretnym punktem - patrz
  * {@link ObszarManager}.
  */
-public class SpawnManager implements Listener {
+public class SpawnManager implements Listener, SpawnService {
 
     private final Plugin plugin;
     private final File plikSpawnu;
@@ -71,6 +73,7 @@ public class SpawnManager implements Listener {
     }
 
     /** Ustawiony spawn, albo domyślny spawn pierwszego świata, jeśli nikt jeszcze nic nie ustawił. */
+    @Override
     public Location getSpawn() {
         return spawnPoint != null ? spawnPoint : Bukkit.getWorlds().get(0).getSpawnLocation();
     }
@@ -99,9 +102,17 @@ public class SpawnManager implements Listener {
         }
     }
 
-    /** Zawsze odradzamy na głównym spawnie - celowo ignorujemy łóżko/kotwicę gracza, patrz javadoc klasy. */
+    /**
+     * Gracz z ustawionym łóżkiem/kotwicą (np. na własnej wyspie) odradza się tam -
+     * Bukkit sam już wyliczył tę lokalizację i wpisał do eventu, więc wystarczy jej
+     * nie ruszać. Dopiero gdy gracz NIE ma żadnego z nich (isBedSpawn/isAnchorSpawn
+     * oba false - nowy gracz albo łóżko/kotwica zniszczone/zablokowane), event i tak
+     * domyślnie wskazywałby na spawn świata - nadpisujemy na NASZ ustawiony spawn
+     * (patrz getSpawn()), żeby admin mógł go ustawić w innym miejscu niż wanilijski.
+     */
     @EventHandler
     public void onRespawn(PlayerRespawnEvent event) {
+        if (event.isBedSpawn() || event.isAnchorSpawn()) return;
         event.setRespawnLocation(getSpawn());
     }
 }

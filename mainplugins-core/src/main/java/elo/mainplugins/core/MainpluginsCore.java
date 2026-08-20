@@ -76,6 +76,7 @@ public final class MainpluginsCore extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (economyManager != null) economyManager.zamknij();   // <-- NOWE
         getServer().getServicesManager().unregisterAll(this);
         getLogger().info("Wyłączanie MainpluginsCore...");
     }

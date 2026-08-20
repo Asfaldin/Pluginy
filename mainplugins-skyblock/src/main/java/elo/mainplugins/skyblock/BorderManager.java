@@ -5,9 +5,11 @@ import org.bukkit.Location;
 import org.bukkit.WorldBorder;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.plugin.Plugin;
 
@@ -71,6 +73,36 @@ public class BorderManager implements Listener {
         if (islandManager.jestSwiatemWysp(to.getWorld())) {
             islandManager.aplikujBorderDlaLokalizacji(event.getPlayer(), to);
         }
+    }
+
+    /**
+     * Respawn nie jest teleportacją — bez tego handlera gracz po śmierci
+     * zostawał bez bordera do następnej zmiany świata albo reloga.
+     *
+     * Priorytet MONITOR: inne pluginy (np. SpawnManager z mainplugins-spawn) mogą
+     * na tym samym evencie nadpisać event.getRespawnLocation() - MONITOR gwarantuje,
+     * że nasz handler odpali się na końcu, po tym jak każdy inny plugin już podjął
+     * decyzję. Bez tego (domyślny priorytet NORMAL) kolejność względem SpawnManagera
+     * zależałaby od przypadkowej kolejności ładowania pluginów - moglibyśmy tu czasem
+     * złapać jeszcze nienadpisaną (starą) lokalizację. Nie modyfikujemy tu eventu,
+     * tylko go czytamy, więc MONITOR (zarezerwowany zwykle dla obserwatorów) pasuje.
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onRespawn(PlayerRespawnEvent event) {
+        Player player = event.getPlayer();
+        Location respawnLoc = event.getRespawnLocation();
+
+        // Ten sam 1-tickowy odstęp co w onJoin: w chwili zdarzenia gracz nie stoi
+        // jeszcze w docelowym miejscu, a klient przetwarza pakiety respawnu.
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!player.isOnline()) return;
+
+            if (respawnLoc.getWorld() != null && islandManager.jestSwiatemWysp(respawnLoc.getWorld())) {
+                islandManager.aplikujBorderDlaLokalizacji(player, respawnLoc);
+            } else {
+                wyczyscCzerwonyEkranBorderu(player);
+            }
+        });
     }
 
     public void wyczyscCzerwonyEkranBorderu(Player player) {

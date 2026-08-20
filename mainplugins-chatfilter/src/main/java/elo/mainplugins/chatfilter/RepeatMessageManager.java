@@ -3,12 +3,13 @@ package elo.mainplugins.chatfilter;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.Rank;
 import elo.mainplugins.core.api.RankService;
+import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 
 import java.util.Map;
 import java.util.UUID;
@@ -24,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Porównanie jest dosłowne (bez trim/lowercase) - "choćby jakikolwiek znak" oznacza też
  * np. sam spacja na końcu, więc nie normalizujemy niczego, żeby tego nie zepsuć.
  *
- * ConcurrentHashMap z tego samego powodu co w MuteManager - AsyncPlayerChatEvent leci
+ * ConcurrentHashMap z tego samego powodu co w MuteManager - AsyncChatEvent leci
  * na osobnym wątku.
  */
 public class RepeatMessageManager implements Listener {
@@ -32,11 +33,11 @@ public class RepeatMessageManager implements Listener {
     private final Map<UUID, String> ostatniaWiadomosc = new ConcurrentHashMap<>();
 
     @EventHandler(ignoreCancelled = true)
-    public void onChat(AsyncPlayerChatEvent event) {
+    public void onChat(AsyncChatEvent event) {
         Player player = event.getPlayer();
         if (pobierzRange(player) == Rank.ADMIN) return;
 
-        String wiadomosc = event.getMessage();
+        String wiadomosc = PlainTextComponentSerializer.plainText().serialize(event.message());
         // put() PRZED sprawdzeniem jest celowo bezwarunkowe: gdy wiadomość zostanie
         // zablokowana jako duplikat, to co właśnie zapisaliśmy i tak jest identyczne
         // z tym co już tam było (bo dlatego wykryliśmy duplikat) - nie ma więc ryzyka

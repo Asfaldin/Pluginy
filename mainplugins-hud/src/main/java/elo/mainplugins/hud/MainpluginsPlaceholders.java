@@ -36,18 +36,18 @@ public class MainpluginsPlaceholders extends PlaceholderExpansion {
      * sekwencję zamiast losowej.
      */
     private static final String[] PRO_TIPY = {
-        "&7Mozesz zebrac spawner patykiem &f- &7PPM na blok",
+        "&7Możesz zebrać spawner patykiem &f- &7PPM na blok",
         "&7Sortuj sklep po cenie skupu &f- &7kliknij PPM na przycisk sortowania",
-        "&7Szukaj przedmiotu w sklepie klikajac tabliczke na gorze menu",
-        "&7Limit spawnerow na wyspe to &f10 &7- planuj z wyprzedzeniem",
-        "&7Ceny w sklepie resetuja sie co &f14 dni",
-        "&7Wpisz &f/komendy&7, zeby zobaczyc co potrafi serwer",
-        "&7Sprawdz &f/questy &7i odbieraj nagrody za kolejne etapy",
+        "&7Szukaj przedmiotu w sklepie klikając tabliczkę na górze menu",
+        "&7Limit spawnerów na wyspę to &f10 &7- planuj z wyprzedzeniem",
+        "&7Ceny w sklepie resetują się co &f14 dni",
+        "&7Wpisz &f/komendy&7, żeby zobaczyć co potrafi serwer",
+        "&7Sprawdź &f/questy &7i odbieraj nagrody za kolejne etapy",
         "&7Handluj z graczami przez &f/targ",
-        "&7Powieksz swoja wyspe w &f/is menu",
+        "&7Powiększ swoją wyspę w &f/is menu",
         "&7Zapraszamy na naszego &9Discorda&7!",
-        "&7Zapros znajomego na wyspe &f- &7gra sie razniej w kilka osob",
-        "&7Wpisz &f/menu&7, zeby otworzyc glowne menu serwera",
+        "&7Zaproś znajomego na wyspę &f- &7gra się raźniej w kilka osób",
+        "&7Wpisz &f/menu&7, żeby otworzyć główne menu serwera",
     };
 
     /** Co ile sekund zmienia się treść wiersza 1 stopki. */

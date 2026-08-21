@@ -58,3 +58,98 @@ items:
   #   lore:
   #     - "&7Opis przykladowego miecza."
   #   model: "mainplugins:moj_miecz"
+
+  # ==========================================================================
+  # Ponizej: nagrody questowe (mainplugins-quests/quests-content.yml), przeniesione
+  # tu z dawnych hardkodowanych helperow (trofeum()/receptura()) zeby quest mogl
+  # je wskazac przez zwykle {type: CUSTOM_ITEM, id: ...}. GENERATOR_KRUCHY_T1/
+  # GENERATOR_BRUK_T1 maja material NA SZTYWNO (CHISELED_SANDSTONE/MOSSY_COBBLESTONE) -
+  # GeneratorKruchychManager/GeneratorBrukuManager sprawdzaja dokladnie ten Material
+  # przy stawianiu/odnowie bloku, wiec zmiana tego pola tutaj popsulaby mechanike.
+  # ==========================================================================
+
+  TROFEUM_GLOWA_POCZATKUJACEGO:
+    material: PLAYER_HEAD
+    name: "&d&lGłowa Początkującego"
+    lore:
+      - "&7Za pierwsze pokonane zombie."
+      - "&7Odblokowuje tytuł \"Początkujący\" na czacie!"
+
+  TROFEUM_GLOWA_GORNIKA:
+    material: PLAYER_HEAD
+    name: "&d&lGłowa Górnika"
+    lore:
+      - "&7Za setki wykopanych bloków."
+
+  TROFEUM_GLOWA_WOJOWNIKA_NETHERU:
+    material: WITHER_SKELETON_SKULL
+    name: "&d&lGłowa Wojownika Netheru"
+    lore:
+      - "&7Za przetrwanie Netheru."
+
+  TROFEUM_GLOWA_SMOKA:
+    material: PLAYER_HEAD
+    name: "&d&lGłowa Smoka"
+    lore:
+      - "&7Za pokonanie Enderdragona."
+      - "&7Otrzymujesz też Beacon!"
+
+  TROFEUM_GLOWA_RYBAKA_OTCHLANI:
+    material: PLAYER_HEAD
+    name: "&d&lGłowa Rybaka Otchłani"
+    lore:
+      - "&7Za złowienie tego, czego nie da się złowić."
+
+  FISHING_RECIPE_NIEBIANSKA:
+    material: PAPER
+    name: "&b&lReceptura: Niebiańska Wędka"
+    lore:
+      - "&7Połącz z Zwykłą Wędką w kowadle,"
+      - "&7by otrzymać Niebiańską Wędkę."
+    glint: true
+
+  FISHING_RECIPE_KOSMICZNA:
+    material: PAPER
+    name: "&b&lReceptura: Wędka Kosmiczna DARKSTAR"
+    lore:
+      - "&7Połącz z Niebiańską Wędką w kowadle,"
+      - "&7by otrzymać Wędkę Kosmiczną DARKSTAR."
+    glint: true
+
+  GENERATOR_KRUCHY_T1:
+    material: CHISELED_SANDSTONE
+    name: "&6&lGenerator Kruchych Surowców [T1]"
+    lore:
+      - "&7Postaw na wyspie - co jakiś czas"
+      - "&7można wykopać z niego piasek lub żwir."
+      - "&7Blok sam się odbudowuje po wykopaniu."
+      - ""
+      - "&eKopie się WYŁĄCZNIE łopatą."
+      - "&dNarzędzie ze specjalnym Silk Touchem"
+      - "&d(np. ewoluująca łopata) zbiera cały blok."
+
+  GENERATOR_KRUCHY_PRZEWODNIK:
+    material: BOOK
+    name: "&b&lPrzewodnik: Generator Kruchych Surowców"
+    lore:
+      - "&7Skład receptury (dowolny układ w stole):"
+      - ""
+      - "&f▪ 4x Kamień"
+      - "&f▪ 2x Węgiel"
+      - "&f▪ 1x Sztabka Miedzi"
+      - "&f▪ 2x Ziemia"
+      - ""
+      - "&8Wrzuć wszystko do stołu rzemieślniczego -"
+      - "&8pozycja w siatce nie ma znaczenia."
+
+  GENERATOR_BRUK_T1:
+    material: MOSSY_COBBLESTONE
+    name: "&6&lGenerator Bruku"
+    lore:
+      - "&7Postaw na wyspie - co jakiś czas"
+      - "&7można wykopać z niego bruk (cobblestone)."
+      - "&7Blok sam się odbudowuje po wykopaniu."
+      - ""
+      - "&eKopie się WYŁĄCZNIE kilofem."
+      - "&dNarzędzie ze specjalnym Silk Touchem"
+      - "&d(np. ewoluujący kilof) zbiera cały blok."

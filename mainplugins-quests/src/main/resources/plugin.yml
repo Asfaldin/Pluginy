@@ -16,6 +16,10 @@ commands:
     description: (Admin) Testowe wydanie Generatora Bruku
     permission: mainplugins.quests.dajbrukgen
     permission-message: "&cNie masz permisji do tej komendy!"
+  "@reloadquesty":
+    description: (Admin) Wczytaj quests-content.yml na nowo, bez restartu serwera
+    permission: mainplugins.quests.reloadquesty
+    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.quests.addkruchy:
@@ -23,4 +27,7 @@ permissions:
     default: op
   mainplugins.quests.dajbrukgen:
     description: Testowe wydanie Generatora Bruku (komenda /@dajbrukgen)
+    default: op
+  mainplugins.quests.reloadquesty:
+    description: Dostep do przeladowania quests-content.yml
     default: op

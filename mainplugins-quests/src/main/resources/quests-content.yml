@@ -1,0 +1,744 @@
+# ==========================================================================
+# Tresc calego systemu questow - kategorie, ich layout GUI (menu glowne i
+# kazda strona kategorii) i kazdy quest (tytul, opis, wymog, nagrody). Zero
+# hardkodowanych stalych w Javie - caly uklad i tresc menu zyja TUTAJ.
+# Osobny plik od quests.yml (POSTEP graczy, per-gracz, w plugins/) - ten
+# plik to sama TRESC, wspolna dla wszystkich, kopiowana raz przy pierwszym
+# uruchomieniu i NIGDY potem nadpisywana automatycznie.
+#
+# Przeladowanie na zywo, bez restartu serwera: /@reloadquesty
+#
+# main-menu.layout: 54-slotowa siatka menu "Kategorie Zadan" (klikniecie w
+#   /zadania). Kazdy wpis to {slot: 0-53, role: ...}. role=CATEGORY_SLOT ->
+#   kolejny wpis z category-order (i-ty CATEGORY_SLOT w tej liscie ->
+#   category-order[i]). role=FILLER -> wypelniacz (domyslnie czarne szklo,
+#   opcjonalne pole material nadpisuje je na tym jednym slocie). Slot spoza
+#   listy = domyslny wypelniacz.
+#
+# category-order: kolejnosc kategorii bocznych odpowiadajaca kolejnosci
+#   CATEGORY_SLOT w main-menu.layout (Glowna Sciezka NIE jest tu liczona
+#   osobno - jej CATEGORY_SLOT to po prostu pierwszy wpis w layoucie, ktory
+#   wskazuje na category-order[0]).
+#
+# titles: rejestr tytulow na czacie (id -> tekst z kodami koloru "&"),
+#   nadawanych przez nagrode {type: TITLE, id: ...} (patrz nizej).
+#
+# categories.<ID>: jedna kategoria. Pola: display-name, icon (Material),
+#   description, main-path (bool - DOKLADNIE jedna kategoria musi to miec
+#   true), sequential (bool - quest N+1 zablokowany, dopoki N nieukonczony),
+#   unlock (null albo {category: <ID zrodlowej kategorii>, quest-id: N} -
+#   moze wskazywac na DOWOLNA kategorie, nie tylko main-path), page-layout
+#   (jak main-menu.layout, ale role=QUEST_SLOT zamiast CATEGORY_SLOT - i-ty
+#   QUEST_SLOT na danej stronie -> (strona * liczba_QUEST_SLOT + i)-ty quest
+#   z listy quests), quests (lista).
+#
+# Kazdy quest: id (stabilne w ramach kategorii - NIE renumerowac istniejacych,
+#   quest #16 Glownej Sciezki jest twardo zalinkowany w mainplugins-spawn pod
+#   /warp kowal), title, description (lista linii), requirement, rewards
+#   (lista - quest moze miec ich dowolnie wiele naraz), reward-label
+#   (opcjonalne - jesli pominiete, etykieta sklada sie automatycznie z
+#   nie-cichych rewards).
+#
+# requirement.type:
+#   ITEM          - materials: [{material, amount, custom-id?, display-name?}]
+#                   (custom-id/display-name tylko dla itemow tagowanych PDC,
+#                   np. gatunek ryby albo trofeum z innego pluginu)
+#   FREE          - brak pol, klikniecie od razu zdaje quest
+#   MONEY         - amount (koszt w monetach)
+#   TOOL_POSSESS  - material (posiadaj taki Material, NIE zabiera itemu)
+#   TOOL_LEVEL    - tool (PICKAXE/AXE/SWORD - tylko te 3 maja dzis metode
+#                   poziomu w ToolsService) + level
+#   MARKET_OFFER  - brak pol, wymaga aktywnej oferty na Targu graczy
+#
+# rewards[].type (kazdy wpis moze miec dodatkowo silent: true - nie wchodzi
+#   do auto-etykiety, dla "cichych" bonusow jak skrzynki milowe):
+#   ITEM         - material, amount
+#   CUSTOM_ITEM  - id (z rejestru mainplugins-core/custom-items.yml), amount
+#   MONEY        - amount
+#   CRATE        - tier, fallback: RewardEntry[] (wreczany zamiast, gdy
+#                  mainplugins-crates nie jest wgrany)
+#   TOOL         - tool (PICKAXE/AXE/HOE/SWORD/SHOVEL - prawdziwe ewoluujace
+#                  narzedzie z mainplugins-tools)
+#   TITLE        - id (z sekcji titles wyzej)
+# ==========================================================================
+
+main-menu:
+  layout:
+    - {slot: 22, role: CATEGORY_SLOT}
+    - {slot: 31, role: CATEGORY_SLOT}
+    - {slot: 49, role: CATEGORY_SLOT}
+    - {slot: 40, role: CATEGORY_SLOT}
+    - {slot: 13, role: CATEGORY_SLOT}
+    - {slot: 21, role: CATEGORY_SLOT}
+    - {slot: 11, role: CATEGORY_SLOT}
+    - {slot: 29, role: CATEGORY_SLOT}
+    - {slot: 19, role: CATEGORY_SLOT}
+    - {slot: 28, role: CATEGORY_SLOT}
+    - {slot: 37, role: CATEGORY_SLOT}
+    - {slot: 23, role: CATEGORY_SLOT}
+    - {slot: 15, role: CATEGORY_SLOT}
+    - {slot: 33, role: CATEGORY_SLOT}
+    - {slot: 25, role: CATEGORY_SLOT}
+    - {slot: 34, role: CATEGORY_SLOT}
+    - {slot: 43, role: CATEGORY_SLOT}
+
+category-order:
+  - GLOWNA_SCIEZKA
+  - GORNICTWO
+  - HODOWLA
+  - LOWCA
+  - DRWAL
+  - RYBAK
+  - ALCHEMIK
+  - KUCHARZ
+  - BUDOWNICZY
+  - MAG
+  - ODKRYWCA
+  - RZEZNIK
+  - OGRODNIK
+  - JUBILER
+  - ZLODZIEJ
+  - INZYNIER
+  - QUESTY_SPECJALNE
+
+titles:
+  POCZATKUJACY: "&7&l[Początkujący] "
+
+categories:
+
+  GLOWNA_SCIEZKA:
+    display-name: "Główna Ścieżka"
+    icon: KNOWLEDGE_BOOK
+    description: "Zacznij tutaj - zadania po kolei!"
+    main-path: true
+    sequential: true
+    unlock: null
+    page-layout: &snake29
+      - {slot: 0, role: QUEST_SLOT}
+      - {slot: 1, role: QUEST_SLOT}
+      - {slot: 2, role: QUEST_SLOT}
+      - {slot: 3, role: QUEST_SLOT}
+      - {slot: 4, role: QUEST_SLOT}
+      - {slot: 5, role: QUEST_SLOT}
+      - {slot: 6, role: QUEST_SLOT}
+      - {slot: 7, role: QUEST_SLOT}
+      - {slot: 8, role: QUEST_SLOT}
+      - {slot: 17, role: QUEST_SLOT}
+      - {slot: 26, role: QUEST_SLOT}
+      - {slot: 23, role: QUEST_SLOT}
+      - {slot: 22, role: QUEST_SLOT}
+      - {slot: 25, role: QUEST_SLOT}
+      - {slot: 24, role: QUEST_SLOT}
+      - {slot: 21, role: QUEST_SLOT}
+      - {slot: 19, role: QUEST_SLOT}
+      - {slot: 18, role: QUEST_SLOT}
+      - {slot: 20, role: QUEST_SLOT}
+      - {slot: 27, role: QUEST_SLOT}
+      - {slot: 36, role: QUEST_SLOT}
+      - {slot: 37, role: QUEST_SLOT}
+      - {slot: 38, role: QUEST_SLOT}
+      - {slot: 39, role: QUEST_SLOT}
+      - {slot: 40, role: QUEST_SLOT}
+      - {slot: 42, role: QUEST_SLOT}
+      - {slot: 41, role: QUEST_SLOT}
+      - {slot: 44, role: QUEST_SLOT}
+      - {slot: 43, role: QUEST_SLOT}
+      - {slot: 45, role: NAV_PREV}
+      - {slot: 49, role: NAV_BACK}
+      - {slot: 53, role: NAV_NEXT}
+    quests:
+      - id: 1
+        title: "Witaj na Wyspie"
+        description: ["Twoja przygoda właśnie się zaczyna - odbierz swój pierwszy kilof."]
+        requirement: {type: FREE}
+        rewards: [{type: TOOL, tool: PICKAXE}]
+        reward-label: "1x Kilof Wydajnościowy"
+      - id: 2
+        title: "Zaczynamy"
+        description: ["Wykop kilofem wystarczająco dużo, by zdobyć swój pierwszy poziom."]
+        requirement: {type: TOOL_LEVEL, tool: PICKAXE, level: 1}
+        rewards: [{type: ITEM, material: DIRT, amount: 16}]
+        reward-label: "16x Ziemia"
+      - id: 3
+        title: "Kamienny Fundament"
+        description: ["Zbierz stack kamienia - podwaliny pod całą resztę wyspy."]
+        requirement: {type: ITEM, materials: [{material: COBBLESTONE, amount: 64}]}
+        rewards: [{type: ITEM, material: BONE_MEAL, amount: 20}, {type: ITEM, material: BIRCH_SAPLING, amount: 1}]
+        reward-label: "20x Mączka Kostna + Sadzonka Brzozy"
+      - id: 4
+        title: "Drwal i Siewca"
+        description: ["Zbierz drewno dębowe i sadzonki brzozy na rozbudowę bazy."]
+        requirement: {type: ITEM, materials: [{material: OAK_LOG, amount: 8}, {material: BIRCH_SAPLING, amount: 6}]}
+        rewards: [{type: TOOL, tool: AXE}]
+        reward-label: "1x Ewoluująca Siekiera"
+      - id: 5
+        title: "Rozpal Ognisko"
+        description: ["Zbierz węgiel z kopalni i węgiel drzewny z paleniska."]
+        requirement: {type: ITEM, materials: [{material: COAL, amount: 5}, {material: CHARCOAL, amount: 5}]}
+        rewards: [{type: ITEM, material: CARROT, amount: 2}, {type: ITEM, material: MELON_SEEDS, amount: 4}]
+        reward-label: "2x Marchewka + 4x Nasiona Arbuza"
+      - id: 6
+        title: "Rolniczy Krok"
+        description: ["Stwórz kamienną motykę - to sygnał, że jesteś gotowy na prawdziwe pole."]
+        requirement: {type: TOOL_POSSESS, material: STONE_HOE}
+        rewards: [{type: TOOL, tool: HOE}]
+        reward-label: "1x Ewoluująca Motyka"
+      - id: 7
+        title: "Plony Wyspy"
+        description: ["Zbierz pierwsze duże zbiory - arbuza, pszenicy i marchewki."]
+        requirement: {type: ITEM, materials: [{material: MELON_SLICE, amount: 16}, {material: WHEAT, amount: 16}, {material: CARROT, amount: 16}]}
+        rewards: [{type: MONEY, amount: 200}]
+      - id: 8
+        title: "Ciacho na Szczęście"
+        description: ["Upiecz i zdobądź ciastka - drobna nagroda za słodki gest."]
+        requirement: {type: ITEM, materials: [{material: COOKIE, amount: 32}]}
+        rewards: [{type: CRATE, tier: 1, fallback: [{type: ITEM, material: CHEST, amount: 1}]}]
+        reward-label: "Podstawowa Skrzynka + Klucz (słaby drop)"
+      - id: 9
+        title: "Pierwszy Loch"
+        description: ["Udaj się do lochu (/tpdun) i pokonaj Władcę Lochu.", "Przynieś dowód zwycięstwa - jego serce wciąż bije."]
+        requirement: {type: ITEM, materials: [{material: HEART_OF_THE_SEA, amount: 1, custom-id: DUNGEON_TROFEUM_WLADCA_LOCHU, display-name: "Serce Władcy Lochu"}]}
+        rewards: [{type: TOOL, tool: SWORD}]
+        reward-label: "1x Ewoluujący Miecz"
+      - id: 10
+        title: "Egzamin Początkującego"
+        description: ["Sprzedaj dowód stoczonych walk z nieumarłymi.", "Kamień milowy - pierwszy etap za Tobą!"]
+        requirement: {type: ITEM, materials: [{material: ROTTEN_FLESH, amount: 5}]}
+        rewards: [{type: CUSTOM_ITEM, id: TROFEUM_GLOWA_POCZATKUJACEGO, amount: 1}, {type: TITLE, id: POCZATKUJACY}]
+        reward-label: "Trofeum: Głowa Początkującego + Tytuł"
+      - id: 11
+        title: "Piaskowy Mozół"
+        description: ["Zbierz piasek i żwir ręcznie - żmudne zajęcie.", "Na szczęście istnieje na to lepszy sposób..."]
+        requirement: {type: ITEM, materials: [{material: SAND, amount: 64}, {material: GRAVEL, amount: 64}]}
+        rewards: [{type: CUSTOM_ITEM, id: GENERATOR_KRUCHY_T1, amount: 1}, {type: CUSTOM_ITEM, id: GENERATOR_KRUCHY_PRZEWODNIK, amount: 1}]
+        reward-label: "1x Generator Kruchych Surowców + Przewodnik"
+      - id: 12
+        title: "Zbrojmistrz"
+        description: ["Wbij swojej siekierze 15 poziom."]
+        requirement: {type: TOOL_LEVEL, tool: AXE, level: 15}
+        rewards: [{type: ITEM, material: IRON_CHESTPLATE, amount: 1}]
+        reward-label: "1x Żelazny Napierśnik"
+      - id: 13
+        title: "Nad Wodą"
+        description: ["Twoja wyspa stoi już na solidnych nogach - czas na hobby.", "Zbierz wodorosty rosnące przy brzegu."]
+        requirement: {type: ITEM, materials: [{material: KELP, amount: 32}]}
+        rewards: [{type: ITEM, material: TORCHFLOWER_SEEDS, amount: 8}]
+        reward-label: "8x Nasiona Kwiatu Pochodni"
+      - id: 14
+        title: "Pierwsze Zakupy"
+        description: ["Zgromadź szmaragdy na zakupy w sklepie w gwieździe."]
+        requirement: {type: ITEM, materials: [{material: EMERALD, amount: 10}]}
+        rewards: [{type: ITEM, material: EXPERIENCE_BOTTLE, amount: 10}]
+        reward-label: "10x Butelka Doświadczenia"
+      - id: 15
+        title: "Prąd w Ścianach"
+        description: ["Zbierz redstone pod pierwsze mechanizmy."]
+        requirement: {type: ITEM, materials: [{material: REDSTONE, amount: 32}]}
+        rewards: [{type: ITEM, material: PISTON, amount: 8}]
+        reward-label: "8x Tłok"
+      - id: 16
+        title: "Kowal Wyspy"
+        description: ["Zbierz lapis lazuli na zapłatę dla kowala.", "Odblokowuje /warp kowal!"]
+        requirement: {type: ITEM, materials: [{material: LAPIS_LAZULI, amount: 32}]}
+        rewards: [{type: ITEM, material: ANVIL, amount: 1}]
+        reward-label: "1x Kowadło + odblokowanie /warp kowal"
+      - id: 17
+        title: "Skarbnik"
+        description: ["Wpłać spory depozyt do banku wyspy."]
+        requirement: {type: MONEY, amount: 5000}
+        rewards: [{type: ITEM, material: GOLD_INGOT, amount: 10}]
+        reward-label: "10x Sztabka Złota (odsetki)"
+      - id: 18
+        title: "Pierwsza Inwestycja"
+        description: ["Zainwestuj w prawdziwą infrastrukturę wyspy.", "Ten sam Generator Bruku, co w sklepie - tu zdobędziesz go quest'owo."]
+        requirement: {type: MONEY, amount: 8000}
+        rewards: [{type: CUSTOM_ITEM, id: GENERATOR_BRUK_T1, amount: 1}, {type: CRATE, tier: 1, silent: true}]
+        reward-label: "1x Generator Bruku"
+      - id: 19
+        title: "Kupiec Wyspy"
+        description: ["Wystaw dowolny przedmiot na Targu (/targ wystaw <cena>).", "Ekonomia wyspy to nie tylko sklep w gwieździe."]
+        requirement: {type: MARKET_OFFER}
+        rewards: [{type: ITEM, material: DIAMOND, amount: 1}]
+        reward-label: "1x Diament"
+      - id: 20
+        title: "Filar Wyspy"
+        description: ["Udowodnij, że Twoja wyspa stoi na solidnych fundamentach.", "Kamień milowy - połowa ścieżki za Tobą!"]
+        requirement: {type: ITEM, materials: [{material: DIAMOND, amount: 32}]}
+        rewards: [{type: CUSTOM_ITEM, id: TROFEUM_GLOWA_GORNIKA, amount: 1}, {type: CRATE, tier: 1, silent: true}]
+        reward-label: "Trofeum: Głowa Górnika"
+      - id: 21
+        title: "Diamentowa Żyła"
+        description: ["Wbij swojemu kilofowi 30 poziom."]
+        requirement: {type: TOOL_LEVEL, tool: PICKAXE, level: 30}
+        rewards: [{type: ITEM, material: DIAMOND_BLOCK, amount: 1}]
+        reward-label: "1x Blok Diamentu"
+      - id: 22
+        title: "Obsydianowy Mur"
+        description: ["Zbierz obsydian pod portal do Netheru."]
+        requirement: {type: ITEM, materials: [{material: OBSIDIAN, amount: 10}]}
+        rewards: [{type: ITEM, material: FLINT_AND_STEEL, amount: 1}]
+        reward-label: "1x Krzesiwo"
+      - id: 23
+        title: "Za Bramą"
+        description: ["Wejdź do Netheru i zbierz netherrack."]
+        requirement: {type: ITEM, materials: [{material: NETHERRACK, amount: 16}]}
+        rewards: [{type: ITEM, material: SOUL_TORCH, amount: 16}]
+        reward-label: "16x Duszowa Pochodnia"
+      - id: 24
+        title: "Łowca Blaze'ów"
+        description: ["Zapoluj na blaze w Netherowej twierdzy."]
+        requirement: {type: ITEM, materials: [{material: BLAZE_ROD, amount: 8}]}
+        rewards: [{type: MONEY, amount: 1500}]
+      - id: 25
+        title: "Dusza Netheru"
+        description: ["Zbierz duszowy piasek z Netheru."]
+        requirement: {type: ITEM, materials: [{material: SOUL_SAND, amount: 32}]}
+        rewards: [{type: ITEM, material: SOUL_LANTERN, amount: 1}]
+        reward-label: "1x Duszowa Latarnia"
+      - id: 26
+        title: "Kwarcowy Górnik"
+        description: ["Wydobądź kwarc netherowy."]
+        requirement: {type: ITEM, materials: [{material: QUARTZ, amount: 32}]}
+        rewards: [{type: ITEM, material: GLOWSTONE_DUST, amount: 16}]
+        reward-label: "16x Blask Poświaty"
+      - id: 27
+        title: "Pogromca Ghastów"
+        description: ["Zapoluj na ghasty i zbierz ich łzy."]
+        requirement: {type: ITEM, materials: [{material: GHAST_TEAR, amount: 4}]}
+        rewards: [{type: ITEM, material: FIRE_CHARGE, amount: 8}]
+        reward-label: "8x Ognista Kula"
+      - id: 28
+        title: "Netherytowy Traker"
+        description: ["Znajdź złom netherytu w głębi Netheru."]
+        requirement: {type: ITEM, materials: [{material: NETHERITE_SCRAP, amount: 4}]}
+        rewards: [{type: ITEM, material: GOLD_INGOT, amount: 4}]
+        reward-label: "4x Sztabka Złota"
+      - id: 29
+        title: "Kowal Netherytu"
+        description: ["Wykuj pierwszą sztabkę netherytu w kuźni."]
+        requirement: {type: ITEM, materials: [{material: NETHERITE_INGOT, amount: 1}]}
+        rewards: [{type: ITEM, material: NETHERITE_UPGRADE_SMITHING_TEMPLATE, amount: 1}]
+        reward-label: "1x Szablon Kowalski"
+      - id: 30
+        title: "Pogromca Netheru"
+        description: ["Wróć żywy z Netheru z mieczem wbitym na 50 poziom.", "Kamień milowy - Nether zdobyty!"]
+        requirement: {type: TOOL_LEVEL, tool: SWORD, level: 50}
+        rewards: [{type: CUSTOM_ITEM, id: TROFEUM_GLOWA_WOJOWNIKA_NETHERU, amount: 1}, {type: CRATE, tier: 2, silent: true}]
+        reward-label: "Trofeum: Głowa Wojownika Netheru"
+      - id: 31
+        title: "Netherytowy Rycerz"
+        description: ["Wbij swojemu kilofowi 60 poziom."]
+        requirement: {type: TOOL_LEVEL, tool: PICKAXE, level: 60}
+        rewards: [{type: ITEM, material: PHANTOM_MEMBRANE, amount: 4}]
+        reward-label: "4x Błona Fantoma"
+      - id: 32
+        title: "Brama do Endu"
+        description: ["Zgromadź perły endermana na oczy endera."]
+        requirement: {type: ITEM, materials: [{material: ENDER_PEARL, amount: 12}]}
+        rewards: [{type: ITEM, material: ENDER_EYE, amount: 4}]
+        reward-label: "4x Oko Endera"
+      - id: 33
+        title: "Purpurowy Architekt"
+        description: ["Zbierz purpurowe bloki z miast Endu."]
+        requirement: {type: ITEM, materials: [{material: PURPUR_BLOCK, amount: 32}]}
+        rewards: [{type: ITEM, material: END_ROD, amount: 8}]
+        reward-label: "8x Pręt Endu"
+      - id: 34
+        title: "Owoc Chorusu"
+        description: ["Zbierz owoce chorusu w Endzie."]
+        requirement: {type: ITEM, materials: [{material: CHORUS_FRUIT, amount: 32}]}
+        rewards: [{type: ITEM, material: EXPERIENCE_BOTTLE, amount: 24}]
+        reward-label: "24x Butelka Doświadczenia"
+      - id: 35
+        title: "Łowca Shulkerów"
+        description: ["Pokonaj shulkery w miastach Endu."]
+        requirement: {type: ITEM, materials: [{material: SHULKER_SHELL, amount: 4}]}
+        rewards: [{type: ITEM, material: SHULKER_BOX, amount: 1}]
+        reward-label: "1x Shulker Box"
+      - id: 36
+        title: "Skrzydła Wolności"
+        description: ["Zbierz błony fantomów na coś specjalnego."]
+        requirement: {type: ITEM, materials: [{material: PHANTOM_MEMBRANE, amount: 4}]}
+        rewards: [{type: ITEM, material: ELYTRA, amount: 1}]
+        reward-label: "1x Elytra"
+      - id: 37
+        title: "Ostatni Krok"
+        description: ["Przygotuj się na finałową walkę - zbierz złote marchewki."]
+        requirement: {type: ITEM, materials: [{material: GOLDEN_CARROT, amount: 16}]}
+        rewards: [{type: ITEM, material: GOLDEN_APPLE, amount: 4}]
+        reward-label: "4x Złote Jabłko"
+      - id: 38
+        title: "Smoczy Oddech"
+        description: ["Zbierz oddech smoka podczas walki z Enderdragonem."]
+        requirement: {type: ITEM, materials: [{material: DRAGON_BREATH, amount: 8}]}
+        rewards: [{type: ITEM, material: NETHER_STAR, amount: 1}]
+        reward-label: "1x Gwiazda Netheru"
+      - id: 39
+        title: "Mistrz Farmera"
+        description: ["Udowodnij, że Twoja farma stoi na najwyższym poziomie."]
+        requirement: {type: ITEM, materials: [{material: MELON_SLICE, amount: 64}]}
+        rewards: [{type: ITEM, material: ENCHANTED_GOLDEN_APPLE, amount: 1}]
+        reward-label: "1x Notch Apple"
+      - id: 40
+        title: "Mistrz Wyspy"
+        description: ["Oddaj zdobytą Gwiazdę Netheru i ukończ ścieżkę!"]
+        requirement: {type: ITEM, materials: [{material: NETHER_STAR, amount: 1}]}
+        rewards: [{type: CUSTOM_ITEM, id: TROFEUM_GLOWA_SMOKA, amount: 1}, {type: ITEM, material: BEACON, amount: 1}, {type: CRATE, tier: 3, silent: true}]
+        reward-label: "Trofeum: Głowa Smoka + Beacon"
+
+  GORNICTWO:
+    display-name: "Górnictwo"
+    icon: IRON_PICKAXE
+    description: "Zadania w kopalni"
+    main-path: false
+    sequential: false
+    unlock: {category: GLOWNA_SCIEZKA, quest-id: 3}
+    page-layout: *snake29
+    quests:
+      - id: 1
+        title: "Węglowa Żyła"
+        description: ["Rozgrzej się na start - zbierz węgiel."]
+        requirement: {type: ITEM, materials: [{material: COAL, amount: 64}]}
+        rewards: [{type: MONEY, amount: 300}]
+      - id: 2
+        title: "Miedziany Początek"
+        description: ["Miedź nie jest efektowna, ale dobrze się sprzedaje."]
+        requirement: {type: ITEM, materials: [{material: RAW_COPPER, amount: 48}]}
+        rewards: [{type: MONEY, amount: 400}]
+      - id: 3
+        title: "Rudonośna Żyła"
+        description: ["Wykop więcej surowego żelaza niż potrzebujesz na własny użytek."]
+        requirement: {type: ITEM, materials: [{material: RAW_IRON, amount: 48}]}
+        rewards: [{type: MONEY, amount: 700}]
+      - id: 4
+        title: "Złota Gorączka"
+        description: ["Złoto w Overworldzie jest rzadsze niż żelazo - warto po nie zejść głębiej."]
+        requirement: {type: ITEM, materials: [{material: RAW_GOLD, amount: 32}]}
+        rewards: [{type: MONEY, amount: 900}]
+      - id: 5
+        title: "Prąd pod Ziemią"
+        description: ["Zbierz redstone na własne mechanizmy - to nie jest ten sam depozyt co w Głównej Ścieżce."]
+        requirement: {type: ITEM, materials: [{material: REDSTONE, amount: 48}]}
+        rewards: [{type: ITEM, material: REDSTONE_BLOCK, amount: 4}]
+        reward-label: "4x Blok Redstone"
+      - id: 6
+        title: "Lazurowa Żyła"
+        description: ["Zbierz lapis - starczy na więcej niż jeden stół zaklęć."]
+        requirement: {type: ITEM, materials: [{material: LAPIS_LAZULI, amount: 48}]}
+        rewards: [{type: ITEM, material: EXPERIENCE_BOTTLE, amount: 20}]
+        reward-label: "20x Butelka Doświadczenia"
+      - id: 7
+        title: "Ametystowa Jaskinia"
+        description: ["Znajdź geodę ametystu i zbierz z niej kryształy."]
+        requirement: {type: ITEM, materials: [{material: AMETHYST_SHARD, amount: 20}]}
+        rewards: [{type: MONEY, amount: 1200}]
+      - id: 8
+        title: "Kwarcowe Podziemia"
+        description: ["Nether ma nie tylko blaze - kwarc też się przyda."]
+        requirement: {type: ITEM, materials: [{material: QUARTZ, amount: 48}]}
+        rewards: [{type: MONEY, amount: 1000}]
+      - id: 9
+        title: "Diamentowe Oko"
+        description: ["Osiem diamentów - solidny dowód, że umiesz już kopać głęboko."]
+        requirement: {type: ITEM, materials: [{material: DIAMOND, amount: 8}]}
+        rewards: [{type: MONEY, amount: 2500}]
+      - id: 10
+        title: "Skarb Otchłani"
+        description: ["Trzydzieści dwa diamenty naraz - to już poważny wynik."]
+        requirement: {type: ITEM, materials: [{material: DIAMOND, amount: 32}]}
+        rewards: [{type: ITEM, material: DIAMOND_BLOCK, amount: 2}]
+        reward-label: "2x Blok Diamentu"
+      - id: 11
+        title: "Starożytny Ślad"
+        description: ["Złom netherytu trzeba faktycznie wykopać - w sklepie już go nie kupisz."]
+        requirement: {type: ITEM, materials: [{material: NETHERITE_SCRAP, amount: 2}]}
+        rewards: [{type: MONEY, amount: 12000}]
+      - id: 12
+        title: "Mistrz Kopalni"
+        description: ["Ostatni sprawdzian - pokaż, że Twoja kopalnia stoi na solidnych fundamentach.", "Wymaga żelaza, złota i diamentów naraz."]
+        requirement: {type: ITEM, materials: [{material: RAW_IRON, amount: 64}, {material: RAW_GOLD, amount: 64}, {material: DIAMOND, amount: 16}]}
+        rewards: [{type: ITEM, material: NETHERITE_BLOCK, amount: 1}]
+        reward-label: "1x Blok Netherytu"
+
+  HODOWLA:
+    display-name: "Hodowla"
+    icon: WHEAT
+    description: "Zadania rolnicze"
+    main-path: false
+    sequential: false
+    unlock: {category: GLOWNA_SCIEZKA, quest-id: 7}
+    page-layout: *snake29
+    quests:
+      - id: 1
+        title: "Zbiory 1"
+        description: ["Rozkręć swoje pole - zacznij od marchewki."]
+        requirement: {type: ITEM, materials: [{material: CARROT, amount: 32}]}
+        rewards: [{type: ITEM, material: EMERALD, amount: 5}]
+        reward-label: "5x Szmaragd"
+      - id: 2
+        title: "Zbiory 2"
+        description: ["Pszenica to podstawa każdej dobrej farmy."]
+        requirement: {type: ITEM, materials: [{material: WHEAT, amount: 64}]}
+        rewards: [{type: ITEM, material: GOLD_INGOT, amount: 10}]
+        reward-label: "10x Złoto"
+      - id: 3
+        title: "Zbiory 3"
+        description: ["Ziemniaki rosną szybko - zbierz spory zapas."]
+        requirement: {type: ITEM, materials: [{material: POTATO, amount: 64}]}
+        rewards: [{type: ITEM, material: IRON_INGOT, amount: 32}]
+        reward-label: "32x Żelazo"
+      - id: 4
+        title: "Burakowe Pole"
+        description: ["Buraki przydają się do farb i zup - zbierz ich sporo."]
+        requirement: {type: ITEM, materials: [{material: BEETROOT, amount: 48}]}
+        rewards: [{type: ITEM, material: EMERALD, amount: 8}]
+        reward-label: "8x Szmaragd"
+      - id: 5
+        title: "Dyniowy Zbiór"
+        description: ["Dynie dobrze się sprzedają - zbuduj z nich niezłą farmę."]
+        requirement: {type: ITEM, materials: [{material: PUMPKIN, amount: 32}]}
+        rewards: [{type: MONEY, amount: 1500}]
+      - id: 6
+        title: "Mistrz Farmy"
+        description: ["Wykorzystaj złote marchewki - dowód, że Twoja farma jest w pełni samowystarczalna."]
+        requirement: {type: ITEM, materials: [{material: GOLDEN_CARROT, amount: 8}]}
+        rewards: [{type: ITEM, material: HONEY_BOTTLE, amount: 12}]
+        reward-label: "12x Butelka Miodu"
+
+  LOWCA:
+    display-name: "Łowca"
+    icon: BOW
+    description: "Zadania z potworami"
+    main-path: false
+    sequential: false
+    unlock: {category: GLOWNA_SCIEZKA, quest-id: 9}
+    page-layout: *snake29
+    quests:
+      - id: 1
+        title: "Początkujący"
+        description: ["Nieumarli w nocy nie odpuszczają - obróć to na swoją korzyść."]
+        requirement: {type: ITEM, materials: [{material: ROTTEN_FLESH, amount: 32}]}
+        rewards: [{type: ITEM, material: COOKED_BEEF, amount: 16}]
+        reward-label: "16x Pieczona Wołowina"
+      - id: 2
+        title: "Strzelec"
+        description: ["Kości ze szkieletów przydadzą się na coś więcej niż mączkę kostną."]
+        requirement: {type: ITEM, materials: [{material: BONE, amount: 16}]}
+        rewards: [{type: ITEM, material: BOW, amount: 1}]
+        reward-label: "1x Łuk"
+      - id: 3
+        title: "Nocny Marek"
+        description: ["Pajęczyny z pająków są zaskakująco poszukiwane."]
+        requirement: {type: ITEM, materials: [{material: STRING, amount: 10}]}
+        rewards: [{type: ITEM, material: EXPERIENCE_BOTTLE, amount: 16}]
+        reward-label: "16x Butelka EXP"
+      - id: 4
+        title: "Prochowy Zbieracz"
+        description: ["Creepery wybuchają prochem, nie tylko kraterami."]
+        requirement: {type: ITEM, materials: [{material: GUNPOWDER, amount: 24}]}
+        rewards: [{type: MONEY, amount: 800}]
+      - id: 5
+        title: "Pajęcze Oko"
+        description: ["Zbierz oczy pająków - podstawa niejednej mikstury."]
+        requirement: {type: ITEM, materials: [{material: SPIDER_EYE, amount: 12}]}
+        rewards: [{type: ITEM, material: GLASS_BOTTLE, amount: 16}]
+        reward-label: "16x Pusta Butelka"
+      - id: 6
+        title: "Nocna Zjawa"
+        description: ["Fantomy nawiedzają tych, co za długo nie śpią - upoluj kilka."]
+        requirement: {type: ITEM, materials: [{material: PHANTOM_MEMBRANE, amount: 6}]}
+        rewards: [{type: ITEM, material: ELYTRA, amount: 1}]
+        reward-label: "1x Elytra"
+
+  DRWAL:
+    display-name: "Drwal"
+    icon: OAK_LOG
+    description: "Zadania z drewnem"
+    main-path: false
+    sequential: false
+    unlock: null
+    page-layout: *snake29
+    quests: []
+
+  RYBAK:
+    display-name: "Rybak"
+    icon: FISHING_ROD
+    description: "Zadania wędkarskie"
+    main-path: false
+    sequential: false
+    unlock: {category: GLOWNA_SCIEZKA, quest-id: 13}
+    page-layout: *snake29
+    quests:
+      - id: 1
+        title: "Pierwszy Połów"
+        description: ["Złów i przynieś swoje pierwsze ryby zwykłą wędką."]
+        requirement: {type: ITEM, materials: [{material: COD, amount: 5, custom-id: FISH_KARP_MIELIZNY, display-name: "Karp Mielizny"}]}
+        rewards: [{type: ITEM, material: EMERALD, amount: 5}]
+        reward-label: "5x Szmaragd"
+      - id: 2
+        title: "W Głąb Wody"
+        description: ["Łów dalej - tym razem srebrne leszcze."]
+        requirement: {type: ITEM, materials: [{material: SALMON, amount: 8, custom-id: FISH_SREBRNY_LESZCZ, display-name: "Srebrny Leszcz"}]}
+        rewards: [{type: MONEY, amount: 500}]
+      - id: 3
+        title: "Kolekcjoner Łusek"
+        description: ["Złów coś rzadszego niż zwykłe ryby."]
+        requirement: {type: ITEM, materials: [{material: TROPICAL_FISH, amount: 1, custom-id: FISH_TECZOWY_SKRZELACZ, display-name: "Tęczowy Skrzelacz"}]}
+        rewards: [{type: MONEY, amount: 350}]
+      - id: 4
+        title: "Sekret Kowala"
+        description: ["Miejscowy kowal zna sekret wędek, których nie da się kupić.", "Połącz tę recepturę ze zwykłą wędką w kowadle."]
+        requirement: {type: FREE}
+        rewards: [{type: CUSTOM_ITEM, id: FISHING_RECIPE_NIEBIANSKA, amount: 1}]
+        reward-label: "Receptura: Niebiańska Wędka"
+      - id: 5
+        title: "Rybak Niebios"
+        description: ["Wykuj Niebiańską Wędkę i złów nią coś,", "czego nie da się złowić w wodzie."]
+        requirement: {type: ITEM, materials: [{material: SALMON, amount: 3, custom-id: FISH_OBLOCZNY_LATAWIEC, display-name: "Obłoczny Latawiec"}]}
+        rewards: [{type: ITEM, material: EXPERIENCE_BOTTLE, amount: 32}]
+        reward-label: "32x Butelka Doświadczenia"
+      - id: 6
+        title: "Więcej niż Ryby"
+        description: ["Łów dalej w powietrzu - trafiają się coraz ciekawsze gatunki."]
+        requirement: {type: ITEM, materials: [{material: TROPICAL_FISH, amount: 2, custom-id: FISH_GWIEZDNY_PROMYK, display-name: "Gwiezdny Promyk"}]}
+        rewards: [{type: MONEY, amount: 1200}]
+      - id: 7
+        title: "Szept Kosmosu"
+        description: ["Wśród gwiazd krąży plotka o wędce, która przyciąga jeszcze rzadsze ryby."]
+        requirement: {type: FREE}
+        rewards: [{type: CUSTOM_ITEM, id: FISHING_RECIPE_KOSMICZNA, amount: 1}]
+        reward-label: "Receptura: Wędka Kosmiczna DARKSTAR"
+      - id: 8
+        title: "Mistrz Wędki"
+        description: ["Złów legendarną Iskrę Ciemnej Gwiazdy Wędką Kosmiczną DARKSTAR.", "Ostatni krok ścieżki wędkarskiej!"]
+        requirement: {type: ITEM, materials: [{material: COD, amount: 1, custom-id: FISH_DARKSTAR_ISKRA, display-name: "Iskra Ciemnej Gwiazdy"}]}
+        rewards: [{type: CUSTOM_ITEM, id: TROFEUM_GLOWA_RYBAKA_OTCHLANI, amount: 1}]
+        reward-label: "Trofeum: Głowa Rybaka Otchłani"
+
+  ALCHEMIK:
+    display-name: "Alchemik"
+    icon: BREWING_STAND
+    description: "Warzenie mikstur"
+    main-path: false
+    sequential: false
+    unlock: null
+    page-layout: *snake29
+    quests: []
+
+  KUCHARZ:
+    display-name: "Kucharz"
+    icon: COOKED_BEEF
+    description: "Zadania kulinarne"
+    main-path: false
+    sequential: false
+    unlock: null
+    page-layout: *snake29
+    quests: []
+
+  BUDOWNICZY:
+    display-name: "Budowniczy"
+    icon: BRICKS
+    description: "Budowa wyspy"
+    main-path: false
+    sequential: false
+    unlock: null
+    page-layout: *snake29
+    quests: []
+
+  MAG:
+    display-name: "Mag"
+    icon: ENCHANTING_TABLE
+    description: "Zaklęcia"
+    main-path: false
+    sequential: false
+    unlock: null
+    page-layout: *snake29
+    quests: []
+
+  ODKRYWCA:
+    display-name: "Odkrywca"
+    icon: COMPASS
+    description: "Eksploracja mapy"
+    main-path: false
+    sequential: false
+    unlock: null
+    page-layout: *snake29
+    quests: []
+
+  RZEZNIK:
+    display-name: "Rzeźnik"
+    icon: PORKCHOP
+    description: "Zdobywanie mięsa"
+    main-path: false
+    sequential: false
+    unlock: null
+    page-layout: *snake29
+    quests: []
+
+  OGRODNIK:
+    display-name: "Ogrodnik"
+    icon: OAK_SAPLING
+    description: "Sadzenie drzew"
+    main-path: false
+    sequential: false
+    unlock: null
+    page-layout: *snake29
+    quests: []
+
+  JUBILER:
+    display-name: "Jubiler"
+    icon: DIAMOND
+    description: "Cenne kruszce"
+    main-path: false
+    sequential: false
+    unlock: null
+    page-layout: *snake29
+    quests: []
+
+  ZLODZIEJ:
+    display-name: "Złodziej"
+    icon: GOLD_NUGGET
+    description: "Kradzież (Zadania)"
+    main-path: false
+    sequential: false
+    unlock: null
+    page-layout: *snake29
+    quests: []
+
+  INZYNIER:
+    display-name: "Inżynier"
+    icon: REDSTONE
+    description: "Mechanizmy"
+    main-path: false
+    sequential: false
+    unlock: null
+    page-layout: *snake29
+    quests: []
+
+  QUESTY_SPECJALNE:
+    display-name: "Questy Specjalne"
+    icon: NETHER_STAR
+    description: "Trudne wyzwania dla weteranów"
+    main-path: false
+    sequential: false
+    unlock: {category: GLOWNA_SCIEZKA, quest-id: 30}
+    page-layout: *snake29
+    quests:
+      - id: 1
+        title: "Górski Kolos"
+        description: ["Dla prawdziwych weteranów kopalni."]
+        requirement: {type: ITEM, materials: [{material: DIAMOND, amount: 64}]}
+        rewards: [{type: ITEM, material: NETHERITE_INGOT, amount: 1}]
+        reward-label: "1x Sztabka Netherytu"
+      - id: 2
+        title: "Wojownik Otchłani"
+        description: ["Poluj na eliksir mocy w Netherze."]
+        requirement: {type: ITEM, materials: [{material: WITHER_SKELETON_SKULL, amount: 4}]}
+        rewards: [{type: ITEM, material: TOTEM_OF_UNDYING, amount: 1}]
+        reward-label: "1x Totem Nieśmiertelności"
+      - id: 3
+        title: "Skarb Smoka"
+        description: ["Pokonaj Smoka Endera."]
+        requirement: {type: ITEM, materials: [{material: DRAGON_BREATH, amount: 16}]}
+        rewards: [{type: ITEM, material: NETHER_STAR, amount: 1}]
+        reward-label: "1x Gwiazda Netheru"

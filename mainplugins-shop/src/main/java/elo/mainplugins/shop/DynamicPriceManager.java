@@ -1,5 +1,6 @@
 package elo.mainplugins.shop;
 
+import elo.mainplugins.core.api.CenyService;
 import elo.mainplugins.core.util.AsyncConfigSaver;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -8,6 +9,7 @@ import org.bukkit.plugin.Plugin;
 
 import java.io.File;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * progu, tanie itemy (bruk) nigdy nie zaważyłyby tyle, co drogie (diament),
  * i mechanizm dotyczyłby w praktyce tylko końcówki cennika.
  */
-public class DynamicPriceManager {
+public class DynamicPriceManager implements CenyService {
 
     // =========================================================================
     //  PARAMETRY MODELU — jedyne miejsce do strojenia
@@ -103,19 +105,30 @@ public class DynamicPriceManager {
     private final Set<String> zablokowane = ConcurrentHashMap.newKeySet();
 
     private final Plugin plugin;
+    private final ShopManager shopManager;
     private final File plik;
     private final FileConfiguration config;
     private final AsyncConfigSaver saver;
     private final StatystykiSklepu statystyki;
     private int cykliOdResetu = 0;
 
-    public DynamicPriceManager(Plugin plugin) {
+    /**
+     * @param shopManager potrzebny wyłącznie do nazwaWyswietlana() (patrz CenyService) -
+     *                    ShopManager przekazuje "this" zanim jego własny konstruktor się
+     *                    skończy, ale to bezpieczne: nazwaWyswietlana() woła się dopiero
+     *                    później (przy żądaniu placeholdera), nigdy w trakcie budowy.
+     */
+    public DynamicPriceManager(Plugin plugin, ShopManager shopManager) {
         this.plugin = plugin;
+        this.shopManager = shopManager;
         this.plik = new File(plugin.getDataFolder(), "ceny-dynamiczne.yml");
         this.config = YamlConfiguration.loadConfiguration(plik);
         this.statystyki = new StatystykiSklepu(plugin);
         wczytaj();
         this.saver = new AsyncConfigSaver(plugin, config, plik, 60);
+
+        Bukkit.getServicesManager().register(CenyService.class, this,
+                plugin, org.bukkit.plugin.ServicePriority.Normal);
 
         long ticki = MINUT_NA_CYKL * 60L * 20L;
         Bukkit.getScheduler().runTaskTimer(plugin, this::wykonajCykl, ticki, ticki);
@@ -386,6 +399,7 @@ public class DynamicPriceManager {
         zapiszStan();
         statystyki.zapisz();
         saver.zamknij();
+        Bukkit.getServicesManager().unregister(CenyService.class, this);
     }
 
     /** Ręczny reset — do komendy administracyjnej. */
@@ -466,5 +480,44 @@ public class DynamicPriceManager {
         Map<String, Double> wynik = new HashMap<>();
         for (String k : zablokowane) wynik.put(k, mnozniki.getOrDefault(k, 1.0));
         return wynik;
+    }
+
+    // =========================================================================
+    //  CenyService — cienki interfejs dla innych modułów (patrz HUD)
+    // =========================================================================
+
+    @Override
+    public Odchylenie najwiekszeOdchylenie() {
+        String najlepszyKlucz = null;
+        double najwiekszeOdchylenie = 0.02;   // próg - poniżej tego to "w normie"
+
+        for (var wpis : mnozniki.entrySet()) {
+            double odchylenie = Math.abs(wpis.getValue() - 1.0);
+            if (odchylenie > najwiekszeOdchylenie) {
+                najwiekszeOdchylenie = odchylenie;
+                najlepszyKlucz = wpis.getKey();
+            }
+        }
+        if (najlepszyKlucz == null) return null;
+
+        // Nazwa wyswietlana z cennika, nie surowy klucz (COBBLESTONE -> Bruk).
+        String nazwa = nazwaWyswietlana(najlepszyKlucz);
+        return new Odchylenie(nazwa, mnozniki.get(najlepszyKlucz));
+    }
+
+    @Override
+    public int dniDoResetu() {
+        int cykliZostalo = CYKLI_DO_RESETU - cykliOdResetu;
+        return Math.max(0, cykliZostalo / 24);   // MINUT_NA_CYKL=60 -> 24 cykle = 1 dzień
+    }
+
+    @Override
+    public List<String> getZablokowaneNazwy() {
+        return zablokowane.stream().map(this::nazwaWyswietlana).toList();
+    }
+
+    /** Deleguje do ShopManager.nazwaWyswietlana() - tam siedzi sklepConfig z "display-name". */
+    private String nazwaWyswietlana(String klucz) {
+        return shopManager.nazwaWyswietlana(klucz);
     }
 }

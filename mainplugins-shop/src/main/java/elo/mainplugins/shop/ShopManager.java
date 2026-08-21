@@ -98,7 +98,7 @@ public class ShopManager implements Listener {
         this.plugin = plugin;
         this.economyManager = economyManager;
         stworzLubWczytajPlikSklepu();
-        this.ceny = new DynamicPriceManager(plugin);
+        this.ceny = new DynamicPriceManager(plugin, this);
     }
 
     /** Żeby plugin mógł zamknąć manager cen dynamicznych przy wyłączaniu (patrz MainpluginsShop.onDisable()). */
@@ -106,6 +106,18 @@ public class ShopManager implements Listener {
 
     /** Sklejona konfiguracja sklepu (sklep.yml + wszystkie categories/*.yml) — do odczytu przez /@sklep. */
     public FileConfiguration getSklepConfig() { return sklepConfig; }
+
+    /**
+     * Nazwa wyświetlana danego itemu (z "display-name" w categories/*.yml), albo
+     * sam klucz, gdy item jej nie ma / nie istnieje. Do użycia przez
+     * DynamicPriceManager (patrz CenyService.najwiekszeOdchylenie/getZablokowaneNazwy),
+     * które nie ma bezpośredniego dostępu do sklepConfig.
+     */
+    public String nazwaWyswietlana(String klucz) {
+        LokalizacjaItemu lok = znajdzItem(klucz);
+        if (lok == null) return klucz;
+        return sklepConfig.getString(lok.path() + "display-name", klucz);
+    }
 
     /**
      * Klucz, pod którym DynamicPriceManager trzyma mnożnik ceny danego itemu.

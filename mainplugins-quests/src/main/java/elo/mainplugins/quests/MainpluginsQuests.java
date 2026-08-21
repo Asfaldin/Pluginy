@@ -63,6 +63,14 @@ public final class MainpluginsQuests extends JavaPlugin {
                 return true;
             });
         }
+
+        if (getCommand("@reloadquesty") != null) {
+            getCommand("@reloadquesty").setExecutor((sender, command, label, args) -> {
+                questManager.przeladujTresc();
+                sender.sendMessage("Przeladowano quests-content.yml.");
+                return true;
+            });
+        }
     }
 
     /**

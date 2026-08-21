@@ -184,6 +184,25 @@ public class EconomyManager implements EconomyService {
         return wynik.size() > limit ? wynik.subList(0, limit) : wynik;
     }
 
+    @Override
+    public int getPozycjaWRankingu(UUID uuid) {
+        long mojeSaldo = getGrosze(uuid);
+        if (mojeSaldo <= 0) return -1;
+
+        // Liczymy, ilu graczy ma WIĘCEJ niż gracz odpytujący - to jest jego
+        // pozycja bez potrzeby pełnego sortowania całej listy.
+        int wiecejMajacych = 0;
+        for (String key : configEkonomii.getKeys(false)) {
+            if (key.equals("meta") || key.equals("_meta")) continue;
+            if (!czyUUID(key)) continue;
+            if (key.equals(uuid.toString())) continue;
+
+            long inneSaldo = configEkonomii.getLong(key, 0L);
+            if (inneSaldo > mojeSaldo) wiecejMajacych++;
+        }
+        return wiecejMajacych + 1;
+    }
+
     // Nie zapisuje od razu — tylko oznacza zmianę. Faktyczny zrzut na dysk
     // leci asynchronicznie co 30 sekund oraz przy wyłączaniu serwera.
     //

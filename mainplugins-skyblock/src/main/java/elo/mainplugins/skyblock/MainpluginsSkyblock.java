@@ -50,6 +50,16 @@ public final class MainpluginsSkyblock extends JavaPlugin {
 
         if (getCommand("is") != null) getCommand("is").setExecutor(executor);
         if (getCommand("dom") != null) getCommand("dom").setExecutor(executor);
+
+        // Osobny executor: /@reloadwyspy ma sens tez z konsoli, nie tylko od gracza.
+        // Uprawnienie (mainplugins.skyblock.reload, domyslnie op) pilnuje tego plugin.yml.
+        if (getCommand("@reloadwyspy") != null) {
+            getCommand("@reloadwyspy").setExecutor((sender, command, label, args) -> {
+                islandManager.przeladujKonfiguracje();
+                sender.sendMessage("§aKonfiguracja i uklad GUI wysp zostaly przeladowane.");
+                return true;
+            });
+        }
     }
 
     @Override

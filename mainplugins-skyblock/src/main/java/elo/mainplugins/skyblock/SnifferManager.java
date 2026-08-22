@@ -30,44 +30,39 @@ import org.bukkit.plugin.Plugin;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * "Sniffer Farmera" - specjalny item ze sklepu (kategoria "Itemy Specjalne", custom-id
- * SNIFFER_JAJKO). Użyty (PPM na bloku) na WŁASNEJ wyspie stawia Snifferaa, który co
- * SKAN_ODSTEP_TICKOW automatycznie zbiera i od razu sadzi na nowo dojrzałe uprawy
- * w promieniu PROMIEN_ZBIORU wokół siebie, po czym wrzuca zebrane plony do
- * najbliższej skrzyni w promieniu PROMIEN_SZUKANIA_SKRZYNI - a jeśli żadnej nie ma
- * w zasięgu, po prostu upuszcza je na ziemię pod sobą. Maksymalnie 1 Sniffer na
- * wyspę na raz (patrz onUzyjJajka).
+ * SNIFFER_JAJKO). Użyty (PPM na bloku) na WŁASNEJ wyspie stawia Snifferaa, który cyklicznie
+ * (patrz konstruktor - "sniffer.skan-odstep-sekundy" w wyspy-config.yml) automatycznie zbiera
+ * i od razu sadzi na nowo dojrzałe uprawy w promieniu wokół siebie, po czym wrzuca zebrane
+ * plony do najbliższej skrzyni w zasięgu - a jeśli żadnej nie ma, po prostu upuszcza je na
+ * ziemię pod sobą. Maksymalnie 1 Sniffer na wyspę na raz (patrz onUzyjJajka).
  *
  * CELOWO z wyłączonym AI (setAI(false)) - prawdziwe, autonomiczne pathfindingowe AI
  * na mobach przez Paper API bywa kruche między wersjami serwera. Zamiast tego "rusza
  * się jako tako": co każdy skan losowo TELEPORTUJE się o kilka bloków w obrębie
- * PROMIEN_WEDROWANIA od snifferAnchor (punktu postawienia) - w pełni kontrolowany,
+ * promienia wędrowania od snifferAnchor (punktu postawienia) - w pełni kontrolowany,
  * przewidywalny ruch (nigdy nie odpłynie z wyspy ani nie utknie), bez zależności od
  * niestabilnego silnika AI.
+ *
+ * Wszystkie liczbowe parametry (promienie, odstęp skanu, lista upraw) są w
+ * wyspy-config.yml (sekcja "sniffer") i czytane na żywo z każdym skanem - JEDYNY wyjątek
+ * to sam ODSTĘP skanu, odczytywany raz przy starcie (patrz konstruktor), bo zaplanowanego
+ * zadania Bukkita nie da się przeplanować bez jego anulowania i utworzenia od nowa.
  */
 public class SnifferManager implements Listener {
 
     private static final String CUSTOM_ID = "SNIFFER_JAJKO";
-    private static final int PROMIEN_ZBIORU = 6;
-    private static final int WYSOKOSC_ZBIORU = 2; // ile bloków w górę/dół od Snifferaa sprawdzamy - uprawy nie różnią się dużo wysokością
-    private static final int PROMIEN_SZUKANIA_SKRZYNI = 8;
-    private static final int PROMIEN_WEDROWANIA = 4; // maks. odległość "skoku" od snifferAnchor
-    private static final long SKAN_ODSTEP_TICKOW = 100L; // 5s
-
-    private static final Set<Material> UPRAWY = Set.of(
-            Material.WHEAT, Material.CARROTS, Material.POTATOES, Material.BEETROOTS, Material.NETHER_WART
-    );
 
     private final IslandManager islandManager;
 
     public SnifferManager(Plugin plugin, IslandManager islandManager) {
         this.islandManager = islandManager;
-        Bukkit.getScheduler().runTaskTimer(plugin, this::skanujWszystkieSniffery, SKAN_ODSTEP_TICKOW, SKAN_ODSTEP_TICKOW);
+        long odstepTicks = islandManager.getTuning().snifferSkanOdstepTicks();
+        Bukkit.getScheduler().runTaskTimer(plugin, this::skanujWszystkieSniffery, odstepTicks, odstepTicks);
     }
 
     private boolean jestJajkiemSnifferaa(ItemStack item) {
@@ -141,14 +136,16 @@ public class SnifferManager implements Listener {
     private void sprobujPrzeniesc(Entity sniffer, IslandManager.IslandData data) {
         if (!data.hasSnifferAnchor()) return;
 
+        int promienWedrowania = islandManager.getTuning().snifferPromienWedrowania();
+
         World world = sniffer.getWorld();
         int anchorX = (int) Math.floor(data.getSnifferAnchorX());
         int anchorY = (int) Math.floor(data.getSnifferAnchorY());
         int anchorZ = (int) Math.floor(data.getSnifferAnchorZ());
 
         ThreadLocalRandom random = ThreadLocalRandom.current();
-        int dx = random.nextInt(-PROMIEN_WEDROWANIA, PROMIEN_WEDROWANIA + 1);
-        int dz = random.nextInt(-PROMIEN_WEDROWANIA, PROMIEN_WEDROWANIA + 1);
+        int dx = random.nextInt(-promienWedrowania, promienWedrowania + 1);
+        int dz = random.nextInt(-promienWedrowania, promienWedrowania + 1);
         if (dx == 0 && dz == 0) return; // brak ruchu w tym przebiegu - Sniffer zostaje na miejscu
 
         Location docelowa = znajdzStabilnyGrunt(world, anchorX + dx, anchorY, anchorZ + dz);
@@ -179,14 +176,18 @@ public class SnifferManager implements Listener {
     }
 
     private void zbierzIZasadzWokol(Location centrum) {
+        int promienZbioru = islandManager.getTuning().snifferPromienZbioru();
+        int wysokoscZbioru = islandManager.getTuning().snifferWysokoscZbioru();
+        java.util.Set<Material> uprawy = islandManager.getTuning().snifferUprawy();
+
         List<ItemStack> zebrane = new ArrayList<>();
         int cx = centrum.getBlockX(), cy = centrum.getBlockY(), cz = centrum.getBlockZ();
 
-        for (int dx = -PROMIEN_ZBIORU; dx <= PROMIEN_ZBIORU; dx++) {
-            for (int dy = -WYSOKOSC_ZBIORU; dy <= WYSOKOSC_ZBIORU; dy++) {
-                for (int dz = -PROMIEN_ZBIORU; dz <= PROMIEN_ZBIORU; dz++) {
+        for (int dx = -promienZbioru; dx <= promienZbioru; dx++) {
+            for (int dy = -wysokoscZbioru; dy <= wysokoscZbioru; dy++) {
+                for (int dz = -promienZbioru; dz <= promienZbioru; dz++) {
                     Block block = centrum.getWorld().getBlockAt(cx + dx, cy + dy, cz + dz);
-                    if (!UPRAWY.contains(block.getType())) continue;
+                    if (!uprawy.contains(block.getType())) continue;
 
                     BlockData blockData = block.getBlockData();
                     if (!(blockData instanceof Ageable ageable)) continue;
@@ -221,15 +222,17 @@ public class SnifferManager implements Listener {
         }
     }
 
-    /** Najbliższa (w linii prostej) skrzynia/beczka w promieniu PROMIEN_SZUKANIA_SKRZYNI - albo null, jeśli żadnej nie ma. */
+    /** Najbliższa (w linii prostej) skrzynia/beczka w promieniu sniffer.promien-szukania-skrzyni - albo null, jeśli żadnej nie ma. */
     private Inventory znajdzNajblizszaSkrzynie(Location centrum) {
+        int promienSzukaniaSkrzyni = islandManager.getTuning().snifferPromienSzukaniaSkrzyni();
+
         int cx = centrum.getBlockX(), cy = centrum.getBlockY(), cz = centrum.getBlockZ();
         Block najblizszy = null;
         double najlepszyDystansKw = Double.MAX_VALUE;
 
-        for (int dx = -PROMIEN_SZUKANIA_SKRZYNI; dx <= PROMIEN_SZUKANIA_SKRZYNI; dx++) {
-            for (int dy = -PROMIEN_SZUKANIA_SKRZYNI; dy <= PROMIEN_SZUKANIA_SKRZYNI; dy++) {
-                for (int dz = -PROMIEN_SZUKANIA_SKRZYNI; dz <= PROMIEN_SZUKANIA_SKRZYNI; dz++) {
+        for (int dx = -promienSzukaniaSkrzyni; dx <= promienSzukaniaSkrzyni; dx++) {
+            for (int dy = -promienSzukaniaSkrzyni; dy <= promienSzukaniaSkrzyni; dy++) {
+                for (int dz = -promienSzukaniaSkrzyni; dz <= promienSzukaniaSkrzyni; dz++) {
                     Block block = centrum.getWorld().getBlockAt(cx + dx, cy + dy, cz + dz);
                     if (!(block.getState() instanceof Chest)) continue;
 

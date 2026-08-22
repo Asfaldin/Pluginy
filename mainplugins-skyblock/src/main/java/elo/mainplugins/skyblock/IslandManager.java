@@ -17,10 +17,17 @@ import elo.mainplugins.core.api.IslandService;
 import elo.mainplugins.core.api.IslandSummary;
 import elo.mainplugins.core.api.SpawnService;
 import elo.mainplugins.core.world.VoidGenerator;
+import elo.mainplugins.skyblock.config.IslandConfigLoader;
+import elo.mainplugins.skyblock.config.IslandTuning;
+import elo.mainplugins.skyblock.config.SpawnerTyp;
 import elo.mainplugins.skyblock.event.IslandBankDepositEvent;
 import elo.mainplugins.skyblock.event.IslandCreatedEvent;
 import elo.mainplugins.skyblock.event.IslandMemberJoinedEvent;
 import elo.mainplugins.skyblock.event.IslandUpgradeEvent;
+import elo.mainplugins.skyblock.gui.IslandGuiButton;
+import elo.mainplugins.skyblock.gui.IslandGuiContent;
+import elo.mainplugins.skyblock.gui.IslandGuiLoader;
+import elo.mainplugins.skyblock.gui.IslandScreen;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.TooltipDisplay;
 import net.kyori.adventure.text.Component;
@@ -54,6 +61,13 @@ public class IslandManager implements Listener, IslandService {
     private final World skyblockWorld;
     private final File schemFile;
     private final EconomyService economyManager;
+
+    // Cala liczbowa/danych konfiguracja (koszty, promienie, timeouty, typy spawnerow...) i
+    // caly uklad GUI (sloty/ikony/teksty) - wczytywane z wyspy-config.yml/wyspy-gui.yml,
+    // podmieniane w calosci przy /@reloadwyspy (patrz przeladujKonfiguracje). NIE final -
+    // to jedyny powod, dla ktorego to pole nie jest static final jak dawne stale.
+    private IslandTuning tuning;
+    private IslandGuiContent gui;
 
     // Mapa pamiętająca, czy gracz wszedł do GUI z komendy /menu
     private final Map<UUID, Boolean> otwartoZMenu = new HashMap<>();
@@ -99,7 +113,7 @@ public class IslandManager implements Listener, IslandService {
         // patrz /is deposit), wypłaca wyłącznie właściciel/admin (/is withdraw).
         private double bankBalance = 0.0;
 
-        // Wartość wyspy licznona z postawionych bloków (patrz IslandManager.WARTOSCI_BLOKOW) -
+        // Wartość wyspy licznona z postawionych bloków (patrz IslandManager.wartoscBloku) -
         // aktualizowana przyrostowo przy każdym BlockBreakEvent/BlockPlaceEvent na terenie
         // wyspy (IslandProtectionManager), a nie skanowana na żądanie - pełne skanowanie
         // terenu przy każdym odświeżeniu Topki Wysp byłoby zbyt kosztowne.
@@ -222,95 +236,23 @@ public class IslandManager implements Listener, IslandService {
     /** Ranga członka wyspy (nie dotyczy właściciela - patrz komentarz przy IslandData.memberRoles). */
     public enum IslandRole { CZLONEK, ADMIN }
 
-    /** Identyfikator musi się zgadzać z SpawnerType.name() w mainplugins-spawners - patrz komentarz przy IslandData.spawnerLevels. */
-    private record SpawnerTypInfo(String id, String nazwaOdmieniona, Material ikona) {}
-
     /** Ile razy gracz w sumie utworzył wyspę (create+delete się liczy) i kiedy ostatnio - patrz historiaTworzeniaWysp. */
     private static class HistoriaTworzenia {
         int ilosc;
         long ostatnieMillis;
     }
 
-    private static final int SPAWNER_MAX_LEVEL = 5;
-
-    /**
-     * Koszt awansu z danego poziomu na kolejny (1->2, 2->3, 3->4, 4->5) - z banku wyspy.
-     * Ilość i Szybkość mają OSOBNE krzywe kosztu (na razie te same liczby, ale rozdzielone
-     * funkcje - żeby dało się zmienić jedną bez ruszania drugiej).
-     */
-    /** Baza dla najtańszego spawnera. Suma 1->5: 33 000 $. */
-    private static int bazowyKosztIlosci(int obecnyPoziom) {
-        return switch (obecnyPoziom) {
-            case 1 -> 2500;
-            case 2 -> 5000;
-            case 3 -> 8500;
-            default -> 17000;   // 4 i wyżej
-        };
-    }
-
-    /** Baza dla najtańszego spawnera. Suma 1->5: 46 500 $ — drożej niż Ilość,
-     *  bo Szybkość daje większy przyrost mobów na godzinę. */
-    private static int bazowyKosztSzybkosci(int obecnyPoziom) {
-        return switch (obecnyPoziom) {
-            case 1 -> 3500;
-            case 2 -> 7000;
-            case 3 -> 12000;
-            default -> 24000;   // 4 i wyżej
-        };
-    }
-
-    /** Cena spawnera w sklepie — musi się zgadzać z categories/spawnery.yml. */
-    private static int cenaSpawnera(String typId) {
-        return switch (typId) {
-            case "ZOMBIE"   -> 20000;
-            case "PIG"      -> 25000;
-            case "SKELETON" -> 30000;
-            case "COW"      -> 40000;
-            case "SPIDER"   -> 45000;
-            case "CHICKEN"  -> 55000;
-            case "CREEPER"  -> 60000;
-            case "SHEEP"    -> 67000;
-            case "BREEZE"   -> 100000;
-            default         -> 20000;   // nieznany typ -> traktujemy jak najtańszy
-        };
-    }
-
-    /** Najtańszy spawner wyznacza skalę — jego mnożnik wynosi 1.0. */
-    private static final int CENA_BAZOWEGO_SPAWNERA = 20000;
-
-    /**
-     * Ile razy drożej ulepsza się ten spawner względem najtańszego.
-     * Pierwiastek spłaszcza różnicę: breeze jest 5x droższy od zombie,
-     * ale jego ulepszenia tylko 2.24x.
-     */
-    private static double mnoznikKosztu(String typId) {
-        return Math.sqrt((double) cenaSpawnera(typId) / CENA_BAZOWEGO_SPAWNERA);
-    }
-
-    private static int kosztUlepszeniaSpawnera(String typId, String sufiks, int obecnyPoziom) {
-        int baza = sufiks.equals(SUFIKS_ILOSC)
-                ? bazowyKosztIlosci(obecnyPoziom)
-                : bazowyKosztSzybkosci(obecnyPoziom);
-        // zaokrąglenie do pełnych setek, żeby w GUI nie było kwot typu 8437 $
-        return (int) (Math.round(baza * mnoznikKosztu(typId) / 100.0) * 100);
-    }
-
-    // MUSZĄ się zgadzać 1:1 z tymi samymi literałami w SpawnerManager (mainplugins-spawners).
+    // MUSZĄ się zgadzać 1:1 z tymi samymi literałami w SpawnerManager (mainplugins-spawners) -
+    // identyfikatory protokołu miedzy pluginami, nie "tresc" do edycji.
     private static final String SUFIKS_ILOSC = "_ILOSC";
     private static final String SUFIKS_SZYBKOSC = "_SZYBKOSC";
 
-    // Kolejność = od najtańszego do najdroższego w sklepie (patrz categories/spawnery.yml).
-    private static final List<SpawnerTypInfo> SPAWNER_TYPY = List.of(
-            new SpawnerTypInfo("ZOMBIE", "Zombie", Material.ROTTEN_FLESH),
-            new SpawnerTypInfo("PIG", "Świń", Material.PORKCHOP),
-            new SpawnerTypInfo("SKELETON", "Szkieletów", Material.BONE),
-            new SpawnerTypInfo("COW", "Krów", Material.LEATHER),
-            new SpawnerTypInfo("SPIDER", "Pająków", Material.STRING),
-            new SpawnerTypInfo("CHICKEN", "Kur", Material.FEATHER),
-            new SpawnerTypInfo("CREEPER", "Creeperów", Material.GUNPOWDER),
-            new SpawnerTypInfo("SHEEP", "Owiec", Material.WHITE_WOOL),
-            new SpawnerTypInfo("BREEZE", "Breeze'ów", Material.BREEZE_ROD)
-    );
+    // Maksymalny rozmiar WorldBordera dopuszczalny przez samego Minecrafta to
+    // 5.9999968E7 (59 999 968) - wartość NIECO mniejsza niż okrągłe 60 milionów.
+    // Wcześniejsze 60000000 przekraczało ten limit o 32 i wywalało IllegalArgumentException
+    // przy każdym /is border i usuwaniu wyspy. Używamy tego jako "brak borderu". To twardy
+    // limit silnika Minecrafta, nie wartość do strojenia - celowo NIE w wyspy-config.yml.
+    private static final double ROZMIAR_BEZ_BORDERU = 59999900;
 
     private final Map<UUID, IslandData> islandDatabase = new HashMap<>();
     private final Map<UUID, UUID> playerIslandMap = new HashMap<>();
@@ -334,53 +276,12 @@ public class IslandManager implements Listener, IslandService {
     private final File plikWysp;
     private final FileConfiguration configWysp;
 
-    // Maksymalny rozmiar WorldBordera dopuszczalny przez samego Minecrafta to
-    // 5.9999968E7 (59 999 968) - wartość NIECO mniejsza niż okrągłe 60 milionów.
-    // Wcześniejsze 60000000 przekraczało ten limit o 32 i wywalało IllegalArgumentException
-    // przy każdym /is border i usuwaniu wyspy. Używamy tego jako "brak borderu".
-    private static final double ROZMIAR_BEZ_BORDERU = 59999900;
-
-    // Odstęp między środkami sąsiednich wysp na siatce (patrz stworzWyspe()).
-    // MAX_BORDER_SIZE musi zostać wyraźnie poniżej połowy tej wartości, inaczej
-    // dwie maksymalnie rozbudowane, sąsiadujące wyspy mogłyby się kiedyś zetknąć.
-    private static final int ODSTEP_SIATKI_WYSP = 10000;
-
-    // Twardy limit promienia wyspy (niezależny od tego, ile gracz ma pieniędzy).
-    // Przy odstępie siatki 10000 zostawia to min. 8500 bloków pustki między
-    // granicami dwóch sąsiednich, maksymalnie rozbudowanych wysp - więcej niż
-    // jakikolwiek realny zasięg renderowania gracza, więc wyspy nigdy się nie
-    // zetkną ani nie będą się nawzajem widoczne "z daleka".
-    private static final int MAX_BORDER_SIZE = 750;
-
-    /**
-     * "Wartość wyspy" (patrz IslandData.worth) - śledzona PRZYROSTOWO przez
-     * IslandProtectionManager (+wartość przy postawieniu, -wartość przy zniszczeniu),
-     * NIE skanowana na żądanie. Celowo krótka lista "cennych" bloków zamiast każdego
-     * materiału - to ma być zgrubny wskaźnik zamożności wyspy do Topki, a nie dokładny
-     * audyt każdego postawionego bloku (nieujęte materiały po prostu nie wpływają na worth).
-     */
-    private static final Map<Material, Double> WARTOSCI_BLOKOW = Map.ofEntries(
-            Map.entry(Material.NETHERITE_BLOCK, 5000.0),
-            Map.entry(Material.DIAMOND_BLOCK, 800.0),
-            Map.entry(Material.EMERALD_BLOCK, 600.0),
-            Map.entry(Material.BEACON, 3000.0),
-            Map.entry(Material.GOLD_BLOCK, 250.0),
-            Map.entry(Material.IRON_BLOCK, 100.0),
-            Map.entry(Material.COPPER_BLOCK, 40.0),
-            Map.entry(Material.LAPIS_BLOCK, 80.0),
-            Map.entry(Material.REDSTONE_BLOCK, 60.0),
-            Map.entry(Material.COAL_BLOCK, 30.0),
-            Map.entry(Material.SPAWNER, 1000.0)
-    );
-
-    /** Zwraca 0 dla materiałów spoza WARTOSCI_BLOKOW - patrz komentarz przy tej mapie. */
-    static double wartoscBloku(Material material) {
-        return WARTOSCI_BLOKOW.getOrDefault(material, 0.0);
-    }
-
     public IslandManager(Plugin plugin, EconomyService economyManager) {
         this.plugin = plugin;
         this.economyManager = economyManager;
+
+        this.tuning = IslandConfigLoader.load(plugin);
+        this.gui = IslandGuiLoader.load(plugin);
 
         WorldCreator wc = new WorldCreator("skyblock_world");
         wc.generator(new VoidGenerator());
@@ -397,6 +298,17 @@ public class IslandManager implements Listener, IslandService {
         this.configWysp = YamlConfiguration.loadConfiguration(plikWysp);
         wczytajWyspy();
         wczytajHistorieTworzenia();
+    }
+
+    /** Wywoływane przez /@reloadwyspy - podmienia liczbową konfigurację i cały układ GUI bez restartu serwera. */
+    public void przeladujKonfiguracje() {
+        this.tuning = IslandConfigLoader.load(plugin);
+        this.gui = IslandGuiLoader.load(plugin);
+    }
+
+    /** Używane przez IslandProtectionManager/SnifferManager - żeby nie duplikować wczytywania configu w każdej klasie. */
+    public IslandTuning getTuning() {
+        return tuning;
     }
 
     /**
@@ -422,7 +334,7 @@ public class IslandManager implements Listener, IslandService {
             int id = configWysp.getInt(path + "id", nextIslandId);
             int centerX = configWysp.getInt(path + "centerX");
             int centerZ = configWysp.getInt(path + "centerZ");
-            int borderSize = configWysp.getInt(path + "borderSize", 50);
+            int borderSize = configWysp.getInt(path + "borderSize", tuning.domyslnyRozmiarWyspy());
 
             IslandData data = new IslandData(id, ownerUUID, centerX, centerZ, borderSize);
             data.setAllowMobs(configWysp.getBoolean(path + "allowMobs", true));
@@ -617,12 +529,10 @@ public class IslandManager implements Listener, IslandService {
         }
     }
 
-    private static final long TIMEOUT_POTWIERDZENIA_TICKS = 15 * 20L;
-
-    /** Wspólne dla GUI (kosz) i komendy (/is usun) - potwierdzenie wygasa po 15s. */
+    /** Wspólne dla GUI (kosz) i komendy (/is usun) - potwierdzenie wygasa po timeouty.potwierdzenie-sekundy. */
     private void ustawOczekiwanieNaPotwierdzenie(UUID uuid) {
         pendingDeleteConfirmation.add(uuid);
-        Bukkit.getScheduler().runTaskLater(plugin, () -> pendingDeleteConfirmation.remove(uuid), TIMEOUT_POTWIERDZENIA_TICKS);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> pendingDeleteConfirmation.remove(uuid), tuning.timeoutPotwierdzeniaTicks());
     }
 
     /**
@@ -775,7 +685,6 @@ public class IslandManager implements Listener, IslandService {
     // ---- Zaproszenia na wyspę (zastępują dawne natychmiastowe dodawanie bez zgody celu) ----
 
     private final Map<UUID, PendingInvite> pendingInvites = new HashMap<>();
-    private static final long TIMEOUT_ZAPROSZENIA_TICKS = 60 * 20L;
 
     private record PendingInvite(UUID ownerUUID, UUID inviterUUID) {}
 
@@ -808,7 +717,7 @@ public class IslandManager implements Listener, IslandService {
                 Player t = Bukkit.getPlayer(targetUUID);
                 if (t != null) t.sendMessage(Component.text("Zaproszenie na wyspę wygasło.", NamedTextColor.GRAY));
             }
-        }, TIMEOUT_ZAPROSZENIA_TICKS);
+        }, tuning.timeoutZaproszeniaTicks());
 
         inviter.sendMessage(Component.text("Wysłano zaproszenie do " + target.getName() + ".", NamedTextColor.GREEN));
         target.sendMessage(Component.text("Zostałeś zaproszony na wyspę gracza " + inviter.getName() + "! Wpisz /is accept lub /is deny w ciągu 60 sekund.", NamedTextColor.AQUA));
@@ -977,23 +886,6 @@ public class IslandManager implements Listener, IslandService {
         usunCzlonka(player, targetUUID);
     }
 
-    /**
-     * Cooldown przed N-tym utworzeniem wyspy w życiu gracza (numerProby = ile już było + ta próba).
-     * Pierwsze dwa razy za darmo (normalne "nie spodobała mi się, zrobię drugą raz"), potem kara
-     * za nadużywanie cyklu stwórz/usuń rośnie schodkowo, a od 7. próby w górę zostaje płasko na
-     * dobę - żeby zniechęcić do robienia tego na bieżąco (np. pod jakieś nadużycia).
-     */
-    private static long cooldownDlaProby(int numerProby) {
-        return switch (numerProby) {
-            case 1, 2 -> 0L;
-            case 3 -> 60_000L;                  // 1 minuta
-            case 4 -> 5 * 60_000L;               // 5 minut
-            case 5 -> 30 * 60_000L;              // 30 minut
-            case 6 -> 60 * 60_000L;              // 1 godzina
-            default -> 24 * 60 * 60_000L;        // 7 i więcej -> 1 dzień, na stałe
-        };
-    }
-
     /** Formatuje pozostały czas oczekiwania jedną, największą pasującą jednostką ("X minut" itd.), z grubsza poprawną polską odmianą. */
     private static String formatujCzasOczekiwania(long millis) {
         long sekundy = (millis + 999) / 1000; // w górę, żeby nie pokazać "0 sekund" tuż przed końcem
@@ -1016,7 +908,7 @@ public class IslandManager implements Listener, IslandService {
         }
 
         HistoriaTworzenia historia = historiaTworzeniaWysp.computeIfAbsent(player.getUniqueId(), k -> new HistoriaTworzenia());
-        long cooldown = cooldownDlaProby(historia.ilosc + 1);
+        long cooldown = tuning.cooldownDlaProby(historia.ilosc + 1);
         long odMillis = System.currentTimeMillis() - historia.ostatnieMillis;
         if (cooldown > 0 && odMillis < cooldown) {
             player.sendMessage(Component.text("Musisz jeszcze poczekać " + formatujCzasOczekiwania(cooldown - odMillis)
@@ -1029,11 +921,11 @@ public class IslandManager implements Listener, IslandService {
         player.sendMessage(Component.text("Tworzenie Twojej wyspy...", NamedTextColor.YELLOW));
 
         int myIslandId = nextIslandId++;
-        int x = (myIslandId % 100) * ODSTEP_SIATKI_WYSP;
-        int z = (myIslandId / 100) * ODSTEP_SIATKI_WYSP;
+        int x = (myIslandId % 100) * tuning.odstepSiatkiWysp();
+        int z = (myIslandId / 100) * tuning.odstepSiatkiWysp();
         int y = 100;
 
-        IslandData data = new IslandData(myIslandId, player.getUniqueId(), x, z, 50);
+        IslandData data = new IslandData(myIslandId, player.getUniqueId(), x, z, tuning.domyslnyRozmiarWyspy());
         islandDatabase.put(player.getUniqueId(), data);
         playerIslandMap.put(player.getUniqueId(), player.getUniqueId());
         zapiszWyspy();
@@ -1095,28 +987,23 @@ public class IslandManager implements Listener, IslandService {
         player.sendMessage(Component.text("Przeteleportowano na wyspę!", NamedTextColor.AQUA));
     }
 
-    // Ile bloków w dół szukamy gruntu pod punktem teleportu, zanim uznamy że tam
-    // po prostu jest za głęboka dziura i trzeba szukać gdzie indziej.
-    private static final int MAX_GLEBOKOSC_SZUKANIA_W_DOL = 10;
-    // Promień (we wszystkich kierunkach) szukania najbliższego bloku, gdy w dół nic nie ma.
-    private static final int PROMIEN_SZUKANIA_OBOK = 5;
-
     /**
      * Gracz mógł wyczyścić cały teren pod punktem teleportu (ręcznie albo np. wybuchem
      * TNT), albo grunt wyspy po prostu leży niżej niż spodziewane Y=101 - bez tego
      * gracz teleportowałby się w pustkę i spadał aż do obrażeń od "pustki" (void).
-     * Kolejność prób: 1) grunt prosto pod celem (do 10 bloków w dół) - typowy przypadek,
-     * najtańszy; 2) najbliższy solidny blok w promieniu 5 dookoła, gdy w dół jest za
-     * głęboko; 3) w ostateczności - postaw ziemię dokładnie w oryginalnym miejscu.
+     * Kolejność prób: 1) grunt prosto pod celem (do tuning.maxGlebokoscSzukaniaWDol bloków
+     * w dół) - typowy przypadek, najtańszy; 2) najbliższy solidny blok w promieniu
+     * tuning.promienSzukaniaObok dookoła, gdy w dół jest za głęboko; 3) w ostateczności -
+     * postaw ziemię dokładnie w oryginalnym miejscu.
      */
     private void zabezpieczPunktSpawnu(Location loc) {
-        Location wDol = szukajGruntuWDol(loc, MAX_GLEBOKOSC_SZUKANIA_W_DOL);
+        Location wDol = szukajGruntuWDol(loc, tuning.maxGlebokoscSzukaniaWDol());
         if (wDol != null) {
             przeniesXYZ(loc, wDol);
             return;
         }
 
-        Location obok = szukajNajblizszegoGruntu(loc, PROMIEN_SZUKANIA_OBOK);
+        Location obok = szukajNajblizszegoGruntu(loc, tuning.promienSzukaniaObok());
         if (obok != null) {
             przeniesXYZ(loc, obok);
             return;
@@ -1325,7 +1212,65 @@ public class IslandManager implements Listener, IslandService {
         aplikujPogodeICzas(player, data);
     }
 
-    // Główne zaktualizowane GUI (54 sloty)
+    // ---- Wspólne budulce GUI - wszystkie renderujące metody niżej korzystają z tych helperów ----
+
+    private void wypelnijTlo(Inventory inv, IslandScreen screen) {
+        ItemStack tlo = new ItemStack(screen.tlo());
+        ItemMeta meta = tlo.getItemMeta();
+        meta.displayName(Component.empty());
+        tlo.setItemMeta(meta);
+        for (int i = 0; i < screen.size(); i++) inv.setItem(i, tlo);
+    }
+
+    private ItemStack ikonaZPrzycisku(IslandGuiButton btn, List<Component> dodatkoweLore) {
+        return ikonaZPrzycisku(btn, btn.material(), dodatkoweLore);
+    }
+
+    private ItemStack ikonaZPrzycisku(IslandGuiButton btn, Material material, List<Component> dodatkoweLore) {
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.text(btn.nazwa(), btn.kolor(), TextDecoration.BOLD));
+        List<Component> lore = new ArrayList<>();
+        for (String linia : btn.lore()) lore.add(Component.text(linia, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        if (dodatkoweLore != null) lore.addAll(dodatkoweLore);
+        meta.lore(lore);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private void ustawPrzycisk(Inventory inv, IslandScreen screen, String akcja, List<Component> dodatkoweLore) {
+        IslandGuiButton btn = screen.przycisk(akcja);
+        if (btn == null) return;
+        inv.setItem(btn.slot(), ikonaZPrzycisku(btn, dodatkoweLore));
+    }
+
+    private ItemStack ikonaPrzelacznika(IslandGuiButton btn, boolean on) {
+        Material material = on ? btn.material() : (btn.materialWylaczone() != null ? btn.materialWylaczone() : btn.material());
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.text(btn.nazwa(), btn.kolor(), TextDecoration.BOLD));
+        List<Component> lore = new ArrayList<>();
+        lore.add(Component.text("Stan: " + (on ? "Włączone" : "Wyłączone"), on ? NamedTextColor.GREEN : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
+        for (String linia : btn.lore()) lore.add(Component.text(linia, NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.text("Kliknij, aby przełączyć", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        meta.lore(lore);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private void ustawPrzelacznik(Inventory inv, IslandScreen screen, String akcja, boolean on) {
+        IslandGuiButton btn = screen.przycisk(akcja);
+        if (btn == null) return;
+        inv.setItem(btn.slot(), ikonaPrzelacznika(btn, on));
+    }
+
+    private boolean jestSlotem(IslandScreen screen, String akcja, int slot) {
+        IslandGuiButton btn = screen.przycisk(akcja);
+        return btn != null && btn.slot() == slot;
+    }
+
+    // ---- Renderowanie GUI (patrz wyspy-gui.yml po pelny uklad) ----
+
     public void otworzMenuWyspy(Player player, boolean zMenu) {
         otwartoZMenu.put(player.getUniqueId(), zMenu);
         UUID ownerUUID = playerIslandMap.get(player.getUniqueId());
@@ -1339,141 +1284,59 @@ public class IslandManager implements Listener, IslandService {
         boolean isOwner = data.getOwnerUUID().equals(player.getUniqueId());
         boolean canManage = mozeZarzadzac(player.getUniqueId(), data);
 
-        Inventory gui = Bukkit.createInventory(null, 54, Component.text("Panel Wyspy", NamedTextColor.DARK_GREEN, TextDecoration.BOLD));
-
-        ItemStack tlo = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta metaTlo = tlo.getItemMeta();
-        metaTlo.displayName(Component.empty());
-        tlo.setItemMeta(metaTlo);
-        for (int i = 0; i < 54; i++) gui.setItem(i, tlo);
+        IslandScreen screen = gui.panelWyspy();
+        Inventory inv = Bukkit.createInventory(null, screen.size(), Component.text("Panel Wyspy", NamedTextColor.DARK_GREEN, TextDecoration.BOLD));
+        wypelnijTlo(inv, screen);
 
         // Kolejność kafelków w panelu odzwierciedla częstotliwość użycia (najczęstsze
-        // pierwsze, po lewej/wyżej) - patrz dyskusja o reorganizacji menu. Teleport,
-        // Ulepszenia i Bank to codzienne akcje, Informacje/Topka to głównie wgląd,
-        // Ustawienia/Permisje to rzadko zmieniane ustawienia jednorazowe.
+        // pierwsze) - Teleport, Ulepszenia i Bank to codzienne akcje, Informacje/Topka
+        // to głównie wgląd, Ustawienia/Permisje to rzadko zmieniane ustawienia jednorazowe.
 
-        // 1. TELEPORT - najczęstsza akcja w całym panelu
-        ItemStack dom = new ItemStack(Material.OAK_DOOR);
-        ItemMeta mDom = dom.getItemMeta();
-        mDom.displayName(Component.text("Teleport na Wyspę", NamedTextColor.GREEN, TextDecoration.BOLD));
-        mDom.lore(List.of(Component.text("Kliknij, aby wrócić do siebie", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
-        dom.setItemMeta(mDom);
-        gui.setItem(10, dom);
+        ustawPrzycisk(inv, screen, "TELEPORT", null);
 
         if (canManage) {
-            // 2. ULEPSZENIA WYSPY - druga najczęstsza akcja, szczególnie na starcie gry
-            ItemStack upg = new ItemStack(Material.BEACON);
-            ItemMeta mUpg = upg.getItemMeta();
-            mUpg.displayName(Component.text("Ulepszenia Wyspy", NamedTextColor.GOLD, TextDecoration.BOLD));
-            mUpg.lore(List.of(Component.text("Zwiększ rozmiar wyspy", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
-            upg.setItemMeta(mUpg);
-            gui.setItem(12, upg);
+            ustawPrzycisk(inv, screen, "ULEPSZENIA", null);
         }
 
-        // 3. BANK WYSPY - stan wglądowy dla każdego, wpłaca każdy przez /is deposit
-        ItemStack bank = new ItemStack(Material.GOLD_INGOT);
-        ItemMeta mBank = bank.getItemMeta();
-        mBank.displayName(Component.text("Bank Wyspy", NamedTextColor.YELLOW, TextDecoration.BOLD));
-        mBank.lore(List.of(
-                Component.text("Stan: " + formatKwote(data.getBankBalance()) + " $", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false),
-                Component.text("Ulepszenia płacone WYŁĄCZNIE z tego banku", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false),
-                Component.empty(),
-                Component.text("/is deposit <kwota> - wpłać (może każdy)", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false),
-                Component.text("/is withdraw <kwota> - wypłać (właściciel/admin)", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false)
-        ));
-        bank.setItemMeta(mBank);
-        gui.setItem(14, bank);
-
-        // 4. INFORMACJE
-        ItemStack info = new ItemStack(Material.PAPER);
-        ItemMeta mInfo = info.getItemMeta();
-        mInfo.displayName(Component.text("Informacje o Wyspie", NamedTextColor.AQUA, TextDecoration.BOLD));
-        List<Component> loreInfo = new ArrayList<>();
-        Player owner = Bukkit.getPlayer(data.getOwnerUUID());
-        String ownerName = owner != null ? owner.getName() : "Nieznany";
-        String nazwaRoliGracza = isOwner ? "Właściciel" : (data.getRole(player.getUniqueId()) == IslandRole.ADMIN ? "Admin" : "Członek");
-        if (data.getCustomName() != null) {
-            loreInfo.add(Component.text("Nazwa: " + data.getCustomName(), NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
+        IslandGuiButton bank = screen.przycisk("BANK");
+        if (bank != null) {
+            List<Component> loreBank = new ArrayList<>();
+            loreBank.add(Component.text("Stan: " + formatKwote(data.getBankBalance()) + " $", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
+            loreBank.add(Component.text("Ulepszenia płacone WYŁĄCZNIE z tego banku", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
+            loreBank.add(Component.empty());
+            loreBank.add(Component.text("/is deposit <kwota> - wpłać (może każdy)", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
+            loreBank.add(Component.text("/is withdraw <kwota> - wypłać (właściciel/admin)", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
+            inv.setItem(bank.slot(), ikonaZPrzycisku(bank, loreBank));
         }
-        loreInfo.add(Component.text("Właściciel: " + ownerName, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-        loreInfo.add(Component.text("Rozmiar: " + data.getBorderSize() + "x" + data.getBorderSize(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-        loreInfo.add(Component.text("Członkowie: " + data.getMembers().size(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-        loreInfo.add(Component.text("Wartość wyspy: " + formatKwote(data.getWorth()) + " $", NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false));
-        loreInfo.add(Component.text("Twoja rola: " + nazwaRoliGracza, NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
-        mInfo.lore(loreInfo);
-        info.setItemMeta(mInfo);
-        gui.setItem(16, info);
+
+        IslandGuiButton info = screen.przycisk("INFO");
+        if (info != null) {
+            List<Component> loreInfo = new ArrayList<>();
+            Player owner = Bukkit.getPlayer(data.getOwnerUUID());
+            String ownerName = owner != null ? owner.getName() : "Nieznany";
+            String nazwaRoliGracza = isOwner ? "Właściciel" : (data.getRole(player.getUniqueId()) == IslandRole.ADMIN ? "Admin" : "Członek");
+            if (data.getCustomName() != null) {
+                loreInfo.add(Component.text("Nazwa: " + data.getCustomName(), NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
+            }
+            loreInfo.add(Component.text("Właściciel: " + ownerName, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            loreInfo.add(Component.text("Rozmiar: " + data.getBorderSize() + "x" + data.getBorderSize(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            loreInfo.add(Component.text("Członkowie: " + data.getMembers().size(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            loreInfo.add(Component.text("Wartość wyspy: " + formatKwote(data.getWorth()) + " $", NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false));
+            loreInfo.add(Component.text("Twoja rola: " + nazwaRoliGracza, NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+            inv.setItem(info.slot(), ikonaZPrzycisku(info, loreInfo));
+        }
 
         if (canManage) {
-            // 5. USTAWIENIA WYSPY - border, budowanie/PvP/moby, pogoda i czas, nazwa, członkowie
-            ItemStack ustawienia = new ItemStack(Material.COMPARATOR);
-            ItemMeta mUstawienia = ustawienia.getItemMeta();
-            mUstawienia.displayName(Component.text("Ustawienia Wyspy", NamedTextColor.BLUE, TextDecoration.BOLD));
-            mUstawienia.lore(List.of(
-                    Component.text("Border, budowanie, PvP, moby, pogoda, nazwa...", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                    Component.text("Kliknij, aby zarządzać", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
-            ));
-            ustawienia.setItemMeta(mUstawienia);
-            gui.setItem(20, ustawienia);
-
-            // 6. PERMISJE - rzadko zmieniane, ustawiane raz i zapominane
-            ItemStack permisje = new ItemStack(Material.LEVER);
-            ItemMeta mPermisje = permisje.getItemMeta();
-            mPermisje.displayName(Component.text("Permisje", NamedTextColor.RED, TextDecoration.BOLD));
-            mPermisje.lore(List.of(
-                    Component.text("Itemy, skrzynie, drzwi i mechanizmy dla gości", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                    Component.text("Kliknij, aby zarządzać", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
-            ));
-            permisje.setItemMeta(mPermisje);
-            gui.setItem(22, permisje);
+            ustawPrzycisk(inv, screen, "USTAWIENIA", null);
+            ustawPrzycisk(inv, screen, "PERMISJE", null);
         }
 
-        // 7. TOPKA WYSP - głównie ciekawostka, dostępna dla każdego mieszkańca wyspy
-        ItemStack topka = new ItemStack(Material.GOLD_BLOCK);
-        ItemMeta mTopka = topka.getItemMeta();
-        mTopka.displayName(Component.text("Topka Wysp", NamedTextColor.GOLD, TextDecoration.BOLD));
-        mTopka.lore(List.of(Component.text("Ranking wysp według wartości", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
-        topka.setItemMeta(mTopka);
-        gui.setItem(24, topka);
+        ustawPrzycisk(inv, screen, "TOPKA", null);
 
-        // 7. USUŃ WYSPĘ (właściciel) / OPUŚĆ WYSPĘ (reszta) - prawy dolny róg panelu
-        if (isOwner) {
-            ItemStack usun = new ItemStack(Material.TNT);
-            ItemMeta mUsun = usun.getItemMeta();
-            mUsun.displayName(Component.text("Usuń Wyspę", NamedTextColor.DARK_RED, TextDecoration.BOLD));
-            mUsun.lore(List.of(Component.text("Ostrzeżenie: Wyspa zniknie bezpowrotnie!", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false)));
-            usun.setItemMeta(mUsun);
-            gui.setItem(53, usun);
-        } else {
-            ItemStack opusc = new ItemStack(Material.OAK_BOAT);
-            ItemMeta mOpusc = opusc.getItemMeta();
-            mOpusc.displayName(Component.text("Opuść Wyspę", NamedTextColor.RED, TextDecoration.BOLD));
-            mOpusc.lore(List.of(Component.text("Samodzielnie zrezygnujesz z członkostwa", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
-            opusc.setItemMeta(mOpusc);
-            gui.setItem(53, opusc);
-        }
+        ustawPrzycisk(inv, screen, isOwner ? "USUN_WYSPE" : "OPUSC_WYSPE", null);
+        ustawPrzycisk(inv, screen, zMenu ? "WROC_DO_MENU" : "ZAMKNIJ_PANEL", null);
 
-        // PRZYCISK POWROTU
-        ItemStack wyjscie = new ItemStack(zMenu ? Material.NETHER_STAR : Material.BARRIER);
-        ItemMeta mWyjscie = wyjscie.getItemMeta();
-        mWyjscie.displayName(Component.text(zMenu ? "« Wróć do Menu głównego" : "Zamknij Panel", NamedTextColor.RED, TextDecoration.BOLD));
-        wyjscie.setItemMeta(mWyjscie);
-        gui.setItem(49, wyjscie);
-
-        player.openInventory(gui);
-    }
-
-    private ItemStack itemPrzelacznik(Material iconOn, Material iconOff, boolean on, String nazwa, NamedTextColor kolorNazwy, List<Component> dodatkoweLore) {
-        ItemStack item = new ItemStack(on ? iconOn : iconOff);
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text(nazwa, kolorNazwy, TextDecoration.BOLD));
-        List<Component> lore = new ArrayList<>();
-        lore.add(Component.text("Stan: " + (on ? "Włączone" : "Wyłączone"), on ? NamedTextColor.GREEN : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
-        if (dodatkoweLore != null) lore.addAll(dodatkoweLore);
-        lore.add(Component.text("Kliknij, aby przełączyć", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-        meta.lore(lore);
-        item.setItemMeta(meta);
-        return item;
+        player.openInventory(inv);
     }
 
     /** Podmenu "Permisje" - dodatkowe uprawnienia gości (poza budowaniem/PvP/mobami - patrz Ustawienia Wyspy). Wyłącznie dla właściciela i adminów. */
@@ -1481,33 +1344,16 @@ public class IslandManager implements Listener, IslandService {
         IslandData data = wlasnaWyspaJakoZarzadca(player);
         if (data == null) return;
 
-        Inventory gui = Bukkit.createInventory(null, 27, Component.text("Permisje Wyspy", NamedTextColor.RED, TextDecoration.BOLD));
+        IslandScreen screen = gui.permisjeWyspy();
+        Inventory inv = Bukkit.createInventory(null, screen.size(), Component.text("Permisje Wyspy", NamedTextColor.RED, TextDecoration.BOLD));
+        wypelnijTlo(inv, screen);
 
-        ItemStack tlo = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta metaTlo = tlo.getItemMeta();
-        metaTlo.displayName(Component.empty());
-        tlo.setItemMeta(metaTlo);
-        for (int i = 0; i < 27; i++) gui.setItem(i, tlo);
+        ustawPrzelacznik(inv, screen, "ZABIERANIE_ITEMOW", data.isAllowItemPickup());
+        ustawPrzelacznik(inv, screen, "DOSTEP_KONTENEROW", data.isAllowContainerAccess());
+        ustawPrzelacznik(inv, screen, "INTERAKCJE", data.isAllowInteract());
+        ustawPrzycisk(inv, screen, "POWROT", null);
 
-        gui.setItem(11, itemPrzelacznik(Material.HOPPER, Material.BARRIER, data.isAllowItemPickup(),
-                "Zabieranie Itemów", NamedTextColor.GOLD,
-                List.of(Component.text("Podnoszenie przedmiotów z ziemi przez gości", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false))));
-
-        gui.setItem(13, itemPrzelacznik(Material.CHEST, Material.IRON_DOOR, data.isAllowContainerAccess(),
-                "Skrzynie i Kontenery", NamedTextColor.YELLOW,
-                List.of(Component.text("Otwieranie skrzyń/beczek itp. przez gości", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false))));
-
-        gui.setItem(15, itemPrzelacznik(Material.OAK_DOOR, Material.OBSIDIAN, data.isAllowInteract(),
-                "Drzwi i Mechanizmy", NamedTextColor.AQUA,
-                List.of(Component.text("Drzwi/dźwignie/przyciski dla gości", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false))));
-
-        ItemStack itemBack = new ItemStack(Material.ARROW);
-        ItemMeta metaBack = itemBack.getItemMeta();
-        metaBack.displayName(Component.text("Powrót do Panelu Wyspy", NamedTextColor.RED, TextDecoration.BOLD));
-        itemBack.setItemMeta(metaBack);
-        gui.setItem(22, itemBack);
-
-        player.openInventory(gui);
+        player.openInventory(inv);
     }
 
     /**
@@ -1518,67 +1364,38 @@ public class IslandManager implements Listener, IslandService {
         IslandData data = wlasnaWyspaJakoZarzadca(player);
         if (data == null) return;
 
-        Inventory gui = Bukkit.createInventory(null, 45, Component.text("Ustawienia Wyspy", NamedTextColor.BLUE, TextDecoration.BOLD));
+        IslandScreen screen = gui.ustawieniaWyspy();
+        Inventory inv = Bukkit.createInventory(null, screen.size(), Component.text("Ustawienia Wyspy", NamedTextColor.BLUE, TextDecoration.BOLD));
+        wypelnijTlo(inv, screen);
 
-        ItemStack tlo = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta metaTlo = tlo.getItemMeta();
-        metaTlo.displayName(Component.empty());
-        tlo.setItemMeta(metaTlo);
-        for (int i = 0; i < 45; i++) gui.setItem(i, tlo);
+        ustawPrzelacznik(inv, screen, "WIZUALNY_BORDER", data.isVisualBorder());
+        ustawPrzelacznik(inv, screen, "BUDOWANIE_GOSCI", data.isAllowBreak());
+        ustawPrzelacznik(inv, screen, "PVP", data.isAllowPvP());
+        ustawPrzelacznik(inv, screen, "POTWORY", data.isAllowMobs());
+        ustawPrzelacznik(inv, screen, "ZABIJANIE_MOBOW_GOSCI", data.isAllowGuestMobKill());
+        ustawPrzelacznik(inv, screen, "POGODA_CZAS", data.isWeatherLocked());
 
-        gui.setItem(10, itemPrzelacznik(Material.BLUE_STAINED_GLASS, Material.RED_STAINED_GLASS, data.isVisualBorder(),
-                "Wizualny Border", NamedTextColor.BLUE, null));
+        IslandGuiButton nazwaBtn = screen.przycisk("NAZWA_WYSPY");
+        if (nazwaBtn != null) {
+            List<Component> lore = List.of(
+                    Component.text("Aktualnie: " + (data.getCustomName() != null ? data.getCustomName() : "(brak)"), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                    Component.text("Kliknij, aby ustawić przez czat", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+            );
+            inv.setItem(nazwaBtn.slot(), ikonaZPrzycisku(nazwaBtn, lore));
+        }
 
-        gui.setItem(11, itemPrzelacznik(Material.GRASS_BLOCK, Material.BEDROCK, data.isAllowBreak(),
-                "Budowanie dla Gości", NamedTextColor.GREEN,
-                List.of(Component.text("Właściciel i członkowie budują zawsze", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false))));
+        IslandGuiButton czlonkowieBtn = screen.przycisk("CZLONKOWIE");
+        if (czlonkowieBtn != null) {
+            List<Component> lore = List.of(
+                    Component.text("Aktualnie: " + data.getMembers().size() + " członków", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                    Component.text("Kliknij, aby zarządzać", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+            );
+            inv.setItem(czlonkowieBtn.slot(), ikonaZPrzycisku(czlonkowieBtn, lore));
+        }
 
-        gui.setItem(12, itemPrzelacznik(Material.IRON_SWORD, Material.SHIELD, data.isAllowPvP(),
-                "PvP na Wyspie", NamedTextColor.RED, null));
-
-        gui.setItem(13, itemPrzelacznik(Material.ZOMBIE_HEAD, Material.TOTEM_OF_UNDYING, data.isAllowMobs(),
-                "Potwory na Wyspie", NamedTextColor.DARK_GREEN,
-                List.of(Component.text("Czy moby mogą się w ogóle pojawiać", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false))));
-
-        gui.setItem(19, itemPrzelacznik(Material.NETHERITE_SWORD, Material.GOLDEN_APPLE, data.isAllowGuestMobKill(),
-                "Zabijanie Mobów przez Gości", NamedTextColor.DARK_RED,
-                List.of(Component.text("Osobne od spawnu - kto może polować na moby", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false))));
-
-        gui.setItem(20, itemPrzelacznik(Material.CLOCK, Material.ENDER_EYE, data.isWeatherLocked(),
-                "Pogoda i Czas", NamedTextColor.LIGHT_PURPLE,
-                List.of(Component.text("Zawsze południe i czyste niebo na wyspie", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false))));
-
-        ItemStack nazwa = new ItemStack(Material.NAME_TAG);
-        ItemMeta mNazwa = nazwa.getItemMeta();
-        mNazwa.displayName(Component.text("Nazwa Wyspy", NamedTextColor.AQUA, TextDecoration.BOLD));
-        mNazwa.lore(List.of(
-                Component.text("Aktualnie: " + (data.getCustomName() != null ? data.getCustomName() : "(brak)"), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                Component.text("Kliknij, aby ustawić przez czat", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
-        ));
-        nazwa.setItemMeta(mNazwa);
-        gui.setItem(21, nazwa);
-
-        ItemStack dodaj = new ItemStack(Material.PLAYER_HEAD);
-        ItemMeta mDodaj = dodaj.getItemMeta();
-        mDodaj.displayName(Component.text("Członkowie Wyspy", NamedTextColor.YELLOW, TextDecoration.BOLD));
-        mDodaj.lore(List.of(
-                Component.text("Aktualnie: " + data.getMembers().size() + " członków", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                Component.text("Kliknij, aby zarządzać", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
-        ));
-        dodaj.setItemMeta(mDodaj);
-        gui.setItem(22, dodaj);
-
-        ItemStack itemBack = new ItemStack(Material.ARROW);
-        ItemMeta metaBack = itemBack.getItemMeta();
-        metaBack.displayName(Component.text("Powrót do Panelu Wyspy", NamedTextColor.RED, TextDecoration.BOLD));
-        itemBack.setItemMeta(metaBack);
-        gui.setItem(40, itemBack);
-
-        player.openInventory(gui);
+        ustawPrzycisk(inv, screen, "POWROT", null);
+        player.openInventory(inv);
     }
-
-    private static final int TOPKA_WYSP_LIMIT = 10;
-    private static final int[] SLOTY_TOPKI_WYSP = {10, 11, 12, 13, 14, 15, 16, 19, 20, 21};
 
     /**
      * Ranking wysp na serwerze wg WARTOŚCI (postawione bloki - patrz IslandData.worth /
@@ -1587,18 +1404,15 @@ public class IslandManager implements Listener, IslandService {
      * API w mainplugins-core). Dostępny dla każdego mieszkańca wyspy, niezależnie od roli.
      */
     public void otworzMenuTopkiWysp(Player player) {
-        Inventory gui = Bukkit.createInventory(null, 54, Component.text("Topka Wysp", NamedTextColor.GOLD, TextDecoration.BOLD));
-
-        ItemStack tlo = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta metaTlo = tlo.getItemMeta();
-        metaTlo.displayName(Component.empty());
-        tlo.setItemMeta(metaTlo);
-        for (int i = 0; i < 54; i++) gui.setItem(i, tlo);
+        IslandScreen screen = gui.topkaWysp();
+        Inventory inv = Bukkit.createInventory(null, screen.size(), Component.text("Topka Wysp", NamedTextColor.GOLD, TextDecoration.BOLD));
+        wypelnijTlo(inv, screen);
 
         List<IslandData> top = new ArrayList<>(islandDatabase.values());
         top.sort((a, b) -> Double.compare(b.getWorth(), a.getWorth()));
 
-        for (int i = 0; i < top.size() && i < SLOTY_TOPKI_WYSP.length; i++) {
+        int[] sloty = gui.topkaSlotyRankingu();
+        for (int i = 0; i < top.size() && i < sloty.length; i++) {
             IslandData wyspa = top.get(i);
             int miejsce = i + 1;
 
@@ -1624,16 +1438,11 @@ public class IslandManager implements Listener, IslandService {
                     Component.text("Członkowie: " + wyspa.getMembers().size(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
             ));
             glowa.setItemMeta(meta);
-            gui.setItem(SLOTY_TOPKI_WYSP[i], glowa);
+            inv.setItem(sloty[i], glowa);
         }
 
-        ItemStack itemBack = new ItemStack(Material.ARROW);
-        ItemMeta metaBack = itemBack.getItemMeta();
-        metaBack.displayName(Component.text("Powrót do Panelu Wyspy", NamedTextColor.RED, TextDecoration.BOLD));
-        itemBack.setItemMeta(metaBack);
-        gui.setItem(49, itemBack);
-
-        player.openInventory(gui);
+        ustawPrzycisk(inv, screen, "POWROT", null);
+        player.openInventory(inv);
     }
 
     public void otworzMenuUlepszen(Player player) {
@@ -1641,83 +1450,64 @@ public class IslandManager implements Listener, IslandService {
         if (data == null) return;
 
         int currentSize = data.getBorderSize();
-        int cost = currentSize * 1000;
-        boolean maksimum = currentSize >= MAX_BORDER_SIZE;
+        int cost = currentSize * tuning.borderKosztZaBlok();
+        boolean maksimum = currentSize >= tuning.borderMaxRozmiar();
 
-        Inventory gui = Bukkit.createInventory(null, 27, Component.text("Ulepszenia Wyspy", NamedTextColor.GOLD, TextDecoration.BOLD));
+        IslandScreen screen = gui.ulepszeniaWyspy();
+        Inventory inv = Bukkit.createInventory(null, screen.size(), Component.text("Ulepszenia Wyspy", NamedTextColor.GOLD, TextDecoration.BOLD));
+        wypelnijTlo(inv, screen);
 
-        ItemStack tlo = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta metaTlo = tlo.getItemMeta();
-        metaTlo.displayName(Component.empty());
-        tlo.setItemMeta(metaTlo);
-        for (int i = 0; i < 27; i++) gui.setItem(i, tlo);
+        IslandGuiButton powieksz = screen.przycisk("POWIEKSZ_TEREN");
+        if (powieksz != null) {
+            List<Component> lore = maksimum
+                    ? List.of(
+                            Component.text("Aktualny promień: " + currentSize + " bloków", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                            Component.empty(),
+                            Component.text("Osiągnięto maksymalny rozmiar wyspy!", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false)
+                    )
+                    : List.of(
+                            Component.text("Aktualny promień: " + currentSize + " bloków", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                            Component.text("Koszt (z banku wyspy): " + cost + " $", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false),
+                            Component.text("Stan banku: " + formatKwote(data.getBankBalance()) + " $", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false),
+                            Component.empty(),
+                            Component.text("Kliknij, aby powiększyć o " + tuning.borderPrzyrostNaUlepszenie() + " bloków!", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false)
+                    );
+            Material material = (maksimum && powieksz.materialWylaczone() != null) ? powieksz.materialWylaczone() : powieksz.material();
+            inv.setItem(powieksz.slot(), ikonaZPrzycisku(powieksz, material, lore));
+        }
 
-        ItemStack itemUpgradeSize = new ItemStack(maksimum ? Material.BEDROCK : Material.BEACON);
-        ItemMeta metaSize = itemUpgradeSize.getItemMeta();
-        metaSize.displayName(Component.text("Powiększ Teren Wyspy", NamedTextColor.YELLOW, TextDecoration.BOLD));
-        metaSize.lore(maksimum
-                ? List.of(
-                        Component.text("Aktualny promień: " + currentSize + " bloków", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                        Component.empty(),
-                        Component.text("Osiągnięto maksymalny rozmiar wyspy!", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false)
-                )
-                : List.of(
-                        Component.text("Aktualny promień: " + currentSize + " bloków", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                        Component.text("Koszt (z banku wyspy): " + cost + " $", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false),
-                        Component.text("Stan banku: " + formatKwote(data.getBankBalance()) + " $", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false),
-                        Component.empty(),
-                        Component.text("Kliknij, aby powiększyć o 25 bloków!", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false)
-                ));
-        itemUpgradeSize.setItemMeta(metaSize);
-        gui.setItem(11, itemUpgradeSize);
+        IslandGuiButton spawnery = screen.przycisk("ULEPSZENIE_SPAWNEROW");
+        if (spawnery != null) {
+            ItemStack itemSpawnery = ikonaZPrzycisku(spawnery, null);
+            // SPAWNER jako item ma własny wanilijski dopisek w tooltipie ("Interakcja z jajem
+            // przyzywającym: Ustawia typ stworzenia") - gracz o to pytał, więc jawnie go ukrywamy.
+            itemSpawnery.setData(DataComponentTypes.TOOLTIP_DISPLAY,
+                    TooltipDisplay.tooltipDisplay().addHiddenComponents(DataComponentTypes.BLOCK_DATA));
+            inv.setItem(spawnery.slot(), itemSpawnery);
+        }
 
-        ItemStack itemDropy = new ItemStack(Material.SPAWNER);
-        // SPAWNER jako item ma własny wanilijski dopisek w tooltipie ("Interakcja z jajem
-        // przyzywającym: Ustawia typ stworzenia") - gracz o to pytał, więc jawnie go ukrywamy.
-        itemDropy.setData(DataComponentTypes.TOOLTIP_DISPLAY,
-                TooltipDisplay.tooltipDisplay().addHiddenComponents(DataComponentTypes.BLOCK_DATA));
-        ItemMeta metaDropy = itemDropy.getItemMeta();
-        metaDropy.displayName(Component.text("Ulepszenie Spawnerów", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
-        metaDropy.lore(List.of(
-                Component.text("Zwiększ tempo i ilość spawnu mobków", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                Component.text("na Twojej wyspie", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                Component.empty(),
-                Component.text("Kliknij, aby otworzyć", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false)
-        ));
-        itemDropy.setItemMeta(metaDropy);
-        gui.setItem(13, itemDropy);
-
-        ItemStack itemBack = new ItemStack(Material.ARROW);
-        ItemMeta metaBack = itemBack.getItemMeta();
-        metaBack.displayName(Component.text("Powrót do Menu", NamedTextColor.RED, TextDecoration.BOLD));
-        itemBack.setItemMeta(metaBack);
-        gui.setItem(15, itemBack);
-
-        player.openInventory(gui);
+        ustawPrzycisk(inv, screen, "POWROT", null);
+        player.openInventory(inv);
     }
 
     /**
-     * Poziomy (1-5) customowych spawnerów mainplugins-spawners, per wyspa. Sam moduł
-     * spawnerów o tym nic nie wie poza odczytem IslandSummary.spawnerLevels() -
-     * cała logika ulepszania (koszt, limit) żyje tutaj, w panelu wyspy.
+     * Poziomy (1-5 domyślnie, patrz wyspy-config.yml: spawnery.max-poziom) customowych
+     * spawnerów mainplugins-spawners, per wyspa. Sam moduł spawnerów o tym nic nie wie
+     * poza odczytem IslandSummary.spawnerLevels() - cała logika ulepszania (koszt, limit)
+     * żyje tutaj, w panelu wyspy.
      */
     public void otworzMenuWzrostuDropow(Player player) {
         IslandData data = wlasnaWyspaLubKomunikat(player);
         if (data == null) return;
 
-        Inventory gui = Bukkit.createInventory(null, 54, Component.text("Ulepszenie Spawnerów", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
+        IslandScreen screen = gui.ulepszenieSpawnerow();
+        Inventory inv = Bukkit.createInventory(null, screen.size(), Component.text("Ulepszenie Spawnerów", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
+        wypelnijTlo(inv, screen);
 
-        ItemStack tlo = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta metaTlo = tlo.getItemMeta();
-        metaTlo.displayName(Component.empty());
-        tlo.setItemMeta(metaTlo);
-        for (int i = 0; i < 54; i++) gui.setItem(i, tlo);
-
-        // Szachownica na dwóch rzędach (5 + 4) - układ wg makiety gracza, zamiast dawnego
-        // jednego rzędu wciśniętego ciasno slot w slot.
-        int[] sloty = {9, 11, 13, 15, 17, 28, 30, 32, 34};
-        for (int i = 0; i < SPAWNER_TYPY.size(); i++) {
-            SpawnerTypInfo typ = SPAWNER_TYPY.get(i);
+        int[] sloty = gui.ulepszenieSpawnerowSlotyTypow();
+        List<SpawnerTyp> typy = tuning.spawnerTypy();
+        for (int i = 0; i < typy.size() && i < sloty.length; i++) {
+            SpawnerTyp typ = typy.get(i);
             int poziomIlosci = data.getSpawnerLevel(typ.id() + SUFIKS_ILOSC);
             int poziomSzybkosci = data.getSpawnerLevel(typ.id() + SUFIKS_SZYBKOSC);
 
@@ -1726,30 +1516,18 @@ public class IslandManager implements Listener, IslandService {
             meta.displayName(Component.text("Spawner: " + typ.nazwaOdmieniona(), NamedTextColor.YELLOW, TextDecoration.BOLD));
 
             List<Component> lore = new ArrayList<>();
-            lore.add(Component.text("Ilość: " + poziomIlosci + "/" + SPAWNER_MAX_LEVEL, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("Szybkość: " + poziomSzybkosci + "/" + SPAWNER_MAX_LEVEL, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Ilość: " + poziomIlosci + "/" + tuning.spawnerMaxPoziom(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Szybkość: " + poziomSzybkosci + "/" + tuning.spawnerMaxPoziom(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
             lore.add(Component.empty());
             lore.add(Component.text("Kliknij, aby zarządzać ulepszeniami", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
             meta.lore(lore);
             item.setItemMeta(meta);
 
-            gui.setItem(sloty[i], item);
+            inv.setItem(sloty[i], item);
         }
 
-        ItemStack itemBack = new ItemStack(Material.ARROW);
-        ItemMeta metaBack = itemBack.getItemMeta();
-        metaBack.displayName(Component.text("Powrót do Ulepszeń", NamedTextColor.RED, TextDecoration.BOLD));
-        itemBack.setItemMeta(metaBack);
-        gui.setItem(49, itemBack);
-
-        player.openInventory(gui);
-    }
-
-    private SpawnerTypInfo znajdzTypSpawnera(String id) {
-        for (SpawnerTypInfo typ : SPAWNER_TYPY) {
-            if (typ.id().equals(id)) return typ;
-        }
-        return null;
+        ustawPrzycisk(inv, screen, "POWROT", null);
+        player.openInventory(inv);
     }
 
     /** Podmenu jednego typu spawnera - osobne ulepszanie Ilości (mobków/cykl) i Szybkości (odstęp między cyklami). */
@@ -1757,49 +1535,48 @@ public class IslandManager implements Listener, IslandService {
         IslandData data = wlasnaWyspaLubKomunikat(player);
         if (data == null) return;
 
-        SpawnerTypInfo typ = znajdzTypSpawnera(typId);
+        SpawnerTyp typ = tuning.spawnerTyp(typId);
         if (typ == null) return;
 
         otwartySpawnerTyp.put(player.getUniqueId(), typId);
 
-        Inventory gui = Bukkit.createInventory(null, 27, Component.text("Spawner: " + typ.nazwaOdmieniona(), NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
-
-        ItemStack tlo = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta metaTlo = tlo.getItemMeta();
-        metaTlo.displayName(Component.empty());
-        tlo.setItemMeta(metaTlo);
-        for (int i = 0; i < 27; i++) gui.setItem(i, tlo);
+        IslandScreen screen = gui.spawnerPodmenu();
+        Inventory inv = Bukkit.createInventory(null, screen.size(), Component.text("Spawner: " + typ.nazwaOdmieniona(), NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
+        wypelnijTlo(inv, screen);
 
         int poziomIlosci = data.getSpawnerLevel(typId + SUFIKS_ILOSC);
         int poziomSzybkosci = data.getSpawnerLevel(typId + SUFIKS_SZYBKOSC);
 
-        gui.setItem(11, itemUlepszeniaStatystyki(typId, "Ilość", "Więcej mobków na jeden cykl spawnu", typ.ikona(), poziomIlosci, SUFIKS_ILOSC));
-        gui.setItem(15, itemUlepszeniaStatystyki(typId, "Szybkość", "Krótszy odstęp między cyklami spawnu", Material.CLOCK, poziomSzybkosci, SUFIKS_SZYBKOSC));
+        IslandGuiButton iloscBtn = screen.przycisk("ILOSC");
+        if (iloscBtn != null) {
+            // Ikona ILOSC zawsze bierze się z ikony aktualnie otwartego typu spawnera,
+            // niezależnie od "material" w wyspy-gui.yml - patrz komentarz tam.
+            inv.setItem(iloscBtn.slot(), itemUlepszeniaStatystyki(iloscBtn, typId, typ.ikona(), poziomIlosci, true));
+        }
+        IslandGuiButton szybkoscBtn = screen.przycisk("SZYBKOSC");
+        if (szybkoscBtn != null) {
+            inv.setItem(szybkoscBtn.slot(), itemUlepszeniaStatystyki(szybkoscBtn, typId, szybkoscBtn.material(), poziomSzybkosci, false));
+        }
 
-        ItemStack itemBack = new ItemStack(Material.ARROW);
-        ItemMeta metaBack = itemBack.getItemMeta();
-        metaBack.displayName(Component.text("Powrót do Ulepszeń Spawnerów", NamedTextColor.RED, TextDecoration.BOLD));
-        itemBack.setItemMeta(metaBack);
-        gui.setItem(22, itemBack);
-
-        player.openInventory(gui);
+        ustawPrzycisk(inv, screen, "POWROT", null);
+        player.openInventory(inv);
     }
 
-    private ItemStack itemUlepszeniaStatystyki(String typId, String nazwa, String opis, Material ikona, int level, String sufiks) {
-        boolean maksimum = level >= SPAWNER_MAX_LEVEL;
+    private ItemStack itemUlepszeniaStatystyki(IslandGuiButton btn, String typId, Material ikona, int level, boolean ilosc) {
+        boolean maksimum = level >= tuning.spawnerMaxPoziom();
 
         ItemStack item = new ItemStack(ikona);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text(nazwa, NamedTextColor.YELLOW, TextDecoration.BOLD));
+        meta.displayName(Component.text(btn.nazwa(), btn.kolor(), TextDecoration.BOLD));
 
         List<Component> lore = new ArrayList<>();
-        lore.add(Component.text(opis, NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text("Poziom: " + level + "/" + SPAWNER_MAX_LEVEL, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        for (String linia : btn.lore()) lore.add(Component.text(linia, NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.text("Poziom: " + level + "/" + tuning.spawnerMaxPoziom(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
         lore.add(Component.empty());
         if (maksimum) {
             lore.add(Component.text("Osiągnięto maksymalny poziom!", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
         } else {
-            lore.add(Component.text("Koszt (z banku wyspy): " + kosztUlepszeniaSpawnera(typId, sufiks, level) + " $", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Koszt (z banku wyspy): " + tuning.kosztUlepszeniaSpawnera(typId, ilosc, level) + " $", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
             lore.add(Component.text("Kliknij, aby ulepszyć", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
         }
         meta.lore(lore);
@@ -1813,12 +1590,13 @@ public class IslandManager implements Listener, IslandService {
 
         String klucz = typId + sufiks;
         int level = data.getSpawnerLevel(klucz);
-        if (level >= SPAWNER_MAX_LEVEL) {
+        if (level >= tuning.spawnerMaxPoziom()) {
             player.sendMessage(Component.text("Ta statystyka ma już maksymalny poziom!", NamedTextColor.RED));
             return;
         }
 
-        int cost = kosztUlepszeniaSpawnera(typId, sufiks, level);
+        boolean ilosc = sufiks.equals(SUFIKS_ILOSC);
+        int cost = tuning.kosztUlepszeniaSpawnera(typId, ilosc, level);
         if (!data.odejmijZBanku(cost)) {
             player.sendMessage(Component.text("Bank wyspy nie ma tyle pieniędzy! Potrzeba " + cost + " $, w banku jest " + formatKwote(data.getBankBalance()) + " $. Wpłać przez /is deposit.", NamedTextColor.RED));
             return;
@@ -1841,17 +1619,18 @@ public class IslandManager implements Listener, IslandService {
         if (title.contains("Panel Wyspy")) {
             event.setCancelled(true);
             int slot = event.getRawSlot();
+            IslandScreen screen = gui.panelWyspy();
 
             UUID panelOwnerUUID = playerIslandMap.get(player.getUniqueId());
             IslandData panelData = panelOwnerUUID != null ? islandDatabase.get(panelOwnerUUID) : null;
             boolean panelIsOwner = panelData != null && panelData.getOwnerUUID().equals(player.getUniqueId());
 
-            if (slot == 10) { player.closeInventory(); teleportDoWyspy(player); } // Teleport
-            else if (slot == 12) { otworzMenuUlepszen(player); } // Ulepszenia
-            else if (slot == 20) { otworzMenuUstawienWyspy(player); } // Ustawienia Wyspy
-            else if (slot == 22) { otworzMenuPermisji(player); } // Permisje
-            else if (slot == 24) { otworzMenuTopkiWysp(player); } // Topka Wysp
-            else if (slot == 53 && panelIsOwner) { // Kosz / Usunięcie - decyzja po serwerowym isOwner, nie po ikonie klienta
+            if (jestSlotem(screen, "TELEPORT", slot)) { player.closeInventory(); teleportDoWyspy(player); }
+            else if (jestSlotem(screen, "ULEPSZENIA", slot)) { otworzMenuUlepszen(player); }
+            else if (jestSlotem(screen, "USTAWIENIA", slot)) { otworzMenuUstawienWyspy(player); }
+            else if (jestSlotem(screen, "PERMISJE", slot)) { otworzMenuPermisji(player); }
+            else if (jestSlotem(screen, "TOPKA", slot)) { otworzMenuTopkiWysp(player); }
+            else if (panelIsOwner && jestSlotem(screen, "USUN_WYSPE", slot)) {
                 // Jedno kliknięcie zamiast dawnego "kliknij dwa razy" - potwierdzenie idzie
                 // przez czat (wpisanie "Tak zgadzam się"), żeby przypadkowy drugi klik (np. przy
                 // zamykaniu GUI) nie mógł już bezpowrotnie skasować wyspy.
@@ -1859,14 +1638,14 @@ public class IslandManager implements Listener, IslandService {
                 ustawOczekiwanieNaPotwierdzenie(player.getUniqueId());
                 wyslijOstrzezenieUsuniecia(player);
             }
-            else if (slot == 53) { // Opuść Wyspę (nie-właściciel)
+            else if (!panelIsOwner && jestSlotem(screen, "OPUSC_WYSPE", slot)) {
                 if (pendingLeaveConfirmation.contains(player.getUniqueId())) {
                     player.closeInventory();
                     pendingLeaveConfirmation.remove(player.getUniqueId());
                     opuscWyspe(player);
                 } else {
                     pendingLeaveConfirmation.add(player.getUniqueId());
-                    Bukkit.getScheduler().runTaskLater(plugin, () -> pendingLeaveConfirmation.remove(player.getUniqueId()), TIMEOUT_POTWIERDZENIA_TICKS);
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> pendingLeaveConfirmation.remove(player.getUniqueId()), tuning.timeoutPotwierdzeniaTicks());
                     ItemStack item = event.getCurrentItem();
                     if (item != null) {
                         ItemMeta meta = item.getItemMeta();
@@ -1875,7 +1654,7 @@ public class IslandManager implements Listener, IslandService {
                     }
                 }
             }
-            else if (slot == 49) {
+            else if (jestSlotem(screen, "WROC_DO_MENU", slot) || jestSlotem(screen, "ZAMKNIJ_PANEL", slot)) {
                 if (zMenu) {
                     player.closeInventory();
                     player.performCommand("menu");
@@ -1887,45 +1666,50 @@ public class IslandManager implements Listener, IslandService {
         else if (title.contains("Permisje Wyspy")) {
             event.setCancelled(true);
             int slot = event.getRawSlot();
-            if (slot == 11) { przelaczZabieranieItemow(player); otworzMenuPermisji(player); }
-            else if (slot == 13) { przelaczDostepDoKontenerow(player); otworzMenuPermisji(player); }
-            else if (slot == 15) { przelaczInterakcje(player); otworzMenuPermisji(player); }
-            else if (slot == 22) { otworzMenuWyspy(player, zMenu); }
+            IslandScreen screen = gui.permisjeWyspy();
+            if (jestSlotem(screen, "ZABIERANIE_ITEMOW", slot)) { przelaczZabieranieItemow(player); otworzMenuPermisji(player); }
+            else if (jestSlotem(screen, "DOSTEP_KONTENEROW", slot)) { przelaczDostepDoKontenerow(player); otworzMenuPermisji(player); }
+            else if (jestSlotem(screen, "INTERAKCJE", slot)) { przelaczInterakcje(player); otworzMenuPermisji(player); }
+            else if (jestSlotem(screen, "POWROT", slot)) { otworzMenuWyspy(player, zMenu); }
         }
         else if (title.contains("Ustawienia Wyspy")) {
             event.setCancelled(true);
             int slot = event.getRawSlot();
-            if (slot == 10) { przelaczWizualnyBorder(player); otworzMenuUstawienWyspy(player); }
-            else if (slot == 11) { przelaczBudowanieDlaGosci(player); otworzMenuUstawienWyspy(player); }
-            else if (slot == 12) { przelaczPvP(player); otworzMenuUstawienWyspy(player); }
-            else if (slot == 13) { przelaczPotwory(player); otworzMenuUstawienWyspy(player); }
-            else if (slot == 19) { przelaczZabijanieMobowPrzezGosci(player); otworzMenuUstawienWyspy(player); }
-            else if (slot == 20) { przelaczPogodeICzas(player); otworzMenuUstawienWyspy(player); }
-            else if (slot == 21) { rozpocznijZmianeNazwyWyspy(player); }
-            else if (slot == 22) { otworzMenuCzlonkow(player); }
-            else if (slot == 40) { otworzMenuWyspy(player, zMenu); }
+            IslandScreen screen = gui.ustawieniaWyspy();
+            if (jestSlotem(screen, "WIZUALNY_BORDER", slot)) { przelaczWizualnyBorder(player); otworzMenuUstawienWyspy(player); }
+            else if (jestSlotem(screen, "BUDOWANIE_GOSCI", slot)) { przelaczBudowanieDlaGosci(player); otworzMenuUstawienWyspy(player); }
+            else if (jestSlotem(screen, "PVP", slot)) { przelaczPvP(player); otworzMenuUstawienWyspy(player); }
+            else if (jestSlotem(screen, "POTWORY", slot)) { przelaczPotwory(player); otworzMenuUstawienWyspy(player); }
+            else if (jestSlotem(screen, "ZABIJANIE_MOBOW_GOSCI", slot)) { przelaczZabijanieMobowPrzezGosci(player); otworzMenuUstawienWyspy(player); }
+            else if (jestSlotem(screen, "POGODA_CZAS", slot)) { przelaczPogodeICzas(player); otworzMenuUstawienWyspy(player); }
+            else if (jestSlotem(screen, "NAZWA_WYSPY", slot)) { rozpocznijZmianeNazwyWyspy(player); }
+            else if (jestSlotem(screen, "CZLONKOWIE", slot)) { otworzMenuCzlonkow(player); }
+            else if (jestSlotem(screen, "POWROT", slot)) { otworzMenuWyspy(player, zMenu); }
         }
         else if (title.contains("Topka Wysp")) {
             event.setCancelled(true);
             int slot = event.getRawSlot();
-            if (slot == 49) { otworzMenuWyspy(player, zMenu); }
+            if (jestSlotem(gui.topkaWysp(), "POWROT", slot)) { otworzMenuWyspy(player, zMenu); }
         }
         else if (title.contains("Ulepszenia Wyspy")) {
             event.setCancelled(true);
             int slot = event.getRawSlot();
-            if (slot == 11) { uprosGranice(player); }
-            else if (slot == 13) { otworzMenuWzrostuDropow(player); }
-            else if (slot == 15) { otworzMenuWyspy(player, zMenu); }
+            IslandScreen screen = gui.ulepszeniaWyspy();
+            if (jestSlotem(screen, "POWIEKSZ_TEREN", slot)) { uprosGranice(player); }
+            else if (jestSlotem(screen, "ULEPSZENIE_SPAWNEROW", slot)) { otworzMenuWzrostuDropow(player); }
+            else if (jestSlotem(screen, "POWROT", slot)) { otworzMenuWyspy(player, zMenu); }
         }
         else if (title.contains("Ulepszenie Spawnerów")) {
             event.setCancelled(true);
             int slot = event.getRawSlot();
-            if (slot == 49) { otworzMenuUlepszen(player); return; }
+            IslandScreen screen = gui.ulepszenieSpawnerow();
+            if (jestSlotem(screen, "POWROT", slot)) { otworzMenuUlepszen(player); return; }
 
-            int[] sloty = {9, 11, 13, 15, 17, 28, 30, 32, 34};
-            for (int i = 0; i < sloty.length; i++) {
+            int[] sloty = gui.ulepszenieSpawnerowSlotyTypow();
+            List<SpawnerTyp> typy = tuning.spawnerTypy();
+            for (int i = 0; i < sloty.length && i < typy.size(); i++) {
                 if (sloty[i] == slot) {
-                    otworzMenuUlepszenSpawnera(player, SPAWNER_TYPY.get(i).id());
+                    otworzMenuUlepszenSpawnera(player, typy.get(i).id());
                     break;
                 }
             }
@@ -1936,19 +1720,21 @@ public class IslandManager implements Listener, IslandService {
             String typId = otwartySpawnerTyp.get(player.getUniqueId());
             if (typId == null) return;
 
-            if (slot == 11) { ulepszSpawnerStatystyke(player, typId, SUFIKS_ILOSC); }
-            else if (slot == 15) { ulepszSpawnerStatystyke(player, typId, SUFIKS_SZYBKOSC); }
-            else if (slot == 22) { otworzMenuWzrostuDropow(player); }
+            IslandScreen screen = gui.spawnerPodmenu();
+            if (jestSlotem(screen, "ILOSC", slot)) { ulepszSpawnerStatystyke(player, typId, SUFIKS_ILOSC); }
+            else if (jestSlotem(screen, "SZYBKOSC", slot)) { ulepszSpawnerStatystyke(player, typId, SUFIKS_SZYBKOSC); }
+            else if (jestSlotem(screen, "POWROT", slot)) { otworzMenuWzrostuDropow(player); }
         }
         else if (title.contains("Członkowie Wyspy")) {
             event.setCancelled(true);
             int slot = event.getRawSlot();
             ItemStack clicked = event.getCurrentItem();
-            if (clicked == null || clicked.getType() == Material.GRAY_STAINED_GLASS_PANE) return;
+            IslandScreen screen = gui.czlonkowieWyspy();
+            if (clicked == null || clicked.getType() == screen.tlo()) return;
 
-            if (slot == 49) { // Powrót do Ustawień Wyspy
+            if (jestSlotem(screen, "POWROT", slot)) { // Powrót do Ustawień Wyspy
                 otworzMenuUstawienWyspy(player);
-            } else if (slot == 53) { // Zaproś gracza (przez czat)
+            } else if (jestSlotem(screen, "ZAPROS", slot)) { // Zaproś gracza (przez czat)
                 player.closeInventory();
                 pendingInviteChat.add(player.getUniqueId());
                 player.sendMessage(Component.text("Wpisz na czacie nick gracza, którego chcesz zaprosić na wyspę (lub wpisz 'anuluj'):", NamedTextColor.YELLOW));
@@ -1982,17 +1768,13 @@ public class IslandManager implements Listener, IslandService {
         IslandData data = wlasnaWyspaJakoZarzadca(player);
         if (data == null) return;
 
-        Inventory gui = Bukkit.createInventory(null, 54, Component.text("Członkowie Wyspy", NamedTextColor.YELLOW, TextDecoration.BOLD));
-
-        ItemStack tlo = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta metaTlo = tlo.getItemMeta();
-        metaTlo.displayName(Component.empty());
-        tlo.setItemMeta(metaTlo);
-        for (int i = 0; i < 54; i++) gui.setItem(i, tlo);
+        IslandScreen screen = gui.czlonkowieWyspy();
+        Inventory inv = Bukkit.createInventory(null, screen.size(), Component.text("Członkowie Wyspy", NamedTextColor.YELLOW, TextDecoration.BOLD));
+        wypelnijTlo(inv, screen);
 
         boolean viewerIsOwner = data.getOwnerUUID().equals(player.getUniqueId());
 
-        // Slot 0 - nieklikalna karta właściciela, żeby lista jasno pokazywała kto nim jest.
+        // Nieklikalna karta właściciela, żeby lista jasno pokazywała kto nim jest.
         @SuppressWarnings("deprecation")
         OfflinePlayer ownerOffline = Bukkit.getOfflinePlayer(data.getOwnerUUID());
         String ownerNick = ownerOffline.getName() != null ? ownerOffline.getName() : data.getOwnerUUID().toString();
@@ -2002,12 +1784,12 @@ public class IslandManager implements Listener, IslandService {
         metaWlasciciela.displayName(Component.text("[WŁAŚCICIEL] " + ownerNick, NamedTextColor.GOLD, TextDecoration.BOLD));
         metaWlasciciela.lore(List.of(Component.text("Właściciel wyspy", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
         kartaWlasciciela.setItemMeta(metaWlasciciela);
-        gui.setItem(0, kartaWlasciciela);
+        inv.setItem(gui.czlonkowieSlotWlasciciela(), kartaWlasciciela);
 
         Map<Integer, UUID> mapaSlotow = new HashMap<>();
-        int slot = 1;
+        int slot = gui.czlonkowiePierwszySlot();
         for (UUID memberUUID : data.getMembers()) {
-            if (slot >= 45) break; // zabezpieczenie na wypadek bardzo dużej liczby członków
+            if (slot > gui.czlonkowieOstatniSlot()) break; // zabezpieczenie na wypadek bardzo dużej liczby członków
 
             IslandRole rola = data.getRole(memberUUID);
             boolean memberIsAdmin = rola == IslandRole.ADMIN;
@@ -2037,26 +1819,16 @@ public class IslandManager implements Listener, IslandService {
             meta.lore(lore);
             glowa.setItemMeta(meta);
 
-            gui.setItem(slot, glowa);
+            inv.setItem(slot, glowa);
             mapaSlotow.put(slot, memberUUID);
             slot++;
         }
         slotyCzlonkow.put(player.getUniqueId(), mapaSlotow);
 
-        ItemStack zapros = new ItemStack(Material.EMERALD);
-        ItemMeta mZapros = zapros.getItemMeta();
-        mZapros.displayName(Component.text("Zaproś gracza", NamedTextColor.GREEN, TextDecoration.BOLD));
-        mZapros.lore(List.of(Component.text("Wpisz nick na czacie po kliknięciu", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
-        zapros.setItemMeta(mZapros);
-        gui.setItem(53, zapros);
+        ustawPrzycisk(inv, screen, "ZAPROS", null);
+        ustawPrzycisk(inv, screen, "POWROT", null);
 
-        ItemStack powrot = new ItemStack(Material.ARROW);
-        ItemMeta mPowrot = powrot.getItemMeta();
-        mPowrot.displayName(Component.text("Powrót do Ustawień Wyspy", NamedTextColor.RED, TextDecoration.BOLD));
-        powrot.setItemMeta(mPowrot);
-        gui.setItem(49, powrot);
-
-        player.openInventory(gui);
+        player.openInventory(inv);
     }
 
     /** Jedyne miejsce egzekwujące kto kogo może wyrzucić - używane identycznie przez komendę i GUI. */
@@ -2098,18 +1870,18 @@ public class IslandManager implements Listener, IslandService {
             return;
         }
 
-        if (data.getBorderSize() >= MAX_BORDER_SIZE) {
-            player.sendMessage(Component.text("Osiągnięto maksymalny rozmiar wyspy (" + MAX_BORDER_SIZE + " bloków)!", NamedTextColor.RED));
+        if (data.getBorderSize() >= tuning.borderMaxRozmiar()) {
+            player.sendMessage(Component.text("Osiągnięto maksymalny rozmiar wyspy (" + tuning.borderMaxRozmiar() + " bloków)!", NamedTextColor.RED));
             return;
         }
 
-        int cost = data.getBorderSize() * 1000;
+        int cost = data.getBorderSize() * tuning.borderKosztZaBlok();
         if (!data.odejmijZBanku(cost)) {
             player.sendMessage(Component.text("Bank wyspy nie ma tyle pieniędzy! Potrzeba " + cost + " $, w banku jest " + formatKwote(data.getBankBalance()) + " $. Wpłać przez /is deposit.", NamedTextColor.RED));
             return;
         }
 
-        data.setBorderSize(Math.min(data.getBorderSize() + 25, MAX_BORDER_SIZE));
+        data.setBorderSize(Math.min(data.getBorderSize() + tuning.borderPrzyrostNaUlepszenie(), tuning.borderMaxRozmiar()));
         ustawWizualnyBorder(player, data);
         zapiszWyspy();
         Bukkit.getPluginManager().callEvent(new IslandUpgradeEvent(player, data));
@@ -2196,10 +1968,8 @@ public class IslandManager implements Listener, IslandService {
 
         player.closeInventory();
         pendingNameChat.add(player.getUniqueId());
-        player.sendMessage(Component.text("Wpisz na czacie nową nazwę wyspy (max " + MAX_DLUGOSC_NAZWY_WYSPY + " znaków, lub wpisz 'anuluj'):", NamedTextColor.YELLOW));
+        player.sendMessage(Component.text("Wpisz na czacie nową nazwę wyspy (max " + tuning.maxDlugoscNazwyWyspy() + " znaków, lub wpisz 'anuluj'):", NamedTextColor.YELLOW));
     }
-
-    private static final int MAX_DLUGOSC_NAZWY_WYSPY = 24;
 
     /** Rdzeń zmiany nazwy z czatu - patrz otworzMenuUstawienWyspy (przycisk "Nazwa Wyspy"). */
     private void ustawNazweWyspyZCzatu(Player player, String wiadomosc) {
@@ -2213,8 +1983,8 @@ public class IslandManager implements Listener, IslandService {
         if (data == null) return;
 
         String nazwa = wiadomosc.trim();
-        if (nazwa.isEmpty() || nazwa.length() > MAX_DLUGOSC_NAZWY_WYSPY) {
-            player.sendMessage(Component.text("Nazwa musi mieć 1-" + MAX_DLUGOSC_NAZWY_WYSPY + " znaków.", NamedTextColor.RED));
+        if (nazwa.isEmpty() || nazwa.length() > tuning.maxDlugoscNazwyWyspy()) {
+            player.sendMessage(Component.text("Nazwa musi mieć 1-" + tuning.maxDlugoscNazwyWyspy() + " znaków.", NamedTextColor.RED));
             return;
         }
 
@@ -2304,6 +2074,11 @@ public class IslandManager implements Listener, IslandService {
         return islandDatabase.values();
     }
 
+    /** Zwraca 0 dla materiałów spoza wyspy-config.yml: wartosci-blokow - patrz IslandTuning.wartoscBloku. */
+    double wartoscBloku(Material material) {
+        return tuning.wartoscBloku(material);
+    }
+
     // ---- Implementacja IslandService (dla HUD-a i ewentualnych innych konsumentów) ----
 
     @Override
@@ -2340,15 +2115,6 @@ public class IslandManager implements Listener, IslandService {
         );
     }
 
-    // Zapas wokół granicy budowania na wypadek, gdyby wklejony schemat startowy
-    // (wyspa_startowa.schem) był fizycznie szerszy niż nominalny promień 50 - border
-    // to tylko miękkie ograniczenie ruchu gracza, nie ma nic wspólnego z rozmiarem schematu.
-    private static final int ZAPAS_NA_SCHEMAT = 20;
-
-    // Ile pojedynczych chunków sprzątamy w jednym ticku - reguluje jak bardzo
-    // rozkładamy usuwanie wyspy w czasie, żeby nie zamrozić serwera na jeden tick.
-    private static final int CHUNKI_NA_TICK = 4;
-
     /**
      * Czyści teren wyspy: cała kolumna od dna do sufitu świata (a nie tylko wąski
      * pasek Y ±kilkadziesiąt bloków od punktu wklejenia schematu - WorldBorder nie
@@ -2364,7 +2130,7 @@ public class IslandManager implements Listener, IslandService {
      * to bezpieczny kompromis - kosztem tego jest tylko rozłożenie pracy na tick-i.
      */
     private void wyczyscTerenWyspy(IslandData data) {
-        int promien = data.getBorderSize() + ZAPAS_NA_SCHEMAT;
+        int promien = data.getBorderSize() + tuning.zapasNaSchemat();
         int minX = data.getCenterX() - promien;
         int maxX = data.getCenterX() + promien;
         int minZ = data.getCenterZ() - promien;
@@ -2374,6 +2140,7 @@ public class IslandManager implements Listener, IslandService {
 
         int minChunkX = minX >> 4, maxChunkX = maxX >> 4;
         int minChunkZ = minZ >> 4, maxChunkZ = maxZ >> 4;
+        int chunkiNaTick = tuning.chunkiNaTick();
 
         new org.bukkit.scheduler.BukkitRunnable() {
             int cx = minChunkX;
@@ -2382,7 +2149,7 @@ public class IslandManager implements Listener, IslandService {
             @Override
             public void run() {
                 int przetworzoneWTymTicku = 0;
-                while (przetworzoneWTymTicku < CHUNKI_NA_TICK) {
+                while (przetworzoneWTymTicku < chunkiNaTick) {
                     if (cx > maxChunkX) {
                         cancel();
                         return;

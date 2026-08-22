@@ -7,7 +7,7 @@ public final class MainpluginsMenu extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        MenuPomocyManager menuPomocyManager = new MenuPomocyManager();
+        MenuPomocyManager menuPomocyManager = new MenuPomocyManager(this);
         getServer().getPluginManager().registerEvents(menuPomocyManager, this);
 
         if (getCommand("menu") != null) {
@@ -17,6 +17,16 @@ public final class MainpluginsMenu extends JavaPlugin {
                     return true;
                 }
                 menuPomocyManager.otworzMenuPomocy(player);
+                return true;
+            });
+        }
+
+        // Osobny executor: /@reloadmenu ma sens też z konsoli, nie tylko od gracza.
+        // Uprawnienie (mainplugins.menu.reload, domyślnie op) pilnuje tego plugin.yml.
+        if (getCommand("@reloadmenu") != null) {
+            getCommand("@reloadmenu").setExecutor((sender, command, label, args) -> {
+                menuPomocyManager.przeladujKonfiguracje();
+                sender.sendMessage("§aMenu-gui.yml zostało przeładowane.");
                 return true;
             });
         }

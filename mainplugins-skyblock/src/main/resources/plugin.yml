@@ -12,8 +12,15 @@ commands:
   dom:
     description: Dom / Wyspa
     aliases: [home]
+  "@reloadwyspy":
+    description: Wczytaj wyspy-config.yml i wyspy-gui.yml na nowo, bez restartu serwera
+    permission: mainplugins.skyblock.reload
+    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.skyblock.bypass:
     description: Pozwala przechodzić przez granice wysp bez ograniczeń ruchu
+    default: op
+  mainplugins.skyblock.reload:
+    description: Pozwala przeładować konfigurację i układ GUI systemu wysp
     default: op

@@ -181,8 +181,6 @@ public class IslandProtectionManager implements Listener {
         }
     }
 
-    private static final long MAX_LOT_PERLY_TICKS = 10 * 20L;
-
     /**
      * Blokada na "Ender Pearl chunk loading" - wanilijski trik, gdzie perła w locie zmusza
      * silnik do dalszego tickowania chunku pod sobą niezależnie od tego, czy jakikolwiek
@@ -203,7 +201,7 @@ public class IslandProtectionManager implements Listener {
             if (perla.isValid() && !perla.isDead()) {
                 perla.remove();
             }
-        }, MAX_LOT_PERLY_TICKS);
+        }, islandManager.getTuning().maxLotPerlyTicks());
     }
 
     /**
@@ -219,14 +217,14 @@ public class IslandProtectionManager implements Listener {
     public void onWorthTrackBreak(BlockBreakEvent event) {
         IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
         if (data == null) return;
-        data.dodajDoWartosci(-IslandManager.wartoscBloku(event.getBlock().getType()));
+        data.dodajDoWartosci(-islandManager.wartoscBloku(event.getBlock().getType()));
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onWorthTrackPlace(BlockPlaceEvent event) {
         IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
         if (data == null) return;
-        data.dodajDoWartosci(IslandManager.wartoscBloku(event.getBlock().getType()));
+        data.dodajDoWartosci(islandManager.wartoscBloku(event.getBlock().getType()));
     }
 
     /**

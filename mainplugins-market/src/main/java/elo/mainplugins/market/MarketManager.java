@@ -41,6 +41,10 @@ public class MarketManager implements Listener, MarketService {
     private final Map<UUID, String> pendingRetrieve = new HashMap<>();
     private static final long TIMEOUT_WYCOFANIA_TICKS = 15 * 20L;
 
+    // Górny limit ceny na Rynku - bez tego gracz mógł wpisać dowolnie duże/małe
+    // liczby (patrz też walidacja "liczba całkowita" w wystawPrzedmiot).
+    private static final long MAX_CENA = 1_000_000_000L;
+
     // Zapamiętuje który slot w GUI odpowiada za który przedmiot w pliku
     private final Map<UUID, Map<Integer, String>> slotyRynku = new HashMap<>();
 
@@ -88,12 +92,14 @@ public class MarketManager implements Listener, MarketService {
             return;
         }
 
-        double cena;
+        long cena;
         try {
-            cena = Double.parseDouble(args[1]);
-            if (cena <= 0) throw new NumberFormatException();
+            // long zamiast double - odrzuca ułamki (0.001) i zapis wykładniczy (1e9) już
+            // na etapie parsowania, bez osobnej walidacji "czy to liczba całkowita".
+            cena = Long.parseLong(args[1]);
+            if (cena <= 0 || cena > MAX_CENA) throw new NumberFormatException();
         } catch (NumberFormatException e) {
-            player.sendMessage(Component.text("Cena musi być liczbą większą od zera!", NamedTextColor.RED));
+            player.sendMessage(Component.text("Cena musi być liczbą całkowitą z zakresu 1-" + MAX_CENA + "!", NamedTextColor.RED));
             return;
         }
 
@@ -123,7 +129,7 @@ public class MarketManager implements Listener, MarketService {
         zapiszRynek();
 
         player.getInventory().setItemInMainHand(null);
-        player.sendMessage(Component.text("Pomyślnie wystawiono przedmiot na targ za " + cena + " $!", NamedTextColor.GREEN));
+        player.sendMessage(Component.text("Pomyślnie wystawiono przedmiot na targ za " + cena + "$!", NamedTextColor.GREEN));
 
         // Skok od razu na stronę, na której realnie wylądował nowy przedmiot -
         // jeśli poprzednia strona akurat się zapełniła, gracz od razu widzi nową.
@@ -169,7 +175,7 @@ public class MarketManager implements Listener, MarketService {
         for (int i = poczatek; i < koniec; i++) {
             String klucz = wszystkieKlucze.get(i);
             ItemStack oryginal = configRynku.getItemStack("przedmioty." + klucz + ".item");
-            double cena = configRynku.getDouble("przedmioty." + klucz + ".cena");
+            long cena = configRynku.getLong("przedmioty." + klucz + ".cena");
             String nick = configRynku.getString("przedmioty." + klucz + ".nick_sprzedawcy");
 
             if (oryginal != null) {
@@ -178,7 +184,7 @@ public class MarketManager implements Listener, MarketService {
                 if (meta != null) {
                     List<Component> lore = meta.hasLore() ? meta.lore() : new ArrayList<>();
                     lore.add(Component.empty());
-                    lore.add(Component.text("Cena: " + cena + " $", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
+                    lore.add(Component.text("Cena: " + cena + "$", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
                     lore.add(Component.text("Sprzedawca: " + nick, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
                     lore.add(Component.text("LPM, aby kupić!", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
                     meta.lore(lore);
@@ -278,7 +284,7 @@ public class MarketManager implements Listener, MarketService {
                 return;
             }
 
-            double cena = configRynku.getDouble("przedmioty." + klucz + ".cena");
+            long cena = configRynku.getLong("przedmioty." + klucz + ".cena");
             String sprzedawcaUUID = configRynku.getString("przedmioty." + klucz + ".sprzedawca");
             ItemStack doKupienia = configRynku.getItemStack("przedmioty." + klucz + ".item");
 
@@ -305,19 +311,22 @@ public class MarketManager implements Listener, MarketService {
                 economyManager.odejmijKase(player.getUniqueId(), cena);
                 economyManager.dodajKase(UUID.fromString(sprzedawcaUUID), cena);
 
-                // Dajemy przedmiot i usuwamy z targu
-                player.getInventory().addItem(doKupienia);
+                // Dajemy przedmiot i usuwamy z targu (leftover na ziemię, jeśli plecak pełny - patrz wycofajOferte)
+                Map<Integer, ItemStack> leftover = player.getInventory().addItem(doKupienia);
+                for (ItemStack lo : leftover.values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), lo);
+                }
                 configRynku.set("przedmioty." + klucz, null);
                 zapiszRynek();
 
-                player.sendMessage(Component.text("Zakupiłeś przedmiot za " + cena + " $!", NamedTextColor.GREEN));
+                player.sendMessage(Component.text("Zakupiłeś przedmiot za " + cena + "$!", NamedTextColor.GREEN));
 
                 // Odświeżamy targ
                 otworzTarg(player, stronaGracza.getOrDefault(player.getUniqueId(), 0), otwartoZMenu.getOrDefault(player.getUniqueId(), false));
 
                 Player sprzedawca = Bukkit.getPlayer(UUID.fromString(sprzedawcaUUID));
                 if (sprzedawca != null && sprzedawca.isOnline()) {
-                    sprzedawca.sendMessage(Component.text("Ktoś kupił twój przedmiot na targu za " + cena + " $!", NamedTextColor.GOLD));
+                    sprzedawca.sendMessage(Component.text("Ktoś kupił twój przedmiot na targu za " + cena + "$!", NamedTextColor.GOLD));
                 }
             } else {
                 player.sendMessage(Component.text("Nie masz wystarczająco pieniędzy, aby to kupić!", NamedTextColor.RED));

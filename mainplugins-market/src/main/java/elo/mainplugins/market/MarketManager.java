@@ -66,7 +66,7 @@ public class MarketManager implements Listener, MarketService {
 
     // Górny limit ceny na Rynku - bez tego gracz mógł wpisać dowolnie duże/małe
     // liczby (patrz też walidacja "liczba całkowita" w wystawPrzedmiot).
-    private static final long MAX_CENA = 1_000_000_000L;
+    private static final long MAX_CENA = 10_000_000L;
 
     // Limit aktywnych ofert na gracza - żeby jeden gracz nie zapchał całego Rynku.
     // VIP dostaje więcej miejsca jako przywilej rangi (patrz RankService).
@@ -76,11 +76,12 @@ public class MarketManager implements Listener, MarketService {
     // Zapamiętuje który slot w GUI odpowiada za który przedmiot w pliku
     private final Map<UUID, Map<Integer, String>> slotyRynku = new HashMap<>();
 
-    // Siatka slotów na przedmioty: rzędy 1 i 3 (z 0-4), kolumny 1-7 z 9-szerokiej
-    // siatki - przedmioty stoją koło siebie bez przerw, tylko kolumna 0/8 (ściany)
-    // i rzędy 0/2/4 zostają jako szklana ramka.
+    // Siatka slotów na przedmioty: rzędy 1-3 (z 0-4), kolumny 1-7 z 9-szerokiej
+    // siatki - jeden zwarty blok bez przerw ani w poziomie, ani w pionie, tylko
+    // kolumna 0/8 (ściany) i rzędy 0/4 zostają jako szklana ramka.
     private static final int[] SLOTY_PRZEDMIOTOW = {
             10, 11, 12, 13, 14, 15, 16,
+            19, 20, 21, 22, 23, 24, 25,
             28, 29, 30, 31, 32, 33, 34
     };
 

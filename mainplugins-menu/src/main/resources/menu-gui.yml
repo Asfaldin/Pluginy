@@ -64,3 +64,29 @@ przyciski:
     lore:
       - "Sprzedaj masowo przedmioty z eq (/sprzedajwszystko)"
     komenda: "sprzedajwszystko"
+
+  # Skróty do wyspy - otwierają konkretny ekran panelu wyspy bezpośrednio,
+  # bez przechodzenia przez "Twoja Wyspa" -> klikanie dalej.
+  - slot: 20
+    material: COMPARATOR
+    nazwa: "Ustawienia Wyspy"
+    lore:
+      - "Border, budowanie, PvP, moby, pogoda, nazwa..."
+      - "(/is ustawienia)"
+    komenda: "is ustawienia"
+
+  - slot: 22
+    material: LEVER
+    nazwa: "Permisje Wyspy"
+    lore:
+      - "Itemy, skrzynie, drzwi i mechanizmy dla gości"
+      - "(/is permisje)"
+    komenda: "is permisje"
+
+  - slot: 24
+    material: TNT
+    nazwa: "Usuń Wyspę"
+    lore:
+      - "Ostrzeżenie: Wyspa zniknie bezpowrotnie!"
+      - "(/is usun)"
+    komenda: "is usun"

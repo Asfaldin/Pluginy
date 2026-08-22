@@ -508,6 +508,8 @@ public class IslandManager implements Listener, IslandService {
             case "mobs" -> przelaczPotwory(player);
             case "upgrade" -> otworzMenuUlepszen(player);
             case "members" -> otworzMenuCzlonkow(player);
+            case "ustawienia", "settings" -> otworzMenuUstawienWyspy(player);
+            case "permisje", "permissions" -> otworzMenuPermisji(player);
             case "add", "invite" -> zaprosGracza(player, args);
             case "accept" -> zaakceptujZaproszenie(player);
             case "deny" -> odrzucZaproszenie(player);

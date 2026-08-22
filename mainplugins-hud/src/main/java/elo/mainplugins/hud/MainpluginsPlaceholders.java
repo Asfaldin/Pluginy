@@ -11,6 +11,8 @@ import elo.mainplugins.core.util.MoneyFormat;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.Statistic;
+import org.bukkit.entity.Player;
 
 import java.util.List;
 import java.util.Locale;
@@ -138,7 +140,22 @@ public class MainpluginsPlaceholders extends PlaceholderExpansion {
             case "moje_miejsce" -> {
                 if (player == null) return "-";
                 int pozycja = economyManager.getPozycjaWRankingu(player.getUniqueId());
-                return pozycja > 0 ? "#" + pozycja : "-";
+                if (pozycja <= 0) return "&7-";
+                String kolor = switch (pozycja) {
+                    case 1 -> "&6&l";
+                    case 2 -> "&7&l";
+                    case 3 -> "&c&l";
+                    default -> "&f";
+                };
+                return kolor + pozycja;
+            }
+            case "czas_gry" -> {
+                Player online = player != null ? Bukkit.getPlayer(player.getUniqueId()) : null;
+                if (online == null) return "-";
+                int tickiGry = online.getStatistic(Statistic.PLAY_ONE_MINUTE);
+                long minuty = tickiGry / 20 / 60;
+                long godziny = minuty / 60;
+                return godziny + "h " + (minuty % 60) + "m";
             }
             case "wyspa_rozmiar" -> {
                 IslandSummary wyspa = player == null ? null : HudData.pobierzWlasnaWyspe(player.getUniqueId());

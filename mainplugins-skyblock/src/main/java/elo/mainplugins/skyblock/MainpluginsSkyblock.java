@@ -25,12 +25,14 @@ public final class MainpluginsSkyblock extends JavaPlugin {
         IslandProtectionManager islandProtectionManager = new IslandProtectionManager(this, islandManager);
         SnifferManager snifferManager = new SnifferManager(this, islandManager);
         PoradnikManager poradnikManager = new PoradnikManager();
+        MobRestrictionManager mobRestrictionManager = new MobRestrictionManager();
 
         getServer().getPluginManager().registerEvents(islandManager, this);
         getServer().getPluginManager().registerEvents(borderManager, this);
         getServer().getPluginManager().registerEvents(islandProtectionManager, this);
         getServer().getPluginManager().registerEvents(snifferManager, this);
         getServer().getPluginManager().registerEvents(poradnikManager, this);
+        getServer().getPluginManager().registerEvents(mobRestrictionManager, this);
 
         // Opcjonalny serwis dla innych pluginów (np. HUD-a) - w przeciwieństwie do
         // EconomyService w Core, nikt nie jest zobowiązany z niego korzystać.

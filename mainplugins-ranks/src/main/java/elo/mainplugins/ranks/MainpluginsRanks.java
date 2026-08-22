@@ -18,6 +18,7 @@ public final class MainpluginsRanks extends JavaPlugin {
         if (getCommand("@setranga") != null) getCommand("@setranga").setExecutor(executor);
         if (getCommand("@setranga") != null) getCommand("@setranga").setTabCompleter(executor);
         if (getCommand("@ranga") != null) getCommand("@ranga").setExecutor(executor);
+        if (getCommand("@ranga") != null) getCommand("@ranga").setTabCompleter(executor);
     }
 
     @Override

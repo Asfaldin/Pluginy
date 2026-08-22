@@ -101,6 +101,9 @@ public class RankCommands implements CommandExecutor, TabCompleter {
                 return wynik;
             }
         }
+        if (command.getName().equalsIgnoreCase("@ranga") && args.length == 1) {
+            return null; // domyślna podpowiedź nicków online od Bukkita
+        }
         return List.of();
     }
 }

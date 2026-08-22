@@ -1,6 +1,7 @@
 package elo.mainplugins.storage;
 
 import elo.mainplugins.core.util.MenuBridge;
+import elo.mainplugins.core.util.TabCompleteUtils;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -22,6 +23,7 @@ public final class MainpluginsStorage extends JavaPlugin {
                 storageManager.otworzSchowek(player, MenuBridge.isZMenu(args));
                 return true;
             });
+            getCommand("itemy").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
     }
 }

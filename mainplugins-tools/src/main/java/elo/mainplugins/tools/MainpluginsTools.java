@@ -2,6 +2,7 @@ package elo.mainplugins.tools;
 
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.ToolsService;
+import elo.mainplugins.core.util.TabCompleteUtils;
 import elo.mainplugins.tools.axe.AxeSkillManager;
 import elo.mainplugins.tools.hoe.HoeSkillManager;
 import elo.mainplugins.tools.pickaxe.BrukSurowceManager;
@@ -56,6 +57,7 @@ public final class MainpluginsTools extends JavaPlugin {
                 levelableToolsManager.dajStartoweNarzedzia(player);
                 return true;
             });
+            getCommand("narzedzia").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
 
         if (getCommand("@addlvl") != null) {
@@ -97,6 +99,7 @@ public final class MainpluginsTools extends JavaPlugin {
                 player.sendMessage("§a[DEBUG] Dodano " + amount + " poziomów trzymanemu narzędziu.");
                 return true;
             });
+            getCommand("@addlvl").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
 
         if (getCommand("@addcustompickaxe") != null) {
@@ -121,6 +124,8 @@ public final class MainpluginsTools extends JavaPlugin {
                 }
                 return true;
             });
+            getCommand("@addcustompickaxe").setTabCompleter((sender, command, alias, args) ->
+                    args.length == 1 ? TabCompleteUtils.dopasujGraczy(args[0]) : TabCompleteUtils.PUSTA);
         }
 
         if (getCommand("@dajwszystko") != null) {
@@ -151,6 +156,8 @@ public final class MainpluginsTools extends JavaPlugin {
                 }
                 return true;
             });
+            getCommand("@dajwszystko").setTabCompleter((sender, command, alias, args) ->
+                    args.length == 1 ? TabCompleteUtils.dopasujGraczy(args[0]) : TabCompleteUtils.PUSTA);
         }
 
         if (getCommand("@dajkilofa") != null) {
@@ -176,6 +183,8 @@ public final class MainpluginsTools extends JavaPlugin {
                 }
                 return true;
             });
+            getCommand("@dajkilofa").setTabCompleter((sender, command, alias, args) ->
+                    args.length == 1 ? TabCompleteUtils.dopasujGraczy(args[0]) : TabCompleteUtils.PUSTA);
         }
 
         if (getCommand("@dajsniezny") != null) {
@@ -201,6 +210,8 @@ public final class MainpluginsTools extends JavaPlugin {
                 }
                 return true;
             });
+            getCommand("@dajsniezny").setTabCompleter((sender, command, alias, args) ->
+                    args.length == 1 ? TabCompleteUtils.dopasujGraczy(args[0]) : TabCompleteUtils.PUSTA);
         }
     }
 

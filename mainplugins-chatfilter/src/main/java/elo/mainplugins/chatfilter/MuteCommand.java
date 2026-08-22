@@ -1,5 +1,6 @@
 package elo.mainplugins.chatfilter;
 
+import elo.mainplugins.core.util.TabCompleteUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -7,15 +8,18 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
 
 /**
  * /wycisz (alias /mute) <gracz> - osobiste wyciszenie, przełącznik (drugie wywołanie na
  * tym samym graczu = odciszenie). Dostępne dla każdego, bez permisji - to nie jest
  * narzędzie moderacji, tylko osobisty filtr czatu.
  */
-public class MuteCommand implements CommandExecutor {
+public class MuteCommand implements CommandExecutor, TabCompleter {
 
     private final MuteManager muteManager;
 
@@ -57,5 +61,10 @@ public class MuteCommand implements CommandExecutor {
             player.sendMessage(Component.text("Odciszono gracza " + nick + ".", NamedTextColor.GREEN));
         }
         return true;
+    }
+
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
+        return args.length == 1 ? TabCompleteUtils.dopasujGraczy(args[0]) : TabCompleteUtils.PUSTA;
     }
 }

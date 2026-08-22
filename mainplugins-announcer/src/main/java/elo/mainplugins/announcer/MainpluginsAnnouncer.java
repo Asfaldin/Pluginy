@@ -16,6 +16,7 @@ public final class MainpluginsAnnouncer extends JavaPlugin {
                 sender.sendMessage("§aOgloszenia.yml zostały przeładowane.");
                 return true;
             });
+            getCommand("@reloadannouncer").setTabCompleter((sender, command, alias, args) -> java.util.List.of());
         }
     }
 

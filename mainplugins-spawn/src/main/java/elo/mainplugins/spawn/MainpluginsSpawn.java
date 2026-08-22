@@ -21,7 +21,10 @@ public final class MainpluginsSpawn extends JavaPlugin {
         getServer().getServicesManager().register(SpawnService.class, spawnManager, this, ServicePriority.Normal);
 
         SpawnCommands executor = new SpawnCommands(spawnManager, obszarManager, warpManager);
-        if (getCommand("spawn") != null) getCommand("spawn").setExecutor(executor);
+        if (getCommand("spawn") != null) {
+            getCommand("spawn").setExecutor(executor);
+            getCommand("spawn").setTabCompleter(executor);
+        }
         if (getCommand("@setspawn") != null) {
             getCommand("@setspawn").setExecutor(executor);
             getCommand("@setspawn").setTabCompleter(executor);
@@ -34,7 +37,10 @@ public final class MainpluginsSpawn extends JavaPlugin {
             getCommand("warp").setExecutor(executor);
             getCommand("warp").setTabCompleter(executor);
         }
-        if (getCommand("@setwarp") != null) getCommand("@setwarp").setExecutor(executor);
+        if (getCommand("@setwarp") != null) {
+            getCommand("@setwarp").setExecutor(executor);
+            getCommand("@setwarp").setTabCompleter(executor);
+        }
         if (getCommand("@delwarp") != null) {
             getCommand("@delwarp").setExecutor(executor);
             getCommand("@delwarp").setTabCompleter(executor);

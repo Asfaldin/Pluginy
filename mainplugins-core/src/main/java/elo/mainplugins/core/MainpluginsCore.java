@@ -13,6 +13,7 @@ import elo.mainplugins.core.command.PomocCommand;
 import elo.mainplugins.core.command.PortfelCommand;
 import elo.mainplugins.core.customitem.CustomItemManager;
 import elo.mainplugins.core.economy.EconomyManager;
+import elo.mainplugins.core.util.TabCompleteUtils;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -40,41 +41,56 @@ public final class MainpluginsCore extends JavaPlugin {
 
         if (getCommand("wszystkiekomendy") != null) {
             getCommand("wszystkiekomendy").setExecutor(new AdminHelpCommand());
+            getCommand("wszystkiekomendy").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
         PomocCommand pomocCommand = new PomocCommand();
         if (getCommand("komendy") != null) {
             getCommand("komendy").setExecutor(pomocCommand);
+            getCommand("komendy").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
         if (getCommand("komendy2") != null) {
             getCommand("komendy2").setExecutor(pomocCommand);
+            getCommand("komendy2").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
         if (getCommand("komendy3") != null) {
             getCommand("komendy3").setExecutor(pomocCommand);
+            getCommand("komendy3").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
         AdminPomocCommand adminPomocCommand = new AdminPomocCommand();
         if (getCommand("@komendy") != null) {
             getCommand("@komendy").setExecutor(adminPomocCommand);
+            getCommand("@komendy").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
         if (getCommand("@komendy2") != null) {
             getCommand("@komendy2").setExecutor(adminPomocCommand);
+            getCommand("@komendy2").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
         if (getCommand("@komendy3") != null) {
             getCommand("@komendy3").setExecutor(adminPomocCommand);
+            getCommand("@komendy3").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
         if (getCommand("@moneyadd") != null) {
-            getCommand("@moneyadd").setExecutor(new MoneyAddCommand(economyManager));
+            MoneyAddCommand moneyAddCommand = new MoneyAddCommand(economyManager);
+            getCommand("@moneyadd").setExecutor(moneyAddCommand);
+            getCommand("@moneyadd").setTabCompleter(moneyAddCommand);
         }
         if (getCommand("@moneyundo") != null) {
-            getCommand("@moneyundo").setExecutor(new MoneyUndoCommand(economyManager));
+            MoneyUndoCommand moneyUndoCommand = new MoneyUndoCommand(economyManager);
+            getCommand("@moneyundo").setExecutor(moneyUndoCommand);
+            getCommand("@moneyundo").setTabCompleter(moneyUndoCommand);
         }
         if (getCommand("przelej") != null) {
-            getCommand("przelej").setExecutor(new PayCommand(economyManager));
+            PayCommand payCommand = new PayCommand(economyManager);
+            getCommand("przelej").setExecutor(payCommand);
+            getCommand("przelej").setTabCompleter(payCommand);
         }
         if (getCommand("portfel") != null) {
             getCommand("portfel").setExecutor(new PortfelCommand(economyManager));
+            getCommand("portfel").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
         if (getCommand("discord") != null) {
             getCommand("discord").setExecutor(new DiscordCommand());
+            getCommand("discord").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
         if (getCommand("@dajcustom") != null) {
             DajCustomCommand dajCustomCommand = new DajCustomCommand(customItemManager);
@@ -89,6 +105,7 @@ public final class MainpluginsCore extends JavaPlugin {
                 sender.sendMessage("§aCustom-items.yml został przeładowany.");
                 return true;
             });
+            getCommand("@reloadcustomitems").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
 
         getLogger().info("MainpluginsCore włączony - EconomyService dostępny dla innych pluginów.");

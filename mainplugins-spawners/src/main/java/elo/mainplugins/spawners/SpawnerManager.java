@@ -261,10 +261,23 @@ public class SpawnerManager implements Listener {
         instancja.rozmiarStosu = 0;
     }
 
+    /**
+     * Zwykłe niszczenie (kilof, cokolwiek innego) jest zablokowane dla naszych spawnerów -
+     * jedyna droga to onZbieranieSpawnera niżej (patyk + PPM), żeby nikt nie stracił
+     * spawnera przez przypadkowe/impulsywne rozbicie. Wanilijski spawner (nieśledzony
+     * w instancje, np. w lochu) łamie się normalnie - to nie jest nasz teren.
+     */
     @EventHandler(ignoreCancelled = true)
     public void onZniszczenie(BlockBreakEvent event) {
         if (event.getBlock().getType() != Material.SPAWNER) return;
-        usunSpawner(event.getBlock().getLocation());
+
+        Instancja instancja = instancje.get(kluczLokalizacji(event.getBlock().getLocation()));
+        if (instancja == null) return;
+
+        event.setCancelled(true);
+        event.getPlayer().sendMessage(Component.text(
+                "Nie możesz w ten sposób zniszczyć spawnera! Kliknij go PPM trzymając patyk, żeby go zebrać.",
+                NamedTextColor.RED));
     }
 
     @EventHandler

@@ -1,6 +1,7 @@
 package elo.mainplugins.core.command;
 
 import elo.mainplugins.core.api.EconomyService;
+import elo.mainplugins.core.util.TabCompleteUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -8,8 +9,11 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
 
 /**
  * /przelej <gracz> <kwota> (alias /pay) - przelew pieniędzy między graczami, dostępny
@@ -17,7 +21,7 @@ import org.jetbrains.annotations.NotNull;
  * Wspiera też odbiorców offline (patrz resolvowanie przez OfflinePlayer/hasPlayedBefore,
  * ten sam wzorzec co MoneyAddCommand i IslandManager.usunCzlonkaKomenda).
  */
-public class PayCommand implements CommandExecutor {
+public class PayCommand implements CommandExecutor, TabCompleter {
 
     private final EconomyService economyService;
 
@@ -85,6 +89,11 @@ public class PayCommand implements CommandExecutor {
             online.sendMessage(Component.text("Otrzymałeś " + kwotaTekst + "$ od " + player.getName() + "!", NamedTextColor.GREEN));
         }
         return true;
+    }
+
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
+        return args.length == 1 ? TabCompleteUtils.dopasujGraczy(args[0]) : TabCompleteUtils.PUSTA;
     }
 
     /** "10000" -> "100", "10050" -> "100.50" - bez ".0" na okrągłych kwotach. */

@@ -56,6 +56,10 @@ public final class MainpluginsCore extends JavaPlugin {
             getCommand("komendy3").setExecutor(pomocCommand);
             getCommand("komendy3").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
+        if (getCommand("komendy4") != null) {
+            getCommand("komendy4").setExecutor(pomocCommand);
+            getCommand("komendy4").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
+        }
         AdminPomocCommand adminPomocCommand = new AdminPomocCommand();
         if (getCommand("@komendy") != null) {
             getCommand("@komendy").setExecutor(adminPomocCommand);

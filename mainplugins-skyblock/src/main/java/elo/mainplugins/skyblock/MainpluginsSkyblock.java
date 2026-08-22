@@ -62,14 +62,16 @@ public final class MainpluginsSkyblock extends JavaPlugin {
     private static final class IsCommandHandler implements CommandExecutor, TabCompleter {
 
         // "zmenu" celowo pominięte - to wewnętrzny znacznik z GUI (patrz MenuPomocyManager),
-        // nikt nie wpisuje go ręcznie. "add" i "build" to aliasy odpowiednio "invite"/"guests"
-        // w handleCommand - podpowiadamy tylko formę główną, żeby nie dublować.
+        // nikt nie wpisuje go ręcznie. Angielskie aliasy (border/guests/build/mobs/upgrade/
+        // members/add/invite/accept/deny/leave/promote/demote/remove/home/sethome/deposit/
+        // withdraw - patrz handleCommand) celowo pominięte tu, w podpowiedziach Tab liczy się
+        // tylko polska forma główna, żeby nie dublować listy.
         private static final List<String> PODKOMENDY = List.of(
-                "menu", "sethome", "usun", "border", "guests", "pvp", "mobs", "upgrade",
-                "members", "invite", "accept", "deny", "leave", "promote", "demote",
-                "remove", "home", "deposit", "withdraw"
+                "menu", "ustawdom", "ustawspawn", "usun", "granica", "budowanie", "pvp", "potwory", "ulepszenia",
+                "czlonkowie", "zapros", "akceptuj", "odrzuc", "opusc", "awansuj", "degraduj",
+                "wyrzuc", "dom", "wplac", "wyplac"
         );
-        private static final Set<String> PODKOMENDY_Z_GRACZEM = Set.of("invite", "promote", "demote", "remove");
+        private static final Set<String> PODKOMENDY_Z_GRACZEM = Set.of("zapros", "awansuj", "degraduj", "wyrzuc");
 
         private final IslandManager islandManager;
 
@@ -83,7 +85,9 @@ public final class MainpluginsSkyblock extends JavaPlugin {
                 sender.sendMessage("Tylko gracz moze uzyc tej komendy.");
                 return true;
             }
-            islandManager.handleCommand(player, args);
+            // Nazwa komendy (nie alias) - odróżnia "/is" od "/dom"/"/home" przy pustych
+            // argumentach, patrz handleCommand.
+            islandManager.handleCommand(player, args, command.getName());
             return true;
         }
 

@@ -13,15 +13,21 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * /komendy, /komendy2, /komendy3, /help, /pomoc - wyłącznie komendy DLA GRACZA, ręcznie
- * dobrane i opisane (w przeciwieństwie do /wszystkiekomendy, które przez CommandCatalog wypisuje
- * DOSŁOWNIE wszystko z każdego plugin.yml, w tym komendy testowe/administracyjne - to
+ * /komendy, /komendy2, /komendy3, /komendy4, /help, /pomoc - wyłącznie komendy DLA GRACZA,
+ * ręcznie dobrane i opisane (w przeciwieństwie do /wszystkiekomendy, które przez CommandCatalog
+ * wypisuje DOSŁOWNIE wszystko z każdego plugin.yml, w tym komendy testowe/administracyjne - to
  * świadomie osobna, "techniczna" ścieżka dla operatora).
  *
- * Podzielone na strony, żeby nie zalać czatu jedną wielką wiadomością - "/komendy2" i
- * "/komendy3" to osobne wpisy w plugin.yml (ten sam executor), rozróżniane po ostatniej
- * cyfrze w "label" (czyli w alisie, którego gracz faktycznie użył). "/help" i "/pomoc"
- * są aliasami WYŁĄCZNIE pierwszej strony - nie mają swoich "2"/"3" wariantów.
+ * Podzielone na strony, żeby nie zalać czatu jedną wielką wiadomością - "/komendy2"/"3"/"4"
+ * to osobne wpisy w plugin.yml (ten sam executor), rozróżniane po ostatniej cyfrze w "label"
+ * (czyli w alisie, którego gracz faktycznie użył). "/help" i "/pomoc" są aliasami WYŁĄCZNIE
+ * pierwszej strony - nie mają swoich "2"/"3"/"4" wariantów.
+ *
+ * Wyspa (/is) ma tyle podkomend (patrz IslandManager#handleCommand), że dostała całą stronę
+ * dla siebie - rozpisane pojedynczo, zamiast jednej ogólnej linijki "/is menu otwiera panel",
+ * żeby gracz od razu widział co faktycznie da się wpisać. Angielskie aliasy (border/guests/
+ * mobs/upgrade/members/invite/accept/deny/leave/promote/demote/remove/home/sethome/deposit/
+ * withdraw) celowo pominięte tutaj - liczy się polska forma główna, angielska nadal działa.
  *
  * Sekcje/opisy trzymane ręcznie (nie auto-generowane) - to jest świadomy wybór, żeby dać
  * krótkie, sensowne opisy pogrupowane tematycznie zamiast suchej listy z plugin.yml. Przy
@@ -34,9 +40,32 @@ public class PomocCommand implements CommandExecutor {
 
     private static final List<Sekcja> STRONA_1 = List.of(
             new Sekcja("Wyspa", List.of(
-                    new Wpis("/is", "Teleport na wyspę (\"/is menu\" otwiera panel ze wszystkimi opcjami)"),
-                    new Wpis("/dom (/home)", "Teleport na wyspę")
-            )),
+                    new Wpis("/is", "Teleport do punktu z \"/is ustawspawn\" (stwórz wyspę, jeśli jeszcze jej nie masz)"),
+                    new Wpis("/is ustawspawn", "Ustaw punkt teleportu dla samego /is, tam gdzie stoisz"),
+                    new Wpis("/is ustawdom", "Ustaw punkt teleportu dla /dom i /home, tam gdzie stoisz"),
+                    new Wpis("/dom (/home)", "Teleport do punktu z \"/is ustawdom\" - NIEZALEŻNY punkt od /is"),
+                    new Wpis("/is dom", "To samo co /dom/home"),
+                    new Wpis("/is menu", "Panel wyspy ze wszystkimi opcjami"),
+                    new Wpis("/is usun", "Usuń całą wyspę (nieodwracalne, wymaga potwierdzenia)"),
+                    new Wpis("/is granica", "Włącz/wyłącz widoczną granicę wyspy"),
+                    new Wpis("/is budowanie", "Zezwól/zablokuj budowanie gościom"),
+                    new Wpis("/is pvp", "Włącz/wyłącz PvP na wyspie"),
+                    new Wpis("/is potwory", "Włącz/wyłącz spawn potworów na wyspie"),
+                    new Wpis("/is ulepszenia", "Panel ulepszeń (powiększanie terenu itd.)"),
+                    new Wpis("/is czlonkowie", "Panel członków wyspy"),
+                    new Wpis("/is zapros <gracz>", "Zaproś gracza na członka wyspy"),
+                    new Wpis("/is akceptuj", "Zaakceptuj zaproszenie na czyjąś wyspę"),
+                    new Wpis("/is odrzuc", "Odrzuć zaproszenie"),
+                    new Wpis("/is opusc", "Opuść wyspę, na której jesteś członkiem"),
+                    new Wpis("/is awansuj <gracz>", "Awansuj członka na admina wyspy"),
+                    new Wpis("/is degraduj <gracz>", "Cofnij admina do zwykłego członka"),
+                    new Wpis("/is wyrzuc <gracz>", "Wyrzuć gracza z wyspy"),
+                    new Wpis("/is wplac <kwota>", "Wpłać pieniądze do banku wyspy"),
+                    new Wpis("/is wyplac <kwota>", "Wypłać pieniądze z banku wyspy")
+            ))
+    );
+
+    private static final List<Sekcja> STRONA_2 = List.of(
             new Sekcja("Ekonomia", List.of(
                     new Wpis("/portfel (/p, /money)", "Sprawdź ile masz pieniędzy"),
                     new Wpis("/przelej <gracz> <kwota> (/pay)", "Przelej pieniądze innemu graczowi")
@@ -45,11 +74,12 @@ public class PomocCommand implements CommandExecutor {
                     new Wpis("/sklep (/buy)", "Otwórz sklep serwerowy"),
                     new Wpis("/sprzedaj (/sell)", "Sprzedaj przedmiot trzymany w ręce"),
                     new Wpis("/sprzedajwszystko (/sellall)", "Sprzedaj wszystkie przedmioty tego typu z ekwipunku"),
-                    new Wpis("/targ", "Otwórz targ - handel między graczami")
+                    new Wpis("/targ", "Otwórz targ - handel między graczami"),
+                    new Wpis("/targ wystaw <cena>", "Wystaw przedmiot trzymany w ręce na targ")
             ))
     );
 
-    private static final List<Sekcja> STRONA_2 = List.of(
+    private static final List<Sekcja> STRONA_3 = List.of(
             new Sekcja("Teleportacja", List.of(
                     new Wpis("/spawn", "Teleport na spawn serwera"),
                     new Wpis("/warp [nazwa]", "Teleport do nazwanego warpu (niektóre wymagają ukończenia questa)"),
@@ -60,14 +90,14 @@ public class PomocCommand implements CommandExecutor {
             new Sekcja("Lochy i Bossy", List.of(
                     new Wpis("/tpdun", "Teleport do lochu (fale mobów, na końcu boss)"),
                     new Wpis("/tpboss", "Teleport na arenę do walki z bossem 1v1")
-            )),
-            new Sekcja("Narzędzia i Zadania", List.of(
-                    new Wpis("/narzedzia", "Odbierz startowe, ulepszalne narzędzia"),
-                    new Wpis("/zadania (/quest)", "Otwórz listę zadań i odbierz nagrody")
             ))
     );
 
-    private static final List<Sekcja> STRONA_3 = List.of(
+    private static final List<Sekcja> STRONA_4 = List.of(
+            new Sekcja("Narzędzia i Zadania", List.of(
+                    new Wpis("/narzedzia", "Odbierz startowe, ulepszalne narzędzia"),
+                    new Wpis("/zadania (/quest)", "Otwórz listę zadań i odbierz nagrody")
+            )),
             new Sekcja("Inne", List.of(
                     new Wpis("/itemy", "Otwórz schowek - bezpieczne miejsce na przedmioty"),
                     new Wpis("/wycisz <gracz> (/mute)", "Wycisz gracza tylko dla siebie (ponownie = odcisz)"),
@@ -76,7 +106,7 @@ public class PomocCommand implements CommandExecutor {
             ))
     );
 
-    private static final List<List<Sekcja>> STRONY = List.of(STRONA_1, STRONA_2, STRONA_3);
+    private static final List<List<Sekcja>> STRONY = List.of(STRONA_1, STRONA_2, STRONA_3, STRONA_4);
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {

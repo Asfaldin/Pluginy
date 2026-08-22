@@ -96,7 +96,7 @@ public class IslandManager implements Listener, IslandService {
         // Wspólna kasa wyspy - ZASTĘPUJE osobisty portfel jako JEDYNE źródło pieniędzy
         // na ulepszenia (border, spawnery - patrz uprosGranice/ulepszSpawnerStatystyke).
         // Wpłaca każdy stojący fizycznie na tej wyspie (właściciel/członek/gość -
-        // patrz /is deposit), wypłaca wyłącznie właściciel/admin (/is withdraw).
+        // patrz /is wplac), wypłaca wyłącznie właściciel/admin (/is wyplac).
         private double bankBalance = 0.0;
 
         // Wartość wyspy licznona z postawionych bloków (patrz IslandManager.WARTOSCI_BLOKOW) -
@@ -120,13 +120,24 @@ public class IslandManager implements Listener, IslandService {
         // IslandSummary) - skyblock nie ma i nie powinien mieć zależności na moduł spawnerów.
         private final Map<String, Integer> spawnerLevels = new HashMap<>();
 
-        // Własny punkt teleportu ustawiony przez /is sethome - null dopóki gracz go nie
+        // Własny punkt teleportu ustawiony przez /is ustawdom - null dopóki gracz go nie
         // ustawi, wtedy teleportDoWyspy() używa domyślnego środka wyspy zamiast tego.
+        // To jest cel /dom i /home - DRUGI, niezależny punkt teleportu, patrz spawnX niżej.
         private Double homeX;
         private Double homeY;
         private Double homeZ;
         private float homeYaw;
         private float homePitch;
+
+        // Osobny punkt teleportu ustawiany przez /is ustawspawn - to jest cel gołego
+        // /is (bez argumentów), NIEZALEŻNY od /is ustawdom/homeX wyżej. Dwie możliwości
+        // "respienia się" na wyspie: /is (ustawspawn) i /dom-/home (ustawdom) - jak w
+        // vanillowym Minecrafcie łóżko vs. respawn anchor, tylko oba na tej samej wyspie.
+        private Double spawnX;
+        private Double spawnY;
+        private Double spawnZ;
+        private float spawnYaw;
+        private float spawnPitch;
 
         public IslandData(int id, UUID ownerUUID, int centerX, int centerZ, int borderSize) {
             this.id = id;
@@ -209,6 +220,20 @@ public class IslandManager implements Listener, IslandService {
             this.homeZ = z;
             this.homeYaw = yaw;
             this.homePitch = pitch;
+        }
+
+        public boolean hasCustomSpawn() { return spawnX != null; }
+        public double getSpawnX() { return spawnX; }
+        public double getSpawnY() { return spawnY; }
+        public double getSpawnZ() { return spawnZ; }
+        public float getSpawnYaw() { return spawnYaw; }
+        public float getSpawnPitch() { return spawnPitch; }
+        public void setSpawn(double x, double y, double z, float yaw, float pitch) {
+            this.spawnX = x;
+            this.spawnY = y;
+            this.spawnZ = z;
+            this.spawnYaw = yaw;
+            this.spawnPitch = pitch;
         }
 
         // Rola WYŁĄCZNIE dla członków spoza właściciela - właściciel nigdy nie jest kluczem
@@ -337,7 +362,7 @@ public class IslandManager implements Listener, IslandService {
     // Maksymalny rozmiar WorldBordera dopuszczalny przez samego Minecrafta to
     // 5.9999968E7 (59 999 968) - wartość NIECO mniejsza niż okrągłe 60 milionów.
     // Wcześniejsze 60000000 przekraczało ten limit o 32 i wywalało IllegalArgumentException
-    // przy każdym /is border i usuwaniu wyspy. Używamy tego jako "brak borderu".
+    // przy każdym /is granica i usuwaniu wyspy. Używamy tego jako "brak borderu".
     private static final double ROZMIAR_BEZ_BORDERU = 59999900;
 
     // Odstęp między środkami sąsiednich wysp na siatce (patrz stworzWyspe()).
@@ -350,7 +375,7 @@ public class IslandManager implements Listener, IslandService {
     // granicami dwóch sąsiednich, maksymalnie rozbudowanych wysp - więcej niż
     // jakikolwiek realny zasięg renderowania gracza, więc wyspy nigdy się nie
     // zetkną ani nie będą się nawzajem widoczne "z daleka".
-    private static final int MAX_BORDER_SIZE = 750;
+    private static final int MAX_BORDER_SIZE = 100;
 
     /**
      * "Wartość wyspy" (patrz IslandData.worth) - śledzona PRZYROSTOWO przez
@@ -467,6 +492,16 @@ public class IslandManager implements Listener, IslandService {
                 );
             }
 
+            if (configWysp.contains(path + "spawn.x")) {
+                data.setSpawn(
+                        configWysp.getDouble(path + "spawn.x"),
+                        configWysp.getDouble(path + "spawn.y"),
+                        configWysp.getDouble(path + "spawn.z"),
+                        (float) configWysp.getDouble(path + "spawn.yaw", 0),
+                        (float) configWysp.getDouble(path + "spawn.pitch", 0)
+                );
+            }
+
             for (String memberStr : configWysp.getStringList(path + "czlonkowie")) {
                 try {
                     UUID memberUUID = UUID.fromString(memberStr);
@@ -531,6 +566,14 @@ public class IslandManager implements Listener, IslandService {
                 configWysp.set(path + "home.pitch", data.getHomePitch());
             }
 
+            if (data.hasCustomSpawn()) {
+                configWysp.set(path + "spawn.x", data.getSpawnX());
+                configWysp.set(path + "spawn.y", data.getSpawnY());
+                configWysp.set(path + "spawn.z", data.getSpawnZ());
+                configWysp.set(path + "spawn.yaw", data.getSpawnYaw());
+                configWysp.set(path + "spawn.pitch", data.getSpawnPitch());
+            }
+
             for (Map.Entry<String, Integer> lvl : data.getSpawnerLevels().entrySet()) {
                 configWysp.set(path + "spawnerLevels." + lvl.getKey(), lvl.getValue());
             }
@@ -578,40 +621,53 @@ public class IslandManager implements Listener, IslandService {
     }
 
     /**
-     * /is [subkomenda]. Bez argumentów (albo z samym "zmenu") - stwórz/otwórz panel
-     * wyspy, jak dawniej. Reszta subkomend to odpowiedniki przycisków z GUI, dla
-     * graczy, którzy wolą wpisać komendę niż klikać w menu.
+     * /is i /dom(-home) [subkomenda] - ten sam handler dla obu komend (patrz
+     * MainpluginsSkyblock), rozróżniane przez `nazwaKomendy` WYŁĄCZNIE przy pustych
+     * argumentach (albo z samym "zmenu"): "/is" samo w sobie teleportuje do punktu
+     * ustawionego przez /is ustawspawn, a "/dom"/"/home" zawsze do punktu ustawionego
+     * przez /is ustawdom - dwa niezależne, ustawialne miejsca "respienia się" na
+     * wyspie. Brak własnej wyspy w obu przypadkach - tworzy nową. Reszta subkomend
+     * (w tym samo "/is dom"/"/is ustawdom") działa identycznie niezależnie od tego,
+     * którą z dwóch komend wpisano - to odpowiedniki przycisków z GUI, dla graczy,
+     * którzy wolą wpisać komendę niż klikać w menu.
      */
-    public void handleCommand(Player player, String[] args) {
+    public void handleCommand(Player player, String[] args, String nazwaKomendy) {
         UUID uuid = player.getUniqueId();
         boolean zMenu = (args.length > 0 && args[args.length - 1].equalsIgnoreCase("zmenu"));
         String sub = args.length > 0 ? args[0].toLowerCase() : "";
 
+        // Polska nazwa jako forma główna, angielska zostawiona jako alias (ten sam
+        // wzorzec co /przelej-/pay, /wycisz-/mute itd. - patrz reszta komend serwera).
+        // "menu" i "pvp" celowo bez polskiego odpowiednika - to nie są prawdziwe
+        // angielskie słowa tylko uniwersalne, powszechnie używane w tej formie terminy.
         switch (sub) {
             case "menu" -> otworzMenuWyspy(player, zMenu);
             case "usun" -> obslugaUsuwaniaKomenda(player);
-            case "border" -> przelaczWizualnyBorder(player);
-            case "guests", "build" -> przelaczBudowanieDlaGosci(player);
+            case "granica", "border" -> przelaczWizualnyBorder(player);
+            case "budowanie", "guests", "build" -> przelaczBudowanieDlaGosci(player);
             case "pvp" -> przelaczPvP(player);
-            case "mobs" -> przelaczPotwory(player);
-            case "upgrade" -> otworzMenuUlepszen(player);
-            case "members" -> otworzMenuCzlonkow(player);
-            case "add", "invite" -> zaprosGracza(player, args);
-            case "accept" -> zaakceptujZaproszenie(player);
-            case "deny" -> odrzucZaproszenie(player);
-            case "leave" -> opuscWyspe(player);
-            case "promote" -> zmienRoleKomenda(player, args, IslandRole.ADMIN);
-            case "demote" -> zmienRoleKomenda(player, args, IslandRole.CZLONEK);
-            case "remove" -> usunCzlonkaKomenda(player, args);
-            case "home" -> teleportDoWyspy(player);
-            case "sethome" -> ustawDomek(player);
-            case "deposit" -> wplacDoBankuKomenda(player, args);
-            case "withdraw" -> wyplacZBankuKomenda(player, args);
+            case "potwory", "mobs" -> przelaczPotwory(player);
+            case "ulepszenia", "upgrade" -> otworzMenuUlepszen(player);
+            case "czlonkowie", "members" -> otworzMenuCzlonkow(player);
+            case "zapros", "add", "invite" -> zaprosGracza(player, args);
+            case "akceptuj", "accept" -> zaakceptujZaproszenie(player);
+            case "odrzuc", "deny" -> odrzucZaproszenie(player);
+            case "opusc", "leave" -> opuscWyspe(player);
+            case "awansuj", "promote" -> zmienRoleKomenda(player, args, IslandRole.ADMIN);
+            case "degraduj", "demote" -> zmienRoleKomenda(player, args, IslandRole.CZLONEK);
+            case "wyrzuc", "remove" -> usunCzlonkaKomenda(player, args);
+            case "dom", "home" -> teleportDoWyspy(player);
+            case "ustawdom", "sethome" -> ustawDomek(player);
+            case "ustawspawn" -> ustawSpawnWyspy(player);
+            case "wplac", "deposit" -> wplacDoBankuKomenda(player, args);
+            case "wyplac", "withdraw" -> wyplacZBankuKomenda(player, args);
             default -> {
                 if (!playerIslandMap.containsKey(uuid)) {
                     stworzWyspe(player, zMenu);
-                } else {
+                } else if (nazwaKomendy.equalsIgnoreCase("dom")) {
                     teleportDoWyspy(player);
+                } else {
+                    teleportDoSpawnuWyspy(player);
                 }
             }
         }
@@ -780,7 +836,7 @@ public class IslandManager implements Listener, IslandService {
     private record PendingInvite(UUID ownerUUID, UUID inviterUUID) {}
 
     /**
-     * Rdzeń wysyłki zaproszenia - współdzielony przez komendę /is invite i czatowy
+     * Rdzeń wysyłki zaproszenia - współdzielony przez komendę /is zapros i czatowy
      * przepływ z GUI "Członkowie Wyspy" (przycisk "Zaproś gracza"). Sprawdzenie
      * playerIslandMap.containsKey tutaj to PIERWSZA z dwóch blokad (druga jest
      * w zaakceptujZaproszenie) - bez tego dałoby się zaprosić kogoś, kto już ma
@@ -811,12 +867,12 @@ public class IslandManager implements Listener, IslandService {
         }, TIMEOUT_ZAPROSZENIA_TICKS);
 
         inviter.sendMessage(Component.text("Wysłano zaproszenie do " + target.getName() + ".", NamedTextColor.GREEN));
-        target.sendMessage(Component.text("Zostałeś zaproszony na wyspę gracza " + inviter.getName() + "! Wpisz /is accept lub /is deny w ciągu 60 sekund.", NamedTextColor.AQUA));
+        target.sendMessage(Component.text("Zostałeś zaproszony na wyspę gracza " + inviter.getName() + "! Wpisz /is akceptuj lub /is odrzuc w ciągu 60 sekund.", NamedTextColor.AQUA));
     }
 
     private void zaprosGracza(Player player, String[] args) {
         if (args.length < 2) {
-            player.sendMessage(Component.text("Użycie: /is invite <gracz>", NamedTextColor.RED));
+            player.sendMessage(Component.text("Użycie: /is zapros <gracz>", NamedTextColor.RED));
             return;
         }
         IslandData data = wlasnaWyspaJakoZarzadca(player);
@@ -876,7 +932,7 @@ public class IslandManager implements Listener, IslandService {
         }
     }
 
-    /** Samodzielne opuszczenie wyspy przez nie-właściciela - "hermetyczność" (patrz /is leave, przycisk w panelu). */
+    /** Samodzielne opuszczenie wyspy przez nie-właściciela - "hermetyczność" (patrz /is opusc, przycisk w panelu). */
     public void opuscWyspe(Player player) {
         UUID uuid = player.getUniqueId();
         UUID ownerUUID = playerIslandMap.get(uuid);
@@ -904,7 +960,7 @@ public class IslandManager implements Listener, IslandService {
         }
     }
 
-    /** /is promote|demote <gracz> - wyłącznie właściciel, egzekwowane wewnątrz zmienRoleCzlonka. */
+    /** /is awansuj|degraduj <gracz> - wyłącznie właściciel, egzekwowane wewnątrz zmienRoleCzlonka. */
     private void zmienRoleKomenda(Player player, String[] args, IslandRole nowaRola) {
         if (args.length < 2) {
             player.sendMessage(Component.text("Użycie: /is " + (nowaRola == IslandRole.ADMIN ? "promote" : "demote") + " <gracz>", NamedTextColor.RED));
@@ -953,7 +1009,7 @@ public class IslandManager implements Listener, IslandService {
 
     private void usunCzlonkaKomenda(Player player, String[] args) {
         if (args.length < 2) {
-            player.sendMessage(Component.text("Użycie: /is remove <gracz>", NamedTextColor.RED));
+            player.sendMessage(Component.text("Użycie: /is wyrzuc <gracz>", NamedTextColor.RED));
             return;
         }
         IslandData data = wlasnaWyspaLubKomunikat(player);
@@ -1070,6 +1126,7 @@ public class IslandManager implements Listener, IslandService {
         });
     }
 
+    /** Cel /is dom (i /dom, /home) - punkt ustawiony przez /is ustawdom, fallback = środek wyspy. */
     public void teleportDoWyspy(Player player) {
         UUID ownerUUID = playerIslandMap.get(player.getUniqueId());
         if (ownerUUID == null) {
@@ -1084,9 +1141,37 @@ public class IslandManager implements Listener, IslandService {
         }
 
         // Domyślnie środek wyspy (ten sam punkt, w który wklejany jest schemat startowy)
-        // - jeśli gracz ustawił własny punkt przez /is sethome, używamy tego zamiast.
+        // - jeśli gracz ustawił własny punkt przez /is ustawdom, używamy tego zamiast.
         Location loc = data.hasCustomHome()
                 ? new Location(skyblockWorld, data.getHomeX(), data.getHomeY(), data.getHomeZ(), data.getHomeYaw(), data.getHomePitch())
+                : new Location(skyblockWorld, data.getCenterX() + 0.5, 101, data.getCenterZ() + 0.5);
+        zabezpieczPunktSpawnu(loc);
+        player.teleport(loc);
+        ustawWizualnyBorder(player, data);
+        aplikujPogodeICzas(player, data);
+        player.sendMessage(Component.text("Przeteleportowano na wyspę!", NamedTextColor.AQUA));
+    }
+
+    /**
+     * Cel gołego /is - DRUGI, niezależny punkt teleportu ustawiony przez /is ustawspawn,
+     * osobny od /is ustawdom (patrz teleportDoWyspy wyżej). Fallback identyczny - środek
+     * wyspy, jeśli gracz jeszcze nic nie ustawił.
+     */
+    public void teleportDoSpawnuWyspy(Player player) {
+        UUID ownerUUID = playerIslandMap.get(player.getUniqueId());
+        if (ownerUUID == null) {
+            stworzWyspe(player, false);
+            return;
+        }
+
+        IslandData data = islandDatabase.get(ownerUUID);
+        if (data == null) {
+            player.sendMessage(Component.text("Twoja wyspa nie istnieje!", NamedTextColor.RED));
+            return;
+        }
+
+        Location loc = data.hasCustomSpawn()
+                ? new Location(skyblockWorld, data.getSpawnX(), data.getSpawnY(), data.getSpawnZ(), data.getSpawnYaw(), data.getSpawnPitch())
                 : new Location(skyblockWorld, data.getCenterX() + 0.5, 101, data.getCenterZ() + 0.5);
         zabezpieczPunktSpawnu(loc);
         player.teleport(loc);
@@ -1180,12 +1265,13 @@ public class IslandManager implements Listener, IslandService {
     }
 
     /**
-     * /is sethome - nadpisuje domyślny punkt teleportu (środek wyspy) własnym,
-     * ustawionym tam, gdzie gracz akurat stoi. To ustawienie WSPÓLNE dla całej wyspy
-     * (dotyczy każdego, kto potem wpisze /is albo /is home), więc - tak jak border/PvP/
-     * ulepszenia - może to zrobić tylko właściciel albo admin (wlasnaWyspaJakoZarzadca),
-     * nie każdy zwykły członek. Wymagamy też, żeby stał na SWOJEJ wyspie - bez tego
-     * dałoby się ustawić dom gdziekolwiek w świecie (np. na cudzej wyspie).
+     * /is ustawdom - nadpisuje domyślny punkt teleportu (środek wyspy) własnym,
+     * ustawionym tam, gdzie gracz akurat stoi - to jest cel /dom i /home. To ustawienie
+     * WSPÓLNE dla całej wyspy (dotyczy każdego, kto potem wpisze /is dom albo /dom/home),
+     * więc - tak jak border/PvP/ulepszenia - może to zrobić tylko właściciel albo admin
+     * (wlasnaWyspaJakoZarzadca), nie każdy zwykły członek. Wymagamy też, żeby stał na
+     * SWOJEJ wyspie - bez tego dałoby się ustawić dom gdziekolwiek w świecie (np. na
+     * cudzej wyspie). Osobny, niezależny punkt (dla gołego /is) - patrz ustawSpawnWyspy niżej.
      */
     private void ustawDomek(Player player) {
         IslandData data = wlasnaWyspaJakoZarzadca(player);
@@ -1201,22 +1287,44 @@ public class IslandManager implements Listener, IslandService {
 
         data.setHome(loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch());
         zapiszWyspy();
-        player.sendMessage(Component.text("Ustawiono nowy punkt teleportacji (/is home) na Twojej wyspie!", NamedTextColor.GREEN));
+        player.sendMessage(Component.text("Ustawiono nowy punkt teleportacji (/dom, /home) na Twojej wyspie!", NamedTextColor.GREEN));
     }
 
     /**
-     * /is deposit <kwota> - wpłaca do banku WŁASNEJ wyspy gracza, niezależnie gdzie
+     * /is ustawspawn - to samo co ustawDomek wyżej, ale dla DRUGIEGO, niezależnego
+     * punktu - celu gołego /is (patrz teleportDoSpawnuWyspy). Te same ograniczenia:
+     * tylko właściciel/admin, tylko stojąc na własnej wyspie.
+     */
+    private void ustawSpawnWyspy(Player player) {
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
+        if (data == null) return;
+
+        Location loc = player.getLocation();
+        if (loc.getWorld() == null || !loc.getWorld().equals(skyblockWorld)
+                || Math.abs(loc.getBlockX() - data.getCenterX()) > data.getBorderSize()
+                || Math.abs(loc.getBlockZ() - data.getCenterZ()) > data.getBorderSize()) {
+            player.sendMessage(Component.text("Musisz stać na własnej wyspie, żeby tu ustawić punkt teleportu!", NamedTextColor.RED));
+            return;
+        }
+
+        data.setSpawn(loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch());
+        zapiszWyspy();
+        player.sendMessage(Component.text("Ustawiono nowy punkt teleportacji (/is) na Twojej wyspie!", NamedTextColor.GREEN));
+    }
+
+    /**
+     * /is wplac <kwota> - wpłaca do banku WŁASNEJ wyspy gracza, niezależnie gdzie
      * fizycznie stoi w danym momencie. Bank jest JEDYNYM źródłem pieniędzy na
      * ulepszenia (patrz uprosGranice/ulepszSpawnerStatystyke).
      *
      * Wcześniej wpłata leciała do banku wyspy, na której gracz fizycznie stał (pomysł:
      * goście mogą wesprzeć cudzą wyspę) - w praktyce to było zbyt łatwe do pomylenia:
-     * gracz odwiedzający kolegę i wpisujący /is deposit z odruchu wpłacał kasę na
+     * gracz odwiedzający kolegę i wpisujący /is wplac z odruchu wpłacał kasę na
      * JEGO bank, nie swój, bez żadnego ostrzeżenia. Zmienione na zawsze-własną wyspę.
      */
     private void wplacDoBankuKomenda(Player player, String[] args) {
         if (args.length < 2) {
-            player.sendMessage(Component.text("Użycie: /is deposit <kwota>", NamedTextColor.RED));
+            player.sendMessage(Component.text("Użycie: /is wplac <kwota>", NamedTextColor.RED));
             return;
         }
 
@@ -1246,10 +1354,10 @@ public class IslandManager implements Listener, IslandService {
         }
     }
 
-    /** /is withdraw <kwota> - wyłącznie właściciel/admin WŁASNEJ wyspy (patrz ustalenie: wypłaca tylko zarządca). */
+    /** /is wyplac <kwota> - wyłącznie właściciel/admin WŁASNEJ wyspy (patrz ustalenie: wypłaca tylko zarządca). */
     private void wyplacZBankuKomenda(Player player, String[] args) {
         if (args.length < 2) {
-            player.sendMessage(Component.text("Użycie: /is withdraw <kwota>", NamedTextColor.RED));
+            player.sendMessage(Component.text("Użycie: /is wyplac <kwota>", NamedTextColor.RED));
             return;
         }
 
@@ -1370,7 +1478,7 @@ public class IslandManager implements Listener, IslandService {
             gui.setItem(12, upg);
         }
 
-        // 3. BANK WYSPY - stan wglądowy dla każdego, wpłaca każdy przez /is deposit
+        // 3. BANK WYSPY - stan wglądowy dla każdego, wpłaca każdy przez /is wplac
         ItemStack bank = new ItemStack(Material.GOLD_INGOT);
         ItemMeta mBank = bank.getItemMeta();
         mBank.displayName(Component.text("Bank Wyspy", NamedTextColor.YELLOW, TextDecoration.BOLD));
@@ -1378,8 +1486,8 @@ public class IslandManager implements Listener, IslandService {
                 Component.text("Stan: " + formatKwote(data.getBankBalance()) + " $", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false),
                 Component.text("Ulepszenia płacone WYŁĄCZNIE z tego banku", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false),
                 Component.empty(),
-                Component.text("/is deposit <kwota> - wpłać (może każdy)", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false),
-                Component.text("/is withdraw <kwota> - wypłać (właściciel/admin)", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false)
+                Component.text("/is wplac <kwota> - wpłać (może każdy)", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false),
+                Component.text("/is wyplac <kwota> - wypłać (właściciel/admin)", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false)
         ));
         bank.setItemMeta(mBank);
         gui.setItem(14, bank);
@@ -1820,7 +1928,7 @@ public class IslandManager implements Listener, IslandService {
 
         int cost = kosztUlepszeniaSpawnera(typId, sufiks, level);
         if (!data.odejmijZBanku(cost)) {
-            player.sendMessage(Component.text("Bank wyspy nie ma tyle pieniędzy! Potrzeba " + cost + " $, w banku jest " + formatKwote(data.getBankBalance()) + " $. Wpłać przez /is deposit.", NamedTextColor.RED));
+            player.sendMessage(Component.text("Bank wyspy nie ma tyle pieniędzy! Potrzeba " + cost + " $, w banku jest " + formatKwote(data.getBankBalance()) + " $. Wpłać przez /is wplac.", NamedTextColor.RED));
             return;
         }
 
@@ -2105,7 +2213,7 @@ public class IslandManager implements Listener, IslandService {
 
         int cost = data.getBorderSize() * 1000;
         if (!data.odejmijZBanku(cost)) {
-            player.sendMessage(Component.text("Bank wyspy nie ma tyle pieniędzy! Potrzeba " + cost + " $, w banku jest " + formatKwote(data.getBankBalance()) + " $. Wpłać przez /is deposit.", NamedTextColor.RED));
+            player.sendMessage(Component.text("Bank wyspy nie ma tyle pieniędzy! Potrzeba " + cost + " $, w banku jest " + formatKwote(data.getBankBalance()) + " $. Wpłać przez /is wplac.", NamedTextColor.RED));
             return;
         }
 

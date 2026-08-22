@@ -9,12 +9,14 @@ commands:
     permission: mainplugins.core.admin
     permission-message: "&cNie masz permisji do tej komendy!"
   komendy:
-    description: Lista komend dla gracza (strona 1/3)
+    description: Lista komend dla gracza (strona 1/4)
     aliases: [pomoc, help]
   komendy2:
-    description: Lista komend dla gracza (strona 2/3)
+    description: Lista komend dla gracza (strona 2/4)
   komendy3:
-    description: Lista komend dla gracza (strona 3/3)
+    description: Lista komend dla gracza (strona 3/4)
+  komendy4:
+    description: Lista komend dla gracza (strona 4/4)
   "@komendy":
     description: Lista komend dla admina (strona 1/3)
     permission: mainplugins.core.admin

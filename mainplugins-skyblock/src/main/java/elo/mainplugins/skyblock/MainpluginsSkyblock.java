@@ -103,8 +103,8 @@ public final class MainpluginsSkyblock extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (islandManager != null) islandManager.zamknij();
         getServer().getServicesManager().unregisterAll(this);
-        if (islandManager != null) islandManager.zapiszWszystkieWyspy();
     }
 
     @Override

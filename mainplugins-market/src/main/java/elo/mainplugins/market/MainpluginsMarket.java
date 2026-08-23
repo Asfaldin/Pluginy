@@ -13,10 +13,12 @@ import java.util.List;
 
 public final class MainpluginsMarket extends JavaPlugin {
 
+    private MarketManager marketManager;
+
     @Override
     public void onEnable() {
         EconomyService economyService = CoreAPI.getEconomyService();
-        MarketManager marketManager = new MarketManager(this, economyService);
+        marketManager = new MarketManager(this, economyService);
         getServer().getPluginManager().registerEvents(marketManager, this);
         getServer().getServicesManager().register(MarketService.class, marketManager, this, ServicePriority.Normal);
 
@@ -40,6 +42,7 @@ public final class MainpluginsMarket extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (marketManager != null) marketManager.zamknij();
         getServer().getServicesManager().unregisterAll(this);
     }
 }

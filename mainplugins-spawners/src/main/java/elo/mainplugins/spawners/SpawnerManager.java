@@ -3,6 +3,7 @@ package elo.mainplugins.spawners;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.IslandService;
 import elo.mainplugins.core.api.IslandSummary;
+import elo.mainplugins.core.util.AsyncConfigSaver;
 import elo.mainplugins.core.util.CustomItemKeys;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -90,6 +91,7 @@ public class SpawnerManager implements Listener {
     private final Plugin plugin;
     private final File plikSpawnerow;
     private final FileConfiguration configSpawnerow;
+    private final AsyncConfigSaver saverSpawnerow;
     private final Map<String, Instancja> instancje = new HashMap<>();
     // Odwrotna mapa mob -> spawner który go wyprodukował, żeby onSmierc wiedział skąd go wypisać
     // bez przeszukiwania wszystkich instancji.
@@ -103,6 +105,7 @@ public class SpawnerManager implements Listener {
             try { plikSpawnerow.createNewFile(); } catch (IOException ignored) {}
         }
         this.configSpawnerow = YamlConfiguration.loadConfiguration(plikSpawnerow);
+        this.saverSpawnerow = new AsyncConfigSaver(plugin, configSpawnerow, plikSpawnerow, 30);
         wczytaj();
 
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 20L, 20L);
@@ -163,8 +166,11 @@ public class SpawnerManager implements Listener {
             configSpawnerow.set(path + "type", instancja.typ.name());
             configSpawnerow.set(path + "owner", instancja.ownerUUID.toString());
         }
-        try { configSpawnerow.save(plikSpawnerow); }
-        catch (IOException e) { plugin.getLogger().warning("Nie mozna zapisac spawnery.yml!"); }
+        saverSpawnerow.oznaczZmiane();
+    }
+
+    public void zamknij() {
+        saverSpawnerow.zamknij();
     }
 
     private String kluczLokalizacji(Location loc) {

@@ -7,6 +7,7 @@ import elo.mainplugins.core.api.MarketService;
 import elo.mainplugins.core.api.QuestService;
 import elo.mainplugins.core.api.ToolsService;
 import elo.mainplugins.core.api.TytulService;
+import elo.mainplugins.core.util.AsyncConfigSaver;
 import elo.mainplugins.quests.model.CategoryDefinition;
 import elo.mainplugins.quests.model.MaterialRequirement;
 import elo.mainplugins.quests.model.QuestContent;
@@ -159,6 +160,7 @@ public class QuestManager implements Listener, TytulService, QuestService {
     private final Plugin plugin;
     private final File plikPostepow;
     private final FileConfiguration configPostepow;
+    private final AsyncConfigSaver saverPostepow;
 
     private final Map<UUID, Map<String, Set<Integer>>> postepyGraczy = new HashMap<>();
     private final Map<UUID, Set<String>> tytulyGraczy = new HashMap<>();
@@ -174,6 +176,7 @@ public class QuestManager implements Listener, TytulService, QuestService {
             try { plikPostepow.createNewFile(); } catch (IOException ignored) {}
         }
         this.configPostepow = YamlConfiguration.loadConfiguration(plikPostepow);
+        this.saverPostepow = new AsyncConfigSaver(plugin, configPostepow, plikPostepow, 30);
         this.content = QuestContentLoader.load(plugin);
         wczytajPostep();
     }
@@ -245,11 +248,11 @@ public class QuestManager implements Listener, TytulService, QuestService {
                 configPostepow.set("gracze." + uuid + ".tytuly", new ArrayList<>(tytuly));
             }
         }
-        try {
-            configPostepow.save(plikPostepow);
-        } catch (IOException e) {
-            plugin.getLogger().warning("Nie można zapisać quests.yml: " + e.getMessage());
-        }
+        saverPostepow.oznaczZmiane();
+    }
+
+    public void zamknij() {
+        saverPostepow.zamknij();
     }
 
     private Set<Integer> postepyDlaKategorii(Player player, String kategoriaId) {

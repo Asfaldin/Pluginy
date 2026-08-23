@@ -5,6 +5,7 @@ import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.MarketService;
 import elo.mainplugins.core.api.Rank;
 import elo.mainplugins.core.api.RankService;
+import elo.mainplugins.core.util.AsyncConfigSaver;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -38,6 +39,7 @@ public class MarketManager implements Listener, MarketService {
     private final EconomyService economyManager;
     private final File plikRynku;
     private final FileConfiguration configRynku;
+    private final AsyncConfigSaver saverRynku;
 
     private final Map<UUID, Boolean> otwartoZMenu = new HashMap<>();
     private final Map<UUID, Integer> stronaGracza = new HashMap<>();
@@ -95,6 +97,7 @@ public class MarketManager implements Listener, MarketService {
             try { plikRynku.createNewFile(); } catch (IOException ignored) {}
         }
         this.configRynku = YamlConfiguration.loadConfiguration(plikRynku);
+        this.saverRynku = new AsyncConfigSaver(plugin, configRynku, plikRynku, 10);
     }
 
     /** {@inheritDoc} Skanuje wszystkie aktywne oferty po polu "sprzedawca" - pod QuestService/quest #19 Głównej Ścieżki. */
@@ -109,11 +112,11 @@ public class MarketManager implements Listener, MarketService {
     }
 
     private void zapiszRynek() {
-        try {
-            configRynku.save(plikRynku);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        saverRynku.oznaczZmiane();
+    }
+
+    public void zamknij() {
+        saverRynku.zamknij();
     }
 
     /** VIP i wyżej dostają wyższy limit ofert jako przywilej rangi - brak mainplugins-ranks = zwykły limit. */

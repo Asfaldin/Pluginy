@@ -13,9 +13,11 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public final class MainpluginsQuests extends JavaPlugin {
 
+    private QuestManager questManager;
+
     @Override
     public void onEnable() {
-        QuestManager questManager = new QuestManager(this);
+        questManager = new QuestManager(this);
         getServer().getPluginManager().registerEvents(questManager, this);
         getServer().getServicesManager().register(TytulService.class, questManager, this, ServicePriority.Normal);
         getServer().getServicesManager().register(QuestService.class, questManager, this, ServicePriority.Normal);
@@ -101,6 +103,7 @@ public final class MainpluginsQuests extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (questManager != null) questManager.zamknij();
         getServer().getServicesManager().unregisterAll(this);
     }
 }

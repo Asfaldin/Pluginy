@@ -13,6 +13,7 @@ import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.session.ClipboardHolder;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.EconomyService;
+import elo.mainplugins.core.util.AsyncConfigSaver;
 import elo.mainplugins.core.api.IslandService;
 import elo.mainplugins.core.api.IslandSummary;
 import elo.mainplugins.core.api.SpawnService;
@@ -358,6 +359,7 @@ public class IslandManager implements Listener, IslandService {
 
     private final File plikWysp;
     private final FileConfiguration configWysp;
+    private final AsyncConfigSaver saverWysp;
 
     // Maksymalny rozmiar WorldBordera dopuszczalny przez samego Minecrafta to
     // 5.9999968E7 (59 999 968) - wartość NIECO mniejsza niż okrągłe 60 milionów.
@@ -420,6 +422,7 @@ public class IslandManager implements Listener, IslandService {
             try { plikWysp.createNewFile(); } catch (IOException ignored) {}
         }
         this.configWysp = YamlConfiguration.loadConfiguration(plikWysp);
+        this.saverWysp = new AsyncConfigSaver(plugin, configWysp, plikWysp, 30);
         wczytajWyspy();
         wczytajHistorieTworzenia();
     }
@@ -596,11 +599,12 @@ public class IslandManager implements Listener, IslandService {
             configWysp.set(path + "ostatnie", entry.getValue().ostatnieMillis);
         }
 
-        try {
-            configWysp.save(plikWysp);
-        } catch (IOException e) {
-            plugin.getLogger().warning("Nie można zapisać wyspy.yml: " + e.getMessage());
-        }
+        saverWysp.oznaczZmiane();
+    }
+
+    /** Wywołaj w onDisable() modułu skyblock - zapisuje natychmiast, zatrzymuje cykl. */
+    public void zamknij() {
+        saverWysp.zamknij();
     }
 
     /** Wczytuje historię tworzenia wysp (cooldown anty-spam) - osobno od wczytajWyspy(), bo dotyczy

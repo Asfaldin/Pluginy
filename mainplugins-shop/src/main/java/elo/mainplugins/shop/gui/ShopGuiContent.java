@@ -12,5 +12,5 @@ import java.util.List;
  * nie ma własnej ikony w menu głównym.
  */
 public record ShopGuiContent(List<String> categoryOrder, ScreenLayout mainMenu, ScreenLayout categoryPage,
-                              ScreenLayout buyPicker, ScreenLayout searchResults) {
+                              ScreenLayout buyPicker, ScreenLayout searchResults, ShopGuiStyle styl) {
 }

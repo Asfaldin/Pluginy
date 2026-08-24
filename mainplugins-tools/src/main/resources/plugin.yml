@@ -5,8 +5,6 @@ api-version: '1.20'
 depend: [MainpluginsCore]
 
 commands:
-  narzedzia:
-    description: Narzedzia
   "@addlvl":
     description: "[DEBUG] Dodaje poziomy trzymanemu narzedziu (testy)"
     usage: "/<command> [ilosc]"

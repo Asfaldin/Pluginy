@@ -47,17 +47,6 @@ public final class MainpluginsTools extends JavaPlugin {
         NiszczycielManager niszczycielManager = new NiszczycielManager(this);
         getServer().getPluginManager().registerEvents(niszczycielManager, this);
 
-        if (getCommand("narzedzia") != null) {
-            getCommand("narzedzia").setExecutor((sender, command, label, args) -> {
-                if (!(sender instanceof Player player)) {
-                    sender.sendMessage("Tylko gracz moze uzyc tej komendy.");
-                    return true;
-                }
-                levelableToolsManager.dajStartoweNarzedzia(player);
-                return true;
-            });
-        }
-
         if (getCommand("@addlvl") != null) {
             getCommand("@addlvl").setExecutor((sender, command, label, args) -> {
                 if (!(sender instanceof Player player)) {

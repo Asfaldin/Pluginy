@@ -92,22 +92,6 @@ public class LevelableToolsManager implements Listener, ToolsService {
     }
 
     /**
-     * Awaryjne/administracyjne danie kompletu narzędzi pod komendę /narzedzia (np. gracz
-     * zgubił postęp, testy). NIE jest już wołane automatycznie przy pierwszym wejściu -
-     * wszystkie 4 ewolujące narzędzia (włącznie z kilofem) to teraz w głównej mierze
-     * nagrody z Głównej Ścieżki (mainplugins-quests), a nie start dawany za darmo.
-     */
-    public void dajStartoweNarzedzia(Player player) {
-        player.getInventory().addItem(pickaxeSkillManager.stworzKilof(player, PickaxeType.WYDAJNOSCIOWY));
-        player.getInventory().addItem(axeSkillManager.stworzSiekiere(player));
-        player.getInventory().addItem(swordSkillManager.stworzMiecz(player));
-        player.getInventory().addItem(hoeSkillManager.stworzMotyke(player));
-        player.getInventory().addItem(stworzNarzedzie(player, "shovel", 0));
-        player.sendMessage(Component.text("Otrzymałeś startowe narzędzia przypisane do Twojej duszy!", NamedTextColor.GREEN, TextDecoration.BOLD));
-        player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
-    }
-
-    /**
      * {@inheritDoc} Wołane przez QuestManager (mainplugins-quests) po ukończeniu questa
      * "Witaj na Wyspie" - nadaje kilof typu {@link PickaxeType#WYDAJNOSCIOWY} (najbardziej
      * uniwersalny start), w pełni zainicjalizowany przez PickaxeSkillManager (NIE przez

@@ -6,6 +6,7 @@ import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.util.CustomItemKeys;
 import elo.mainplugins.shop.gui.ScreenLayout;
 import elo.mainplugins.shop.gui.ShopGuiContent;
+import elo.mainplugins.shop.gui.ShopGuiStyle;
 import elo.mainplugins.shop.gui.ShopSlotEntry;
 import elo.mainplugins.shop.gui.ShopSlotRole;
 import net.kyori.adventure.text.Component;
@@ -385,14 +386,14 @@ public class ShopManager implements Listener {
         playerPage.remove(player.getUniqueId());
 
         ScreenLayout ekran = guiContent.mainMenu();
-        Inventory gui = Bukkit.createInventory(null, ekran.size(), Component.text("Sklep Serwerowy", NamedTextColor.DARK_BLUE, TextDecoration.BOLD));
+        Inventory gui = Bukkit.createInventory(null, ekran.size(), Component.text("Sklep Serwerowy", guiContent.styl().tytulMainMenu(), TextDecoration.BOLD));
         wypelnijTloSzare(gui, ekran);
 
         Integer slotLupy = pierwszySlot(ekran, ShopSlotRole.SEARCH);
         if (slotLupy != null) {
             ItemStack lupa = new ItemStack(Material.OAK_SIGN);
             ItemMeta metaLupa = lupa.getItemMeta();
-            metaLupa.displayName(Component.text("Szukaj przedmiotu", NamedTextColor.AQUA, TextDecoration.BOLD));
+            metaLupa.displayName(Component.text(guiContent.styl().szukaj().tekst(), guiContent.styl().szukaj().kolor(), TextDecoration.BOLD));
             List<Component> loreLupa = new ArrayList<>();
             loreLupa.add(Component.text("Kliknij i wpisz nazwę na czacie",
                     NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false));
@@ -439,7 +440,8 @@ public class ShopManager implements Listener {
         if (slotWyjscia != null) {
             ItemStack wyjscie = new ItemStack(zMenu ? Material.NETHER_STAR : Material.BARRIER);
             ItemMeta mWyjscie = wyjscie.getItemMeta();
-            mWyjscie.displayName(Component.text(zMenu ? "« Wróć do Menu głównego" : "Zamknij Sklep", NamedTextColor.RED, TextDecoration.BOLD));
+            ShopGuiStyle.StyledLabel etykietaWyjscia = zMenu ? guiContent.styl().wyjscieDoMenu() : guiContent.styl().wyjscieZamknij();
+            mWyjscie.displayName(Component.text(etykietaWyjscia.tekst(), etykietaWyjscia.kolor(), TextDecoration.BOLD));
             wyjscie.setItemMeta(mWyjscie);
             gui.setItem(slotWyjscia, wyjscie);
         }
@@ -470,7 +472,7 @@ public class ShopManager implements Listener {
         if (page >= totalPages) page = totalPages - 1;
         if (page < 0) page = 0;
 
-        Component guiTitle = Component.text(catName, NamedTextColor.DARK_GREEN, TextDecoration.BOLD);
+        Component guiTitle = Component.text(catName, guiContent.styl().tytulKategoria(), TextDecoration.BOLD);
 
         Inventory gui = Bukkit.createInventory(new KategoriaHolder(), ekran.size(), guiTitle);
         wypelnijTloSzare(gui, ekran);
@@ -570,7 +572,7 @@ public class ShopManager implements Listener {
         if (page > 0 && slotPrev != null) {
             ItemStack prev = new ItemStack(Material.SPECTRAL_ARROW);
             ItemMeta metaPrev = prev.getItemMeta();
-            metaPrev.displayName(Component.text("« Poprzednia Strona", NamedTextColor.YELLOW, TextDecoration.BOLD));
+            metaPrev.displayName(Component.text(guiContent.styl().poprzedniaStrona().tekst(), guiContent.styl().poprzedniaStrona().kolor(), TextDecoration.BOLD));
             metaPrev.lore(List.of(Component.text("Strona " + page + " / " + totalPages, NamedTextColor.GRAY)
                     .decoration(TextDecoration.ITALIC, false)));
             prev.setItemMeta(metaPrev);
@@ -581,7 +583,7 @@ public class ShopManager implements Listener {
         if (page < totalPages - 1 && slotNext != null) {
             ItemStack next = new ItemStack(Material.SPECTRAL_ARROW);
             ItemMeta metaNext = next.getItemMeta();
-            metaNext.displayName(Component.text("Następna Strona »", NamedTextColor.YELLOW, TextDecoration.BOLD));
+            metaNext.displayName(Component.text(guiContent.styl().nastepnaStrona().tekst(), guiContent.styl().nastepnaStrona().kolor(), TextDecoration.BOLD));
             metaNext.lore(List.of(Component.text("Strona " + (page + 2) + " / " + totalPages, NamedTextColor.GRAY)
                     .decoration(TextDecoration.ITALIC, false)));
             next.setItemMeta(metaNext);
@@ -592,7 +594,7 @@ public class ShopManager implements Listener {
         if (slotSort != null) {
             ItemStack sortowanie = new ItemStack(poSkupie ? Material.GOLD_INGOT : Material.HOPPER);
             ItemMeta metaSort = sortowanie.getItemMeta();
-            metaSort.displayName(Component.text("Sortowanie", NamedTextColor.AQUA, TextDecoration.BOLD));
+            metaSort.displayName(Component.text(guiContent.styl().sortowanie().tekst(), guiContent.styl().sortowanie().kolor(), TextDecoration.BOLD));
             List<Component> loreSort = new ArrayList<>();
             loreSort.add(Component.text(
                     poSkupie ? "Teraz: od najwyższego skupu" : "Teraz: od najtańszego kupna",
@@ -613,7 +615,7 @@ public class ShopManager implements Listener {
         if (slotPowrot != null) {
             ItemStack powrotKategorie = new ItemStack(Material.COMPASS);
             ItemMeta metaPowrot = powrotKategorie.getItemMeta();
-            metaPowrot.displayName(Component.text("Cofnij do listy Kategorii", NamedTextColor.GOLD, TextDecoration.BOLD));
+            metaPowrot.displayName(Component.text(guiContent.styl().powrotDoKategorii().tekst(), guiContent.styl().powrotDoKategorii().kolor(), TextDecoration.BOLD));
             powrotKategorie.setItemMeta(metaPowrot);
             gui.setItem(slotPowrot, powrotKategorie);
         }
@@ -623,7 +625,8 @@ public class ShopManager implements Listener {
             boolean zMenu = otwartoZMenu.getOrDefault(player.getUniqueId(), false);
             ItemStack zamknijSklep = new ItemStack(zMenu ? Material.NETHER_STAR : Material.BARRIER);
             ItemMeta metaZamknij = zamknijSklep.getItemMeta();
-            metaZamknij.displayName(Component.text(zMenu ? "« Wróć do Menu głównego" : "Zamknij Sklep", NamedTextColor.RED, TextDecoration.BOLD));
+            ShopGuiStyle.StyledLabel etykietaZamkniecia = zMenu ? guiContent.styl().wyjscieDoMenu() : guiContent.styl().wyjscieZamknij();
+            metaZamknij.displayName(Component.text(etykietaZamkniecia.tekst(), etykietaZamkniecia.kolor(), TextDecoration.BOLD));
             zamknijSklep.setItemMeta(metaZamknij);
             gui.setItem(slotWyjscia, zamknijSklep);
         }
@@ -701,7 +704,7 @@ public class ShopManager implements Listener {
 
         ScreenLayout ekran = guiContent.buyPicker();
         Inventory gui = Bukkit.createInventory(null, ekran.size(),
-                Component.text(TYTUL_WYBOR_ILOSCI + " " + nazwa, NamedTextColor.DARK_GRAY, TextDecoration.BOLD));
+                Component.text(TYTUL_WYBOR_ILOSCI + " " + nazwa, guiContent.styl().tytulWyborIlosci(), TextDecoration.BOLD));
         wypelnijTloSzare(gui, ekran);
 
         double saldo = economyManager.getKasa(player.getUniqueId());
@@ -738,7 +741,7 @@ public class ShopManager implements Listener {
         if (slotPowrot != null) {
             ItemStack powrot = new ItemStack(Material.ARROW);
             ItemMeta pm = powrot.getItemMeta();
-            pm.displayName(Component.text("Powrót", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            pm.displayName(Component.text(guiContent.styl().powrotZIlosci().tekst(), guiContent.styl().powrotZIlosci().kolor()).decoration(TextDecoration.ITALIC, false));
             powrot.setItemMeta(pm);
             gui.setItem(slotPowrot, powrot);
         }
@@ -1429,7 +1432,7 @@ public class ShopManager implements Listener {
         wynikiSzukania.put(player.getUniqueId(), trafienia);
 
         Inventory gui = Bukkit.createInventory(null, ekran.size(),
-                Component.text(TYTUL_WYNIKOW + fraza, NamedTextColor.DARK_AQUA, TextDecoration.BOLD));
+                Component.text(TYTUL_WYNIKOW + fraza, guiContent.styl().tytulWyniki(), TextDecoration.BOLD));
         wypelnijTloSzare(gui, ekran);
 
         for (int i = 0; i < trafienia.size(); i++) {
@@ -1441,7 +1444,7 @@ public class ShopManager implements Listener {
         if (slotPowrot != null) {
             ItemStack powrot = new ItemStack(Material.COMPASS);
             ItemMeta metaPowrot = powrot.getItemMeta();
-            metaPowrot.displayName(Component.text("Powrót do sklepu", NamedTextColor.GOLD, TextDecoration.BOLD));
+            metaPowrot.displayName(Component.text(guiContent.styl().powrotZWynikow().tekst(), guiContent.styl().powrotZWynikow().kolor(), TextDecoration.BOLD));
             powrot.setItemMeta(metaPowrot);
             gui.setItem(slotPowrot, powrot);
         }

@@ -2,8 +2,11 @@ package elo.mainplugins.shop;
 
 import elo.mainplugins.shop.gui.ScreenLayout;
 import elo.mainplugins.shop.gui.ShopGuiContent;
+import elo.mainplugins.shop.gui.ShopGuiStyle;
+import elo.mainplugins.shop.gui.ShopGuiStyle.StyledLabel;
 import elo.mainplugins.shop.gui.ShopSlotEntry;
 import elo.mainplugins.shop.gui.ShopSlotRole;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
@@ -40,9 +43,45 @@ final class ShopGuiLoader {
         ScreenLayout categoryPage = parseScreen(cfg, "category-page", log);
         ScreenLayout buyPicker = parseScreen(cfg, "buy-picker", log);
         ScreenLayout searchResults = parseScreen(cfg, "search-results", log);
+        ShopGuiStyle styl = parseStyl(cfg, log);
 
         log.info("sklep-gui.yml: wczytano uklad GUI (" + categoryOrder.size() + " kategorii w kolejnosci).");
-        return new ShopGuiContent(categoryOrder, mainMenu, categoryPage, buyPicker, searchResults);
+        return new ShopGuiContent(categoryOrder, mainMenu, categoryPage, buyPicker, searchResults, styl);
+    }
+
+    private static ShopGuiStyle parseStyl(YamlConfiguration cfg, Logger log) {
+        return new ShopGuiStyle(
+                parseKolor(cfg, "styl.tytuly.main-menu", NamedTextColor.DARK_BLUE, log),
+                parseKolor(cfg, "styl.tytuly.category-page", NamedTextColor.DARK_GREEN, log),
+                parseKolor(cfg, "styl.tytuly.buy-picker", NamedTextColor.DARK_GRAY, log),
+                parseKolor(cfg, "styl.tytuly.search-results", NamedTextColor.DARK_AQUA, log),
+                parseLabel(cfg, "styl.przyciski.szukaj", "Szukaj przedmiotu", NamedTextColor.AQUA, log),
+                parseLabel(cfg, "styl.przyciski.wyjscie-do-menu", "« Wróć do Menu głównego", NamedTextColor.RED, log),
+                parseLabel(cfg, "styl.przyciski.wyjscie-zamknij", "Zamknij Sklep", NamedTextColor.RED, log),
+                parseLabel(cfg, "styl.przyciski.poprzednia-strona", "« Poprzednia Strona", NamedTextColor.YELLOW, log),
+                parseLabel(cfg, "styl.przyciski.nastepna-strona", "Następna Strona »", NamedTextColor.YELLOW, log),
+                parseLabel(cfg, "styl.przyciski.sortowanie", "Sortowanie", NamedTextColor.AQUA, log),
+                parseLabel(cfg, "styl.przyciski.powrot-do-kategorii", "Cofnij do listy Kategorii", NamedTextColor.GOLD, log),
+                parseLabel(cfg, "styl.przyciski.powrot-z-wynikow", "Powrót do sklepu", NamedTextColor.GOLD, log),
+                parseLabel(cfg, "styl.przyciski.powrot-z-ilosci", "Powrót", NamedTextColor.GRAY, log)
+        );
+    }
+
+    private static NamedTextColor parseKolor(YamlConfiguration cfg, String path, NamedTextColor domyslny, Logger log) {
+        String raw = cfg.getString(path);
+        if (raw == null) return domyslny;
+        NamedTextColor kolor = NamedTextColor.NAMES.value(raw.toLowerCase());
+        if (kolor == null) {
+            log.warning("sklep-gui.yml: '" + path + "' ma zly kolor ('" + raw + "') - uzywam domyslnego.");
+            return domyslny;
+        }
+        return kolor;
+    }
+
+    private static StyledLabel parseLabel(YamlConfiguration cfg, String path, String domyslnyTekst, NamedTextColor domyslnyKolor, Logger log) {
+        String tekst = cfg.getString(path + ".tekst", domyslnyTekst);
+        NamedTextColor kolor = parseKolor(cfg, path + ".kolor", domyslnyKolor, log);
+        return new StyledLabel(tekst, kolor);
     }
 
     private static ScreenLayout parseScreen(YamlConfiguration cfg, String key, Logger log) {

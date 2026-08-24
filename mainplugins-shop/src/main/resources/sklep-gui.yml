@@ -28,10 +28,21 @@
 #   AMOUNT_SLOT   - tylko buy-picker. WYMAGA pola "amount" (ile sztuk
 #                   reprezentuje ta opcja) - to jest "ile kratek na ile
 #                   mozna dac" z tego ekranu.
-#   NAV_BACK / NAV_PREV / NAV_NEXT / EXIT / SEARCH / SORT - przyciski,
-#                   tekst/kolor etykiety zostaje w Javie, tu tylko POZYCJA.
+#   NAV_BACK / NAV_PREV / NAV_NEXT / EXIT / SEARCH / SORT - przyciski, tekst
+#                   i kolor etykiety sa w sekcji "styl" ponizej, tu tylko POZYCJA.
 #   FILLER        - jawny wypelniacz z wlasnym materialem (opcjonalne pole
 #                   "material") - bez tego pola dziala jak zwykly pusty slot.
+#
+# styl: kolory tytulow okien + tekst/kolor przyciskow nawigacyjnych.
+#   styl.tytuly.*     - nazwa NamedTextColor (np. RED, DARK_GREEN, LIGHT_PURPLE).
+#                       Tytuly kategorii/wyboru ilosci/wynikow szukania maja czesc
+#                       tekstu DYNAMICZNA (nazwa kategorii/itemu/fraza) - dlatego
+#                       tylko kolor jest tu edytowalny, nie caly tekst.
+#   styl.przyciski.*  - { tekst: "...", kolor: NAZWA_KOLORU }, oba pola opcjonalne
+#                       (brak = domyslna wartosc jak dawniej w kodzie).
+# Statyczny opis pod ikonami kategorii ("Kliknij, aby otworzyc kategorie!") i kolor
+# dynamicznych linii ceny/trendu (Kupno/Skup/▲▼/EVENT) w lore itemow NIE sa tutaj -
+# to swiadomie zostalo w Javie.
 # ==========================================================================
 
 main-menu:
@@ -146,3 +157,20 @@ category-order:
   - specjalne
   - spawnery
   - ryby_wedkarskie
+
+styl:
+  tytuly:
+    main-menu: DARK_BLUE
+    category-page: DARK_GREEN
+    buy-picker: DARK_GRAY
+    search-results: DARK_AQUA
+  przyciski:
+    szukaj: { tekst: "Szukaj przedmiotu", kolor: AQUA }
+    wyjscie-do-menu: { tekst: "« Wróć do Menu głównego", kolor: RED }
+    wyjscie-zamknij: { tekst: "Zamknij Sklep", kolor: RED }
+    poprzednia-strona: { tekst: "« Poprzednia Strona", kolor: YELLOW }
+    nastepna-strona: { tekst: "Następna Strona »", kolor: YELLOW }
+    sortowanie: { tekst: "Sortowanie", kolor: AQUA }
+    powrot-do-kategorii: { tekst: "Cofnij do listy Kategorii", kolor: GOLD }
+    powrot-z-wynikow: { tekst: "Powrót do sklepu", kolor: GOLD }
+    powrot-z-ilosci: { tekst: "Powrót", kolor: GRAY }

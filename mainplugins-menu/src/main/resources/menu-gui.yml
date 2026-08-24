@@ -51,13 +51,6 @@ przyciski:
       - "Bezpieczne miejsce na przedmioty (/itemy)"
     komenda: "itemy zmenu"
 
-  - slot: 29
-    material: DIAMOND_PICKAXE
-    nazwa: "Startowe Narzędzia"
-    lore:
-      - "Odbierz ulepszalne narzędzia (/narzedzia)"
-    komenda: "narzedzia"
-
   - slot: 33
     material: HOPPER
     nazwa: "Szybka Sprzedaż"

@@ -61,8 +61,7 @@ public class PomocCommand implements CommandExecutor {
                     new Wpis("/tpdun", "Teleport do lochu (fale mobów, na końcu boss)"),
                     new Wpis("/tpboss", "Teleport na arenę do walki z bossem 1v1")
             )),
-            new Sekcja("Narzędzia i Zadania", List.of(
-                    new Wpis("/narzedzia", "Odbierz startowe, ulepszalne narzędzia"),
+            new Sekcja("Zadania", List.of(
                     new Wpis("/zadania (/quest)", "Otwórz listę zadań i odbierz nagrody")
             ))
     );

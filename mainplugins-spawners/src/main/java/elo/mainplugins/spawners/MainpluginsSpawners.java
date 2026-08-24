@@ -14,6 +14,6 @@ public final class MainpluginsSpawners extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (spawnerManager != null) spawnerManager.zapiszWszystkie();
+        if (spawnerManager != null) spawnerManager.zamknij();
     }
 }

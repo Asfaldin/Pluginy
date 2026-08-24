@@ -8,9 +8,9 @@ softdepend: [MainpluginsSpawn]
 commands:
   is:
     description: Wyspa
-    usage: "/is [menu|sethome|usun|border|guests|pvp|mobs|upgrade|members|ustawienia|permisje|invite <gracz>|accept|deny|leave|promote <gracz>|demote <gracz>|remove <gracz>|deposit <kwota>|withdraw <kwota>]"
+    usage: "/is [menu|dom|ustawdom|ustawspawn|usun|granica|budowanie|pvp|potwory|ulepszenia|czlonkowie|ustawienia|permisje|zapros <gracz>|akceptuj|odrzuc|opusc|awansuj <gracz>|degraduj <gracz>|wyrzuc <gracz>|wplac <kwota>|wyplac <kwota>] - samo /is teleportuje do punktu z /is ustawspawn, /dom-/home zawsze do punktu z /is ustawdom (ang. aliasy: sethome/border/guests/mobs/upgrade/members/invite/accept/deny/leave/promote/demote/remove/deposit/withdraw)"
   dom:
-    description: Dom / Wyspa
+    description: Teleport na wyspę - do punktu ustawionego przez "/is ustawdom" (niezależnego od "/is ustawspawn")
     aliases: [home]
   "@reloadwyspy":
     description: Wczytaj wyspy-config.yml i wyspy-gui.yml na nowo, bez restartu serwera

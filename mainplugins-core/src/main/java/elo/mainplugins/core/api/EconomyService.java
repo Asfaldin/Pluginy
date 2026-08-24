@@ -26,6 +26,15 @@ public interface EconomyService {
     /** Najbogatsi gracze posortowani malejąco wg stanu konta (pomija graczy z kasą <= 0). */
     List<TopGracz> getTop(int limit);
 
+    /**
+     * Pozycja gracza w pełnym rankingu bogactwa (1 = najbogatszy), niezależnie
+     * od tego, ile pozycji zwraca getTop(). Gracze z kasą <= 0 nie są rankowani -
+     * tak samo jak w getTop(), które ich pomija.
+     *
+     * @return pozycja (1-indeksowana) albo -1, gdy gracz ma kasę <= 0
+     */
+    int getPozycjaWRankingu(UUID uuid);
+
     // ---- nowe: dokładne operacje na groszach ----
 
     /** Saldo w groszach (1 zł = 100). Bez zaokrągleń i dryfu. */

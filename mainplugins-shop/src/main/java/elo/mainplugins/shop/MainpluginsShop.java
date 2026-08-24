@@ -3,12 +3,15 @@ package elo.mainplugins.shop;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.util.MenuBridge;
+import elo.mainplugins.core.util.TabCompleteUtils;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
 
 public final class MainpluginsShop extends JavaPlugin {
 
@@ -36,10 +39,25 @@ public final class MainpluginsShop extends JavaPlugin {
             }
         };
 
-        if (getCommand("sklep") != null) getCommand("sklep").setExecutor(executor);
-        if (getCommand("sprzedaj") != null) getCommand("sprzedaj").setExecutor(executor);
-        if (getCommand("sprzedajwszystko") != null) getCommand("sprzedajwszystko").setExecutor(executor);
-        if (getCommand("@statsklep") != null) getCommand("@statsklep").setExecutor(new StatSklepCommand(shopManager));
+        // sklep/sprzedaj/sprzedajwszystko nie biorą argumentów - pusty completer,
+        // żeby Bukkit nie podpowiadał domyślnie listy graczy online.
+        if (getCommand("sklep") != null) {
+            getCommand("sklep").setExecutor(executor);
+            getCommand("sklep").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
+        }
+        if (getCommand("sprzedaj") != null) {
+            getCommand("sprzedaj").setExecutor(executor);
+            getCommand("sprzedaj").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
+        }
+        if (getCommand("sprzedajwszystko") != null) {
+            getCommand("sprzedajwszystko").setExecutor(executor);
+            getCommand("sprzedajwszystko").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
+        }
+        if (getCommand("@statsklep") != null) {
+            getCommand("@statsklep").setExecutor(new StatSklepCommand(shopManager));
+            getCommand("@statsklep").setTabCompleter((sender, command, alias, args) ->
+                    args.length == 1 ? TabCompleteUtils.dopasuj(args[0], List.of("snapshot")) : TabCompleteUtils.PUSTA);
+        }
 
         // Osobny executor: /@reloadsklep ma sens też z konsoli, nie tylko od gracza.
         // Uprawnienie (mainplugins.shop.reload, domyślnie op) pilnuje tego plugin.yml.
@@ -49,6 +67,7 @@ public final class MainpluginsShop extends JavaPlugin {
                 sender.sendMessage("§aSklep.yml został przeładowany.");
                 return true;
             });
+            getCommand("@reloadsklep").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
 
         if (getCommand("@sklep") != null) {

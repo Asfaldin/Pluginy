@@ -1,7 +1,10 @@
 package elo.mainplugins.fishing;
 
+import elo.mainplugins.core.util.TabCompleteUtils;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.List;
 
 public final class MainpluginsFishing extends JavaPlugin {
 
@@ -23,6 +26,8 @@ public final class MainpluginsFishing extends JavaPlugin {
                 player.sendMessage("§aOtrzymałeś wędkę (tier " + tier + ").");
                 return true;
             });
+            getCommand("@dajwedke").setTabCompleter((sender, command, alias, args) ->
+                    args.length == 1 ? TabCompleteUtils.dopasuj(args[0], List.of("1", "2", "3")) : TabCompleteUtils.PUSTA);
         }
 
         if (getCommand("@dajrecepture") != null) {
@@ -36,6 +41,8 @@ public final class MainpluginsFishing extends JavaPlugin {
                 player.sendMessage("§aOtrzymałeś recepturę.");
                 return true;
             });
+            getCommand("@dajrecepture").setTabCompleter((sender, command, alias, args) ->
+                    args.length == 1 ? TabCompleteUtils.dopasuj(args[0], List.of("niebianska", "kosmiczna")) : TabCompleteUtils.PUSTA);
         }
     }
 

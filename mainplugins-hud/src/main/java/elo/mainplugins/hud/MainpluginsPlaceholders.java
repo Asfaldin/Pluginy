@@ -1,13 +1,18 @@
 package elo.mainplugins.hud;
 
+import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.CenyService;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.IslandSummary;
+import elo.mainplugins.core.api.Rank;
+import elo.mainplugins.core.api.RankService;
 import elo.mainplugins.core.api.TopGracz;
 import elo.mainplugins.core.util.MoneyFormat;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.Statistic;
+import org.bukkit.entity.Player;
 
 import java.util.List;
 import java.util.Locale;
@@ -36,19 +41,23 @@ public class MainpluginsPlaceholders extends PlaceholderExpansion {
      * sekwencję zamiast losowej.
      */
     private static final String[] PRO_TIPY = {
-        "&7Możesz zebrać spawner patykiem &f- &7PPM na blok",
-        "&7Sortuj sklep po cenie skupu &f- &7kliknij PPM na przycisk sortowania",
-        "&7Szukaj przedmiotu w sklepie klikając tabliczkę na górze menu",
-        "&7Limit spawnerów na wyspę to &f10 &7- planuj z wyprzedzeniem",
-        "&7Ceny w sklepie resetują się co &f14 dni",
-        "&7Wpisz &f/komendy&7, żeby zobaczyć co potrafi serwer",
-        "&7Sprawdź &f/questy &7i odbieraj nagrody za kolejne etapy",
-        "&7Handluj z graczami przez &f/targ",
-        "&7Powiększ swoją wyspę w &f/is menu",
-        "&7Zapraszamy na naszego &9Discorda&7!",
-        "&7Zaproś znajomego na wyspę &f- &7gra się raźniej w kilka osób",
-        "&7Wpisz &f/menu&7, żeby otworzyć główne menu serwera",
+        "&7Zbierz spawner: &fPPM patykiem",
+        "&7Sortuj sklep: &fPPM na przycisk",
+        "&7Szukaj w sklepie: &fkliknij tabliczkę",
+        "&7Limit spawnerów: &f10 na wyspę",
+        "&7Ceny resetują się co &f14 dni",
+        "&7Wpisz &f/komendy",
+        "&7Wpisz &f/questy &7po nagrody",
+        "&7Handluj graczami: &f/targ",
+        "&7Powiększ wyspę: &f/is menu",
+        "&7Dołącz na &9Discord&7!",
+        "&7Zaproś znajomego na wyspę",
+        "&7Wpisz &f/menu",
     };
+
+    /** Szerokość (w znakach), do której dopełniane są pro tipy - żeby panel nie zmieniał
+     *  szerokości przy każdej rotacji wskazówki. Licząc bez kodów koloru (&7, &f itd.). */
+    private static final int SZEROKOSC_PRO_TIPU = 32;
 
     /** Co ile sekund zmienia się treść wiersza 1 stopki. */
     private static final int SEKUND_NA_SLAJD = 8;
@@ -111,6 +120,42 @@ public class MainpluginsPlaceholders extends PlaceholderExpansion {
             }
             case "kasa" -> {
                 return player == null ? "" : MoneyFormat.kompaktowo(economyManager.getKasa(player.getUniqueId()));
+            }
+            case "saldo" -> {
+                // Alias pod krotsza nazwe do scoreboardu - dokladnie to samo,
+                // co juz istniejacy %mainplugins_kasa%, zeby nie psuc tamtego
+                // gdziekolwiek jest juz uzywany.
+                return player == null ? "" : MoneyFormat.kompaktowo(economyManager.getKasa(player.getUniqueId()));
+            }
+            case "ranga" -> {
+                if (player == null) return "";
+                RankService rankService = CoreAPI.getRankService();
+                Rank ranga = rankService != null ? rankService.getRank(player.getUniqueId()) : Rank.GRACZ;
+                return switch (ranga) {
+                    case ADMIN -> "&c&lAdmin";
+                    case VIP   -> "&6&lVIP";
+                    case GRACZ -> "&7Gracz";
+                };
+            }
+            case "moje_miejsce" -> {
+                if (player == null) return "-";
+                int pozycja = economyManager.getPozycjaWRankingu(player.getUniqueId());
+                if (pozycja <= 0) return "&7-";
+                String kolor = switch (pozycja) {
+                    case 1 -> "&6&l";
+                    case 2 -> "&7&l";
+                    case 3 -> "&c&l";
+                    default -> "&f";
+                };
+                return kolor + pozycja;
+            }
+            case "czas_gry" -> {
+                Player online = player != null ? Bukkit.getPlayer(player.getUniqueId()) : null;
+                if (online == null) return "-";
+                int tickiGry = online.getStatistic(Statistic.PLAY_ONE_MINUTE);
+                long minuty = tickiGry / 20 / 60;
+                long godziny = minuty / 60;
+                return godziny + "h " + (minuty % 60) + "m";
             }
             case "wyspa_rozmiar" -> {
                 IslandSummary wyspa = player == null ? null : HudData.pobierzWlasnaWyspe(player.getUniqueId());
@@ -227,13 +272,26 @@ public class MainpluginsPlaceholders extends PlaceholderExpansion {
 
         if (slajd % CO_KTORY_SLAJD_RYNKOWY == 0) {
             String rynkowa = wskazowkaRynkowa();
-            if (rynkowa != null) return rynkowa;
+            if (rynkowa != null) return dopelnij(rynkowa, SZEROKOSC_PRO_TIPU);
             // Brak sensownej wskazówki rynkowej (np. shop nie wgrany, albo
             // akurat nic się nie odchyla od bazy) - spadamy na pro tip zamiast
             // pustego wiersza.
         }
         int indeks = (int) (slajd % PRO_TIPY.length);
-        return PRO_TIPY[indeks];
+        return dopelnij(PRO_TIPY[indeks], SZEROKOSC_PRO_TIPU);
+    }
+
+    /**
+     * Dopełnia tekst spacjami z prawej do zadanej szerokości, licząc długość BEZ
+     * kodów koloru (&7, &f, &l itd.) - inaczej dłuższy kod koloru sztucznie
+     * wydłużałby "widoczną" długość i psuł wyrównanie. Ten sam pomysł co
+     * SZEROKOSC_PAD_GRACZA/liniaTopGracza(), tylko współdzielony przez pro tipy
+     * i wskazówkę rynkową, bo oba wskakują w ten sam wiersz stopki.
+     */
+    private static String dopelnij(String tekst, int szerokosc) {
+        int widocznaDlugosc = tekst.replaceAll("&[0-9a-fk-or]", "").length();
+        int brakujace = szerokosc - widocznaDlugosc;
+        return brakujace > 0 ? tekst + " ".repeat(brakujace) : tekst;
     }
 
     /**

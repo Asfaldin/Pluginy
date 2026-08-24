@@ -4,16 +4,21 @@ import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.MarketService;
 import elo.mainplugins.core.util.MenuBridge;
+import elo.mainplugins.core.util.TabCompleteUtils;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.List;
+
 public final class MainpluginsMarket extends JavaPlugin {
+
+    private MarketManager marketManager;
 
     @Override
     public void onEnable() {
         EconomyService economyService = CoreAPI.getEconomyService();
-        MarketManager marketManager = new MarketManager(this, economyService);
+        marketManager = new MarketManager(this, economyService);
         getServer().getPluginManager().registerEvents(marketManager, this);
         getServer().getServicesManager().register(MarketService.class, marketManager, this, ServicePriority.Normal);
 
@@ -30,11 +35,14 @@ public final class MainpluginsMarket extends JavaPlugin {
                 }
                 return true;
             });
+            getCommand("targ").setTabCompleter((sender, command, alias, args) ->
+                    args.length == 1 ? TabCompleteUtils.dopasuj(args[0], List.of("wystaw")) : TabCompleteUtils.PUSTA);
         }
     }
 
     @Override
     public void onDisable() {
+        if (marketManager != null) marketManager.zamknij();
         getServer().getServicesManager().unregisterAll(this);
     }
 }

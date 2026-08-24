@@ -19,6 +19,7 @@ public final class MainpluginsMenu extends JavaPlugin {
                 menuPomocyManager.otworzMenuPomocy(player);
                 return true;
             });
+            getCommand("menu").setTabCompleter((sender, command, alias, args) -> java.util.List.of());
         }
 
         // Osobny executor: /@reloadmenu ma sens też z konsoli, nie tylko od gracza.

@@ -6,6 +6,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Tag;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockState;
 import org.bukkit.block.Container;
 import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.Player;
@@ -37,7 +38,10 @@ import org.bukkit.event.player.PlayerBucketEntityEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerPortalEvent;
 import org.bukkit.event.player.PlayerShearEntityEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.event.world.PortalCreateEvent;
 import org.bukkit.event.world.StructureGrowEvent;
 
 import java.util.Set;
@@ -275,6 +279,40 @@ public class ObszarProtectionManager implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onEntityExplode(EntityExplodeEvent event) {
         event.blockList().removeIf(block -> obszarManager.znajdzObszarPod(block.getLocation()) != null);
+    }
+
+    // ================================================ Portal do Netheru ====
+
+    /**
+     * W odróżnieniu od reszty tej klasy (ochrona WNĘTRZA obszaru przed graczami),
+     * tutaj kierunek jest odwrotny: portal do Netheru ma prawo istnieć i działać
+     * WYŁĄCZNIE wewnątrz zdefiniowanego obszaru (np. na spawnie) - wszędzie indziej,
+     * łącznie z wyspami graczy i dziczą, jest zablokowany. Oficjalny portal zapala
+     * admin z bypassem (patrz mozeIngerowac w onIgnite wyżej) raz, gracze z niego
+     * tylko korzystają. Dwie warstwy:
+     *  1) portal w ogóle się nie utworzy poza obszarem (ognisko/krzesiwo albo
+     *     dowiązanie się drugiej strony portalu),
+     *  2) na wszelki wypadek - anulowanie samej teleportacji, gdyby portal poza
+     *     obszarem jednak istniał (np. sprzed wprowadzenia tej zasady).
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onPortalCreate(PortalCreateEvent event) {
+        if (event.getReason() != PortalCreateEvent.CreateReason.FIRE
+                && event.getReason() != PortalCreateEvent.CreateReason.NETHER_PAIR) return;
+
+        for (BlockState block : event.getBlocks()) {
+            if (obszarManager.znajdzObszarPod(block.getLocation()) != null) return;
+        }
+        event.setCancelled(true);
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onPlayerPortal(PlayerPortalEvent event) {
+        if (event.getCause() != PlayerTeleportEvent.TeleportCause.NETHER_PORTAL) return;
+        if (obszarManager.znajdzObszarPod(event.getFrom()) != null) return;
+
+        event.setCancelled(true);
+        odmowa(event.getPlayer(), "Portal do Netheru działa tylko w wyznaczonym miejscu!");
     }
 
     /** To samo co wyżej, ale dla wybuchów bez encji-sprawcy (łóżko w Netherze, kotwica odrodzenia w Overworldzie). */

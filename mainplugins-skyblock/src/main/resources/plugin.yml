@@ -8,12 +8,19 @@ softdepend: [MainpluginsSpawn]
 commands:
   is:
     description: Wyspa
-    usage: "/is [menu|dom|ustawdom|ustawspawn|usun|granica|budowanie|pvp|potwory|ulepszenia|czlonkowie|zapros <gracz>|akceptuj|odrzuc|opusc|awansuj <gracz>|degraduj <gracz>|wyrzuc <gracz>|wplac <kwota>|wyplac <kwota>] - samo /is teleportuje do punktu z /is ustawspawn, /dom-/home zawsze do punktu z /is ustawdom (ang. aliasy: sethome/border/guests/mobs/upgrade/members/invite/accept/deny/leave/promote/demote/remove/deposit/withdraw)"
+    usage: "/is [menu|dom|ustawdom|ustawspawn|usun|granica|budowanie|pvp|potwory|ulepszenia|czlonkowie|ustawienia|permisje|zapros <gracz>|akceptuj|odrzuc|opusc|awansuj <gracz>|degraduj <gracz>|wyrzuc <gracz>|wplac <kwota>|wyplac <kwota>] - samo /is teleportuje do punktu z /is ustawspawn, /dom-/home zawsze do punktu z /is ustawdom (ang. aliasy: sethome/border/guests/mobs/upgrade/members/invite/accept/deny/leave/promote/demote/remove/deposit/withdraw)"
   dom:
     description: Teleport na wyspę - do punktu ustawionego przez "/is ustawdom" (niezależnego od "/is ustawspawn")
     aliases: [home]
+  "@reloadwyspy":
+    description: Wczytaj wyspy-config.yml i wyspy-gui.yml na nowo, bez restartu serwera
+    permission: mainplugins.skyblock.reload
+    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.skyblock.bypass:
     description: Pozwala przechodzić przez granice wysp bez ograniczeń ruchu
+    default: op
+  mainplugins.skyblock.reload:
+    description: Pozwala przeładować konfigurację i układ GUI systemu wysp
     default: op

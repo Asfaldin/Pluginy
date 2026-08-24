@@ -1,10 +1,12 @@
 package elo.mainplugins.menu;
 
+import elo.mainplugins.menu.gui.MenuButton;
+import elo.mainplugins.menu.gui.MenuGuiContent;
+import elo.mainplugins.menu.gui.MenuGuiLoader;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -12,6 +14,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.Plugin;
 
 import java.util.List;
 
@@ -21,73 +24,68 @@ import java.util.List;
  * a docelowy plugin sam decyduje, jak ją obsłużyć. Dopisanie "zmenu" jako
  * argumentu to konwencja z MenuBridge (mainplugins-core) - patrz tam po
  * pełny opis mechanizmu.
+ *
+ * Układ (rozmiar, tło, sloty, ikony, teksty, komendy) jest w pełni wczytywany
+ * z menu-gui.yml (patrz MenuGuiLoader) - przeładowanie na żywo: /@reloadmenu.
  */
 public class MenuPomocyManager implements Listener {
 
-    public void otworzMenuPomocy(Player player) {
-        // Powiększone menu (45 slotów), żeby pomieścić wszystkie funkcje
-        Inventory gui = Bukkit.createInventory(null, 45, Component.text("Główne Menu Serwera", NamedTextColor.GOLD, TextDecoration.BOLD));
+    private static final String TYTUL = "Główne Menu Serwera";
 
-        // Wypełnienie tła szarym szkłem
-        ItemStack tlo = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+    private final Plugin plugin;
+    private MenuGuiContent gui;
+
+    public MenuPomocyManager(Plugin plugin) {
+        this.plugin = plugin;
+        this.gui = MenuGuiLoader.load(plugin);
+    }
+
+    /** Wywoływane przez /@reloadmenu - podmienia cały układ menu bez restartu serwera. */
+    public void przeladujKonfiguracje() {
+        this.gui = MenuGuiLoader.load(plugin);
+    }
+
+    public void otworzMenuPomocy(Player player) {
+        Inventory inv = Bukkit.createInventory(null, gui.size(), Component.text(TYTUL, NamedTextColor.GOLD, TextDecoration.BOLD));
+
+        ItemStack tlo = new ItemStack(gui.tlo());
         ItemMeta mTlo = tlo.getItemMeta();
         mTlo.displayName(Component.empty());
         tlo.setItemMeta(mTlo);
-        for (int i = 0; i < 45; i++) {
-            gui.setItem(i, tlo);
+        for (int i = 0; i < gui.size(); i++) {
+            inv.setItem(i, tlo);
         }
 
-        // Górny rząd GUI - Główne systemy z powrotem do menu
-        gui.setItem(11, stworzIkone(Material.EMERALD, "Sklep Serwerowy", "Kupuj i sprzedawaj u serwera (/sklep)"));
-        gui.setItem(12, stworzIkone(Material.GOLD_INGOT, "Rynek Graczy", "Handluj z innymi graczami (/targ)"));
-        gui.setItem(13, stworzIkone(Material.GRASS_BLOCK, "Twoja Wyspa", "Zarządzaj swoją wyspą (/is)"));
-        gui.setItem(14, stworzIkone(Material.BOOK, "Zadania (Questy)", "Odbierz nagrody za zadania (/zadania)"));
-        gui.setItem(15, stworzIkone(Material.CHEST, "Schowek", "Bezpieczne miejsce na przedmioty (/itemy)"));
+        for (MenuButton przycisk : gui.przyciski()) {
+            inv.setItem(przycisk.slot(), stworzIkone(przycisk));
+        }
 
-        // Dolny rząd GUI - Szybkie akcje (bez własnych, zaawansowanych okien z powrotem)
-        gui.setItem(29, stworzIkone(Material.DIAMOND_PICKAXE, "Startowe Narzędzia", "Odbierz ulepszalne narzędzia (/narzedzia)"));
-        gui.setItem(33, stworzIkone(Material.HOPPER, "Szybka Sprzedaż", "Sprzedaj masowo przedmioty z eq (/sprzedajwszystko)"));
-
-        player.openInventory(gui);
+        player.openInventory(inv);
     }
 
-    private ItemStack stworzIkone(Material mat, String nazwa, String opis) {
-        ItemStack item = new ItemStack(mat);
+    private ItemStack stworzIkone(MenuButton przycisk) {
+        ItemStack item = new ItemStack(przycisk.material());
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text(nazwa, NamedTextColor.YELLOW, TextDecoration.BOLD));
-        meta.lore(List.of(Component.text(opis, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+        meta.displayName(Component.text(przycisk.nazwa(), NamedTextColor.YELLOW, TextDecoration.BOLD));
+        meta.lore(przycisk.lore().stream()
+                .map(linia -> (Component) Component.text(linia, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
+                .toList());
         item.setItemMeta(meta);
         return item;
     }
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        if (!event.getView().title().toString().contains("Główne Menu Serwera")) return;
+        if (!event.getView().title().toString().contains(TYTUL)) return;
         event.setCancelled(true);
 
         if (!(event.getWhoClicked() instanceof Player player)) return;
         if (event.getCurrentItem() == null) return;
 
-        Material typ = event.getCurrentItem().getType();
+        MenuButton przycisk = gui.naSlocie(event.getRawSlot());
+        if (przycisk == null) return; // tło albo pusty slot
 
-        // Zabezpieczenie przed klikaniem w szare szkło
-        if (typ == Material.GRAY_STAINED_GLASS_PANE) return;
-
-        // Zamknięcie głównego menu przed wymuszeniem komendy
         player.closeInventory();
-
-        // Wywoływanie komend innych pluginów w tle.
-        // Dopisanie "zmenu" informuje dany system, że ma wyświetlić przycisk powrotu.
-        switch (typ) {
-            case EMERALD -> player.performCommand("sklep zmenu");
-            case GOLD_INGOT -> player.performCommand("targ zmenu");
-            // "is menu zmenu" (a nie "is zmenu") - od zmiany semantyki /is bare "is" teleportuje
-            // bezpośrednio na wyspę zamiast otwierać panel; z głównego /menu chcemy pokazać panel.
-            case GRASS_BLOCK -> player.performCommand("is menu zmenu");
-            case BOOK -> player.performCommand("zadania zmenu");
-            case CHEST -> player.performCommand("itemy zmenu");
-            case DIAMOND_PICKAXE -> player.performCommand("narzedzia");
-            case HOPPER -> player.performCommand("sprzedajwszystko");
-        }
+        player.performCommand(przycisk.komenda());
     }
 }

@@ -43,6 +43,12 @@ public class AdminPomocCommand implements CommandExecutor {
             new Sekcja("Sklep", List.of(
                     new Wpis("/@reloadsklep", "Wczytaj konfigurację sklepu na nowo")
             )),
+            new Sekcja("Menu", List.of(
+                    new Wpis("/@reloadmenu", "Wczytaj menu-gui.yml na nowo")
+            )),
+            new Sekcja("Wyspy", List.of(
+                    new Wpis("/@reloadwyspy", "Wczytaj wyspy-config.yml i wyspy-gui.yml na nowo")
+            )),
             new Sekcja("Spawn i obszary", List.of(
                     new Wpis("/@setspawn [info]", "Ustaw główny punkt spawnu"),
                     new Wpis("/@obszar <wand|usun|lista|info|moby|ryby|border> ...", "Zarządzaj chronionymi obszarami"),

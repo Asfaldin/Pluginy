@@ -1,0 +1,90 @@
+# Konfiguracja systemu wysp (mainplugins-skyblock) - w pelni edytowalna bez rekompilacji.
+# Uklad GUI (sloty/ikony/teksty) jest w OSOBNYM pliku - patrz wyspy-gui.yml.
+# Przeladowanie na zywo, bez restartu serwera: /@reloadwyspy
+#
+# UWAGA (nie zmieniac bez zastanowienia): wartosci "cena-w-sklepie" ponizej w sekcji
+# spawnery.typy MUSZA sie zgadzac z buy-price w mainplugins-shop/categories/spawnery.yml -
+# to dwa niezalezne pliki opisujace te sama cene (jeden w sklepie, jeden tutaj jako baza
+# do liczenia kosztu ulepszen), zaden kod nie synchronizuje ich automatycznie.
+
+tworzenie-wyspy:
+  domyslny-rozmiar: 50
+  # Cooldown przed N-ta proba zalozenia wyspy w zyciu gracza (create+delete sie liczy).
+  # Pierwsze dwie darmowe, potem kara rosnie schodkowo. Od "od-proby" w gore (wlacznie)
+  # obowiazuje "sekundy" tego wpisu - wpisy MUSZA byc posortowane rosnaco po "od-proby".
+  cooldown-prob:
+    - { od-proby: 1, sekundy: 0 }
+    - { od-proby: 3, sekundy: 60 }
+    - { od-proby: 4, sekundy: 300 }
+    - { od-proby: 5, sekundy: 1800 }
+    - { od-proby: 6, sekundy: 3600 }
+    - { od-proby: 7, sekundy: 86400 }
+
+border:
+  # O ile blokow (promienia) powieksza sie wyspa za jedno ulepszenie w panelu.
+  przyrost-na-ulepszenie: 25
+  # Koszt jednego ulepszenia = aktualny promien (przed ulepszeniem) * ta wartosc.
+  koszt-za-blok: 1000
+  # Twardy limit promienia wyspy, niezalezny od tego ile gracz ma pieniedzy.
+  max-rozmiar: 750
+  # Odstep miedzy srodkami sasiednich wysp na siatce tworzenia.
+  odstep-siatki-wysp: 10000
+
+teleport-bezpieczenstwo:
+  # Ile blokow w dol szukamy gruntu pod punktem teleportu, zanim uznamy ze to za gleboka dziura.
+  max-glebokosc-szukania-w-dol: 10
+  # Promien (we wszystkich kierunkach) szukania najblizszego gruntu, gdy w dol nic nie ma.
+  promien-szukania-obok: 5
+
+timeouty:
+  potwierdzenie-sekundy: 15
+  zaproszenie-sekundy: 60
+  # Twardy limit lotu Ender Pearl w swiecie wysp (przeciwko "chunk loaderowi" z perly).
+  max-lot-perly-sekundy: 10
+
+nazwa-wyspy:
+  max-dlugosc: 24
+
+wyczyszczenie-terenu:
+  # Zapas wokol granicy budowania (promien wyspy + ten zapas) przy czyszczeniu po usunieciu.
+  zapas-na-schemat: 20
+  # Ile pojedynczych chunkow sprzatamy w jednym ticku przy usuwaniu wyspy.
+  chunki-na-tick: 4
+
+# "Wartosc wyspy" (patrz Topka Wysp) - liczona przyrostowo z postawionych/zniszczonych
+# blokow z tej listy. Material spoza listy nie wplywa na wartosc.
+wartosci-blokow:
+  NETHERITE_BLOCK: 5000.0
+  DIAMOND_BLOCK: 800.0
+  EMERALD_BLOCK: 600.0
+  BEACON: 3000.0
+  GOLD_BLOCK: 250.0
+  IRON_BLOCK: 100.0
+  COPPER_BLOCK: 40.0
+  LAPIS_BLOCK: 80.0
+  REDSTONE_BLOCK: 60.0
+  COAL_BLOCK: 30.0
+  SPAWNER: 1000.0
+
+spawnery:
+  max-poziom: 5
+  # Kolejnosc = od najtanszego do najdrozszego w sklepie (patrz categories/spawnery.yml).
+  typy:
+    - { id: ZOMBIE,   nazwa-odmieniona: "Zombie",     ikona: ROTTEN_FLESH, cena-w-sklepie: 20000 }
+    - { id: PIG,      nazwa-odmieniona: "Świń",       ikona: PORKCHOP,     cena-w-sklepie: 25000 }
+    - { id: SKELETON, nazwa-odmieniona: "Szkieletów", ikona: BONE,         cena-w-sklepie: 30000 }
+    - { id: COW,      nazwa-odmieniona: "Krów",       ikona: LEATHER,      cena-w-sklepie: 40000 }
+    - { id: SPIDER,   nazwa-odmieniona: "Pająków",    ikona: STRING,       cena-w-sklepie: 45000 }
+    - { id: CHICKEN,  nazwa-odmieniona: "Kur",        ikona: FEATHER,      cena-w-sklepie: 55000 }
+    - { id: CREEPER,  nazwa-odmieniona: "Creeperów",  ikona: GUNPOWDER,    cena-w-sklepie: 60000 }
+    - { id: SHEEP,    nazwa-odmieniona: "Owiec",      ikona: WHITE_WOOL,   cena-w-sklepie: 67000 }
+    - { id: BREEZE,   nazwa-odmieniona: "Breeze'ów",  ikona: BREEZE_ROD,   cena-w-sklepie: 100000 }
+  # Koszt awansu Z danego poziomu NA kolejny (1->2, 2->3, 3->4, 4->5), zanim zostanie
+  # przemnozony przez mnoznik typu spawnera (patrz "cena-w-sklepie" wyzej). Poziomy spoza
+  # listy (5 i wyzej) uzywaja "domyslny". Ilosc i Szybkosc maja OSOBNE krzywe kosztu.
+  koszt-bazowy-ilosc:
+    poziomy: { 1: 2500, 2: 5000, 3: 8500 }
+    domyslny: 17000
+  koszt-bazowy-szybkosc:
+    poziomy: { 1: 3500, 2: 7000, 3: 12000 }
+    domyslny: 24000

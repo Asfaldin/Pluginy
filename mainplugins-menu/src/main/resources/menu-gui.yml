@@ -1,0 +1,85 @@
+# Uklad Glownego Menu Serwera (/menu) - w pelni edytowalny bez rekompilacji.
+# Przeladowanie na zywo, bez restartu serwera: /@reloadmenu
+#
+# size: rozmiar okna (wielokrotnosc 9, 9-54)
+# tlo: material wypelniajacy puste sloty (opcjonalny, domyslnie GRAY_STAINED_GLASS_PANE)
+# przyciski: lista przyciskow - kazdy woła komende Bukkita po kliknieciu (player.performCommand)
+#   slot: numer slotu (0 az do size-1)
+#   material: ikona
+#   nazwa: nazwa wyswietlana (żółty, pogrubiony - jak dawniej)
+#   lore: lista linii opisu (szary, kursywa wylaczona - jak dawniej)
+#   komenda: komenda wywolywana po kliknieciu (bez ukosnika)
+
+size: 45
+tlo: GRAY_STAINED_GLASS_PANE
+
+przyciski:
+  - slot: 11
+    material: EMERALD
+    nazwa: "Sklep Serwerowy"
+    lore:
+      - "Kupuj i sprzedawaj u serwera (/sklep)"
+    komenda: "sklep zmenu"
+
+  - slot: 12
+    material: GOLD_INGOT
+    nazwa: "Rynek Graczy"
+    lore:
+      - "Handluj z innymi graczami (/targ)"
+    komenda: "targ zmenu"
+
+  - slot: 13
+    material: GRASS_BLOCK
+    nazwa: "Twoja Wyspa"
+    lore:
+      - "Zarządzaj swoją wyspą (/is)"
+    # "is menu zmenu" (a nie "is zmenu") - od zmiany semantyki /is bare "is" teleportuje
+    # bezpośrednio na wyspę zamiast otwierać panel; z głównego /menu chcemy pokazać panel.
+    komenda: "is menu zmenu"
+
+  - slot: 14
+    material: BOOK
+    nazwa: "Zadania (Questy)"
+    lore:
+      - "Odbierz nagrody za zadania (/zadania)"
+    komenda: "zadania zmenu"
+
+  - slot: 15
+    material: CHEST
+    nazwa: "Schowek"
+    lore:
+      - "Bezpieczne miejsce na przedmioty (/itemy)"
+    komenda: "itemy zmenu"
+
+  - slot: 33
+    material: HOPPER
+    nazwa: "Szybka Sprzedaż"
+    lore:
+      - "Sprzedaj masowo przedmioty z eq (/sprzedajwszystko)"
+    komenda: "sprzedajwszystko"
+
+  # Skróty do wyspy - otwierają konkretny ekran panelu wyspy bezpośrednio,
+  # bez przechodzenia przez "Twoja Wyspa" -> klikanie dalej.
+  - slot: 20
+    material: COMPARATOR
+    nazwa: "Ustawienia Wyspy"
+    lore:
+      - "Border, budowanie, PvP, moby, pogoda, nazwa..."
+      - "(/is ustawienia)"
+    komenda: "is ustawienia"
+
+  - slot: 22
+    material: LEVER
+    nazwa: "Permisje Wyspy"
+    lore:
+      - "Itemy, skrzynie, drzwi i mechanizmy dla gości"
+      - "(/is permisje)"
+    komenda: "is permisje"
+
+  - slot: 24
+    material: TNT
+    nazwa: "Usuń Wyspę"
+    lore:
+      - "Ostrzeżenie: Wyspa zniknie bezpowrotnie!"
+      - "(/is usun)"
+    komenda: "is usun"

@@ -4,6 +4,11 @@ import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.CustomItemService;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.util.CustomItemKeys;
+import elo.mainplugins.shop.gui.ScreenLayout;
+import elo.mainplugins.shop.gui.ShopGuiContent;
+import elo.mainplugins.shop.gui.ShopGuiStyle;
+import elo.mainplugins.shop.gui.ShopSlotEntry;
+import elo.mainplugins.shop.gui.ShopSlotRole;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -60,14 +65,11 @@ public class ShopManager implements Listener {
     /** false = po cenie kupna rosnąco (domyślne), true = po cenie skupu malejąco. */
     private final Map<UUID, Boolean> sortowaniePoSkupie = new HashMap<>();
 
-    private static final int SLOT_SORTOWANIA = 4;
-
     /** Gracze, którzy kliknęli lupę i mają wpisać frazę na czacie. */
     private final Set<UUID> czekaNaFraze = new HashSet<>();
     /** Ostatnie wyniki wyszukiwania per gracz — "katKey:itemKey" w kolejności GUI. */
     private final Map<UUID, List<String>> wynikiSzukania = new HashMap<>();
 
-    private static final int SLOT_SZUKAJ = 4;
     private static final String TYTUL_WYNIKOW = "Wyniki: ";
 
     /**
@@ -90,15 +92,40 @@ public class ShopManager implements Listener {
     private final Map<UUID, String> otwartyWyborIlosci = new HashMap<>();
 
     private static final String TYTUL_WYBOR_ILOSCI = "Ile sztuk?";
-    private static final int[] ILOSCI_DO_WYBORU = {1, 8, 16, 32, 64};
-    /** Sloty, w których lądują opcje ilości — wyśrodkowane w środkowym rzędzie okna 3x9. */
-    private static final int[] SLOTY_WYBORU = {11, 12, 13, 14, 15};
+
+    /**
+     * Układ/rozmiar GUI (menu główne, strona kategorii, wybór ilości, wyniki wyszukiwania) -
+     * wczytany z sklep-gui.yml (patrz ShopGuiLoader), zastępuje dawne hardkodowane tablice
+     * SLOTY_SIATKI/SLOTY_MENU_KATEGORII/SLOTY_WYBORU/ILOSCI_DO_WYBORU i pojedyncze sloty-guziki
+     * rozrzucone po tej klasie. Podmieniany w całości przy /@reloadsklep (patrz przeladujKonfiguracje).
+     */
+    private ShopGuiContent guiContent;
 
     public ShopManager(Plugin plugin, EconomyService economyManager) {
         this.plugin = plugin;
         this.economyManager = economyManager;
+        // guiContent MUSI być wczytany przed stworzLubWczytajPlikSklepu() - wczytajSklepZFolderow()
+        // (wołane stamtąd) potrzebuje guiContent.categoryOrder() do posortowania kategorii.
+        this.guiContent = ShopGuiLoader.load(plugin);
         stworzLubWczytajPlikSklepu();
         this.ceny = new DynamicPriceManager(plugin, this);
+    }
+
+    /** Pierwszy slot o danej roli w danym ekranie, albo null gdy nie skonfigurowano (przycisk/pole po prostu się nie renderuje). */
+    private Integer pierwszySlot(ScreenLayout ekran, ShopSlotRole rola) {
+        for (ShopSlotEntry e : ekran.layout()) if (e.role() == rola) return e.slot();
+        return null;
+    }
+
+    /** Domyślny szary panel na każdym slocie, potem nadpisany jawnymi wpisami FILLER (z własnym materiałem) z layoutu. */
+    private void wypelnijTloSzare(Inventory gui, ScreenLayout ekran) {
+        ItemStack szare = pane(Material.GRAY_STAINED_GLASS_PANE);
+        for (int i = 0; i < gui.getSize(); i++) gui.setItem(i, szare);
+        for (ShopSlotEntry e : ekran.layout()) {
+            if (e.role() == ShopSlotRole.FILLER && e.material() != null) {
+                gui.setItem(e.slot(), pane(e.material()));
+            }
+        }
     }
 
     /** Żeby plugin mógł zamknąć manager cen dynamicznych przy wyłączaniu (patrz MainpluginsShop.onDisable()). */
@@ -227,6 +254,7 @@ public class ShopManager implements Listener {
      * do czasu, aż gracz je zamknie i otworzy ponownie).
      */
     public void przeladujKonfiguracje() {
+        guiContent = ShopGuiLoader.load(plugin);
         sklepConfig = wczytajSklepZFolderow();
         ostrzezZaNieCalkowiteCeny();
     }
@@ -251,12 +279,13 @@ public class ShopManager implements Listener {
         // porządek systemu plików, czyli zwykle alfabetyczny, a nie ten sprzed rozbicia
         // na osobne pliki) - kolejność w menu głównym sklepu zależy 1:1 od kolejności
         // wstawiania do configu, więc bez tego sortu kategorie tasowałyby się losowo
-        // między restartami/OS-ami. Sortujemy wg KOLEJNOSC_KATEGORII; pliki spoza tej
-        // listy (np. świeżo dodana kategoria, o której ktoś zapomniał tu dopisać) lądują
-        // na końcu w kolejności z dysku, zamiast znikać.
+        // między restartami/OS-ami. Sortujemy wg sklep-gui.yml (category-order); pliki
+        // spoza tej listy (np. świeżo dodana kategoria, o której ktoś zapomniał tam
+        // dopisać) lądują na końcu w kolejności z dysku, zamiast znikać.
+        List<String> kolejnoscKategorii = guiContent.categoryOrder();
         Arrays.sort(pliki, Comparator.comparingInt(plik -> {
             String klucz = plik.getName().substring(0, plik.getName().length() - 4);
-            int idx = Arrays.asList(KOLEJNOSC_KATEGORII).indexOf(klucz);
+            int idx = kolejnoscKategorii.indexOf(klucz);
             return idx < 0 ? Integer.MAX_VALUE : idx;
         }));
 
@@ -286,10 +315,11 @@ public class ShopManager implements Listener {
         if (!folderKategorii.exists()) {
             folderKategorii.mkdirs();
             // saveResource() kopiuje jeden plik na raz i nie umie wylistować całego
-            // folderu z jara - stąd jawna lista, tak samo jak przy innych domyślnych
-            // configach w tym projekcie (patrz BrukSurowceManager/ToolSkillManager).
-            // Nową kategorię trzeba dopisać tutaj I dodać jej plik do resources/categories/.
-            for (String nazwaKategorii : KOLEJNOSC_KATEGORII) {
+            // folderu z jara - stąd jawna lista (teraz sklep-gui.yml/category-order,
+            // dawniej KOLEJNOSC_KATEGORII), tak samo jak przy innych domyślnych configach
+            // w tym projekcie (patrz BrukSurowceManager/ToolSkillManager). Nową kategorię
+            // trzeba dopisać w sklep-gui.yml I dodać jej plik do resources/categories/.
+            for (String nazwaKategorii : guiContent.categoryOrder()) {
                 plugin.saveResource("categories/" + nazwaKategorii + ".yml", false);
             }
         }
@@ -297,18 +327,6 @@ public class ShopManager implements Listener {
         sklepConfig = wczytajSklepZFolderow();
         ostrzezZaNieCalkowiteCeny();
     }
-
-    /**
-     * Nazwy (bez ".yml") domyślnych plików kategorii dostarczanych w resources/categories/ -
-     * jedna lista na dwa cele: (1) co skopiować na świeży serwer przy pierwszym starcie,
-     * (2) w jakiej kolejności poukładać kategorie w menu sklepu (patrz sort w
-     * wczytajSklepZFolderow()) - to ta sama kolejność, w jakiej kategorie siedziały
-     * dawniej w jednym sklep.yml, sprzed rozbicia na osobne pliki.
-     */
-    private static final String[] KOLEJNOSC_KATEGORII = {
-            "bloki", "roslinki", "drewno", "mineraly", "moby",
-            "narzedzia", "jedzenie", "dekoracje", "kolekcja", "spawnery", "ryby_wedkarskie"
-    };
 
     /**
      * buy-price/sell-price mają być liczbami całkowitymi (cena za cały lot) - odczyt
@@ -343,38 +361,13 @@ public class ShopManager implements Listener {
         }
     }
 
-    /**
-     * Układ zawartości kategorii: prostokąt 7x4 wyśrodkowany w oknie 6x9.
-     * Rzędy 2-5, kolumny 2-8. Dolny pasek (45-53) zostaje wolny na nawigację
-     * (patrz otworzSklep()/otworzKategorieStrona()).
-     *
-     * Ta tablica wyznacza JEDNOCZEŚNIE:
-     *  - ile pozycji mieści się na stronie kategorii (28),
-     *  - gdzie ląduje item o danym lokalnym indeksie.
-     */
-    private static final int[] SLOTY_SIATKI = {
-            10, 11, 12, 13, 14, 15, 16,
-            19, 20, 21, 22, 23, 24, 25,
-            28, 29, 30, 31, 32, 33, 34,
-            37, 38, 39, 40, 41, 42, 43
-    };
-
-    /** Odwrotność SLOTY_SIATKI[localIndex] - który lokalny indeks odpowiada danemu slotowi GUI, albo -1 (np. tło/nawigacja). */
-    private int lokalnyIndexDlaSlotu(int guiSlot) {
-        for (int idx = 0; idx < SLOTY_SIATKI.length; idx++) {
-            if (SLOTY_SIATKI[idx] == guiSlot) return idx;
+    /** Który lokalny indeks (w podanej liście slotów ITEM_SLOT) odpowiada danemu slotowi GUI, albo -1 (np. tło/nawigacja). */
+    private int lokalnyIndexDlaSlotu(int guiSlot, List<ShopSlotEntry> itemSlots) {
+        for (int idx = 0; idx < itemSlots.size(); idx++) {
+            if (itemSlots.get(idx).slot() == guiSlot) return idx;
         }
         return -1;
     }
-
-    /**
-     * Układ ekranu głównego: siatka 7x2 wyśrodkowana w oknie 6x9 (rzędy 3-4,
-     * kolumny 2-8). Dokładnie 14 pozycji = tyle, ile kategorii w sklep.yml.
-     */
-    private static final int[] SLOTY_MENU_KATEGORII = {
-            19, 20, 21, 22, 23, 24, 25,
-            28, 29, 30, 31, 32, 33, 34
-    };
 
     /** Puste, bezimienne szkło do wypełniania tła GUI. */
     private ItemStack pane(Material material) {
@@ -385,14 +378,6 @@ public class ShopManager implements Listener {
         return item;
     }
 
-    /** Jednolite szare tło na całym oknie ekranu głównego sklepu. */
-    private void wypelnijTloSzare(Inventory gui) {
-        ItemStack szare = pane(Material.GRAY_STAINED_GLASS_PANE);
-        for (int i = 0; i < gui.getSize(); i++) {
-            gui.setItem(i, szare);
-        }
-    }
-
     // ==================================================================== GUI ====
 
     public void otworzSklep(Player player, boolean zMenu) {
@@ -400,39 +385,35 @@ public class ShopManager implements Listener {
         playerCategory.remove(player.getUniqueId());
         playerPage.remove(player.getUniqueId());
 
-        Inventory gui = Bukkit.createInventory(null, 54, Component.text("Sklep Serwerowy", NamedTextColor.DARK_BLUE, TextDecoration.BOLD));
-        wypelnijTloSzare(gui);
+        ScreenLayout ekran = guiContent.mainMenu();
+        Inventory gui = Bukkit.createInventory(null, ekran.size(), Component.text("Sklep Serwerowy", guiContent.styl().tytulMainMenu(), TextDecoration.BOLD));
+        wypelnijTloSzare(gui, ekran);
 
-        ItemStack lupa = new ItemStack(Material.OAK_SIGN);
-        ItemMeta metaLupa = lupa.getItemMeta();
-        metaLupa.displayName(Component.text("Szukaj przedmiotu", NamedTextColor.AQUA, TextDecoration.BOLD));
-        List<Component> loreLupa = new ArrayList<>();
-        loreLupa.add(Component.text("Kliknij i wpisz nazwę na czacie",
-                NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false));
-        loreLupa.add(Component.text("np. bruk, diament, kaktus",
-                NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-        metaLupa.lore(loreLupa);
-        lupa.setItemMeta(metaLupa);
-        gui.setItem(SLOT_SZUKAJ, lupa);
+        Integer slotLupy = pierwszySlot(ekran, ShopSlotRole.SEARCH);
+        if (slotLupy != null) {
+            ItemStack lupa = new ItemStack(Material.OAK_SIGN);
+            ItemMeta metaLupa = lupa.getItemMeta();
+            metaLupa.displayName(Component.text(guiContent.styl().szukaj().tekst(), guiContent.styl().szukaj().kolor(), TextDecoration.BOLD));
+            List<Component> loreLupa = new ArrayList<>();
+            loreLupa.add(Component.text("Kliknij i wpisz nazwę na czacie",
+                    NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false));
+            loreLupa.add(Component.text("np. bruk, diament, kaktus",
+                    NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            metaLupa.lore(loreLupa);
+            lupa.setItemMeta(metaLupa);
+            gui.setItem(slotLupy, lupa);
+        }
 
+        // Kolejność ikon w menu = kolejność category-order w sklep-gui.yml, przypisana
+        // 1:1 do kolejnych CATEGORY_SLOT (patrz ShopGuiContent) - bez dawnego auto-
+        // centrowania niepełnego ostatniego rzędu, układ jest teraz w pełni jawny.
         ConfigurationSection catSection = sklepConfig.getConfigurationSection("categories");
+        List<ShopSlotEntry> categorySlots = ekran.slotsWithRole(ShopSlotRole.CATEGORY_SLOT);
+        List<String> kolejnosc = guiContent.categoryOrder();
         if (catSection != null) {
-            // SLOTY_MENU_KATEGORII to dwa rzędy po 7. Niepełny rząd (np. 12 kategorii = 7+5)
-            // ma być WYŚRODKOWANY w tych 7 kolumnach, a nie doklejony do lewej krawędzi -
-            // stąd offset wyliczany per rząd zamiast wypełniania po kolei od indeksu 0.
-            final int SZEROKOSC_RZEDU = 7;
-            int total = Math.min(catSection.getKeys(false).size(), SLOTY_MENU_KATEGORII.length);
-            int liczbaRzedow = (int) Math.ceil((double) total / SZEROKOSC_RZEDU);
-
-            int idx = 0;
-            for (String catKey : catSection.getKeys(false)) {
-                if (idx >= total) break; // więcej kategorii niż miejsc w siatce - reszta się nie zmieści
-
-                int rzad = idx / SZEROKOSC_RZEDU;
-                int kolumna = idx % SZEROKOSC_RZEDU;
-                boolean ostatniRzad = (rzad == liczbaRzedow - 1);
-                int itemowWTymRzedzie = ostatniRzad ? (total - rzad * SZEROKOSC_RZEDU) : SZEROKOSC_RZEDU;
-                int offset = (SZEROKOSC_RZEDU - itemowWTymRzedzie) / 2;
+            for (int i = 0; i < categorySlots.size() && i < kolejnosc.size(); i++) {
+                String catKey = kolejnosc.get(i);
+                if (!catSection.contains(catKey)) continue; // w kolejności, ale bez wczytanego pliku - pomijamy
 
                 String catName = sklepConfig.getString("categories." + catKey + ".name", "Kategoria");
                 String iconName = sklepConfig.getString("categories." + catKey + ".icon", "CHEST");
@@ -451,17 +432,19 @@ public class ShopManager implements Listener {
                 meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
                 item.setItemMeta(meta);
 
-                gui.setItem(SLOTY_MENU_KATEGORII[rzad * SZEROKOSC_RZEDU + kolumna + offset], item);
-                idx++;
+                gui.setItem(categorySlots.get(i).slot(), item);
             }
         }
 
-        // W głównym widoku przycisk całkowitego wyjścia jest na slocie 49
-        ItemStack wyjscie = new ItemStack(zMenu ? Material.NETHER_STAR : Material.BARRIER);
-        ItemMeta mWyjscie = wyjscie.getItemMeta();
-        mWyjscie.displayName(Component.text(zMenu ? "« Wróć do Menu głównego" : "Zamknij Sklep", NamedTextColor.RED, TextDecoration.BOLD));
-        wyjscie.setItemMeta(mWyjscie);
-        gui.setItem(49, wyjscie);
+        Integer slotWyjscia = pierwszySlot(ekran, ShopSlotRole.EXIT);
+        if (slotWyjscia != null) {
+            ItemStack wyjscie = new ItemStack(zMenu ? Material.NETHER_STAR : Material.BARRIER);
+            ItemMeta mWyjscie = wyjscie.getItemMeta();
+            ShopGuiStyle.StyledLabel etykietaWyjscia = zMenu ? guiContent.styl().wyjscieDoMenu() : guiContent.styl().wyjscieZamknij();
+            mWyjscie.displayName(Component.text(etykietaWyjscia.tekst(), etykietaWyjscia.kolor(), TextDecoration.BOLD));
+            wyjscie.setItemMeta(mWyjscie);
+            gui.setItem(slotWyjscia, wyjscie);
+        }
 
         player.openInventory(gui);
     }
@@ -469,6 +452,9 @@ public class ShopManager implements Listener {
     public void otworzKategorieStrona(Player player, String catKey, int page) {
         playerCategory.put(player.getUniqueId(), catKey);
         playerPage.put(player.getUniqueId(), page);
+
+        ScreenLayout ekran = guiContent.categoryPage();
+        List<ShopSlotEntry> itemSlots = ekran.slotsWithRole(ShopSlotRole.ITEM_SLOT);
 
         String catName = sklepConfig.getString("categories." + catKey + ".name", "Kategoria");
         ConfigurationSection itemsSection = sklepConfig.getConfigurationSection("categories." + catKey + ".items");
@@ -481,17 +467,18 @@ public class ShopManager implements Listener {
         boolean poSkupie = sortowaniePoSkupie.getOrDefault(player.getUniqueId(), false);
         itemKeys = posortujItemy(catKey, itemKeys, poSkupie);
 
-        int totalPages = Math.max(1, (int) Math.ceil((double) itemKeys.size() / SLOTY_SIATKI.length));
+        int rozmiarStrony = Math.max(itemSlots.size(), 1);
+        int totalPages = Math.max(1, (int) Math.ceil((double) itemKeys.size() / rozmiarStrony));
         if (page >= totalPages) page = totalPages - 1;
         if (page < 0) page = 0;
 
-        Component guiTitle = Component.text(catName, NamedTextColor.DARK_GREEN, TextDecoration.BOLD);
+        Component guiTitle = Component.text(catName, guiContent.styl().tytulKategoria(), TextDecoration.BOLD);
 
-        Inventory gui = Bukkit.createInventory(new KategoriaHolder(), 54, guiTitle);
-        wypelnijTloSzare(gui);
+        Inventory gui = Bukkit.createInventory(new KategoriaHolder(), ekran.size(), guiTitle);
+        wypelnijTloSzare(gui, ekran);
 
-        int pageStart = page * SLOTY_SIATKI.length;
-        int pageEnd = Math.min(pageStart + SLOTY_SIATKI.length, itemKeys.size());
+        int pageStart = page * rozmiarStrony;
+        int pageEnd = Math.min(pageStart + rozmiarStrony, itemKeys.size());
 
         for (int i = pageStart; i < pageEnd; i++) {
             String path = "categories." + catKey + ".items." + itemKeys.get(i) + ".";
@@ -577,62 +564,72 @@ public class ShopManager implements Listener {
             meta.lore(lore);
             item.setItemMeta(meta);
 
-            gui.setItem(SLOTY_SIATKI[i - pageStart], item);
+            gui.setItem(itemSlots.get(i - pageStart).slot(), item);
         }
 
-        // Pasek Nawigacyjny na Dole (Sloty 45-53)
-        if (page > 0) {
+        // Pasek nawigacyjny - sloty czytane z sklep-gui.yml (category-page.layout)
+        Integer slotPrev = pierwszySlot(ekran, ShopSlotRole.NAV_PREV);
+        if (page > 0 && slotPrev != null) {
             ItemStack prev = new ItemStack(Material.SPECTRAL_ARROW);
             ItemMeta metaPrev = prev.getItemMeta();
-            metaPrev.displayName(Component.text("« Poprzednia Strona", NamedTextColor.YELLOW, TextDecoration.BOLD));
+            metaPrev.displayName(Component.text(guiContent.styl().poprzedniaStrona().tekst(), guiContent.styl().poprzedniaStrona().kolor(), TextDecoration.BOLD));
             metaPrev.lore(List.of(Component.text("Strona " + page + " / " + totalPages, NamedTextColor.GRAY)
                     .decoration(TextDecoration.ITALIC, false)));
             prev.setItemMeta(metaPrev);
-            gui.setItem(45, prev); // Strona do tyłu = Slot 45
+            gui.setItem(slotPrev, prev);
         }
 
-        if (page < totalPages - 1) {
+        Integer slotNext = pierwszySlot(ekran, ShopSlotRole.NAV_NEXT);
+        if (page < totalPages - 1 && slotNext != null) {
             ItemStack next = new ItemStack(Material.SPECTRAL_ARROW);
             ItemMeta metaNext = next.getItemMeta();
-            metaNext.displayName(Component.text("Następna Strona »", NamedTextColor.YELLOW, TextDecoration.BOLD));
+            metaNext.displayName(Component.text(guiContent.styl().nastepnaStrona().tekst(), guiContent.styl().nastepnaStrona().kolor(), TextDecoration.BOLD));
             metaNext.lore(List.of(Component.text("Strona " + (page + 2) + " / " + totalPages, NamedTextColor.GRAY)
                     .decoration(TextDecoration.ITALIC, false)));
             next.setItemMeta(metaNext);
-            gui.setItem(53, next); // Strona do przodu = Slot 53
+            gui.setItem(slotNext, next);
         }
 
-        ItemStack sortowanie = new ItemStack(poSkupie ? Material.GOLD_INGOT : Material.HOPPER);
-        ItemMeta metaSort = sortowanie.getItemMeta();
-        metaSort.displayName(Component.text("Sortowanie", NamedTextColor.AQUA, TextDecoration.BOLD));
-        List<Component> loreSort = new ArrayList<>();
-        loreSort.add(Component.text(
-                poSkupie ? "Teraz: od najwyższego skupu" : "Teraz: od najtańszego kupna",
-                NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false));
-        loreSort.add(Component.empty());
-        loreSort.add(Component.text("LPM — od najtańszego kupna",
-                poSkupie ? NamedTextColor.GRAY : NamedTextColor.YELLOW)
-                .decoration(TextDecoration.ITALIC, false));
-        loreSort.add(Component.text("PPM — od najwyższego skupu",
-                poSkupie ? NamedTextColor.YELLOW : NamedTextColor.GRAY)
-                .decoration(TextDecoration.ITALIC, false));
-        metaSort.lore(loreSort);
-        sortowanie.setItemMeta(metaSort);
-        gui.setItem(SLOT_SORTOWANIA, sortowanie);
+        Integer slotSort = pierwszySlot(ekran, ShopSlotRole.SORT);
+        if (slotSort != null) {
+            ItemStack sortowanie = new ItemStack(poSkupie ? Material.GOLD_INGOT : Material.HOPPER);
+            ItemMeta metaSort = sortowanie.getItemMeta();
+            metaSort.displayName(Component.text(guiContent.styl().sortowanie().tekst(), guiContent.styl().sortowanie().kolor(), TextDecoration.BOLD));
+            List<Component> loreSort = new ArrayList<>();
+            loreSort.add(Component.text(
+                    poSkupie ? "Teraz: od najwyższego skupu" : "Teraz: od najtańszego kupna",
+                    NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false));
+            loreSort.add(Component.empty());
+            loreSort.add(Component.text("LPM — od najtańszego kupna",
+                    poSkupie ? NamedTextColor.GRAY : NamedTextColor.YELLOW)
+                    .decoration(TextDecoration.ITALIC, false));
+            loreSort.add(Component.text("PPM — od najwyższego skupu",
+                    poSkupie ? NamedTextColor.YELLOW : NamedTextColor.GRAY)
+                    .decoration(TextDecoration.ITALIC, false));
+            metaSort.lore(loreSort);
+            sortowanie.setItemMeta(metaSort);
+            gui.setItem(slotSort, sortowanie);
+        }
 
-        // Przycisk "Powrót do Kategorii (do głównego okna Sklepu)" - Slot 48 (ZMIENIONY)
-        ItemStack powrotKategorie = new ItemStack(Material.COMPASS);
-        ItemMeta metaPowrot = powrotKategorie.getItemMeta();
-        metaPowrot.displayName(Component.text("Cofnij do listy Kategorii", NamedTextColor.GOLD, TextDecoration.BOLD));
-        powrotKategorie.setItemMeta(metaPowrot);
-        gui.setItem(48, powrotKategorie);
+        Integer slotPowrot = pierwszySlot(ekran, ShopSlotRole.NAV_BACK);
+        if (slotPowrot != null) {
+            ItemStack powrotKategorie = new ItemStack(Material.COMPASS);
+            ItemMeta metaPowrot = powrotKategorie.getItemMeta();
+            metaPowrot.displayName(Component.text(guiContent.styl().powrotDoKategorii().tekst(), guiContent.styl().powrotDoKategorii().kolor(), TextDecoration.BOLD));
+            powrotKategorie.setItemMeta(metaPowrot);
+            gui.setItem(slotPowrot, powrotKategorie);
+        }
 
-        // Przycisk Całkowitego Wyjścia / Powrotu do /menu - Slot 50 (ZMIENIONY)
-        boolean zMenu = otwartoZMenu.getOrDefault(player.getUniqueId(), false);
-        ItemStack zamknijSklep = new ItemStack(zMenu ? Material.NETHER_STAR : Material.BARRIER);
-        ItemMeta metaZamknij = zamknijSklep.getItemMeta();
-        metaZamknij.displayName(Component.text(zMenu ? "« Wróć do Menu głównego" : "Zamknij Sklep", NamedTextColor.RED, TextDecoration.BOLD));
-        zamknijSklep.setItemMeta(metaZamknij);
-        gui.setItem(50, zamknijSklep);
+        Integer slotWyjscia = pierwszySlot(ekran, ShopSlotRole.EXIT);
+        if (slotWyjscia != null) {
+            boolean zMenu = otwartoZMenu.getOrDefault(player.getUniqueId(), false);
+            ItemStack zamknijSklep = new ItemStack(zMenu ? Material.NETHER_STAR : Material.BARRIER);
+            ItemMeta metaZamknij = zamknijSklep.getItemMeta();
+            ShopGuiStyle.StyledLabel etykietaZamkniecia = zMenu ? guiContent.styl().wyjscieDoMenu() : guiContent.styl().wyjscieZamknij();
+            metaZamknij.displayName(Component.text(etykietaZamkniecia.tekst(), etykietaZamkniecia.kolor(), TextDecoration.BOLD));
+            zamknijSklep.setItemMeta(metaZamknij);
+            gui.setItem(slotWyjscia, zamknijSklep);
+        }
 
         player.openInventory(gui);
     }
@@ -705,13 +702,14 @@ public class ShopManager implements Listener {
         }
         String nazwa = sklepConfig.getString(path + "display-name", material.name());
 
-        Inventory gui = Bukkit.createInventory(null, 27,
-                Component.text(TYTUL_WYBOR_ILOSCI + " " + nazwa, NamedTextColor.DARK_GRAY, TextDecoration.BOLD));
-        wypelnijTloSzare(gui);
+        ScreenLayout ekran = guiContent.buyPicker();
+        Inventory gui = Bukkit.createInventory(null, ekran.size(),
+                Component.text(TYTUL_WYBOR_ILOSCI + " " + nazwa, guiContent.styl().tytulWyborIlosci(), TextDecoration.BOLD));
+        wypelnijTloSzare(gui, ekran);
 
         double saldo = economyManager.getKasa(player.getUniqueId());
-        for (int i = 0; i < ILOSCI_DO_WYBORU.length; i++) {
-            int ilosc = ILOSCI_DO_WYBORU[i];
+        for (ShopSlotEntry wpis : ekran.slotsWithRole(ShopSlotRole.AMOUNT_SLOT)) {
+            int ilosc = wpis.amount();
             long cena = policzCene(ilosc, cenaLotu, lot);
             boolean stac = saldo >= cena;
 
@@ -736,14 +734,17 @@ public class ShopManager implements Listener {
                     NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
             meta.lore(lore);
             opcja.setItemMeta(meta);
-            gui.setItem(SLOTY_WYBORU[i], opcja);
+            gui.setItem(wpis.slot(), opcja);
         }
 
-        ItemStack powrot = new ItemStack(Material.ARROW);
-        ItemMeta pm = powrot.getItemMeta();
-        pm.displayName(Component.text("Powrót", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-        powrot.setItemMeta(pm);
-        gui.setItem(22, powrot);
+        Integer slotPowrot = pierwszySlot(ekran, ShopSlotRole.NAV_BACK);
+        if (slotPowrot != null) {
+            ItemStack powrot = new ItemStack(Material.ARROW);
+            ItemMeta pm = powrot.getItemMeta();
+            pm.displayName(Component.text(guiContent.styl().powrotZIlosci().tekst(), guiContent.styl().powrotZIlosci().kolor()).decoration(TextDecoration.ITALIC, false));
+            powrot.setItemMeta(pm);
+            gui.setItem(slotPowrot, powrot);
+        }
 
         // UWAGA: put() MUSI iść PO openInventory(), nie przed. Jeśli gracz ma już otwarte
         // jakieś okno (kategorię albo poprzedni ekran wyboru ilości - patrz odświeżanie
@@ -1154,20 +1155,22 @@ public class ShopManager implements Listener {
             String ref = otwartyWyborIlosci.get(player.getUniqueId());
             if (ref == null) { player.closeInventory(); return; }
 
-            if (event.getSlot() == 22) {                       // strzałka "Powrót"
+            ScreenLayout ekranWyboru = guiContent.buyPicker();
+            Integer slotPowrotWyboru = pierwszySlot(ekranWyboru, ShopSlotRole.NAV_BACK);
+            if (slotPowrotWyboru != null && event.getSlot() == slotPowrotWyboru) {
                 otwartyWyborIlosci.remove(player.getUniqueId());
                 otworzKategorieStrona(player, ref.split(":")[0],
                         playerPage.getOrDefault(player.getUniqueId(), 0));
                 return;
             }
-            for (int i = 0; i < SLOTY_WYBORU.length; i++) {
-                if (event.getSlot() == SLOTY_WYBORU[i]) {
+            for (ShopSlotEntry wpis : ekranWyboru.slotsWithRole(ShopSlotRole.AMOUNT_SLOT)) {
+                if (event.getSlot() == wpis.slot()) {
                     // Shift+LPM na dowolnej opcji ignoruje konkretną liczbę z przycisku
                     // i kupuje maksimum, na jakie gracza stać i które zmieści się w ekwipunku.
                     if (event.isShiftClick() && event.isLeftClick()) {
                         kupMaksymalnaIlosc(player, ref);
                     } else {
-                        kupIlosc(player, ref, ILOSCI_DO_WYBORU[i]);
+                        kupIlosc(player, ref, wpis.amount());
                     }
                     otworzWyborIlosci(player, ref);            // odśwież ceny i saldo
                     return;
@@ -1181,17 +1184,21 @@ public class ShopManager implements Listener {
             event.setCancelled(true);
             if (!klikniecieWGui) return;
 
-            // Przycisk wyjścia zawsze na slocie 49 - sprawdzamy PO SLOCIE, nie po materiale,
-            // żeby nie kolidować z towarem sprzedawanym w sklepie o tym samym materiale
+            ScreenLayout ekranGlowny = guiContent.mainMenu();
+
+            // Przycisk wyjścia - sprawdzamy PO SLOCIE (roli EXIT), nie po materiale, żeby
+            // nie kolidować z towarem sprzedawanym w sklepie o tym samym materiale
             // (np. Gwiazda Netheru w kategorii "Klejnoty i Rzadkości").
-            if (event.getSlot() == 49) {
+            Integer slotWyjsciaGlowny = pierwszySlot(ekranGlowny, ShopSlotRole.EXIT);
+            if (slotWyjsciaGlowny != null && event.getSlot() == slotWyjsciaGlowny) {
                 boolean zMenu = otwartoZMenu.getOrDefault(player.getUniqueId(), false);
                 player.closeInventory();
                 if (zMenu) player.performCommand("menu");
                 return;
             }
 
-            if (event.getSlot() == SLOT_SZUKAJ) {
+            Integer slotSzukaj = pierwszySlot(ekranGlowny, ShopSlotRole.SEARCH);
+            if (slotSzukaj != null && event.getSlot() == slotSzukaj) {
                 czekaNaFraze.add(player.getUniqueId());
                 player.closeInventory();
                 player.sendMessage(Component.text("Wpisz na czacie, czego szukasz.", NamedTextColor.AQUA));
@@ -1222,33 +1229,42 @@ public class ShopManager implements Listener {
             int currentPage = playerPage.getOrDefault(player.getUniqueId(), 0);
             if (catKey == null) return;
 
-            // Logika dolnych przycisków - PO SLOCIE, nie po materiale (patrz komentarz
+            ScreenLayout ekranKategorii = guiContent.categoryPage();
+            List<ShopSlotEntry> itemSlotyKategorii = ekranKategorii.slotsWithRole(ShopSlotRole.ITEM_SLOT);
+
+            // Logika dolnych przycisków - PO SLOCIE/ROLI, nie po materiale (patrz komentarz
             // przy analogicznym fragmencie dla głównego ekranu sklepu wyżej).
             int slotKlikniecia = event.getSlot();
-            if (slotKlikniecia == SLOT_SORTOWANIA) {
+            Integer slotSort = pierwszySlot(ekranKategorii, ShopSlotRole.SORT);
+            Integer slotBack = pierwszySlot(ekranKategorii, ShopSlotRole.NAV_BACK);
+            Integer slotExit = pierwszySlot(ekranKategorii, ShopSlotRole.EXIT);
+            Integer slotPrev = pierwszySlot(ekranKategorii, ShopSlotRole.NAV_PREV);
+            Integer slotNext = pierwszySlot(ekranKategorii, ShopSlotRole.NAV_NEXT);
+
+            if (slotSort != null && slotKlikniecia == slotSort) {
                 // Zmiana sortowania wraca na stronę 1 — przy innej kolejności
                 // numer strony i tak przestaje cokolwiek znaczyć.
                 sortowaniePoSkupie.put(player.getUniqueId(), event.isRightClick());
                 otworzKategorieStrona(player, catKey, 0);
                 return;
-            } else if (slotKlikniecia == 48) {
+            } else if (slotBack != null && slotKlikniecia == slotBack) {
                 boolean zMenu = otwartoZMenu.getOrDefault(player.getUniqueId(), false);
                 otworzSklep(player, zMenu); // Wracamy do głównego widoku sklepu
                 return;
-            } else if (slotKlikniecia == 50) {
+            } else if (slotExit != null && slotKlikniecia == slotExit) {
                 boolean zMenu = otwartoZMenu.getOrDefault(player.getUniqueId(), false);
                 player.closeInventory();
                 if (zMenu) player.performCommand("menu");
                 return;
-            } else if (slotKlikniecia == 45) {
+            } else if (slotPrev != null && slotKlikniecia == slotPrev) {
                 otworzKategorieStrona(player, catKey, currentPage - 1);
                 return;
-            } else if (slotKlikniecia == 53) {
+            } else if (slotNext != null && slotKlikniecia == slotNext) {
                 otworzKategorieStrona(player, catKey, currentPage + 1);
                 return;
             }
 
-            int localIndex = lokalnyIndexDlaSlotu(slotKlikniecia);
+            int localIndex = lokalnyIndexDlaSlotu(slotKlikniecia, itemSlotyKategorii);
             if (localIndex < 0) return; // Kliknięcie w tło/poza siatkę - nie ma tam żadnego itemu
 
             ConfigurationSection itemsSection = sklepConfig.getConfigurationSection("categories." + catKey + ".items");
@@ -1260,7 +1276,7 @@ public class ShopManager implements Listener {
             // sortowanie (per gracz), co przy renderze, musi zostać zastosowane i tutaj.
             boolean poSkupieKlik = sortowaniePoSkupie.getOrDefault(player.getUniqueId(), false);
             List<String> itemKeys = posortujItemy(catKey, new ArrayList<>(itemsSection.getKeys(false)), poSkupieKlik);
-            int absoluteIndex = currentPage * SLOTY_SIATKI.length + localIndex;
+            int absoluteIndex = currentPage * Math.max(itemSlotyKategorii.size(), 1) + localIndex;
             if (absoluteIndex < 0 || absoluteIndex >= itemKeys.size()) return;
 
             String path = "categories." + catKey + ".items." + itemKeys.get(absoluteIndex) + ".";
@@ -1310,7 +1326,9 @@ public class ShopManager implements Listener {
             event.setCancelled(true);
             if (!klikniecieWGui) return;
 
-            if (event.getSlot() == 48) {
+            ScreenLayout ekranWynikow = guiContent.searchResults();
+            Integer slotPowrotWynikow = pierwszySlot(ekranWynikow, ShopSlotRole.NAV_BACK);
+            if (slotPowrotWynikow != null && event.getSlot() == slotPowrotWynikow) {
                 otworzSklep(player, otwartoZMenu.getOrDefault(player.getUniqueId(), false));
                 return;
             }
@@ -1318,7 +1336,7 @@ public class ShopManager implements Listener {
             List<String> wyniki = wynikiSzukania.get(player.getUniqueId());
             if (wyniki == null) return;
 
-            int idx = lokalnyIndexDlaSlotu(event.getSlot());
+            int idx = lokalnyIndexDlaSlotu(event.getSlot(), ekranWynikow.slotsWithRole(ShopSlotRole.ITEM_SLOT));
             if (idx < 0 || idx >= wyniki.size()) return;
 
             String[] czesci = wyniki.get(idx).split(":");
@@ -1405,29 +1423,35 @@ public class ShopManager implements Listener {
             return;
         }
 
+        ScreenLayout ekran = guiContent.searchResults();
+        List<ShopSlotEntry> itemSloty = ekran.slotsWithRole(ShopSlotRole.ITEM_SLOT);
+
         // Więcej wyników niż mieści siatka - obcinamy i mówimy o tym graczowi.
-        boolean obciete = trafienia.size() > SLOTY_SIATKI.length;
-        if (obciete) trafienia = trafienia.subList(0, SLOTY_SIATKI.length);
+        boolean obciete = trafienia.size() > itemSloty.size();
+        if (obciete) trafienia = trafienia.subList(0, itemSloty.size());
         wynikiSzukania.put(player.getUniqueId(), trafienia);
 
-        Inventory gui = Bukkit.createInventory(null, 54,
-                Component.text(TYTUL_WYNIKOW + fraza, NamedTextColor.DARK_AQUA, TextDecoration.BOLD));
-        wypelnijTloSzare(gui);
+        Inventory gui = Bukkit.createInventory(null, ekran.size(),
+                Component.text(TYTUL_WYNIKOW + fraza, guiContent.styl().tytulWyniki(), TextDecoration.BOLD));
+        wypelnijTloSzare(gui, ekran);
 
         for (int i = 0; i < trafienia.size(); i++) {
             String[] czesci = trafienia.get(i).split(":");
-            gui.setItem(SLOTY_SIATKI[i], zbudujItemWyniku(czesci[0], czesci[1]));
+            gui.setItem(itemSloty.get(i).slot(), zbudujItemWyniku(czesci[0], czesci[1]));
         }
 
-        ItemStack powrot = new ItemStack(Material.COMPASS);
-        ItemMeta metaPowrot = powrot.getItemMeta();
-        metaPowrot.displayName(Component.text("Powrót do sklepu", NamedTextColor.GOLD, TextDecoration.BOLD));
-        powrot.setItemMeta(metaPowrot);
-        gui.setItem(48, powrot);
+        Integer slotPowrot = pierwszySlot(ekran, ShopSlotRole.NAV_BACK);
+        if (slotPowrot != null) {
+            ItemStack powrot = new ItemStack(Material.COMPASS);
+            ItemMeta metaPowrot = powrot.getItemMeta();
+            metaPowrot.displayName(Component.text(guiContent.styl().powrotZWynikow().tekst(), guiContent.styl().powrotZWynikow().kolor(), TextDecoration.BOLD));
+            powrot.setItemMeta(metaPowrot);
+            gui.setItem(slotPowrot, powrot);
+        }
 
         player.openInventory(gui);
         player.sendMessage(Component.text("Znaleziono: " + trafienia.size()
-                + (obciete ? " (pokazano pierwsze " + SLOTY_SIATKI.length + ")" : ""),
+                + (obciete ? " (pokazano pierwsze " + itemSloty.size() + ")" : ""),
                 NamedTextColor.AQUA));
     }
 

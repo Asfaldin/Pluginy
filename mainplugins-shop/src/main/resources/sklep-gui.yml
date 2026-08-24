@@ -1,0 +1,176 @@
+# ==========================================================================
+# Uklad i rozmiar GUI sklepu (menu glowne, strona kategorii, wybor ilosci,
+# wyniki wyszukiwania). Zero hardkodowanych tablic slotow w Javie - caly
+# uklad zyje TUTAJ. Tresc sklepu (ceny, itemy, kategorie) jest OSOBNO w
+# sklep.yml + categories/*.yml - ten plik odpowiada wylacznie za to, GDZIE
+# w oknie GUI co sie renderuje.
+#
+# Przeladowanie na zywo, razem z reszta sklepu: /@reloadsklep
+#
+# category-order: kolejnosc kategorii - sluzy DWA razy: (1) w jakiej
+#   kolejnosci kopiowac domyslne pliki categories/*.yml przy pierwszym
+#   starcie serwera, (2) i-ty CATEGORY_SLOT w main-menu.layout -> i-ta
+#   pozycja z tej listy. Kategoria z plikiem na dysku, ale spoza tej listy,
+#   nadal dziala (mozna ja kupowac/sprzedawac) - po prostu nie ma wlasnej
+#   ikony w menu glownym.
+#
+# Kazdy ekran (main-menu / category-page / buy-picker / search-results) ma:
+#   size   - rozmiar okna, wielokrotnosc 9, zakres 9-54.
+#   layout - lista {slot: 0-(size-1), role: ..., material?, amount?}.
+#            Slot spoza listy = domyslny wypelniacz (szare szklo).
+#
+# role:
+#   CATEGORY_SLOT - tylko main-menu. Kolejnosc wpisow w liscie = kolejnosc
+#                   przypisania do category-order (i-ty CATEGORY_SLOT -> i-ta
+#                   kategoria z listy).
+#   ITEM_SLOT     - category-page/search-results. Kolejnosc = kolejnosc
+#                   wypelniania (i strony, dla category-page).
+#   AMOUNT_SLOT   - tylko buy-picker. WYMAGA pola "amount" (ile sztuk
+#                   reprezentuje ta opcja) - to jest "ile kratek na ile
+#                   mozna dac" z tego ekranu.
+#   NAV_BACK / NAV_PREV / NAV_NEXT / EXIT / SEARCH / SORT - przyciski, tekst
+#                   i kolor etykiety sa w sekcji "styl" ponizej, tu tylko POZYCJA.
+#   FILLER        - jawny wypelniacz z wlasnym materialem (opcjonalne pole
+#                   "material") - bez tego pola dziala jak zwykly pusty slot.
+#
+# styl: kolory tytulow okien + tekst/kolor przyciskow nawigacyjnych.
+#   styl.tytuly.*     - nazwa NamedTextColor (np. RED, DARK_GREEN, LIGHT_PURPLE).
+#                       Tytuly kategorii/wyboru ilosci/wynikow szukania maja czesc
+#                       tekstu DYNAMICZNA (nazwa kategorii/itemu/fraza) - dlatego
+#                       tylko kolor jest tu edytowalny, nie caly tekst.
+#   styl.przyciski.*  - { tekst: "...", kolor: NAZWA_KOLORU }, oba pola opcjonalne
+#                       (brak = domyslna wartosc jak dawniej w kodzie).
+# Statyczny opis pod ikonami kategorii ("Kliknij, aby otworzyc kategorie!") i kolor
+# dynamicznych linii ceny/trendu (Kupno/Skup/▲▼/EVENT) w lore itemow NIE sa tutaj -
+# to swiadomie zostalo w Javie.
+# ==========================================================================
+
+main-menu:
+  size: 54
+  layout:
+    - {slot: 4, role: SEARCH}
+    - {slot: 49, role: EXIT}
+    - {slot: 19, role: CATEGORY_SLOT}
+    - {slot: 20, role: CATEGORY_SLOT}
+    - {slot: 21, role: CATEGORY_SLOT}
+    - {slot: 22, role: CATEGORY_SLOT}
+    - {slot: 23, role: CATEGORY_SLOT}
+    - {slot: 24, role: CATEGORY_SLOT}
+    - {slot: 25, role: CATEGORY_SLOT}
+    - {slot: 28, role: CATEGORY_SLOT}
+    - {slot: 29, role: CATEGORY_SLOT}
+    - {slot: 30, role: CATEGORY_SLOT}
+    - {slot: 31, role: CATEGORY_SLOT}
+    - {slot: 32, role: CATEGORY_SLOT}
+    - {slot: 33, role: CATEGORY_SLOT}
+    - {slot: 34, role: CATEGORY_SLOT}
+
+category-page:
+  size: 54
+  layout:
+    - {slot: 4, role: SORT}
+    - {slot: 10, role: ITEM_SLOT}
+    - {slot: 11, role: ITEM_SLOT}
+    - {slot: 12, role: ITEM_SLOT}
+    - {slot: 13, role: ITEM_SLOT}
+    - {slot: 14, role: ITEM_SLOT}
+    - {slot: 15, role: ITEM_SLOT}
+    - {slot: 16, role: ITEM_SLOT}
+    - {slot: 19, role: ITEM_SLOT}
+    - {slot: 20, role: ITEM_SLOT}
+    - {slot: 21, role: ITEM_SLOT}
+    - {slot: 22, role: ITEM_SLOT}
+    - {slot: 23, role: ITEM_SLOT}
+    - {slot: 24, role: ITEM_SLOT}
+    - {slot: 25, role: ITEM_SLOT}
+    - {slot: 28, role: ITEM_SLOT}
+    - {slot: 29, role: ITEM_SLOT}
+    - {slot: 30, role: ITEM_SLOT}
+    - {slot: 31, role: ITEM_SLOT}
+    - {slot: 32, role: ITEM_SLOT}
+    - {slot: 33, role: ITEM_SLOT}
+    - {slot: 34, role: ITEM_SLOT}
+    - {slot: 37, role: ITEM_SLOT}
+    - {slot: 38, role: ITEM_SLOT}
+    - {slot: 39, role: ITEM_SLOT}
+    - {slot: 40, role: ITEM_SLOT}
+    - {slot: 41, role: ITEM_SLOT}
+    - {slot: 42, role: ITEM_SLOT}
+    - {slot: 43, role: ITEM_SLOT}
+    - {slot: 45, role: NAV_PREV}
+    - {slot: 48, role: NAV_BACK}
+    - {slot: 50, role: EXIT}
+    - {slot: 53, role: NAV_NEXT}
+
+buy-picker:
+  size: 27
+  layout:
+    - {slot: 11, role: AMOUNT_SLOT, amount: 1}
+    - {slot: 12, role: AMOUNT_SLOT, amount: 8}
+    - {slot: 13, role: AMOUNT_SLOT, amount: 16}
+    - {slot: 14, role: AMOUNT_SLOT, amount: 32}
+    - {slot: 15, role: AMOUNT_SLOT, amount: 64}
+    - {slot: 22, role: NAV_BACK}
+
+search-results:
+  size: 54
+  layout:
+    - {slot: 10, role: ITEM_SLOT}
+    - {slot: 11, role: ITEM_SLOT}
+    - {slot: 12, role: ITEM_SLOT}
+    - {slot: 13, role: ITEM_SLOT}
+    - {slot: 14, role: ITEM_SLOT}
+    - {slot: 15, role: ITEM_SLOT}
+    - {slot: 16, role: ITEM_SLOT}
+    - {slot: 19, role: ITEM_SLOT}
+    - {slot: 20, role: ITEM_SLOT}
+    - {slot: 21, role: ITEM_SLOT}
+    - {slot: 22, role: ITEM_SLOT}
+    - {slot: 23, role: ITEM_SLOT}
+    - {slot: 24, role: ITEM_SLOT}
+    - {slot: 25, role: ITEM_SLOT}
+    - {slot: 28, role: ITEM_SLOT}
+    - {slot: 29, role: ITEM_SLOT}
+    - {slot: 30, role: ITEM_SLOT}
+    - {slot: 31, role: ITEM_SLOT}
+    - {slot: 32, role: ITEM_SLOT}
+    - {slot: 33, role: ITEM_SLOT}
+    - {slot: 34, role: ITEM_SLOT}
+    - {slot: 37, role: ITEM_SLOT}
+    - {slot: 38, role: ITEM_SLOT}
+    - {slot: 39, role: ITEM_SLOT}
+    - {slot: 40, role: ITEM_SLOT}
+    - {slot: 41, role: ITEM_SLOT}
+    - {slot: 42, role: ITEM_SLOT}
+    - {slot: 43, role: ITEM_SLOT}
+    - {slot: 48, role: NAV_BACK}
+
+category-order:
+  - bloki
+  - roslinki
+  - drewno
+  - mineraly
+  - moby
+  - narzedzia
+  - jedzenie
+  - dekoracje
+  - kolekcja
+  - spawnery
+  - ryby_wedkarskie
+
+styl:
+  tytuly:
+    main-menu: DARK_BLUE
+    category-page: DARK_GREEN
+    buy-picker: DARK_GRAY
+    search-results: DARK_AQUA
+  przyciski:
+    szukaj: { tekst: "Szukaj przedmiotu", kolor: AQUA }
+    wyjscie-do-menu: { tekst: "« Wróć do Menu głównego", kolor: RED }
+    wyjscie-zamknij: { tekst: "Zamknij Sklep", kolor: RED }
+    poprzednia-strona: { tekst: "« Poprzednia Strona", kolor: YELLOW }
+    nastepna-strona: { tekst: "Następna Strona »", kolor: YELLOW }
+    sortowanie: { tekst: "Sortowanie", kolor: AQUA }
+    powrot-do-kategorii: { tekst: "Cofnij do listy Kategorii", kolor: GOLD }
+    powrot-z-wynikow: { tekst: "Powrót do sklepu", kolor: GOLD }
+    powrot-z-ilosci: { tekst: "Powrót", kolor: GRAY }

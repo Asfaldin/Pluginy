@@ -54,6 +54,16 @@ public final class MainpluginsSkyblock extends JavaPlugin {
             getCommand("dom").setExecutor(executor);
             getCommand("dom").setTabCompleter(executor);
         }
+
+        // Osobny executor: /@reloadwyspy ma sens tez z konsoli, nie tylko od gracza.
+        // Uprawnienie (mainplugins.skyblock.reload, domyslnie op) pilnuje tego plugin.yml.
+        if (getCommand("@reloadwyspy") != null) {
+            getCommand("@reloadwyspy").setExecutor((sender, command, label, args) -> {
+                islandManager.przeladujKonfiguracje();
+                sender.sendMessage("§aKonfiguracja i uklad GUI wysp zostaly przeladowane.");
+                return true;
+            });
+        }
     }
 
     /** Podkomendy /is (i aliasu /dom, ten sam handler) - patrz IslandManager#handleCommand. */
@@ -66,7 +76,7 @@ public final class MainpluginsSkyblock extends JavaPlugin {
         // tylko polska forma główna, żeby nie dublować listy.
         private static final List<String> PODKOMENDY = List.of(
                 "menu", "ustawdom", "ustawspawn", "usun", "granica", "budowanie", "pvp", "potwory", "ulepszenia",
-                "czlonkowie", "zapros", "akceptuj", "odrzuc", "opusc", "awansuj", "degraduj",
+                "czlonkowie", "ustawienia", "permisje", "zapros", "akceptuj", "odrzuc", "opusc", "awansuj", "degraduj",
                 "wyrzuc", "dom", "wplac", "wyplac"
         );
         private static final Set<String> PODKOMENDY_Z_GRACZEM = Set.of("zapros", "awansuj", "degraduj", "wyrzuc");

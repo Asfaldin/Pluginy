@@ -87,8 +87,9 @@ public class PoradnikManager implements Listener {
                         "rzadsze wyzwania dla zaawansowanych graczy."),
 
                 strona("NARZĘDZIA",
-                        "/narzedzia daje Ci zestaw ewoluujących narzędzi - " +
-                        "levelują się same, gdy ich używasz.\n\n" +
+                        "Ewoluujące narzędzia (kilof, siekiera, motyka, miecz) dostajesz " +
+                        "jako nagrody za kolejne zadania Głównej Ścieżki - levelują się " +
+                        "same, gdy ich używasz.\n\n" +
                         "Kilof ma WŁASNE drzewko umiejętności - kliknij nim Shift + PPM, " +
                         "żeby je otworzyć."),
 

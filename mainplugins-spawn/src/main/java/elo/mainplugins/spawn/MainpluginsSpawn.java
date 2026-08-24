@@ -1,5 +1,6 @@
 package elo.mainplugins.spawn;
 
+import elo.mainplugins.core.api.ObszarService;
 import elo.mainplugins.core.api.SpawnService;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -19,6 +20,7 @@ public final class MainpluginsSpawn extends JavaPlugin {
         getServer().getPluginManager().registerEvents(obszarManager, this);
         getServer().getPluginManager().registerEvents(new ObszarProtectionManager(obszarManager), this);
         getServer().getServicesManager().register(SpawnService.class, spawnManager, this, ServicePriority.Normal);
+        getServer().getServicesManager().register(ObszarService.class, obszarManager, this, ServicePriority.Normal);
 
         SpawnCommands executor = new SpawnCommands(spawnManager, obszarManager, warpManager);
         if (getCommand("spawn") != null) {

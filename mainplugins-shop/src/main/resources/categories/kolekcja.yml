@@ -1,5 +1,5 @@
-name: "Itemy Specjalne"
-icon: NETHERITE_PICKAXE
+name: "Kolekcja"
+icon: CHEST_MINECART
 slot: 24
 items:
   0:
@@ -27,33 +27,8 @@ items:
     amount: 1
     buy-price: 75000
   4:
-    material: SNIFFER_EGG
-    slot: 4
-    custom-id: SNIFFER_JAJKO
-    display-name: "Sniffer Farmera"
-    lore:
-      - "PPM na własnej wyspie stawia stacjonarnego"
-      - "Sniffera, który automatycznie zbiera i"
-      - "sadzi dojrzałe uprawy w pobliżu"
-      - "Zebrane plony trafiają do najbliższej skrzyni"
-      - "Maksymalnie 1 Sniffer na wyspę"
-    amount: 1
-    buy-price: 100000
-  5:
-    material: NETHERITE_PICKAXE
-    slot: 5
-    custom-id: NISZCZYCIEL
-    display-name: "Niszczyciel"
-    lore:
-      - "Kilof z ultra szybkim kopaniem (Haste X)"
-      - "PPM: niszczy 3x3 bloków naraz"
-      - "Zawsze dropi właściwy blok (jak Silk Touch)"
-      - "Służy tylko do kopania - nic więcej"
-    amount: 1
-    buy-price: 150000
-  6:
     material: MOSSY_COBBLESTONE
-    slot: 6
+    slot: 4
     custom-id: GENERATOR_BRUK_T1
     display-name: "Generator Bruku"
     lore:

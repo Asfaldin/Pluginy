@@ -106,15 +106,6 @@ public class IslandManager implements Listener, IslandService {
         // terenu przy każdym odświeżeniu Topki Wysp byłoby zbyt kosztowne.
         private double worth = 0.0;
 
-        // UUID żywej encji Snifferaa Farmera postawionego na tej wyspie (patrz SnifferManager) -
-        // null, jeśli wyspa nie ma żadnego. Maks. 1 na wyspę. Encja jest źródłem prawdy o AKTUALNEJ
-        // pozycji - snifferAnchor* niżej to punkt, wokół którego Sniffer się kosmetycznie przemieszcza
-        // (żeby nie "odpłynął" przypadkowym błądzeniem daleko od miejsca postawienia).
-        private UUID snifferId;
-        private Double snifferAnchorX;
-        private Double snifferAnchorY;
-        private Double snifferAnchorZ;
-
         // Poziom (domyślnie 1) każdego typu customowego spawnera wykupionego przez
         // właściciela wyspy - klucz to SpawnerType.name() z mainplugins-spawners,
         // ale IslandData celowo trzyma go jako zwykły String (patrz komentarz w
@@ -192,18 +183,6 @@ public class IslandManager implements Listener, IslandService {
         public double getWorth() { return worth; }
         public void setWorth(double worth) { this.worth = worth; }
         public void dodajDoWartosci(double delta) { worth = Math.max(0, worth + delta); }
-
-        public UUID getSnifferId() { return snifferId; }
-        public void setSnifferId(UUID snifferId) { this.snifferId = snifferId; }
-        public boolean hasSnifferAnchor() { return snifferAnchorX != null; }
-        public double getSnifferAnchorX() { return snifferAnchorX; }
-        public double getSnifferAnchorY() { return snifferAnchorY; }
-        public double getSnifferAnchorZ() { return snifferAnchorZ; }
-        public void setSnifferAnchor(double x, double y, double z) {
-            this.snifferAnchorX = x;
-            this.snifferAnchorY = y;
-            this.snifferAnchorZ = z;
-        }
 
         public Map<String, Integer> getSpawnerLevels() { return spawnerLevels; }
         public int getSpawnerLevel(String typ) { return spawnerLevels.getOrDefault(typ, 1); }
@@ -465,18 +444,6 @@ public class IslandManager implements Listener, IslandService {
             data.setCustomName(configWysp.getString(path + "customName"));
             data.setBankBalance(configWysp.getDouble(path + "bankBalance", 0.0));
             data.setWorth(configWysp.getDouble(path + "worth", 0.0));
-            if (configWysp.contains(path + "snifferId")) {
-                try {
-                    data.setSnifferId(UUID.fromString(configWysp.getString(path + "snifferId")));
-                } catch (IllegalArgumentException ignored) {}
-            }
-            if (configWysp.contains(path + "snifferAnchor.x")) {
-                data.setSnifferAnchor(
-                        configWysp.getDouble(path + "snifferAnchor.x"),
-                        configWysp.getDouble(path + "snifferAnchor.y"),
-                        configWysp.getDouble(path + "snifferAnchor.z")
-                );
-            }
 
             ConfigurationSection spawnerSekcja = configWysp.getConfigurationSection(path + "spawnerLevels");
             if (spawnerSekcja != null) {
@@ -554,12 +521,6 @@ public class IslandManager implements Listener, IslandService {
             configWysp.set(path + "customName", data.getCustomName());
             configWysp.set(path + "bankBalance", data.getBankBalance());
             configWysp.set(path + "worth", data.getWorth());
-            configWysp.set(path + "snifferId", data.getSnifferId() != null ? data.getSnifferId().toString() : null);
-            if (data.hasSnifferAnchor()) {
-                configWysp.set(path + "snifferAnchor.x", data.getSnifferAnchorX());
-                configWysp.set(path + "snifferAnchor.y", data.getSnifferAnchorY());
-                configWysp.set(path + "snifferAnchor.z", data.getSnifferAnchorZ());
-            }
 
             if (data.hasCustomHome()) {
                 configWysp.set(path + "home.x", data.getHomeX());
@@ -728,7 +689,7 @@ public class IslandManager implements Listener, IslandService {
      * w dwóch miejscach. Zwraca null i wysyła komunikat, jeśli gracz nie ma wyspy ALBO jest na niej
      * tylko zwykłym członkiem.
      */
-    /** Package-private (nie tylko private) - używane też przez SnifferManager do weryfikacji stawiania Snifferaa. */
+    /** Package-private (nie tylko private) - do rozszerzenia w razie kolejnych mechanik operujących na własnej wyspie. */
     IslandData wlasnaWyspaJakoZarzadca(Player player) {
         IslandData data = wlasnaWyspaLubKomunikat(player);
         if (data == null) return null;
@@ -2411,7 +2372,7 @@ public class IslandManager implements Listener, IslandService {
         zapiszWyspy();
     }
 
-    /** Package-private - używane przez SnifferManager do cyklicznego skanu wszystkich aktywnych Snifferów. */
+    /** Package-private - zwraca wszystkie wyspy, np. do cyklicznych skanów całej bazy. */
     Collection<IslandData> wszystkieWyspy() {
         return islandDatabase.values();
     }

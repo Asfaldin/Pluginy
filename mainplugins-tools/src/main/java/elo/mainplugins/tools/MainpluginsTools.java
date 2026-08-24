@@ -9,7 +9,6 @@ import elo.mainplugins.tools.pickaxe.BrukSurowceManager;
 import elo.mainplugins.tools.pickaxe.GemType;
 import elo.mainplugins.tools.pickaxe.PickaxeSkillManager;
 import elo.mainplugins.tools.pickaxe.PickaxeType;
-import elo.mainplugins.tools.special.NiszczycielManager;
 import elo.mainplugins.tools.sword.SwordSkillManager;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -44,9 +43,6 @@ public final class MainpluginsTools extends JavaPlugin {
         SwordSkillManager swordSkillManager = new SwordSkillManager(this, CoreAPI.getEconomyService());
         getServer().getPluginManager().registerEvents(swordSkillManager, this);
         levelableToolsManager.setSwordSkillManager(swordSkillManager);
-
-        NiszczycielManager niszczycielManager = new NiszczycielManager(this);
-        getServer().getPluginManager().registerEvents(niszczycielManager, this);
 
         if (getCommand("narzedzia") != null) {
             getCommand("narzedzia").setExecutor((sender, command, label, args) -> {

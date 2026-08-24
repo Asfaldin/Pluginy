@@ -14,7 +14,7 @@ public final class CustomItemKeys {
 
     /**
      * Wartość: identyfikator typu customowego itemu ze sklepu (np. "ZOMBIE" dla spawnera,
-     * "NISZCZYCIEL" dla specjalnego kilofa) - ustawiana przez ShopManager przy zakupie,
+     * "GENERATOR_BRUK_T1" dla generatora bruku) - ustawiana przez ShopManager przy zakupie,
      * odczytywana przez moduł, który nadaje itemowi realne zachowanie (spawners, tools...).
      */
     public static final NamespacedKey CUSTOM_ITEM_ID = new NamespacedKey("mainplugins", "custom-item-id");

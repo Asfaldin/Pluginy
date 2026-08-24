@@ -307,7 +307,7 @@ public class ShopManager implements Listener {
      */
     private static final String[] KOLEJNOSC_KATEGORII = {
             "bloki", "roslinki", "drewno", "mineraly", "moby",
-            "narzedzia", "jedzenie", "dekoracje", "specjalne", "spawnery", "ryby_wedkarskie"
+            "narzedzia", "jedzenie", "dekoracje", "kolekcja", "spawnery", "ryby_wedkarskie"
     };
 
     /**
@@ -858,7 +858,7 @@ public class ShopManager implements Listener {
         kupIlosc(player, ref, ilosc);
     }
 
-    /** Buduje kupiony item; jeśli wpis ma custom-id, doczepia PDC tag + display-name + lore (patrz kategorie "spawnery"/"specjalne"). */
+    /** Buduje kupiony item; jeśli wpis ma custom-id, doczepia PDC tag + display-name + lore (patrz kategorie "spawnery"/"kolekcja"). */
     private ItemStack stworzKupionyItem(Material material, int amount, String configPath) {
         String customId = sklepConfig.getString(configPath + "custom-id", null);
         String displayName = sklepConfig.getString(configPath + "display-name", null);

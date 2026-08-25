@@ -49,7 +49,7 @@ commands:
   discord:
     description: Wyślij link zaproszenia na Discorda serwera
   "@dajcustom":
-    description: (Admin) Wydaj/testuj custom item z rejestru (custom-items.yml)
+    description: (Admin) Wydaj/testuj dowolny custom item - custom-items.yml, ewoluujace narzedzia lub Kilof Niflheim
     permission: mainplugins.core.dajcustom
     permission-message: "&cNie masz permisji do tej komendy!"
     usage: /<command> <id> [gracz] [ilość]

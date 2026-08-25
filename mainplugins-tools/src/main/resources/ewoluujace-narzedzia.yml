@@ -1,0 +1,628 @@
+# ==========================================================================
+# Silnik ewoluujacych narzedzi (EvolvingToolManager) - kazdy wpis to w pelni
+# samodzielna definicja narzedzia z wlasnym poziomowaniem, prawdziwymi enczantami
+# rosnacymi z poziomem i STALYMI kamieniami milowymi odblokowujacymi efekty
+# (dokladnie wzor Kilofa Niflheim - PickaxeSkillManager w tym module, ktory
+# swiadomie NIE korzysta z tego pliku i zostaje osobno). Zero losowosci przy
+# odblokowywaniu - w odroznieniu od dawnego systemu kart (usuniety), kazdy
+# poziom-kamien-milowy zawsze daje TO SAMO, zdefiniowane tutaj.
+#
+# WAZNE: te narzedzia NIE sa przypisane do gracza (brak soulbindingu) - mozna
+# je swobodnie wyrzucic, wystawic na targu, wreczyc innemu graczowi. Kazde ma
+# wlasny custom-id (klucz ponizej, WIELKIMI LITERAMI) - ten sam mechanizm co
+# custom-items.yml (mainplugins-core): sklep/questy moga sie do niego odwolac
+# przez custom-id identycznie jak do zwyklego custom itemu.
+#
+# Wydawanie/testowanie: /@dajewoluujace <id> [gracz]
+# Przeladowanie na zywo: /@reloadnarzedzia
+#
+# Pola kazdego wpisu (pod kluczem narzedzia.<ID>):
+#   kategoria     - WYMAGANE. Dwie rodziny:
+#                     NARZEDZIA: PICKAXE | AXE | HOE | SWORD | SHOVEL - "uzycie"
+#                       to kopanie/atak Z REKI (main-hand).
+#                     ZBROJA: HELMET | CHESTPLATE | LEGGINGS | BOOTS - "uzycie"
+#                       to OTRZYMANIE OBRAZEN podczas gdy przedmiot jest ZALOZONY
+#                       (nie main-hand!). Aury/enczanty tez licza sie z wlasciwego
+#                       slotu zbroi, nie z reki.
+#   material      - WYMAGANE. Nazwa Materialu Bukkit/Paper (STALY, nie zmienia
+#                   sie z poziomem - tak jak PickaxeType).
+#   nazwa         - Wlasna nazwa, kody koloru "&" (np. "&b&lNazwa").
+#   model         - opcjonalne. Wlasny model z resourcepacka, Key "ns:sciezka"
+#                   bez ".json" - patrz komentarz w custom-items.yml po pelny opis.
+#                   W apce (EvolvingToolsPage): przycisk "Wygeneruj pliki modelu
+#                   w paczce" tworzy oba pliki JSON + pusta tekstura automatycznie
+#                   w wybranej paczce Texture Pack, identycznie jak w Custom itemach.
+#   glint         - opcjonalne, domyslnie false.
+#   max-poziom    - opcjonalne, domyslnie 30.
+#   exp-na-poziom - opcjonalne, domyslnie 50 (1 exp = 1 uzycie: kopanie/atak/otrzymanie obrazen).
+#
+#   staty - lista CUSTOM nazwanych statystyk (np. "Jakosc" zamiast wanilijskiej
+#           Wydajnosci) - pokazuja sie w lore/hubie, inne moduly moga je odczytac.
+#           OPCJONALNIE moga byc BEZPOSREDNIO PODPIETE pod prawdziwy enczant:
+#             - id: jakosc
+#               nazwa: "Jakość"
+#               bazowa: 0            # wartosc na poziomie 0
+#               na-poziom: 0.5       # przyrost za kazdy poziom
+#               max: 15              # sufit
+#               enchant: efficiency  # OPCJONALNE - klucz enczantu do podpiecia
+#               enchant-mnoznik: 0.25  # wartosc-staty * mnoznik = REALNY poziom
+#                                       # enczantu (w dol do calkowitej). Przyklad:
+#                                       # "Jakosc" 0-15 z mnoznikiem 0.25 daje
+#                                       # Wydajnosc 0-3 - "Jakosc to w tym systemie
+#                                       # 1/4 Wydajnosci". Bez enchant-mnoznik = 1
+#                                       # (1 punkt staty = 1 poziom enczantu).
+#                                       # Dziala z KAZDYM enczantem Bukkita, nie
+#                                       # tylko Wydajnoscia/Fortuna - podpiecie
+#                                       # samemu wybierasz per stat.
+#           Bez pola "enchant" stat jest czysto informacyjny jak dotychczas -
+#           nie napedza zadnego enczantu.
+#
+#   enchanty - DRUGI, NIEZALEZNY sposob na prawdziwe enczanty - jawna progresja
+#           bez podpiecia pod zaden stat (dla enczantow, ktorym nie chcesz dawac
+#           wlasnej nazwy/paska w lore):
+#             - enchant: efficiency        # nazwa klucza enczantu (minecraft:...)
+#               progresja: {1: 1, 10: 2, 25: 3}   # poziom narzedzia -> poziom enczantu
+#
+#   kamienie-milowe - mapa POZIOM -> lista efektow ODBLOKOWANYCH NA STALE od
+#           tego poziomu (jak milestony Niflheima 10/20/30). Dla ZBROI (patrz
+#           kategoria) "poziom" liczy sie z otrzymywania obrazen, nie kopania/ataku.
+#           Kazdy efekt:
+#             typ - pelna biblioteka hookow (EffectType.java), 20 typow:
+#               DUPLIKUJ_DROP        - szansa na zdublowanie dropu wykopanego bloku (x2;
+#                                      kilka wpisow z rosna szansa dziala jak wiekszy mnoznik)
+#               OBSZAR_KRUSZENIA     - szansa na skruszenie do kwota BEZPOSREDNICH sasiadow
+#                                      tego samego Materialu (twardy limit silnika: 6)
+#               ZYLA_GORNICZA        - "vein miner" - szansa na skruszenie do kwota
+#                                      POLACZONYCH (flood-fill) blokow tego samego Materialu
+#                                      (twardy limit silnika: 32, dla bezpieczenstwa serwera)
+#               TELEKINEZA           - szansa, ze drop TEGO wykopania trafia prosto do
+#                                      ekwipunku, bez fizycznego itemu na ziemi
+#               MAGNES               - szansa na przyciagniecie pobliskich dropow (promien)
+#               BONUS_PRZEDMIOT      - szansa na DODATKOWY przedmiot - przedmiot-custom-id
+#                                      (przez CustomItemService, ma pierwszenstwo) LUB
+#                                      przedmiot-material (zwykly Material), ilosc = kwota-*.
+#                                      Najbardziej uniwersalny hook pod "mega custom" nagrody -
+#                                      klucz do skrzyni, trofeum, cokolwiek zarejestrowane.
+#               BONUS_PIENIADZE      - szansa na bonusowa wyplate $ (kwota-*)
+#               BONUS_XP             - szansa na bonusowy orb XP (kwota-* = ilosc)
+#               JACKPOT              - jak BONUS_PIENIADZE, ale rzadsze i z wieksza oprawa
+#                                      (tytul na ekranie, dedykowany dzwiek) - pod duze,
+#                                      rzadkie jednorazowe wyplaty
+#               AURA_MIKSTURY        - staly efekt mikstury (mikstura/poziom-mikstury), gdy
+#                                      narzedzie trzymane w rece
+#               PVP_BONUS_OBRAZENIA  - staly bonus obrazen w walce (kwota-* = ilosc obrazen)
+#               NIENISZCZALNY        - narzedzie nigdy nie traci wytrzymalosci
+#               SPECJALNY_SILK_TOUCH - wlasny odpowiednik Silk Touch (patrz CustomItemKeys) -
+#                                      zbiera CALY custom-blok generatora zamiast zwyklego dropu
+#               CZASTKI_PRZY_TRIGGERZE - czysto kosmetyczna czastka/dzwiek przy triggerze,
+#                                      bez zadnego mechanicznego efektu
+#               PODWOJNY_ATAK        - SWORD/ZBROJA - szansa na natychmiastowy DRUGI cios w
+#                                      to samo trafione stworzenie (na zbroi = kontratak,
+#                                      "cel" to napastnik, nie ofiara)
+#               DEBUFF_PRZECIWNIKA   - SWORD/ZBROJA - szansa na nalozenie mikstury (mikstura/
+#                                      poziom-mikstury) na trafione/atakujace stworzenie,
+#                                      czas trwania w tickach = kwota-* (np. "kolczasta zbroja")
+#               ODBICIE_OBRAZEN      - TYLKO ZBROJA (wymaga znajomosci atakujacego) - szansa
+#                                      na odbicie kwota-* % otrzymanych obrazen z powrotem na
+#                                      atakujacego
+#               LECZENIE             - szansa na uleczenie gracza o kwota-* HP przy triggerze
+#               SYCENIE              - szansa na przywrocenie kwota-* punktow sytosci/glodu
+#               PIORUN               - rzadka szansa na uderzenie piorunem w miejsce triggera
+#                                      (realne obrazenia, jesli trafia istote)
+#             szansa-bazowa/szansa-na-poziom/szansa-max  - % szansy, TRYB LINIOWY (skaluje
+#                               sie z POZIOMEM NARZEDZIA, nie z kamieniem milowym - raz
+#                               odblokowane, rosnie dalej az do capu)
+#             szansa-progresja - OPCJONALNY, ALTERNATYWNY tryb: mapa POZIOM -> SZANSA%, np.
+#                               {6: 8, 15: 12, 25: 18, 30: 25} - pelna, reczna kontrola co
+#                               dokladnie na ktorym poziomie, zamiast jednego wzoru na caly
+#                               zakres. Gdy NIEPUSTA, calkowicie ZASTEPUJE szansa-bazowa/
+#                               szansa-na-poziom/szansa-max dla tego efektu.
+#             kwota-bazowa/kwota-na-poziom - kwota $/XP/obrazen/ilosc/% (tryb liniowy, jak wyzej)
+#             kwota-progresja  - jak szansa-progresja, tylko dla kwoty (POZIOM -> KWOTA)
+#             mikstura/poziom-mikstury     - AURA_MIKSTURY/DEBUFF_PRZECIWNIKA (np. "fast_digging", 0=I)
+#             czastka/dzwiek                - dekoracja (Particle/Sound enum, opcjonalne)
+#             promien                        - MAGNES (promien przyciagania dropow)
+#             przedmiot-material/przedmiot-custom-id - BONUS_PRZEDMIOT (patrz wyzej)
+#
+#   pasywne - JAK kamienie-milowe, ale aktywne OD POZIOMU 1 (bez odblokowania) -
+#           pod ciagle rosnace auto-staty (np. szansa na bonus XP).
+#
+#   czastki-otoczenia - opcjonalne. Nazwa Particle - stala aura wokol gracza,
+#           gdy narzedzie trzymane w rece (jak snieg Kilofa Niflheim).
+# ==========================================================================
+
+narzedzia:
+
+  # ==========================================================================
+  # Prawdziwe nagrody (custom tekstury/modele od uzytkownika, 2026-08-24) -
+  # KILOF_ODKRYWCY to faktyczny quest-1 starter (LevelableToolsManager#
+  # dajEwoluujacyKilof), SIEKIERA_BERSERKERA faktyczna nagroda questa "Drwal
+  # i Siewca" (dajEwoluujacaSiekiere) - patrz LevelableToolsManager.java.
+  # SWIADOMA ROZNICA RZADKOSCI: kilof = ZWYKLY (skromny zestaw, bez blasku),
+  # siekiera = RZADKA (mocniejsza, wiecej kamieni milowych, blask) - kazdy
+  # mocny odpowiednio DO WLASNEJ kategorii rzadkosci, nie oba na maksa.
+  # Wlasny model: assets/mainplugins/{items,models/item,textures/item}/
+  # kilof_mayhem.* / siekiera_mayhem.* w resourcepacku (nazwy plikow
+  # historyczne, custom-id/nazwa w YAML juz nie "Mayhem" - nazwa pliku to
+  # tylko wewnetrzna sciezka zasobu, gracz jej nie widzi) - wymaga ponownego
+  # zbudowania/wgrania paczki (zip zawartosci resourcepack/, NIE folderu -
+  # patrz feedback_resourcepack_zip_powershell), zeby gracze faktycznie
+  # zobaczyli nowy wyglad.
+  # ==========================================================================
+
+  KILOF_ODKRYWCY:
+    kategoria: PICKAXE
+    material: DIAMOND_PICKAXE
+    nazwa: "&fKilof Odkrywcy"
+    model: "mainplugins:kilof_mayhem"
+    glint: false
+    max-poziom: 30
+    exp-na-poziom: 50
+    staty:
+      - id: jakosc
+        nazwa: "Jakość"
+        bazowa: 0
+        na-poziom: 0.35
+        max: 10
+        enchant: efficiency
+        enchant-mnoznik: 0.2
+    kamienie-milowe:
+      10:
+        - typ: DUPLIKUJ_DROP
+          szansa-bazowa: 5
+          szansa-na-poziom: 0.2
+          szansa-max: 12
+      20:
+        - typ: AURA_MIKSTURY
+          mikstura: fast_digging
+          poziom-mikstury: 0
+      30:
+        - typ: BONUS_PIENIADZE
+          szansa-bazowa: 10
+          kwota-bazowa: 2
+    pasywne:
+      - typ: BONUS_XP
+        szansa-bazowa: 2
+        szansa-na-poziom: 0.1
+        szansa-max: 6
+        kwota-bazowa: 1
+
+  SIEKIERA_BERSERKERA:
+    kategoria: AXE
+    material: DIAMOND_AXE
+    nazwa: "&6&lSiekiera Berserkera"
+    model: "mainplugins:siekiera_mayhem"
+    glint: true
+    max-poziom: 30
+    exp-na-poziom: 45
+    staty:
+      - id: precyzja
+        nazwa: "Precyzja"
+        bazowa: 0
+        na-poziom: 0.4
+        max: 12
+        enchant: sharpness
+        enchant-mnoznik: 0.35
+    enchanty:
+      - enchant: efficiency
+        progresja: {1: 1, 15: 2, 30: 3}
+    kamienie-milowe:
+      8:
+        - typ: DUPLIKUJ_DROP
+          szansa-bazowa: 10
+          szansa-na-poziom: 0.4
+          szansa-max: 25
+          czastka: FLAME
+      14:
+        - typ: PVP_BONUS_OBRAZENIA
+          kwota-bazowa: 1.5
+          kwota-na-poziom: 0.08
+      18:
+        - typ: AURA_MIKSTURY
+          mikstura: strength
+          poziom-mikstury: 0
+      22:
+        - typ: OBSZAR_KRUSZENIA
+          szansa-bazowa: 12
+          szansa-na-poziom: 0.4
+          szansa-max: 30
+          kwota-bazowa: 2
+          kwota-na-poziom: 0.1
+      26:
+        - typ: ZYLA_GORNICZA
+          szansa-bazowa: 3
+          szansa-na-poziom: 0.15
+          szansa-max: 8
+          kwota-bazowa: 8
+          kwota-na-poziom: 0.4
+          czastka: LAVA
+      30:
+        - typ: JACKPOT
+          szansa-bazowa: 0.6
+          kwota-bazowa: 180
+          kwota-na-poziom: 10
+        - typ: BONUS_PIENIADZE
+          szansa-bazowa: 15
+          kwota-bazowa: 4
+    pasywne:
+      - typ: BONUS_XP
+        szansa-bazowa: 3
+        szansa-na-poziom: 0.2
+        szansa-max: 10
+        kwota-bazowa: 1
+    czastki-otoczenia: FLAME
+
+  # Pokazowy kilof - katalog WSZYSTKICH efektow, ktore faktycznie DZIALAJA na PICKAXE
+  # (kopanie nie ma "trafionego stworzenia" - PODWOJNY_ATAK/DEBUFF_PRZECIWNIKA/
+  # ODBICIE_OBRAZEN sa TYLKO na SWORD/ZBROJA, patrz MIECZ_START i HELM_START itd.
+  # nizej) - wzorcowy przyklad "co da sie zrobic", nie koniecznie docelowy balans.
+  # Dwie dodatkowe rzeczy pokazane tutaj: staty.jakosc jest BEZPOSREDNIO PODPIETA
+  # pod prawdziwa Wydajnosc (enchant-mnoznik 0.25 = "Jakosc to 1/4 Wydajnosci"),
+  # a DUPLIKUJ_DROP na poziomie 6 uzywa jawnej szansa-progresja zamiast wzoru
+  # liniowego - dwa alternatywne style konfiguracji obok siebie do porownania.
+  KILOF_START:
+    kategoria: PICKAXE
+    material: DIAMOND_PICKAXE
+    nazwa: "&b&lKilof Wydajnościowy"
+    max-poziom: 30
+    exp-na-poziom: 50
+    staty:
+      - id: jakosc
+        nazwa: "Jakość"
+        bazowa: 0
+        na-poziom: 0.5
+        max: 15
+        enchant: efficiency
+        enchant-mnoznik: 0.25
+    enchanty:
+      - enchant: fortune
+        progresja: {15: 1, 30: 2}
+    kamienie-milowe:
+      3:
+        - typ: CZASTKI_PRZY_TRIGGERZE
+          szansa-bazowa: 100
+          czastka: CRIT
+          dzwiek: BLOCK_AMETHYST_BLOCK_CHIME
+      6:
+        - typ: DUPLIKUJ_DROP
+          szansa-progresja: {6: 8, 15: 12, 25: 18, 30: 25}
+          czastka: HAPPY_VILLAGER
+      9:
+        - typ: NIENISZCZALNY
+      12:
+        - typ: OBSZAR_KRUSZENIA
+          szansa-bazowa: 10
+          szansa-na-poziom: 0.4
+          szansa-max: 30
+          kwota-bazowa: 2
+          kwota-na-poziom: 0.1
+      15:
+        - typ: AURA_MIKSTURY
+          mikstura: fast_digging
+          poziom-mikstury: 0
+      18:
+        - typ: TELEKINEZA
+          szansa-bazowa: 15
+          szansa-na-poziom: 0.5
+          szansa-max: 40
+      19:
+        - typ: PIORUN
+          szansa-bazowa: 0.5
+          szansa-na-poziom: 0.03
+          szansa-max: 2
+      21:
+        - typ: MAGNES
+          szansa-bazowa: 100
+          promien: 6
+      24:
+        - typ: BONUS_PRZEDMIOT
+          szansa-bazowa: 3
+          szansa-na-poziom: 0.1
+          szansa-max: 8
+          przedmiot-custom-id: TROFEUM_GLOWA_GORNIKA
+          kwota-bazowa: 1
+      27:
+        - typ: ZYLA_GORNICZA
+          szansa-bazowa: 2
+          szansa-na-poziom: 0.1
+          szansa-max: 6
+          kwota-bazowa: 8
+          kwota-na-poziom: 0.5
+        - typ: PVP_BONUS_OBRAZENIA
+          kwota-bazowa: 1
+      30:
+        - typ: JACKPOT
+          szansa-bazowa: 0.5
+          kwota-bazowa: 200
+          kwota-na-poziom: 10
+        - typ: BONUS_PIENIADZE
+          szansa-bazowa: 15
+          kwota-bazowa: 3
+          kwota-na-poziom: 0.2
+        - typ: SPECJALNY_SILK_TOUCH
+    pasywne:
+      - typ: BONUS_XP
+        szansa-bazowa: 3
+        szansa-na-poziom: 0.2
+        szansa-max: 10
+        kwota-bazowa: 2
+
+  SIEKIERA_START:
+    kategoria: AXE
+    material: DIAMOND_AXE
+    nazwa: "&6&lSiekiera Drwala"
+    max-poziom: 30
+    exp-na-poziom: 45
+    staty:
+      - id: precyzja
+        nazwa: "Precyzja"
+        bazowa: 0
+        na-poziom: 0.4
+        max: 12
+    enchanty:
+      - enchant: efficiency
+        progresja: {1: 1, 15: 2, 30: 3}
+    kamienie-milowe:
+      10:
+        - typ: DUPLIKUJ_DROP
+          szansa-bazowa: 8
+          szansa-na-poziom: 0.3
+          szansa-max: 20
+          czastka: SPORE
+      20:
+        - typ: AURA_MIKSTURY
+          mikstura: haste
+          poziom-mikstury: 0
+      30:
+        - typ: BONUS_PIENIADZE
+          szansa-bazowa: 12
+          kwota-bazowa: 3
+    pasywne:
+      - typ: BONUS_XP
+        szansa-bazowa: 3
+        szansa-na-poziom: 0.2
+        szansa-max: 10
+        kwota-bazowa: 1
+
+  MOTYKA_START:
+    kategoria: HOE
+    material: DIAMOND_HOE
+    nazwa: "&a&lMotyka Siewcy"
+    max-poziom: 30
+    exp-na-poziom: 40
+    staty:
+      - id: urodzajnosc
+        nazwa: "Urodzajność"
+        bazowa: 0
+        na-poziom: 0.4
+        max: 12
+    enchanty:
+      - enchant: efficiency
+        progresja: {1: 1, 15: 2, 30: 3}
+    kamienie-milowe:
+      10:
+        - typ: DUPLIKUJ_DROP
+          szansa-bazowa: 10
+          szansa-na-poziom: 0.3
+          szansa-max: 25
+          czastka: HAPPY_VILLAGER
+      20:
+        - typ: AURA_MIKSTURY
+          mikstura: haste
+          poziom-mikstury: 0
+      30:
+        - typ: MAGNES
+          szansa-bazowa: 100
+          promien: 5
+    pasywne:
+      - typ: BONUS_XP
+        szansa-bazowa: 2
+        szansa-na-poziom: 0.15
+        szansa-max: 8
+        kwota-bazowa: 1
+
+  # SWORD ma dostep do PODWOJNY_ATAK/DEBUFF_PRZECIWNIKA (potrzebuja "trafionego
+  # stworzenia" - dziala tylko na SWORD i ZBROJA, patrz komentarz przy KILOF_START).
+  MIECZ_START:
+    kategoria: SWORD
+    material: DIAMOND_SWORD
+    nazwa: "&c&lMiecz Obrońcy"
+    max-poziom: 30
+    exp-na-poziom: 40
+    staty:
+      - id: zajadlosc
+        nazwa: "Zajadłość"
+        bazowa: 0
+        na-poziom: 0.4
+        max: 10
+        enchant: sharpness
+        enchant-mnoznik: 0.3
+    kamienie-milowe:
+      10:
+        - typ: PVP_BONUS_OBRAZENIA
+          kwota-bazowa: 1
+      15:
+        - typ: DEBUFF_PRZECIWNIKA
+          szansa-bazowa: 10
+          szansa-na-poziom: 0.3
+          szansa-max: 25
+          mikstura: slowness
+          poziom-mikstury: 0
+          kwota-bazowa: 40
+          kwota-na-poziom: 1
+      20:
+        - typ: AURA_MIKSTURY
+          mikstura: strength
+          poziom-mikstury: 0
+      25:
+        - typ: PODWOJNY_ATAK
+          szansa-bazowa: 5
+          szansa-na-poziom: 0.3
+          szansa-max: 15
+      30:
+        - typ: BONUS_PIENIADZE
+          szansa-bazowa: 10
+          kwota-bazowa: 4
+    pasywne:
+      - typ: BONUS_XP
+        szansa-bazowa: 3
+        szansa-na-poziom: 0.2
+        szansa-max: 10
+        kwota-bazowa: 1
+
+  LOPATA_START:
+    kategoria: SHOVEL
+    material: DIAMOND_SHOVEL
+    nazwa: "&f&lŁopata Kopacza"
+    max-poziom: 30
+    exp-na-poziom: 45
+    enchanty:
+      - enchant: efficiency
+        progresja: {1: 1, 15: 2, 30: 3}
+    kamienie-milowe:
+      10:
+        - typ: DUPLIKUJ_DROP
+          szansa-bazowa: 8
+          szansa-na-poziom: 0.3
+          szansa-max: 20
+      20:
+        - typ: SPECJALNY_SILK_TOUCH
+      30:
+        - typ: NIENISZCZALNY
+
+  # ==========================================================================
+  # ZBROJA - kategoria HELMET/CHESTPLATE/LEGGINGS/BOOTS: "uzycie" to OTRZYMANIE
+  # OBRAZEN podczas gdy przedmiot jest ZALOZONY (nie kopanie/atak jak wyzej), patrz
+  # komentarz kategoria na gorze pliku. ODBICIE_OBRAZEN dziala TYLKO tutaj (wymaga
+  # znajomosci atakujacego z perspektywy ofiary) - na narzedziach zawsze no-op.
+  # ==========================================================================
+
+  HELM_START:
+    kategoria: HELMET
+    material: DIAMOND_HELMET
+    nazwa: "&b&lHełm Obrońcy"
+    max-poziom: 30
+    exp-na-poziom: 30
+    staty:
+      - id: odpornosc
+        nazwa: "Odporność"
+        bazowa: 0
+        na-poziom: 0.3
+        max: 10
+        enchant: protection
+        enchant-mnoznik: 0.4
+    enchanty:
+      - enchant: respiration
+        progresja: {10: 1, 20: 2, 30: 3}
+    kamienie-milowe:
+      10:
+        - typ: LECZENIE
+          szansa-bazowa: 5
+          szansa-na-poziom: 0.2
+          szansa-max: 15
+          kwota-bazowa: 2
+      20:
+        - typ: SYCENIE
+          szansa-bazowa: 100
+          kwota-bazowa: 1
+      30:
+        - typ: BONUS_XP
+          szansa-bazowa: 10
+          kwota-bazowa: 3
+    pasywne:
+      - typ: CZASTKI_PRZY_TRIGGERZE
+        szansa-bazowa: 20
+        czastka: HEART
+
+  KLATA_START:
+    kategoria: CHESTPLATE
+    material: DIAMOND_CHESTPLATE
+    nazwa: "&b&lNapierśnik Obrońcy"
+    max-poziom: 30
+    exp-na-poziom: 30
+    staty:
+      - id: odpornosc
+        nazwa: "Odporność"
+        bazowa: 0
+        na-poziom: 0.3
+        max: 10
+        enchant: protection
+        enchant-mnoznik: 0.4
+    kamienie-milowe:
+      10:
+        - typ: ODBICIE_OBRAZEN
+          szansa-bazowa: 15
+          szansa-na-poziom: 0.4
+          szansa-max: 35
+          kwota-bazowa: 10
+          kwota-na-poziom: 0.3
+      20:
+        - typ: NIENISZCZALNY
+      30:
+        - typ: DEBUFF_PRZECIWNIKA
+          szansa-bazowa: 10
+          szansa-na-poziom: 0.3
+          szansa-max: 25
+          mikstura: weakness
+          poziom-mikstury: 0
+          kwota-bazowa: 60
+
+  NOGAWKI_START:
+    kategoria: LEGGINGS
+    material: DIAMOND_LEGGINGS
+    nazwa: "&b&lNogawki Obrońcy"
+    max-poziom: 30
+    exp-na-poziom: 30
+    staty:
+      - id: odpornosc
+        nazwa: "Odporność"
+        bazowa: 0
+        na-poziom: 0.3
+        max: 10
+        enchant: protection
+        enchant-mnoznik: 0.4
+    kamienie-milowe:
+      10:
+        - typ: AURA_MIKSTURY
+          mikstura: speed
+          poziom-mikstury: 0
+      20:
+        - typ: PODWOJNY_ATAK
+          szansa-bazowa: 5
+          szansa-na-poziom: 0.2
+          szansa-max: 15
+      30:
+        - typ: SYCENIE
+          szansa-bazowa: 100
+          kwota-bazowa: 2
+
+  BUTY_START:
+    kategoria: BOOTS
+    material: DIAMOND_BOOTS
+    nazwa: "&b&lButy Obrońcy"
+    max-poziom: 30
+    exp-na-poziom: 30
+    staty:
+      - id: lekkosc
+        nazwa: "Lekkość"
+        bazowa: 0
+        na-poziom: 0.2
+        max: 5
+        enchant: feather_falling
+        enchant-mnoznik: 1
+    enchanty:
+      - enchant: depth_strider
+        progresja: {15: 1, 30: 2}
+    kamienie-milowe:
+      10:
+        - typ: MAGNES
+          szansa-bazowa: 100
+          promien: 4
+      20:
+        - typ: BONUS_PIENIADZE
+          szansa-bazowa: 8
+          kwota-bazowa: 2
+      30:
+        - typ: JACKPOT
+          szansa-bazowa: 0.5
+          kwota-bazowa: 100

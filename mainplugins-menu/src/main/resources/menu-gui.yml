@@ -44,13 +44,6 @@ przyciski:
       - "Odbierz nagrody za zadania (/zadania)"
     komenda: "zadania zmenu"
 
-  - slot: 15
-    material: CHEST
-    nazwa: "Schowek"
-    lore:
-      - "Bezpieczne miejsce na przedmioty (/itemy)"
-    komenda: "itemy zmenu"
-
   - slot: 33
     material: HOPPER
     nazwa: "Szybka Sprzedaż"

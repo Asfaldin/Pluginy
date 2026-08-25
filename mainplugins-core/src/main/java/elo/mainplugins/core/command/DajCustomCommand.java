@@ -1,6 +1,8 @@
 package elo.mainplugins.core.command;
 
+import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.CustomItemService;
+import elo.mainplugins.core.api.ToolsService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -9,18 +11,35 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
- * /@dajcustom <id> [gracz] [ilość] - wydaje/testuje custom item z rejestru
- * (patrz CustomItemManager, custom-items.yml). Id dopasowywane jest bez
- * względu na wielkość liter wpisaną w komendzie (samo w sobie zawsze
- * WIELKIMI LITERAMI, patrz komentarz w custom-items.yml) - wygodniej się wpisuje.
+ * /@dajcustom <id> [gracz] [ilość] - JEDYNA komenda do wydawania/testowania dowolnego
+ * "custom itemu" na serwerze, niezależnie z którego rejestru pochodzi - zamiast osobnej,
+ * ręcznie pisanej komendy Javy dla każdego nowego przedmiotu (co z czasem zrobiło się
+ * bałaganem w mainplugins-tools: @dajkilofa/@dajsniezny/@addcustompickaxe/@dajewoluujace,
+ * każda robiąca dokładnie to samo dla jednego, na sztywno wpisanego id) sprawdza po
+ * kolei TRZY źródła:
+ *   1. {@link CustomItemService} - statyczny rejestr custom-items.yml (mainplugins-core)
+ *   2. {@link ToolsService#ewoluujaceIds()} - silnik ewoluujących narzędzi z poziomami/
+ *      milestone'ami (ewoluujace-narzedzia.yml, mainplugins-tools)
+ *   3. {@link ToolsService#NIFLHEIM_ID} - Kilof Niflheim (PickaxeSkillManager, WŁASNY,
+ *      świadomie nietknięty silnik kart/milestone'ów - jedyny przedmiot na serwerze,
+ *      który nadal przypisuje się duszami do gracza)
+ * Dodanie NOWEGO testowego przedmiotu do dowolnego z tych trzech rejestrów automatycznie
+ * czyni go dostępnym pod tą komendą (i w tab-completion) - bez dotykania Javy/plugin.yml.
+ *
+ * ToolsService pobierany świeżo z {@link CoreAPI} przy KAŻDYM wywołaniu (nie w konstruktorze) -
+ * mainplugins-tools ładuje się PO mainplugins-core, więc w momencie budowy tej komendy
+ * (MainpluginsCore#onEnable) serwis jeszcze nie istnieje w ServicesManager.
  */
 public class DajCustomCommand implements CommandExecutor, TabCompleter {
 
@@ -38,9 +57,14 @@ public class DajCustomCommand implements CommandExecutor, TabCompleter {
         }
 
         String id = args[0].toUpperCase(Locale.ROOT);
-        if (!customItemService.exists(id)) {
+        ToolsService toolsService = CoreAPI.getToolsService();
+        boolean znanyCustom = customItemService.exists(id);
+        boolean znanyEwoluujacy = !znanyCustom && toolsService != null && toolsService.ewoluujaceIds().contains(id);
+        boolean niflheim = !znanyCustom && !znanyEwoluujacy && id.equals(ToolsService.NIFLHEIM_ID) && toolsService != null;
+
+        if (!znanyCustom && !znanyEwoluujacy && !niflheim) {
             sender.sendMessage(Component.text("Nieznany custom item: " + id + ". Dostępne: "
-                    + String.join(", ", customItemService.ids()), NamedTextColor.RED));
+                    + String.join(", ", wszystkieId(toolsService)), NamedTextColor.RED));
             return true;
         }
 
@@ -68,19 +92,39 @@ public class DajCustomCommand implements CommandExecutor, TabCompleter {
             }
         }
 
-        var item = customItemService.create(id, ilosc);
-        var leftover = target.getInventory().addItem(item);
-        leftover.values().forEach(i -> target.getWorld().dropItemNaturally(target.getLocation(), i));
+        if (znanyCustom) {
+            wydaj(target, customItemService.create(id, ilosc));
+        } else {
+            // Narzędzia (ewoluujące i Niflheim) się nie stackują - każda sztuka to osobny ItemStack.
+            for (int i = 0; i < ilosc; i++) {
+                ItemStack item = niflheim ? toolsService.stworzKilofNiflheim(target) : toolsService.stworzEwoluujaceNarzedzie(id);
+                if (item != null) wydaj(target, item);
+            }
+        }
 
         sender.sendMessage(Component.text("Wydano " + ilosc + "x " + id + " dla " + target.getName() + ".", NamedTextColor.GREEN));
         return true;
+    }
+
+    private void wydaj(Player target, ItemStack item) {
+        var leftover = target.getInventory().addItem(item);
+        leftover.values().forEach(i -> target.getWorld().dropItemNaturally(target.getLocation(), i));
+    }
+
+    private Set<String> wszystkieId(ToolsService toolsService) {
+        Set<String> wynik = new LinkedHashSet<>(customItemService.ids());
+        if (toolsService != null) {
+            wynik.addAll(toolsService.ewoluujaceIds());
+            wynik.add(ToolsService.NIFLHEIM_ID);
+        }
+        return wynik;
     }
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String[] args) {
         if (args.length == 1) {
             List<String> wynik = new ArrayList<>();
-            for (String id : customItemService.ids()) {
+            for (String id : wszystkieId(CoreAPI.getToolsService())) {
                 if (id.startsWith(args[0].toUpperCase(Locale.ROOT))) wynik.add(id);
             }
             return wynik;

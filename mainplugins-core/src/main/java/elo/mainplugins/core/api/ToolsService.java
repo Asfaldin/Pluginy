@@ -3,6 +3,8 @@ package elo.mainplugins.core.api;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.Set;
+
 /**
  * Opcjonalny kontrakt narzędzi - implementuje go i rejestruje w ServicesManager
  * wyłącznie mainplugins-tools. Ten sam wzorzec co {@link IslandService}: reszta
@@ -11,6 +13,9 @@ import org.bukkit.inventory.ItemStack;
  * musi mieć na to sensowny fallback.
  */
 public interface ToolsService {
+
+    /** Custom-id Kilofa Niflheim pod {@link #stworzKilofNiflheim(Player)} - patrz DajCustomCommand (mainplugins-core, /@dajcustom). */
+    String NIFLHEIM_ID = "KILOF_NIFLHEIM";
 
     /**
      * Daje graczowi jego startowy kilof - typ Wydajnościowy, poziom 1 (patrz
@@ -48,11 +53,12 @@ public interface ToolsService {
     /**
      * NAJWYŻSZY poziom (1-100) wśród WSZYSTKICH siekier gracza - 0, jeśli nie ma żadnej.
      * Siekiera (jak kilof) nie ma już tierów zmieniających Material - tylko statystyczny
-     * poziom (AxeSkillManager), stąd sprawdzanie POZIOMU zamiast Material w questach.
+     * poziom (EvolvingToolManager w mainplugins-tools), stąd sprawdzanie POZIOMU zamiast
+     * Material w questach.
      */
     int poziomSiekiery(Player player);
 
-    /** Jak {@link #poziomSiekiery(Player)}, ale miecz (SwordSkillManager). */
+    /** Jak {@link #poziomSiekiery(Player)}, ale miecz (EvolvingToolManager). */
     int poziomMiecza(Player player);
 
     /**
@@ -63,4 +69,25 @@ public interface ToolsService {
      * logiki typu/poziomu kilofa poza jego własnym modułem.
      */
     boolean maWiecznaZime(ItemStack tool);
+
+    /**
+     * Stwórz DOWOLNE narzędzie z silnika ewoluujących narzędzi (EvolvingToolManager w
+     * mainplugins-tools, patrz ewoluujace-narzedzia.yml) po jego custom-id, poziom 1 -
+     * np. "KILOF_ODKRYWCY", "SIEKIERA_BERSERKERA". Zwraca null, jeśli id nieznane. Pod
+     * QuestManager#wreczJednaNagrode (RewardEntry.CustomItemReward) - fallback, gdy id
+     * nie jest zarejestrowane w custom-items.yml (CustomItemService), żeby te narzędzia
+     * dało się wpiąć pod nagrodę questa DOKŁADNIE tak samo jak zwykły custom item.
+     */
+    ItemStack stworzEwoluujaceNarzedzie(String id);
+
+    /** Wszystkie id znane silnikowi ewoluujących narzędzi (ewoluujace-narzedzia.yml) - pod tab-completion @dajcustom. */
+    Set<String> ewoluujaceIds();
+
+    /**
+     * Stwórz Kilof Niflheim (PickaxeSkillManager, WŁASNY, świadomie nietknięty silnik -
+     * patrz jego javadoc) dla danego gracza - id {@link #NIFLHEIM_ID}. W odróżnieniu od
+     * {@link #stworzEwoluujaceNarzedzie(String)} wymaga Playera, bo Niflheim jest
+     * przypisywany duszami do właściciela w momencie stworzenia.
+     */
+    ItemStack stworzKilofNiflheim(Player player);
 }

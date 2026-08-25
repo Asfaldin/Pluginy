@@ -29,4 +29,22 @@ public sealed interface Requirement {
 
     /** Masz choć jedną aktywną ofertę na Targu graczy (MarketService.maAktywnaOferte) - nic nie zabiera. */
     record MarketOfferRequirement() implements Requirement {}
+
+    /**
+     * Kup ŁĄCZNIE (licznik narastający, nie stan bieżący) tyle sztuk w sklepie (mainplugins-shop) -
+     * customId w material() rozróżnia custom-tagowany item od zwykłego Materiału, tak jak w
+     * ItemRequirement. Licznik zliczany od momentu wczytania questu (QuestManager#zarejestrujZakup) -
+     * NIE zabiera nic po zdaniu, przedmioty zostają u gracza.
+     */
+    record BuyItemRequirement(MaterialRequirement material) implements Requirement {}
+
+    /** Jak {@link BuyItemRequirement}, ale sprzedaż w sklepie (skup - /sprzedaj, /sprzedajwszystko, GUI). */
+    record SellItemRequirement(MaterialRequirement material) implements Requirement {}
+
+    /**
+     * Wystaw ŁĄCZNIE tyle ofert na Targu graczy (licznik ZDARZEŃ wystawienia - QuestManager#
+     * zarejestrujWystawienieNaTarg), NIEZALEŻNY od {@link MarketOfferRequirement} (ten sprawdza
+     * "czy masz TERAZ aktywną ofertę" - tu liczy się historia, nawet jeśli oferty już sprzedane/wycofane).
+     */
+    record MarketListingsRequirement(int amount) implements Requirement {}
 }

@@ -98,7 +98,6 @@ public class PomocCommand implements CommandExecutor {
                     new Wpis("/zadania (/quest)", "Otwórz listę zadań i odbierz nagrody")
             )),
             new Sekcja("Inne", List.of(
-                    new Wpis("/itemy", "Otwórz schowek - bezpieczne miejsce na przedmioty"),
                     new Wpis("/wycisz <gracz> (/mute)", "Wycisz gracza tylko dla siebie (ponownie = odcisz)"),
                     new Wpis("/menu", "Otwórz główne menu z szybkim dostępem do wszystkiego"),
                     new Wpis("/discord", "Wyślij sobie klikalny link do naszego Discorda")

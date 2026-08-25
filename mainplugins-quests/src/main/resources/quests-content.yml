@@ -40,20 +40,38 @@
 #   nie-cichych rewards).
 #
 # requirement.type:
-#   ITEM          - materials: [{material, amount, custom-id?, display-name?}]
-#                   (custom-id/display-name tylko dla itemow tagowanych PDC,
-#                   np. gatunek ryby albo trofeum z innego pluginu)
-#   FREE          - brak pol, klikniecie od razu zdaje quest
-#   MONEY         - amount (koszt w monetach)
-#   TOOL_POSSESS  - material (posiadaj taki Material, NIE zabiera itemu)
-#   TOOL_LEVEL    - tool (PICKAXE/AXE/SWORD - tylko te 3 maja dzis metode
-#                   poziomu w ToolsService) + level
-#   MARKET_OFFER  - brak pol, wymaga aktywnej oferty na Targu graczy
+#   ITEM             - materials: [{material, amount, custom-id?, display-name?}]
+#                      (custom-id/display-name tylko dla itemow tagowanych PDC,
+#                      np. gatunek ryby albo trofeum z innego pluginu)
+#   FREE             - brak pol, klikniecie od razu zdaje quest
+#   MONEY            - amount (koszt w monetach)
+#   TOOL_POSSESS     - material (posiadaj taki Material, NIE zabiera itemu)
+#   TOOL_LEVEL       - tool (PICKAXE/AXE/SWORD - tylko te 3 maja dzis metode
+#                      poziomu w ToolsService) + level
+#   MARKET_OFFER     - brak pol, wymaga AKTUALNIE aktywnej oferty na Targu
+#                      graczy (stan biezacy - jesli oferta zostanie sprzedana/
+#                      wycofana, wymog przestaje byc spelniony)
+#   BUY_ITEM         - material: {material, amount, custom-id?} - LICZNIK
+#                      NARASTAJACY (nie stan biezacy): kup LACZNIE tyle sztuk
+#                      w sklepie (mainplugins-shop), niezaleznie kiedy i ile
+#                      razy - postep widoczny w lore questu, NIE zabiera
+#                      przedmiotow po zdaniu
+#   SELL_ITEM        - jak BUY_ITEM, tylko sprzedaz w sklepie (/sprzedaj,
+#                      /sprzedajwszystko, PPM/Shift+PPM w GUI)
+#   MARKET_LISTINGS  - amount - wystaw LACZNIE tyle ofert na Targu graczy w
+#                      historii (licznik zdarzen wystawienia - w
+#                      odroznieniu od MARKET_OFFER liczy sie NAWET jesli
+#                      wczesniejsze oferty juz sprzedane/wycofane)
 #
 # rewards[].type (kazdy wpis moze miec dodatkowo silent: true - nie wchodzi
 #   do auto-etykiety, dla "cichych" bonusow jak skrzynki milowe):
 #   ITEM         - material, amount
-#   CUSTOM_ITEM  - id (z rejestru mainplugins-core/custom-items.yml), amount
+#   CUSTOM_ITEM  - id, amount. Szuka NAJPIERW w rejestrze mainplugins-core/
+#                  custom-items.yml, a jesli tam nieznane - w rejestrze
+#                  mainplugins-tools/ewoluujace-narzedzia.yml (dowolny
+#                  KILOF_.../SIEKIERA_.../HELM_... itd.) - z perspektywy
+#                  questa to JEDEN wspolny "custom item", bez znaczenia w
+#                  ktorym z dwoch plikow faktycznie zyje id.
 #   MONEY        - amount
 #   CRATE        - tier, fallback: RewardEntry[] (wreczany zamiast, gdy
 #                  mainplugins-crates nie jest wgrany)
@@ -742,3 +760,18 @@ categories:
         requirement: {type: ITEM, materials: [{material: DRAGON_BREATH, amount: 16}]}
         rewards: [{type: ITEM, material: NETHER_STAR, amount: 1}]
         reward-label: "1x Gwiazda Netheru"
+      - id: 4
+        title: "Klient Sklepu"
+        description: ["Zaopatrz się solidnie w sklepie serwerowym."]
+        requirement: {type: BUY_ITEM, material: {material: DIAMOND, amount: 32}}
+        rewards: [{type: MONEY, amount: 500}]
+      - id: 5
+        title: "Hurtownik"
+        description: ["Sprzedaj sklepowi górę bruku - naturalny efekt uboczny górnictwa."]
+        requirement: {type: SELL_ITEM, material: {material: COBBLESTONE, amount: 1728}}
+        rewards: [{type: MONEY, amount: 300}]
+      - id: 6
+        title: "Handlarz Uliczny"
+        description: ["Wystaw towar na Targu graczy kilka razy - nieważne co, ważna praktyka."]
+        requirement: {type: MARKET_LISTINGS, amount: 5}
+        rewards: [{type: MONEY, amount: 400}]

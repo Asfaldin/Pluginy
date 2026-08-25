@@ -1,77 +1,54 @@
 package elo.mainplugins.tools;
 
 import elo.mainplugins.core.api.ToolsService;
-import elo.mainplugins.tools.axe.AxeSkillManager;
-import elo.mainplugins.tools.hoe.HoeSkillManager;
+import elo.mainplugins.tools.evolving.EvolvingToolManager;
+import elo.mainplugins.tools.evolving.Kategoria;
 import elo.mainplugins.tools.pickaxe.PickaxeSkillManager;
-import elo.mainplugins.tools.pickaxe.PickaxeType;
-import elo.mainplugins.tools.sword.SwordSkillManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemDamageEvent;
-import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.Damageable;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 
 import java.util.Iterator;
-import java.util.List;
 
+/**
+ * {@link ToolsService} - fasada/router dla dwóch NIEZALEŻNYCH silników narzędzi:
+ * {@link PickaxeSkillManager} (Kilof Niflheim, jedyny pozostały mieszkaniec starego
+ * silnika kart - patrz jego javadoc, świadomie nietknięty) i {@link EvolvingToolManager}
+ * (nowy, w pełni konfigurowalny z YAML silnik dla WSZYSTKICH pozostałych ewoluujących
+ * narzędzi - kilof startowy, siekiera, motyka, miecz, łopata, patrz
+ * ewoluujace-narzedzia.yml). Dawny system kart dla siekiery/motyki/miecza
+ * (AxeSkillManager/HoeSkillManager/SwordSkillManager) został usunięty.
+ *
+ * Ochrona właściciela (onDrop/onDeath/onItemDamage/onEntityDamage poniżej) dotyczy
+ * WYŁĄCZNIE starego tagu "tool_type"/"tool_owner" - czyli TYLKO Kilofa Niflheim
+ * (i pozostałych, już niewydawanych typów PickaxeType). Narzędzia z nowego silnika
+ * (EvolvingToolManager) świadomie NIE mają tego tagu - nie są przypisane do gracza,
+ * można je swobodnie wyrzucić/sprzedać/wręczyć, patrz EvolvingToolManager#stworz.
+ */
 public class LevelableToolsManager implements Listener, ToolsService {
 
-    private final Plugin plugin;
     private final NamespacedKey keyType;
-    private final NamespacedKey keyTier;
-    private final NamespacedKey keyLevel;
-    private final NamespacedKey keyExp;
     private final NamespacedKey keyOwner;
 
-    private final int EXP_PER_LEVEL = 50;
-    private final int MAX_LEVEL = 5;
-
-    /**
-     * Kilof NIE jest już tworzony/poziomowany tutaj - patrz dajEwoluujacyKilof/poziomKilofa,
-     * które delegują do PickaxeSkillManager (osobne typy kilofa, patrz PickaxeType). Setter
-     * zamiast konstruktora, bo MainpluginsTools konstruuje LevelableToolsManager PRZED
-     * PickaxeSkillManager - wołany raz w MainpluginsTools#onEnable zaraz po obu konstrukcjach.
-     */
     private PickaxeSkillManager pickaxeSkillManager;
-
-    /**
-     * Jak pickaxeSkillManager wyżej - siekiera/motyka/miecz też mają już własny silnik
-     * progresji (ToolSkillManager) z ustalonym, niezmiennym Materiałem (patrz
-     * materialOverride w każdym z trzech managerów) zamiast starego systemu tierów
-     * poniżej. Setter zamiast konstruktora z tego samego powodu co pickaxeSkillManager -
-     * MainpluginsTools konstruuje LevelableToolsManager jako pierwszy.
-     */
-    private AxeSkillManager axeSkillManager;
-    private HoeSkillManager hoeSkillManager;
-    private SwordSkillManager swordSkillManager;
+    private EvolvingToolManager evolvingToolManager;
 
     public LevelableToolsManager(Plugin plugin) {
-        this.plugin = plugin;
         this.keyType = new NamespacedKey(plugin, "tool_type");
-        this.keyTier = new NamespacedKey(plugin, "tool_tier");
-        this.keyLevel = new NamespacedKey(plugin, "tool_level");
-        this.keyExp = new NamespacedKey(plugin, "tool_exp");
         this.keyOwner = new NamespacedKey(plugin, "tool_owner");
     }
 
@@ -79,101 +56,113 @@ public class LevelableToolsManager implements Listener, ToolsService {
         this.pickaxeSkillManager = pickaxeSkillManager;
     }
 
-    public void setAxeSkillManager(AxeSkillManager axeSkillManager) {
-        this.axeSkillManager = axeSkillManager;
-    }
-
-    public void setHoeSkillManager(HoeSkillManager hoeSkillManager) {
-        this.hoeSkillManager = hoeSkillManager;
-    }
-
-    public void setSwordSkillManager(SwordSkillManager swordSkillManager) {
-        this.swordSkillManager = swordSkillManager;
+    public void setEvolvingToolManager(EvolvingToolManager evolvingToolManager) {
+        this.evolvingToolManager = evolvingToolManager;
     }
 
     /**
-     * {@inheritDoc} Wołane przez QuestManager (mainplugins-quests) po ukończeniu questa
-     * "Witaj na Wyspie" - nadaje kilof typu {@link PickaxeType#WYDAJNOSCIOWY} (najbardziej
-     * uniwersalny start), w pełni zainicjalizowany przez PickaxeSkillManager (NIE przez
-     * stworzNarzedzie/tier-owy system, którego kilof już nie używa).
+     * {@inheritDoc} Startowy kilof idzie teraz z nowego silnika - KILOF_ODKRYWCY (patrz
+     * ewoluujace-narzedzia.yml), własna tekstura/model uzytkownika 2026-08-24, zastąpił
+     * poprzedni placeholder KILOF_START (ten zostaje w configu jako katalog przykładów,
+     * już nie wydawany graczom). Świadomie ZWYKŁA rzadkość (skromny zestaw, bez blasku) -
+     * to tylko punkt startowy, siekiera-nagroda questowa (SIEKIERA_BERSERKERA) jest
+     * świadomie mocniejsza/rzadsza. Niflheim zostaje wyłącznie legendarnym dropem (/@dajsniezny).
      */
     @Override
     public void dajEwoluujacyKilof(Player player) {
-        player.getInventory().addItem(pickaxeSkillManager.stworzKilof(player, PickaxeType.WYDAJNOSCIOWY));
-        player.sendMessage(Component.text("Otrzymałeś swój pierwszy kilof - Wydajnościowy!", NamedTextColor.GREEN, TextDecoration.BOLD));
+        player.getInventory().addItem(evolvingToolManager.stworz("KILOF_ODKRYWCY"));
+        player.sendMessage(Component.text("Otrzymałeś swój pierwszy kilof - Odkrywcy!", NamedTextColor.GREEN, TextDecoration.BOLD));
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
     }
 
-    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Drwal i Siewca". Delegacja do AxeSkillManager (patrz komentarz przy polu). */
+    /**
+     * {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Drwal i Siewca" -
+     * SIEKIERA_BERSERKERA (zastąpił placeholder SIEKIERA_START), świadomie RZADKA (mocniejsza
+     * niż kilof startowy - patrz komentarz przy dajEwoluujacyKilof).
+     */
     @Override
     public void dajEwoluujacaSiekiere(Player player) {
-        player.getInventory().addItem(axeSkillManager.stworzSiekiere(player));
-        player.sendMessage(Component.text("Otrzymałeś swoją pierwszą, ewoluującą siekierę!", NamedTextColor.GREEN, TextDecoration.BOLD));
+        player.getInventory().addItem(evolvingToolManager.stworz("SIEKIERA_BERSERKERA"));
+        player.sendMessage(Component.text("Otrzymałeś swoją pierwszą, ewoluującą siekierę - Berserkera!", NamedTextColor.GREEN, TextDecoration.BOLD));
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
     }
 
-    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Rolniczy Krok". Delegacja do HoeSkillManager (patrz komentarz przy polu). */
+    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Rolniczy Krok". */
     @Override
     public void dajEwoluujacaMotyke(Player player) {
-        player.getInventory().addItem(hoeSkillManager.stworzMotyke(player));
+        player.getInventory().addItem(evolvingToolManager.stworz("MOTYKA_START"));
         player.sendMessage(Component.text("Otrzymałeś swoją pierwszą, ewoluującą motykę!", NamedTextColor.GREEN, TextDecoration.BOLD));
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
     }
 
-    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Pierwszy Loch". Delegacja do SwordSkillManager (patrz komentarz przy polu). */
+    /** {@inheritDoc} Wołane przez QuestManager po ukończeniu questa "Pierwszy Loch". */
     @Override
     public void dajEwoluujacyMiecz(Player player) {
-        player.getInventory().addItem(swordSkillManager.stworzMiecz(player));
+        player.getInventory().addItem(evolvingToolManager.stworz("MIECZ_START"));
         player.sendMessage(Component.text("Otrzymałeś swój pierwszy, ewoluujący miecz!", NamedTextColor.GREEN, TextDecoration.BOLD));
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
     }
 
-    /**
-     * {@inheritDoc} Piąte narzędzie, przywrócone do gry (patrz javadoc w ToolsService) -
-     * działa DOKŁADNIE tak jak pozostałe cztery (ta sama progresja tierów/poziomów przez
-     * stworzNarzedzie/dodajExp), bez żadnej specjalnej flagi silk touch.
-     */
+    /** {@inheritDoc} */
     @Override
     public void dajEwoluujacaLopate(Player player) {
-        player.getInventory().addItem(stworzNarzedzie(player, "shovel", 0));
+        player.getInventory().addItem(evolvingToolManager.stworz("LOPATA_START"));
         player.sendMessage(Component.text("Otrzymałeś swoją pierwszą, ewoluującą łopatę!", NamedTextColor.GREEN, TextDecoration.BOLD));
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
     }
 
-    /**
-     * {@inheritDoc} Odkąd gracz może trzymać kilka RÓŻNYCH typów kilofa naraz (patrz
-     * PickaxeType), zwraca NAJWYŻSZY poziom wśród wszystkich - delegacja do
-     * PickaxeSkillManager, które jako jedyne tworzy/poziomuje kilofy.
-     */
+    /** {@inheritDoc} Najwyższy poziom wśród WSZYSTKICH kilofów gracza - łączy nowy silnik (KILOF_START itd.) z Kilofem Niflheim (stary silnik, patrz komentarz klasy). */
     @Override
     public int poziomKilofa(Player player) {
-        return pickaxeSkillManager.poziomNajlepszegoKilofa(player);
+        return Math.max(evolvingToolManager.najlepszyPoziom(player, Kategoria.PICKAXE), pickaxeSkillManager.poziomNajlepszegoKilofa(player));
     }
 
-    /** {@inheritDoc} Delegacja do AxeSkillManager - siekiera ma ten sam wzorzec "brak tierów" co kilof. */
+    /** {@inheritDoc} Delegacja do EvolvingToolManager - siekiera jest teraz w całości na nowym silniku. */
     @Override
     public int poziomSiekiery(Player player) {
-        return axeSkillManager.poziomNajlepszejSiekiery(player);
+        return evolvingToolManager.najlepszyPoziom(player, Kategoria.AXE);
     }
 
-    /** {@inheritDoc} Delegacja do SwordSkillManager - miecz ma ten sam wzorzec "brak tierów" co kilof. */
+    /** {@inheritDoc} Delegacja do EvolvingToolManager - miecz jest teraz w całości na nowym silniku. */
     @Override
     public int poziomMiecza(Player player) {
-        return swordSkillManager.poziomNajlepszegoMiecza(player);
+        return evolvingToolManager.najlepszyPoziom(player, Kategoria.SWORD);
     }
 
-    /** {@inheritDoc} Delegacja do PickaxeSkillManager - jedyne miejsce, które zna typ/milestone'y kilofa. */
+    /** {@inheritDoc} Delegacja do PickaxeSkillManager - jedyne miejsce, które zna typ/milestone'y kilofa Niflheim. */
     @Override
     public boolean maWiecznaZime(ItemStack tool) {
         return pickaxeSkillManager.maWiecznaZime(tool);
     }
+
+    /** {@inheritDoc} */
+    @Override
+    public ItemStack stworzEwoluujaceNarzedzie(String id) {
+        return evolvingToolManager.stworz(id);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public java.util.Set<String> ewoluujaceIds() {
+        return evolvingToolManager.ids();
+    }
+
+    /** {@inheritDoc} Delegacja do PickaxeSkillManager - jedyne miejsce, które zna typ NIFLHEIM. */
+    @Override
+    public ItemStack stworzKilofNiflheim(Player player) {
+        return pickaxeSkillManager.stworzKilof(player, elo.mainplugins.tools.pickaxe.PickaxeType.NIFLHEIM);
+    }
+
+    // ============================================ Ochrona Kilofa Niflheim ====
+    // Wyłącznie stary tag "tool_type"/"tool_owner" (patrz komentarz klasy) - narzędzia
+    // z nowego silnika (EvolvingToolManager) go nie mają i te listenery ich nie dotyczą.
 
     @EventHandler
     public void onDrop(PlayerDropItemEvent event) {
         ItemStack item = event.getItemDrop().getItemStack();
         if (item.hasItemMeta() && item.getItemMeta().getPersistentDataContainer().has(keyType, PersistentDataType.STRING)) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage(Component.text("Nie możesz wyrzucić przypisanego narzędzia! Wpisz /itemy, aby je schować.", NamedTextColor.RED));
+            event.getPlayer().sendMessage(Component.text("Nie możesz wyrzucić przypisanego narzędzia!", NamedTextColor.RED));
         }
     }
 
@@ -197,6 +186,7 @@ public class LevelableToolsManager implements Listener, ToolsService {
         }
     }
 
+    /** Kilof Niflheim liczy własny exp przez PickaxeSkillManager (ToolSkillManager#onBlockBreak) - tu wyłącznie pilnujemy właściciela. */
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
@@ -204,17 +194,8 @@ public class LevelableToolsManager implements Listener, ToolsService {
         if (item.getType() == Material.AIR || item.getItemMeta() == null) return;
 
         String type = item.getItemMeta().getPersistentDataContainer().get(keyType, PersistentDataType.STRING);
-        if (type != null && !type.equals("sword")) {
-            if (!sprawdzWlasciciela(player, item)) {
-                event.setCancelled(true);
-                return;
-            }
-            // Kilof/siekiera/motyka mają od teraz własny system progresji (drzewko
-            // umiejętności, patrz PickaxeSkillManager/AxeSkillManager/HoeSkillManager) -
-            // ochrona właściciela wyżej dalej obowiązuje, ale exp/tier liczy się tam, nie tutaj.
-            if (!type.equals("pickaxe") && !type.equals("axe") && !type.equals("hoe")) {
-                dodajExp(player, item);
-            }
+        if ("pickaxe".equals(type) && !sprawdzWlasciciela(player, item)) {
+            event.setCancelled(true);
         }
     }
 
@@ -225,13 +206,8 @@ public class LevelableToolsManager implements Listener, ToolsService {
             if (item.getType() == Material.AIR || item.getItemMeta() == null) return;
 
             String type = item.getItemMeta().getPersistentDataContainer().get(keyType, PersistentDataType.STRING);
-            // Miecz ma od teraz własny system progresji (drzewko umiejętności, patrz
-            // SwordSkillManager) - ochrona właściciela dalej obowiązuje tutaj, ale exp
-            // liczy się tam, nie tutaj.
-            if ("sword".equals(type)) {
-                if (!sprawdzWlasciciela(player, item)) {
-                    event.setCancelled(true);
-                }
+            if ("pickaxe".equals(type) && !sprawdzWlasciciela(player, item)) {
+                event.setCancelled(true);
             }
         }
     }
@@ -245,156 +221,9 @@ public class LevelableToolsManager implements Listener, ToolsService {
         return true;
     }
 
-    @EventHandler
-    public void onInteract(PlayerInteractEvent event) {
-        if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
-
-        Player player = event.getPlayer();
-        if (!player.isSneaking()) return;
-
-        ItemStack item = player.getInventory().getItemInMainHand();
-        if (item.getType() == Material.AIR || item.getItemMeta() == null) return;
-
-        String type = item.getItemMeta().getPersistentDataContainer().get(keyType, PersistentDataType.STRING);
-        // Kilof/siekiera/motyka/miecz mają własny hub (Shift+PPM) - to stare menu zostaje
-        // tylko dla pozostałych narzędzi.
-        if (type != null && !type.equals("pickaxe") && !type.equals("axe") && !type.equals("hoe") && !type.equals("sword")) {
-            if (sprawdzWlasciciela(player, item)) {
-                otworzMenuUlepszen(player, item);
-            }
-        }
-    }
-
-    /** Typ narzędzia (np. "pickaxe") albo null, jeśli item nie jest przypisanym narzędziem - pod /addlvl. */
+    /** Typ narzędzia (np. "pickaxe") albo null - pod /@addlvl (WYŁĄCZNIE stary silnik/Niflheim, patrz MainpluginsTools). */
     public String getToolType(ItemStack item) {
         if (item == null || item.getType().isAir() || item.getItemMeta() == null) return null;
         return item.getItemMeta().getPersistentDataContainer().get(keyType, PersistentDataType.STRING);
-    }
-
-    /** [DEBUG] Dodaje `levels` poziomów trzymanemu narzędziu (poza kilofem/siekierą - patrz PickaxeSkillManager/AxeSkillManager). */
-    public void debugAddLevels(Player player, ItemStack item, int levels) {
-        for (int i = 0; i < levels * EXP_PER_LEVEL; i++) {
-            dodajExp(player, item);
-        }
-    }
-
-    private void dodajExp(Player player, ItemStack item) {
-        ItemMeta meta = item.getItemMeta();
-        int tier = meta.getPersistentDataContainer().getOrDefault(keyTier, PersistentDataType.INTEGER, 0);
-        int level = meta.getPersistentDataContainer().getOrDefault(keyLevel, PersistentDataType.INTEGER, 1);
-        int exp = meta.getPersistentDataContainer().getOrDefault(keyExp, PersistentDataType.INTEGER, 0);
-        String type = meta.getPersistentDataContainer().get(keyType, PersistentDataType.STRING);
-
-        if (tier >= 4 && level >= MAX_LEVEL) return;
-
-        exp += 1;
-
-        if (exp >= EXP_PER_LEVEL) {
-            exp = 0;
-            level++;
-            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 2.0f);
-
-            if (level > MAX_LEVEL) {
-                level = 1;
-                tier++;
-                player.sendMessage(Component.text("Twoje narzędzie ewoluowało na wyższy poziom!", NamedTextColor.GOLD, TextDecoration.BOLD));
-                player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
-            } else {
-                player.sendMessage(Component.text("Poziom narzędzia wzrósł: " + level, NamedTextColor.GREEN));
-            }
-        }
-
-        meta.getPersistentDataContainer().set(keyTier, PersistentDataType.INTEGER, tier);
-        meta.getPersistentDataContainer().set(keyLevel, PersistentDataType.INTEGER, level);
-        meta.getPersistentDataContainer().set(keyExp, PersistentDataType.INTEGER, exp);
-        item.setItemMeta(meta);
-
-        aktualizujWyglad(item, type, tier, level, exp);
-    }
-
-    private void aktualizujWyglad(ItemStack item, String type, int tier, int level, int exp) {
-        item.setType(pobierzMaterial(type, tier));
-        ItemMeta meta = item.getItemMeta();
-
-        String nazwa = switch(type) {
-            case "axe" -> "Ewoluująca Siekiera";
-            case "sword" -> "Ewoluujący Miecz";
-            case "hoe" -> "Ewoluująca Motyka";
-            case "shovel" -> "Ewoluująca Łopata";
-            default -> "Narzędzie";
-        };
-
-        meta.displayName(Component.text(nazwa + " [LVL " + level + "]", NamedTextColor.AQUA, TextDecoration.BOLD));
-
-        meta.lore(List.of(
-                Component.text("Tier: " + getTierName(tier), NamedTextColor.YELLOW),
-                Component.text("Postęp: " + exp + " / " + EXP_PER_LEVEL + " EXP", NamedTextColor.GRAY),
-                Component.empty(),
-                Component.text("Prywatne narzędzie", NamedTextColor.DARK_GRAY),
-                Component.text("Shift + Prawy aby ulepszyć!", NamedTextColor.LIGHT_PURPLE)
-        ));
-
-        if (meta instanceof Damageable damageable) {
-            short maxDurability = item.getType().getMaxDurability();
-            int totalExpInTier = ((level - 1) * EXP_PER_LEVEL) + exp;
-            int maxExpInTier = MAX_LEVEL * EXP_PER_LEVEL;
-
-            double progress = (double) totalExpInTier / maxExpInTier;
-            int damage = (int) (maxDurability - (maxDurability * progress));
-            damageable.setDamage(Math.min(damage, maxDurability - 1));
-        }
-
-        item.setItemMeta(meta);
-    }
-
-    private ItemStack stworzNarzedzie(Player player, String type, int tier) {
-        ItemStack item = new ItemStack(pobierzMaterial(type, tier));
-        ItemMeta meta = item.getItemMeta();
-
-        meta.getPersistentDataContainer().set(keyType, PersistentDataType.STRING, type);
-        meta.getPersistentDataContainer().set(keyTier, PersistentDataType.INTEGER, tier);
-        meta.getPersistentDataContainer().set(keyLevel, PersistentDataType.INTEGER, 1);
-        meta.getPersistentDataContainer().set(keyExp, PersistentDataType.INTEGER, 0);
-        meta.getPersistentDataContainer().set(keyOwner, PersistentDataType.STRING, player.getUniqueId().toString());
-
-        item.setItemMeta(meta);
-        aktualizujWyglad(item, type, tier, 1, 0);
-        return item;
-    }
-
-    private Material pobierzMaterial(String type, int tier) {
-        if (tier == 0) {
-            return switch(type) { case "axe" -> Material.WOODEN_AXE; case "sword" -> Material.WOODEN_SWORD; case "hoe" -> Material.WOODEN_HOE; case "shovel" -> Material.WOODEN_SHOVEL; default -> Material.STICK; };
-        } else if (tier == 1) {
-            return switch(type) { case "axe" -> Material.STONE_AXE; case "sword" -> Material.STONE_SWORD; case "hoe" -> Material.STONE_HOE; case "shovel" -> Material.STONE_SHOVEL; default -> Material.STICK; };
-        } else if (tier == 2) {
-            return switch(type) { case "axe" -> Material.IRON_AXE; case "sword" -> Material.IRON_SWORD; case "hoe" -> Material.IRON_HOE; case "shovel" -> Material.IRON_SHOVEL; default -> Material.STICK; };
-        } else if (tier == 3) {
-            return switch(type) { case "axe" -> Material.DIAMOND_AXE; case "sword" -> Material.DIAMOND_SWORD; case "hoe" -> Material.DIAMOND_HOE; case "shovel" -> Material.DIAMOND_SHOVEL; default -> Material.STICK; };
-        } else {
-            return switch(type) { case "axe" -> Material.NETHERITE_AXE; case "sword" -> Material.NETHERITE_SWORD; case "hoe" -> Material.NETHERITE_HOE; case "shovel" -> Material.NETHERITE_SHOVEL; default -> Material.STICK; };
-        }
-    }
-
-    private String getTierName(int tier) {
-        return switch(tier) { case 0 -> "Drewno"; case 1 -> "Kamień"; case 2 -> "Żelazo"; case 3 -> "Diament"; default -> "Netherite"; };
-    }
-
-    private void otworzMenuUlepszen(Player player, ItemStack narzedzie) {
-        Inventory gui = Bukkit.createInventory(null, 27, Component.text("Ulepszenia Narzędzia", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD));
-        ItemStack tlo = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
-        ItemMeta tloMeta = tlo.getItemMeta();
-        tloMeta.displayName(Component.empty());
-        tlo.setItemMeta(tloMeta);
-        for (int i = 0; i < 27; i++) gui.setItem(i, tlo);
-        gui.setItem(13, narzedzie.clone());
-        player.openInventory(gui);
-    }
-
-    @EventHandler
-    public void onInventoryClick(InventoryClickEvent event) {
-        if (event.getView().title().equals(Component.text("Ulepszenia Narzędzia", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD))) {
-            event.setCancelled(true);
-        }
     }
 }

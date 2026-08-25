@@ -1,0 +1,188 @@
+# ==========================================================================
+# Silnik NOWYCH generatorow tier 2-4 (GeneratorManager) - DODATKOWY, obok
+# istniejacych, nietknietych GENERATOR_BRUK_T1/GENERATOR_KRUCHY_T1 (patrz
+# GeneratorBrukuManager/GeneratorKruchychManager - te dwa maja wlasna,
+# zahardkodowana logike i swiadomie tu NIE zaglądają, m.in. dlatego, ze T1
+# Bruku ma dostrojone lancuchowe mrozenie Kilofa Niflheim).
+#
+# Wydawanie/testowanie: /@dajgenerator <id> [gracz]
+# Przeladowanie na zywo: /@reloadgeneratory
+#
+# Pola kazdego wpisu (pod kluczem generatory.<ID>):
+#   tryb              - WYMAGANE. PRZEPUSZCZAJACY | BEZPOSREDNI.
+#       PRZEPUSZCZAJACY - dla rodziny kilofowej (jak Bruk): podmienia blok na
+#                         material-bazowe TUZ PRZED dalszym przetwarzaniem
+#                         eventu, wiec cala reszta ekonomii kilofa (bonus z
+#                         bruku, fortuna itd.) liczy sie jak przy zwyklym
+#                         bloku. Wymaga material-bazowe.
+#       BEZPOSREDNI     - dla rodziny lopatowej (jak Kruchy): sam losuje JEDEN
+#                         przedmiot z baza-dropy (rowno wazony wybor, np.
+#                         piasek/zwir 50/50) i go nadaje, bez podmiany bloku.
+#                         Wymaga niepustej baza-dropy.
+#   material-generatora - WYMAGANE. Material widoczny, gdy generator "odnowiony".
+#   material-bazowe   - tylko PRZEPUSZCZAJACY. Prawdziwy Material, na jaki
+#                       zamienia sie blok przy wykopaniu (np. COBBLESTONE).
+#   narzedzie         - PICKAXE | SHOVEL, domyslnie PICKAXE - czym wolno kopac.
+#   odnowa-tickow     - domyslnie 15 (0.75s) - jak szybko blok wraca po wykopaniu.
+#   nazwa/lore        - wyglad fizycznego przedmiotu (kody koloru "&").
+#
+#   baza-dropy  - lista {material, ilosc-min, ilosc-max} - TYLKO BEZPOSREDNI,
+#                 jeden wpis losowany rowno (bez wag) przy kazdym wykopaniu.
+#   bonus-dropy - lista {material, szansa-procent, ilosc-min, ilosc-max} -
+#                 KAZDY wpis to NIEZALEZNA szansa na DODATKOWY przedmiot, OBOK
+#                 normalnego wyniku (bazowego bloku/dropu) - tu ustawiasz
+#                 "% dropu" rzadkich surowcow per tier.
+#
+# ID (custom-id, patrz CustomItemKeys#CUSTOM_ITEM_ID) dziala tak samo jak w
+# custom-items.yml - sklep/questy moga sie do niego odwolac.
+# ==========================================================================
+
+generatory:
+
+  GENERATOR_BRUK_T2:
+    tryb: PRZEPUSZCZAJACY
+    material-generatora: ANDESITE
+    material-bazowe: COBBLESTONE
+    narzedzie: PICKAXE
+    odnowa-tickow: 13
+    nazwa: "&6&lGenerator Bruku [T2]"
+    lore:
+      - "&7Postaw na wyspie - co jakiś czas"
+      - "&7można wykopać z niego bruk (cobblestone)."
+      - "&7Blok sam się odbudowuje po wykopaniu."
+      - ""
+      - "&eKopie się WYŁĄCZNIE kilofem."
+    bonus-dropy:
+      - material: RAW_IRON
+        szansa-procent: 8
+        ilosc-min: 1
+        ilosc-max: 1
+
+  GENERATOR_BRUK_T3:
+    tryb: PRZEPUSZCZAJACY
+    material-generatora: DEEPSLATE
+    material-bazowe: COBBLESTONE
+    narzedzie: PICKAXE
+    odnowa-tickow: 11
+    nazwa: "&6&lGenerator Bruku [T3]"
+    lore:
+      - "&7Postaw na wyspie - co jakiś czas"
+      - "&7można wykopać z niego bruk (cobblestone)."
+      - "&7Blok sam się odbudowuje po wykopaniu."
+      - ""
+      - "&eKopie się WYŁĄCZNIE kilofem."
+    bonus-dropy:
+      - material: RAW_IRON
+        szansa-procent: 15
+        ilosc-min: 1
+        ilosc-max: 1
+      - material: RAW_GOLD
+        szansa-procent: 5
+        ilosc-min: 1
+        ilosc-max: 1
+
+  GENERATOR_BRUK_T4:
+    tryb: PRZEPUSZCZAJACY
+    material-generatora: BLACKSTONE
+    material-bazowe: COBBLESTONE
+    narzedzie: PICKAXE
+    odnowa-tickow: 9
+    nazwa: "&6&lGenerator Bruku [T4]"
+    lore:
+      - "&7Postaw na wyspie - co jakiś czas"
+      - "&7można wykopać z niego bruk (cobblestone)."
+      - "&7Blok sam się odbudowuje po wykopaniu."
+      - ""
+      - "&eKopie się WYŁĄCZNIE kilofem."
+    bonus-dropy:
+      - material: RAW_GOLD
+        szansa-procent: 10
+        ilosc-min: 1
+        ilosc-max: 1
+      - material: DIAMOND
+        szansa-procent: 3
+        ilosc-min: 1
+        ilosc-max: 1
+
+  GENERATOR_KRUCHY_T2:
+    tryb: BEZPOSREDNI
+    material-generatora: SMOOTH_SANDSTONE
+    narzedzie: SHOVEL
+    odnowa-tickow: 13
+    nazwa: "&6&lGenerator Kruchych Surowców [T2]"
+    lore:
+      - "&7Postaw na wyspie - co jakiś czas"
+      - "&7można wykopać z niego piasek lub żwir."
+      - "&7Blok sam się odbudowuje po wykopaniu."
+      - ""
+      - "&eKopie się WYŁĄCZNIE łopatą."
+    baza-dropy:
+      - material: SAND
+        ilosc-min: 3
+        ilosc-max: 3
+      - material: GRAVEL
+        ilosc-min: 3
+        ilosc-max: 3
+    bonus-dropy:
+      - material: CLAY_BALL
+        szansa-procent: 10
+        ilosc-min: 1
+        ilosc-max: 2
+
+  GENERATOR_KRUCHY_T3:
+    tryb: BEZPOSREDNI
+    material-generatora: RED_SANDSTONE
+    narzedzie: SHOVEL
+    odnowa-tickow: 11
+    nazwa: "&6&lGenerator Kruchych Surowców [T3]"
+    lore:
+      - "&7Postaw na wyspie - co jakiś czas"
+      - "&7można wykopać z niego piasek lub żwir."
+      - "&7Blok sam się odbudowuje po wykopaniu."
+      - ""
+      - "&eKopie się WYŁĄCZNIE łopatą."
+    baza-dropy:
+      - material: SAND
+        ilosc-min: 3
+        ilosc-max: 3
+      - material: GRAVEL
+        ilosc-min: 3
+        ilosc-max: 3
+    bonus-dropy:
+      - material: CLAY_BALL
+        szansa-procent: 15
+        ilosc-min: 1
+        ilosc-max: 2
+      - material: PRISMARINE_CRYSTALS
+        szansa-procent: 5
+        ilosc-min: 1
+        ilosc-max: 1
+
+  GENERATOR_KRUCHY_T4:
+    tryb: BEZPOSREDNI
+    material-generatora: SOUL_SAND
+    narzedzie: SHOVEL
+    odnowa-tickow: 9
+    nazwa: "&6&lGenerator Kruchych Surowców [T4]"
+    lore:
+      - "&7Postaw na wyspie - co jakiś czas"
+      - "&7można wykopać z niego piasek lub żwir."
+      - "&7Blok sam się odbudowuje po wykopaniu."
+      - ""
+      - "&eKopie się WYŁĄCZNIE łopatą."
+    baza-dropy:
+      - material: SAND
+        ilosc-min: 4
+        ilosc-max: 4
+      - material: GRAVEL
+        ilosc-min: 4
+        ilosc-max: 4
+    bonus-dropy:
+      - material: PRISMARINE_CRYSTALS
+        szansa-procent: 12
+        ilosc-min: 1
+        ilosc-max: 1
+      - material: ECHO_SHARD
+        szansa-procent: 3
+        ilosc-min: 1
+        ilosc-max: 1

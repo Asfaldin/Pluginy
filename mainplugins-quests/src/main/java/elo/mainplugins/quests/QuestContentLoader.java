@@ -206,6 +206,18 @@ final class QuestContentLoader {
                 }
                 yield materials.isEmpty() ? null : new Requirement.ItemRequirement(materials);
             }
+            case "BUY_ITEM" -> {
+                MaterialRequirement mr = parseMaterialRequirement(raw.get("material"));
+                yield mr != null ? new Requirement.BuyItemRequirement(mr) : null;
+            }
+            case "SELL_ITEM" -> {
+                MaterialRequirement mr = parseMaterialRequirement(raw.get("material"));
+                yield mr != null ? new Requirement.SellItemRequirement(mr) : null;
+            }
+            case "MARKET_LISTINGS" -> {
+                int amount = asInt(raw.get("amount"), -1);
+                yield amount > 0 ? new Requirement.MarketListingsRequirement(amount) : null;
+            }
             default -> null;
         };
     }

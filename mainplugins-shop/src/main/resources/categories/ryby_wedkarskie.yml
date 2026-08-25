@@ -5,8 +5,8 @@ items:
   0:
     material: COD
     slot: 0
-    custom-id: FISH_KARP_MIELIZNY
-    display-name: "Karp Mielizny"
+    custom-id: FISH_ZWYKLA
+    display-name: "Zwykła Rybka"
     lore:
       - "Zwykla ryba z plytkich wod."
     amount: 16
@@ -15,20 +15,20 @@ items:
   1:
     material: SALMON
     slot: 1
-    custom-id: FISH_SREBRNY_LESZCZ
-    display-name: "Srebrny Leszcz"
+    custom-id: FISH_SUPER
+    display-name: "Super Rybka"
     lore:
-      - "Zwykla ryba, polyskuje w sloncu."
+      - "Ryba lepsza niz zwykla, ale wciaz pospolita."
     amount: 16
     sell-amount: 16
     sell-price: 400
   2:
     material: TROPICAL_FISH
     slot: 2
-    custom-id: FISH_TECZOWY_SKRZELACZ
-    display-name: "Teczowy Skrzelacz"
+    custom-id: FISH_MISTYCZNA
+    display-name: "Mistyczna Rybka"
     lore:
-      - "Niezwykla, kolorowa ryba rafowa."
+      - "Rzadka ryba spowita tajemnica."
     amount: 8
     sell-amount: 8
     sell-price: 500

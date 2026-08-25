@@ -2,6 +2,7 @@ package elo.mainplugins.fishing;
 
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.CrateService;
+import elo.mainplugins.core.api.CustomItemService;
 import elo.mainplugins.core.api.ObszarService;
 import elo.mainplugins.core.util.CustomItemKeys;
 import net.kyori.adventure.text.Component;
@@ -48,13 +49,15 @@ public class FishingManager implements Listener {
 
     private final Plugin plugin;
 
+    // Tymczasowo tylko 3 gatunki, po prostu nazwane wg rzadkosci (na czas dopracowywania
+    // minigry) - dokladnie te sloty co juz sa wymogami questow kategorii "Rybak" (patrz
+    // quests-content.yml), zeby nic nie zepsuc. FISH_MISTYCZNA ma prawdziwy custom model
+    // z resourcepacka (patrz custom-items.yml + stworzRybe nizej) - jedyny gatunek, ktory
+    // NIE jest budowany bezposrednio z golego Materialu.
     private static final List<RybaGatunek> GATUNKI = List.of(
-            new RybaGatunek("FISH_KARP_MIELIZNY", "Karp Mielizny", Material.COD, NamedTextColor.GRAY, RybaGatunek.Rzadkosc.ZWYKLA, 40),
-            new RybaGatunek("FISH_SREBRNY_LESZCZ", "Srebrny Leszcz", Material.SALMON, NamedTextColor.GRAY, RybaGatunek.Rzadkosc.ZWYKLA, 30),
-            new RybaGatunek("FISH_TECZOWY_SKRZELACZ", "Tęczowy Skrzelacz", Material.TROPICAL_FISH, NamedTextColor.GREEN, RybaGatunek.Rzadkosc.NIEZWYKLA, 15),
-            new RybaGatunek("FISH_KOLCZASTY_NURKACZ", "Kolczasty Nurkacz", Material.PUFFERFISH, NamedTextColor.GREEN, RybaGatunek.Rzadkosc.NIEZWYKLA, 10),
-            new RybaGatunek("FISH_SZMARAGDOWY_WEGORZ", "Szmaragdowy Węgorz", Material.TROPICAL_FISH, NamedTextColor.AQUA, RybaGatunek.Rzadkosc.RZADKA, 4),
-            new RybaGatunek("FISH_MGLAWICOWY_SUM", "Mgławicowy Sum", Material.COD, NamedTextColor.AQUA, RybaGatunek.Rzadkosc.RZADKA, 1)
+            new RybaGatunek("FISH_ZWYKLA", "Zwykła Rybka", Material.COD, NamedTextColor.GRAY, RybaGatunek.Rzadkosc.ZWYKLA, 50),
+            new RybaGatunek("FISH_SUPER", "Super Rybka", Material.SALMON, NamedTextColor.GREEN, RybaGatunek.Rzadkosc.NIEZWYKLA, 30),
+            new RybaGatunek("FISH_MISTYCZNA", "Mistyczna Rybka", Material.TROPICAL_FISH, NamedTextColor.LIGHT_PURPLE, RybaGatunek.Rzadkosc.RZADKA, 5)
     );
 
     // Aktywna minigra "pasek" - patrz rozpocznijMinigre.
@@ -71,7 +74,20 @@ public class FishingManager implements Listener {
         return new ItemStack(Material.FISHING_ROD);
     }
 
+    /**
+     * Jeśli gatunek ma wpis w rejestrze custom itemów (patrz mainplugins-core,
+     * custom-items.yml) - np. FISH_MISTYCZNA z własnym modelem z resourcepacka -
+     * wydajemy DOKŁADNIE ten item stamtąd (ten sam wzorzec co ShopManager.stworzBazowyItem).
+     * W przeciwnym razie (reszta gatunków - zwykłe przefarbowane materiały) budujemy
+     * item ręcznie, tak jak dotychczas.
+     */
     private ItemStack stworzRybe(RybaGatunek gatunek) {
+        CustomItemService rejestr = CoreAPI.getCustomItemService();
+        if (rejestr != null && rejestr.exists(gatunek.customId())) {
+            ItemStack custom = rejestr.create(gatunek.customId(), 1);
+            if (custom != null) return custom;
+        }
+
         ItemStack item = new ItemStack(gatunek.material());
         ItemMeta meta = item.getItemMeta();
         meta.displayName(Component.text(gatunek.nazwa(), gatunek.kolor(), TextDecoration.BOLD));

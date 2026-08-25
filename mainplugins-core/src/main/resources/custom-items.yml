@@ -142,6 +142,26 @@ items:
       - "&8Wrzuć wszystko do stołu rzemieślniczego -"
       - "&8pozycja w siatce nie ma znaczenia."
 
+  # Nagroda z minigry lowienia (mainplugins-fishing, FishingManager.GATUNKI) - docelowo
+  # jedyny gatunek ryby z prawdziwym custom modelem (rekin z resourcepacka), reszta
+  # gatunkow to zwykle przefarbowane wanilijskie materialy budowane bezposrednio w Javie.
+  #
+  # POLE "model" CELOWO WYLACZONE NA RAZIE - gotowe pliki resourcepacka juz sa
+  # (mainplugins-core/resourcepack/assets/mainplugins/{items,models/item,textures/item}/
+  # ryba_mistyczna.*), ale ZYWY serwer produkcyjny jeszcze ich nie ma (stary link w
+  # resourcepack.yml, tylko kilofy). Wlaczenie "model" bez zaktualizowania live paczki
+  # pokazuje graczom fioletowo-czarny blok "brak modelu", nie fallback do wanilii.
+  # Do wlaczenia: odkomentuj linie ponizej PO tym, jak nowy zip (z rekinem w srodku)
+  # trafi na hosting i nowy link+hash wladuje sie do resourcepack.yml na serwerze.
+  FISH_MISTYCZNA:
+    material: TROPICAL_FISH
+    name: "&d&lMistyczna Rybka"
+    lore:
+      - "&7Rzadka ryba spowita tajemnica."
+      - "&7Nikt nie wie, skad naprawde pochodzi."
+    # model: "mainplugins:ryba_mistyczna"
+    glint: true
+
   GENERATOR_BRUK_T1:
     material: MOSSY_COBBLESTONE
     name: "&6&lGenerator Bruku"

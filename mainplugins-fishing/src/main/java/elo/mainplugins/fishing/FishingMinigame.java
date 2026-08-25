@@ -21,8 +21,11 @@ import java.util.concurrent.ThreadLocalRandom;
 final class FishingMinigame {
 
     private static final int SZEROKOSC_PASKA = 40;
-    private static final double GRAWITACJA = 1.35;
-    private static final double IMPULS_KLIKNIECIA = 0.62;
+    // Spowolnione (v1 byla za szybka do ogarniecia) - grawitacja/impuls ok. 2.5x
+    // lagodniejsze, tempo napelniania/oprozniania ~35% wolniejsze, patrz tez
+    // predkoscRyby nizej (rzeczywisty czynnik "ryba sie wyrywa").
+    private static final double GRAWITACJA = 0.55;
+    private static final double IMPULS_KLIKNIECIA = 0.30;
     private static final long OKRES_TICKOW = 2L;
     private static final double DT = OKRES_TICKOW / 20.0;
     private static final long MAKSYMALNY_CZAS_TICKOW = 20L * 30;
@@ -52,9 +55,12 @@ final class FishingMinigame {
 
         int trudnosc = gatunek.rzadkosc().ordinal(); // 0 (zwykła) .. 4 (legendarna)
         this.polowaSzerokosciSuwaka = clamp(0.20 - 0.022 * trudnosc, 0.09, 0.20);
-        this.predkoscRyby = 0.35 + 0.18 * trudnosc;
-        this.tempoNapelniania = clamp(0.55 - 0.05 * trudnosc, 0.30, 0.55);
-        this.tempoOprozniania = 0.32 + 0.05 * trudnosc;
+        // Ryba "wyrywa się" (ucieka do losowego celu) wyraźnie wolniej niż wcześniej -
+        // było 0.35 + 0.18*trudnosc, co przy zwykłej rybie robiło pełny przelot paska
+        // w ~1.4s. Teraz ~3.5x wolniej.
+        this.predkoscRyby = 0.10 + 0.05 * trudnosc;
+        this.tempoNapelniania = clamp(0.35 - 0.03 * trudnosc, 0.20, 0.35);
+        this.tempoOprozniania = 0.20 + 0.03 * trudnosc;
 
         this.pasek = BossBar.bossBar(Component.text("Łowienie..."), (float) postep, BossBar.Color.RED, BossBar.Overlay.PROGRESS);
         player.showBossBar(pasek);

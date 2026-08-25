@@ -6,7 +6,6 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="mainplugins-storage" />
         <module name="mainplugins-quests" />
         <module name="mainplugins-teleport" />
         <module name="mainplugins-menu" />
@@ -27,5 +26,8 @@
         <module name="mainplugins-spawners" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="mainplugins-storage" target="25" />
+    </bytecodeTargetLevel>
   </component>
 </project>

@@ -32,7 +32,6 @@
         <module>mainplugins-skyblock</module>
         <module>mainplugins-shop</module>
         <module>mainplugins-market</module>
-        <module>mainplugins-storage</module>
         <module>mainplugins-quests</module>
         <module>mainplugins-ranks</module>
         <module>mainplugins-tools</module>

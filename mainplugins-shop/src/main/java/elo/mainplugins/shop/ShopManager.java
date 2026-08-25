@@ -3,6 +3,7 @@ package elo.mainplugins.shop;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.CustomItemService;
 import elo.mainplugins.core.api.EconomyService;
+import elo.mainplugins.core.api.QuestService;
 import elo.mainplugins.core.util.CustomItemKeys;
 import elo.mainplugins.shop.gui.ScreenLayout;
 import elo.mainplugins.shop.gui.ShopGuiContent;
@@ -832,7 +833,14 @@ public class ShopManager implements Listener {
         String nazwa = sklepConfig.getString(path + "display-name", material.name());
         player.sendMessage(Component.text("Kupiono " + ilosc + "x " + nazwa + " za " + cena + " $!",
                 NamedTextColor.GREEN));
+        zarejestrujZakupWQuestach(player, material, null, ilosc);
         return true;
+    }
+
+    /** Wspólne dla obu ścieżek zakupu (loty + custom-id po sztuce) - patrz QuestService#zarejestrujZakup. */
+    private void zarejestrujZakupWQuestach(Player player, Material material, String customId, int ilosc) {
+        QuestService quests = CoreAPI.getQuestService();
+        if (quests != null) quests.zarejestrujZakup(player.getUniqueId(), material, customId, ilosc);
     }
 
     /** Ile sztuk danego materiału zmieści się jeszcze w ekwipunku gracza (wolne sloty + luka w niepełnych stosach). */
@@ -1156,6 +1164,9 @@ public class ShopManager implements Listener {
         ceny.zarejestrujSprzedaz(kluczCeny, doZabrania);
         ceny.getStatystyki().zapiszTransakcje(kluczCeny, doZabrania, zarobek);
 
+        QuestService quests = CoreAPI.getQuestService();
+        if (quests != null) quests.zarejestrujSprzedaz(player.getUniqueId(), material, customId, doZabrania);
+
         int reszta = posiadane - doZabrania;
         Component msg = Component.text("Sprzedano " + doZabrania + "x " + material.name()
                 + " za " + zarobek + " $!", NamedTextColor.AQUA);
@@ -1381,6 +1392,7 @@ public class ShopManager implements Listener {
                         economyManager.odejmijKase(player.getUniqueId(), buyPrice);
                         player.getInventory().addItem(stworzKupionyItem(cfgMaterial, amount, path));
                         player.sendMessage(Component.text("Kupiono " + amount + "x za " + buyPrice + " $!", NamedTextColor.GREEN));
+                        zarejestrujZakupWQuestach(player, cfgMaterial, sklepConfig.getString(path + "custom-id", null), amount);
                     } else {
                         player.sendMessage(Component.text("Brak pieniędzy!", NamedTextColor.RED));
                     }

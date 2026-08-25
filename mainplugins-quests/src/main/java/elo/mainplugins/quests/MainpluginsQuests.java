@@ -3,10 +3,12 @@ package elo.mainplugins.quests;
 import elo.mainplugins.core.api.QuestService;
 import elo.mainplugins.core.api.TytulService;
 import elo.mainplugins.core.util.TabCompleteUtils;
+import elo.mainplugins.quests.generator.GeneratorManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapelessRecipe;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -14,6 +16,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class MainpluginsQuests extends JavaPlugin {
 
     private QuestManager questManager;
+    private GeneratorManager tierowyGeneratorManager;
 
     @Override
     public void onEnable() {
@@ -28,6 +31,11 @@ public final class MainpluginsQuests extends JavaPlugin {
 
         GeneratorBrukuManager generatorBrukuManager = new GeneratorBrukuManager(this);
         getServer().getPluginManager().registerEvents(generatorBrukuManager, this);
+
+        // Silnik NOWYCH generatorów tier 2-4 (generatory.yml) - dodatkowy, obok obu powyzszych
+        // (T1), patrz javadoc GeneratorManager.
+        tierowyGeneratorManager = new GeneratorManager(this);
+        getServer().getPluginManager().registerEvents(tierowyGeneratorManager, this);
 
         if (getCommand("zadania") != null) {
             getCommand("zadania").setExecutor((sender, command, label, args) -> {
@@ -77,6 +85,51 @@ public final class MainpluginsQuests extends JavaPlugin {
                 return true;
             });
             getCommand("@reloadquesty").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
+        }
+
+        if (getCommand("@dajgenerator") != null) {
+            getCommand("@dajgenerator").setExecutor((sender, command, label, args) -> {
+                if (args.length == 0) {
+                    sender.sendMessage("Podaj id: /@dajgenerator <id> [gracz]");
+                    return true;
+                }
+                ItemStack item = tierowyGeneratorManager.stworz(args[0]);
+                if (item == null) {
+                    sender.sendMessage("Nieznane id generatora: " + args[0]);
+                    return true;
+                }
+
+                Player target;
+                if (args.length > 1) {
+                    target = Bukkit.getPlayer(args[1]);
+                    if (target == null) {
+                        sender.sendMessage("Nie znaleziono online gracza o nicku: " + args[1]);
+                        return true;
+                    }
+                } else if (sender instanceof Player player) {
+                    target = player;
+                } else {
+                    sender.sendMessage("Podaj nick gracza: /@dajgenerator " + args[0] + " <gracz>");
+                    return true;
+                }
+
+                target.getInventory().addItem(item);
+                target.sendMessage("Otrzymales generator: " + args[0]);
+                return true;
+            });
+            getCommand("@dajgenerator").setTabCompleter((sender, command, alias, args) -> {
+                if (args.length == 1) return TabCompleteUtils.dopasuj(args[0], tierowyGeneratorManager.ids().stream().toList());
+                if (args.length == 2) return TabCompleteUtils.dopasujGraczy(args[1]);
+                return TabCompleteUtils.PUSTA;
+            });
+        }
+
+        if (getCommand("@reloadgeneratory") != null) {
+            getCommand("@reloadgeneratory").setExecutor((sender, command, label, args) -> {
+                tierowyGeneratorManager.reload();
+                sender.sendMessage("Przeladowano generatory.yml.");
+                return true;
+            });
         }
     }
 

@@ -165,6 +165,8 @@ public class QuestManager implements Listener, TytulService, QuestService {
     private final Map<UUID, Map<String, Set<Integer>>> postepyGraczy = new HashMap<>();
     private final Map<UUID, Set<String>> tytulyGraczy = new HashMap<>();
     private final Map<UUID, Boolean> otwartoZMenu = new HashMap<>();
+    /** Liczniki narastające pod BUY_ITEM/SELL_ITEM/MARKET_LISTINGS (patrz kluczLicznika) - jedyny STANOWY (nie point-in-time) rodzaj wymogu w tym silniku. */
+    private final Map<UUID, Map<String, Integer>> licznikiGraczy = new HashMap<>();
 
     private QuestContent content;
 
@@ -231,6 +233,15 @@ public class QuestManager implements Listener, TytulService, QuestService {
 
             postepyGraczy.put(uuid, mapaKategorii);
             tytulyGraczy.put(uuid, tytuly);
+
+            ConfigurationSection licznikiSekcja = kategorieSekcja.getConfigurationSection("liczniki");
+            if (licznikiSekcja != null) {
+                Map<String, Integer> liczniki = new HashMap<>();
+                for (String klucz : licznikiSekcja.getKeys(false)) {
+                    liczniki.put(klucz, licznikiSekcja.getInt(klucz, 0));
+                }
+                if (!liczniki.isEmpty()) licznikiGraczy.put(uuid, liczniki);
+            }
         }
     }
 
@@ -238,6 +249,7 @@ public class QuestManager implements Listener, TytulService, QuestService {
         configPostepow.set("gracze", null); // czyścimy stare wpisy, żeby nie zostawały śmieci po zmianach nazw/id kategorii
         Set<UUID> wszyscy = new HashSet<>(postepyGraczy.keySet());
         wszyscy.addAll(tytulyGraczy.keySet());
+        wszyscy.addAll(licznikiGraczy.keySet());
 
         for (UUID uuid : wszyscy) {
             for (Map.Entry<String, Set<Integer>> kategoria : postepyGraczy.getOrDefault(uuid, Map.of()).entrySet()) {
@@ -246,6 +258,9 @@ public class QuestManager implements Listener, TytulService, QuestService {
             Set<String> tytuly = tytulyGraczy.getOrDefault(uuid, Set.of());
             if (!tytuly.isEmpty()) {
                 configPostepow.set("gracze." + uuid + ".tytuly", new ArrayList<>(tytuly));
+            }
+            for (Map.Entry<String, Integer> licznik : licznikiGraczy.getOrDefault(uuid, Map.of()).entrySet()) {
+                configPostepow.set("gracze." + uuid + ".liczniki." + licznik.getKey(), licznik.getValue());
             }
         }
         saverPostepow.oznaczZmiane();
@@ -262,6 +277,29 @@ public class QuestManager implements Listener, TytulService, QuestService {
 
     private Set<String> tytulyDlaGracza(Player player) {
         return tytulyGraczy.computeIfAbsent(player.getUniqueId(), k -> new HashSet<>());
+    }
+
+    // ---- Liczniki narastające (BUY_ITEM/SELL_ITEM/MARKET_LISTINGS) ----
+
+    /** "KUP:M:DIAMOND" / "KUP:C:TROFEUM_X" / "SPRZEDAJ:M:COBBLESTONE" / "TARG" - stabilny klucz niezależny od tego, który quest go czyta. */
+    private String kluczLicznika(String prefiks, Material material, String customId) {
+        return prefiks + ":" + (customId != null ? "C:" + customId : "M:" + material.name());
+    }
+
+    private int licznikDlaGracza(UUID uuid, String klucz) {
+        return licznikiGraczy.getOrDefault(uuid, Map.of()).getOrDefault(klucz, 0);
+    }
+
+    private void zwiekszLicznik(UUID uuid, String klucz, int ilosc) {
+        if (ilosc <= 0) return;
+        licznikiGraczy.computeIfAbsent(uuid, k -> new HashMap<>()).merge(klucz, ilosc, Integer::sum);
+        zapiszPostep();
+    }
+
+    /** " (postęp: n/wymagane)" do lore - patrz opisWymoguTekst. */
+    private String progresLicznika(Player player, String klucz, int wymagane) {
+        int obecny = licznikDlaGracza(player.getUniqueId(), klucz);
+        return " (postęp: " + Math.min(obecny, wymagane) + "/" + wymagane + ")";
     }
 
     /**
@@ -374,7 +412,7 @@ public class QuestManager implements Listener, TytulService, QuestService {
                     offsetQuestu++;
                     if (globalIndex < questy.size()) {
                         StanQuestu stan = ustalStan(kategoria, questy, globalIndex, postepy);
-                        gui.setItem(e.slot(), stworzIkoneQuesta(questy.get(globalIndex), stan));
+                        gui.setItem(e.slot(), stworzIkoneQuesta(player, questy.get(globalIndex), stan));
                     }
                 }
                 case NAV_BACK -> gui.setItem(e.slot(), stworzPrzycisk(Material.DARK_OAK_DOOR, "Powrót do Kategorii", NamedTextColor.GOLD));
@@ -475,7 +513,7 @@ public class QuestManager implements Listener, TytulService, QuestService {
         return sb.toString();
     }
 
-    private String opisWymoguTekst(Requirement r) {
+    private String opisWymoguTekst(Player player, Requirement r) {
         return switch (r) {
             case Requirement.FreeRequirement fr -> "Wymaga: nic - kliknij, by odebrać!";
             case Requirement.MoneyRequirement mr -> "Wymaga: " + (int) mr.amount() + " monet";
@@ -485,6 +523,12 @@ public class QuestManager implements Listener, TytulService, QuestService {
                     "Wymaga: posiadania " + opisWymogow(List.of(MaterialRequirement.of(tp.material(), 1))) + " (zostaje przy Tobie)";
             case Requirement.ToolLevelRequirement tl ->
                     "Wymaga: " + GRAMATYKA_NARZEDZI.get(tl.tool()).dopelniacz() + " na poziomie " + tl.level();
+            case Requirement.BuyItemRequirement br -> "Wymaga: kup w sklepie " + opisWymogow(List.of(br.material()))
+                    + progresLicznika(player, kluczLicznika("KUP", br.material().material(), br.material().customId()), br.material().amount());
+            case Requirement.SellItemRequirement sr -> "Wymaga: sprzedaj w sklepie " + opisWymogow(List.of(sr.material()))
+                    + progresLicznika(player, kluczLicznika("SPRZEDAJ", sr.material().material(), sr.material().customId()), sr.material().amount());
+            case Requirement.MarketListingsRequirement ml -> "Wymaga: wystaw łącznie " + ml.amount() + " ofert na Targu (/targ wystaw)"
+                    + progresLicznika(player, "TARG", ml.amount());
         };
     }
 
@@ -506,7 +550,7 @@ public class QuestManager implements Listener, TytulService, QuestService {
     }
 
     /** Czerwony barwnik = dostępne, zielony (lime) = ukończone, szary = zablokowane (tylko kategorie sequential). */
-    private ItemStack stworzIkoneQuesta(QuestDefinition q, StanQuestu stan) {
+    private ItemStack stworzIkoneQuesta(Player player, QuestDefinition q, StanQuestu stan) {
         Material material = switch (stan) {
             case UKONCZONY -> Material.LIME_DYE;
             case ZABLOKOWANY -> Material.GRAY_DYE;
@@ -530,7 +574,7 @@ public class QuestManager implements Listener, TytulService, QuestService {
             for (String linia : q.description()) {
                 lore.add(Component.text(linia, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
             }
-            lore.add(Component.text(opisWymoguTekst(q.requirement()), NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text(opisWymoguTekst(player, q.requirement()), NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
             lore.add(stan == StanQuestu.UKONCZONY
                     ? Component.text("Nagroda: " + etykietaNagrody(q), NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false)
                     : Component.text("Nagroda: ???", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
@@ -683,6 +727,9 @@ public class QuestManager implements Listener, TytulService, QuestService {
                 yield poziom >= tl.level();
             }
             case Requirement.ItemRequirement ir -> ir.materials().stream().allMatch(w -> posiadaWymaganaIlosc(player, w));
+            case Requirement.BuyItemRequirement br -> licznikDlaGracza(player.getUniqueId(), kluczLicznika("KUP", br.material().material(), br.material().customId())) >= br.material().amount();
+            case Requirement.SellItemRequirement sr -> licznikDlaGracza(player.getUniqueId(), kluczLicznika("SPRZEDAJ", sr.material().material(), sr.material().customId())) >= sr.material().amount();
+            case Requirement.MarketListingsRequirement ml -> licznikDlaGracza(player.getUniqueId(), "TARG") >= ml.amount();
         };
     }
 
@@ -694,6 +741,11 @@ public class QuestManager implements Listener, TytulService, QuestService {
             case Requirement.ToolPossessRequirement tp -> { }
             case Requirement.ToolLevelRequirement tl -> { }
             case Requirement.MarketOfferRequirement mo -> { }
+            // Liczniki narastające NIE są konsumowane po zdaniu - tak jak MoneyRequirement nie
+            // zabiera "nadmiaru" monet ponad próg, tu też zostaje pełna historia zakupów/sprzedaży.
+            case Requirement.BuyItemRequirement br -> { }
+            case Requirement.SellItemRequirement sr -> { }
+            case Requirement.MarketListingsRequirement ml -> { }
         }
     }
 
@@ -708,6 +760,9 @@ public class QuestManager implements Listener, TytulService, QuestService {
             case Requirement.MarketOfferRequirement mo -> "Nie masz jeszcze żadnej aktywnej oferty na Targu! Wpisz /targ wystaw <cena>.";
             case Requirement.ItemRequirement ir -> "Nie masz wymaganych przedmiotów!";
             case Requirement.FreeRequirement fr -> "Nie masz wymaganych przedmiotów!";
+            case Requirement.BuyItemRequirement br -> "Nie kupiłeś jeszcze wystarczająco tego przedmiotu w sklepie!";
+            case Requirement.SellItemRequirement sr -> "Nie sprzedałeś jeszcze wystarczająco tego przedmiotu w sklepie!";
+            case Requirement.MarketListingsRequirement ml -> "Nie wystawiłeś jeszcze wystarczająco ofert na Targu! Wpisz /targ wystaw <cena>.";
         };
     }
 
@@ -769,6 +824,34 @@ public class QuestManager implements Listener, TytulService, QuestService {
         nieZmieszczone.values().forEach(i -> player.getWorld().dropItemNaturally(player.getLocation(), i));
     }
 
+    /**
+     * CUSTOM_ITEM po id, dowolne źródło rejestru - najpierw custom-items.yml
+     * (CustomItemService, mainplugins-core), potem ewoluujace-narzedzia.yml
+     * (ToolsService#stworzEwoluujaceNarzedzie), a na końcu Kilof Niflheim
+     * (ToolsService#NIFLHEIM_ID - jedyny przypadek wymagający Playera, bo przypisuje
+     * się duszami do właściciela w momencie stworzenia) - z perspektywy questa to
+     * JEDEN, wspólny "custom item" bez znaczenia, w którym pliku faktycznie żyje.
+     * Null, jeśli id nieznane we WSZYSTKICH rejestrach (albo żaden z modułów nie jest wgrany).
+     */
+    private ItemStack stworzCustomItem(Player player, String id, int amount) {
+        CustomItemService customItems = CoreAPI.getCustomItemService();
+        if (customItems != null && customItems.exists(id)) {
+            return customItems.create(id, amount);
+        }
+        ToolsService tools = CoreAPI.getToolsService();
+        if (tools != null) {
+            if (id.equals(ToolsService.NIFLHEIM_ID)) {
+                return tools.stworzKilofNiflheim(player);
+            }
+            ItemStack narzedzie = tools.stworzEwoluujaceNarzedzie(id);
+            if (narzedzie != null) {
+                narzedzie.setAmount(amount);
+                return narzedzie;
+            }
+        }
+        return null;
+    }
+
     private void wreczNagrody(Player player, QuestDefinition q) {
         for (RewardEntry r : q.rewards()) wreczJednaNagrode(player, r);
     }
@@ -778,13 +861,13 @@ public class QuestManager implements Listener, TytulService, QuestService {
             case RewardEntry.ItemReward ir -> dajLubUpusc(player, new ItemStack(ir.material(), ir.amount()));
 
             case RewardEntry.CustomItemReward cr -> {
-                CustomItemService svc = CoreAPI.getCustomItemService();
-                if (svc == null || !svc.exists(cr.id())) {
-                    plugin.getLogger().warning("Nagroda questu: custom item '" + cr.id() + "' niedostępny (CustomItemService null lub brak wpisu w rejestrze) - pomijam.");
+                ItemStack item = stworzCustomItem(player, cr.id(), cr.amount());
+                if (item == null) {
+                    plugin.getLogger().warning("Nagroda questu: custom item '" + cr.id()
+                            + "' niedostępny (brak wpisu w custom-items.yml ANI w ewoluujace-narzedzia.yml) - pomijam.");
                     return;
                 }
-                ItemStack item = svc.create(cr.id(), cr.amount());
-                if (item != null) dajLubUpusc(player, item);
+                dajLubUpusc(player, item);
             }
 
             case RewardEntry.MoneyReward mr -> CoreAPI.getEconomyService().dodajKase(player.getUniqueId(), mr.amount());
@@ -856,5 +939,24 @@ public class QuestManager implements Listener, TytulService, QuestService {
         if (kategorie == null) return false;
         Set<Integer> postepy = kategorie.get(glowna.id());
         return postepy != null && postepy.contains(questId);
+    }
+
+    // ---- QuestService: liczniki narastające dla BUY_ITEM/SELL_ITEM/MARKET_LISTINGS ----
+    // Wołane z mainplugins-shop (ShopManager) i mainplugins-market (MarketManager) PO udanej
+    // transakcji - patrz komentarz przy licznikiGraczy/kluczLicznika wyżej.
+
+    @Override
+    public void zarejestrujZakup(UUID uuid, Material material, String customId, int ilosc) {
+        zwiekszLicznik(uuid, kluczLicznika("KUP", material, customId), ilosc);
+    }
+
+    @Override
+    public void zarejestrujSprzedaz(UUID uuid, Material material, String customId, int ilosc) {
+        zwiekszLicznik(uuid, kluczLicznika("SPRZEDAJ", material, customId), ilosc);
+    }
+
+    @Override
+    public void zarejestrujWystawienieNaTarg(UUID uuid) {
+        zwiekszLicznik(uuid, "TARG", 1);
     }
 }

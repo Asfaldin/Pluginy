@@ -10,40 +10,23 @@ commands:
     usage: "/<command> [ilosc]"
     permission: mainplugins.tools.addlvl
     permission-message: "&cNie masz permisji do tej komendy!"
-  "@addcustompickaxe":
-    description: "[ADMIN] Nadaje startowy kilof (Wydajnosciowy) - jak nagroda questu 1"
-    usage: "/<command> [gracz]"
-    permission: mainplugins.tools.addcustompickaxe
-    permission-message: "&cNie masz permisji do tej komendy!"
   "@dajwszystko":
-    description: "[DEBUG] Nadaje wszystkie typy kilofa i wszystkie gemy do testow"
+    description: "[DEBUG] Nadaje Kilof Niflheim, wszystkie ewoluujace narzedzia i wszystkie gemy do testow"
     usage: "/<command> [gracz]"
     permission: mainplugins.tools.dajwszystko
     permission-message: "&cNie masz permisji do tej komendy!"
-  "@dajkilofa":
-    description: "[DEBUG] Nadaje przykladowy Kilof Doswiadczenia (nowy silnik, max 30 lvl) do testow"
-    usage: "/<command> [gracz]"
-    permission: mainplugins.tools.dajkilofa
-    permission-message: "&cNie masz permisji do tej komendy!"
-  "@dajsniezny":
-    description: "[DEBUG] Nadaje legendarny Kilof Niflheim (nowy silnik, max 30 lvl) do testow"
-    usage: "/<command> [gracz]"
-    permission: mainplugins.tools.dajsniezny
+  "@reloadnarzedzia":
+    description: "[ADMIN] Wczytuje ewoluujace-narzedzia.yml na nowo, bez restartu serwera"
+    permission: mainplugins.tools.reloadnarzedzia
     permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.tools.addlvl:
     description: Pozwala levelowac trzymane narzedzie do testow
     default: op
-  mainplugins.tools.addcustompickaxe:
-    description: Pozwala nadac startowy kilof (sobie lub innemu graczowi)
-    default: op
   mainplugins.tools.dajwszystko:
     description: Pozwala nadac komplet wszystkich kilofow i gemow do testow
     default: op
-  mainplugins.tools.dajkilofa:
-    description: Pozwala nadac przykladowy Kilof Doswiadczenia (sobie lub innemu graczowi)
-    default: op
-  mainplugins.tools.dajsniezny:
-    description: Pozwala nadac legendarny Kilof Niflheim (sobie lub innemu graczowi)
+  mainplugins.tools.reloadnarzedzia:
+    description: Pozwala przeladowac ewoluujace-narzedzia.yml
     default: op

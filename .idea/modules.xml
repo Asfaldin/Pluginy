@@ -19,7 +19,6 @@
       <module fileurl="file://$PROJECT_DIR$/mainplugins-skyblock/mainplugins-skyblock.iml" filepath="$PROJECT_DIR$/mainplugins-skyblock/mainplugins-skyblock.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-spawn/mainplugins-spawn.iml" filepath="$PROJECT_DIR$/mainplugins-spawn/mainplugins-spawn.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-spawners/mainplugins-spawners.iml" filepath="$PROJECT_DIR$/mainplugins-spawners/mainplugins-spawners.iml" />
-      <module fileurl="file://$PROJECT_DIR$/mainplugins-storage/mainplugins-storage.iml" filepath="$PROJECT_DIR$/mainplugins-storage/mainplugins-storage.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-teleport/mainplugins-teleport.iml" filepath="$PROJECT_DIR$/mainplugins-teleport/mainplugins-teleport.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-tools/mainplugins-tools.iml" filepath="$PROJECT_DIR$/mainplugins-tools/mainplugins-tools.iml" />
     </modules>

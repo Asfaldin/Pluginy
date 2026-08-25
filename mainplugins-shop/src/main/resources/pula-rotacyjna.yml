@@ -1,0 +1,82 @@
+# Pula itemów do sklepu rotacyjnego (kategoria "Kolekcja").
+# RotacjaManager losuje stąd 5 pozycji co 14 dni i wpisuje je do
+# categories/kolekcja.yml (sloty 0-4). Cała kategoria jest rotacyjna —
+# Generator Bruku ma teraz stałe miejsce w kategorii "Rudy i Minerały".
+#
+# Każdy wpis: material + display-name + buy-price (za 1 sztukę).
+# Itemy z 'custom-id' są kupowane ścieżką customową w ShopManager - tu ich nie ma,
+# wszystkie pozycje to zwykłe wanilijskie materiały.
+
+itemy:
+  # ---- PŁYTY MUZYCZNE (15) - cena rośnie co 10k wg rzadkości w wanilii ----
+  - {material: MUSIC_DISC_13, nazwa: "Płyta: 13", cena: 10000}
+  - {material: MUSIC_DISC_CAT, nazwa: "Płyta: Cat", cena: 20000}
+  - {material: MUSIC_DISC_BLOCKS, nazwa: "Płyta: Blocks", cena: 30000}
+  - {material: MUSIC_DISC_CHIRP, nazwa: "Płyta: Chirp", cena: 40000}
+  - {material: MUSIC_DISC_FAR, nazwa: "Płyta: Far", cena: 50000}
+  - {material: MUSIC_DISC_MALL, nazwa: "Płyta: Mall", cena: 60000}
+  - {material: MUSIC_DISC_MELLOHI, nazwa: "Płyta: Mellohi", cena: 70000}
+  - {material: MUSIC_DISC_STAL, nazwa: "Płyta: Stal", cena: 80000}
+  - {material: MUSIC_DISC_STRAD, nazwa: "Płyta: Strad", cena: 90000}
+  - {material: MUSIC_DISC_WARD, nazwa: "Płyta: Ward", cena: 100000}
+  - {material: MUSIC_DISC_11, nazwa: "Płyta: 11", cena: 110000}
+  - {material: MUSIC_DISC_WAIT, nazwa: "Płyta: Wait", cena: 120000}
+  - {material: MUSIC_DISC_RELIC, nazwa: "Płyta: Relic", cena: 130000}
+  - {material: MUSIC_DISC_CREATOR, nazwa: "Płyta: Creator", cena: 140000}
+  - {material: MUSIC_DISC_CREATOR_MUSIC_BOX, nazwa: "Płyta: Creator Music Box", cena: 150000}
+
+  # ---- GŁOWY MOBÓW (6) ----
+  - {material: PLAYER_HEAD, nazwa: "Głowa Gracza", cena: 5000}
+  - {material: ZOMBIE_HEAD, nazwa: "Głowa Zombie", cena: 15000}
+  - {material: SKELETON_SKULL, nazwa: "Czaszka Szkieleta", cena: 15000}
+  - {material: CREEPER_HEAD, nazwa: "Głowa Creepera", cena: 15000}
+  - {material: WITHER_SKELETON_SKULL, nazwa: "Czaszka Witherowego Szkieleta", cena: 15000}
+  # Głowa Smoka w wanilii to jednorazowy item na cały świat - stąd cena z innej półki
+  - {material: DRAGON_HEAD, nazwa: "Głowa Smoka", cena: 150000}
+
+  # ---- ROGI KÓZ (5) ----
+  # Ponder/Sing/Seek/Feel dropią zwykłe kozy, Admire tylko "krzyczące" (2% spawnu)
+  - {material: GOAT_HORN, nazwa: "Róg Kozi: Ponder", cena: 20000, instrument: ponder_goat_horn}
+  - {material: GOAT_HORN, nazwa: "Róg Kozi: Sing", cena: 20000, instrument: sing_goat_horn}
+  - {material: GOAT_HORN, nazwa: "Róg Kozi: Seek", cena: 20000, instrument: seek_goat_horn}
+  - {material: GOAT_HORN, nazwa: "Róg Kozi: Feel", cena: 20000, instrument: feel_goat_horn}
+  - {material: GOAT_HORN, nazwa: "Róg Kozi: Admire", cena: 40000, instrument: admire_goat_horn}
+
+  # ---- DAWNE ITEMY SPECJALNE (4) ----
+  - {material: ARMADILLO_SCUTE, nazwa: "Tarczka Pancernika", cena: 5000}
+  - {material: SHULKER_SHELL, nazwa: "Skorupa Shulkera", cena: 7500}
+  - {material: FROGSPAWN, nazwa: "Żabi Skrzek", cena: 10000}
+  - {material: ELYTRA, nazwa: "Elytra", cena: 75000}
+
+  # ---- TARCZKA ŻÓŁWIA (1) ----
+  # Przeniesiona z kategorii "Rudy i Mineraly" - patrz uwaga na koncu patcha,
+  # trzeba ja stamtad USUNAC, inaczej bedzie w dwoch miejscach naraz.
+  - {material: TURTLE_SCUTE, nazwa: "Tarczka Żółwia", cena: 25000}
+
+  # ---- JAJKA SPAWNUJĄCE (16) - tylko pasywne moby ----
+  # Świadomie POMINIĘTE: krowa, owca, świnia, kura - te macie już w spawnerach,
+  # nie ma sensu ich dublować w innej formie. Zero agresywnych mobów.
+  - {material: RABBIT_SPAWN_EGG, nazwa: "Jajko: Królik", cena: 25000}
+  - {material: CAT_SPAWN_EGG, nazwa: "Jajko: Kot", cena: 25000}
+  - {material: OCELOT_SPAWN_EGG, nazwa: "Jajko: Ocelot", cena: 25000}
+  - {material: FOX_SPAWN_EGG, nazwa: "Jajko: Lis", cena: 30000}
+  - {material: BEE_SPAWN_EGG, nazwa: "Jajko: Pszczoła", cena: 35000}
+  - {material: WOLF_SPAWN_EGG, nazwa: "Jajko: Wilk", cena: 35000}
+  - {material: PARROT_SPAWN_EGG, nazwa: "Jajko: Papuga", cena: 40000}
+  - {material: LLAMA_SPAWN_EGG, nazwa: "Jajko: Lama", cena: 40000}
+  - {material: HORSE_SPAWN_EGG, nazwa: "Jajko: Koń", cena: 40000}
+  - {material: PANDA_SPAWN_EGG, nazwa: "Jajko: Panda", cena: 50000}
+  - {material: POLAR_BEAR_SPAWN_EGG, nazwa: "Jajko: Niedźwiedź Polarny", cena: 50000}
+  - {material: DOLPHIN_SPAWN_EGG, nazwa: "Jajko: Delfin", cena: 55000}
+  - {material: CAMEL_SPAWN_EGG, nazwa: "Jajko: Wielbłąd", cena: 55000}
+  - {material: AXOLOTL_SPAWN_EGG, nazwa: "Jajko: Aksolotl", cena: 60000}
+  - {material: SNIFFER_SPAWN_EGG, nazwa: "Jajko: Sniffer", cena: 70000}
+  - {material: MOOSHROOM_SPAWN_EGG, nazwa: "Jajko: Muuchomor", cena: 70000}
+
+  # ---- WIADRA Z RYBAMI (6) ----
+  - {material: COD_BUCKET, nazwa: "Wiadro z Dorszem", cena: 8000}
+  - {material: SALMON_BUCKET, nazwa: "Wiadro z Łososiem", cena: 8000}
+  - {material: TADPOLE_BUCKET, nazwa: "Wiadro z Kijanką", cena: 10000}
+  - {material: TROPICAL_FISH_BUCKET, nazwa: "Wiadro z Rybą Tropikalną", cena: 12000}
+  - {material: PUFFERFISH_BUCKET, nazwa: "Wiadro z Rozdymką", cena: 12000}
+  - {material: AXOLOTL_BUCKET, nazwa: "Wiadro z Aksolotlem", cena: 25000}

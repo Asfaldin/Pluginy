@@ -129,11 +129,19 @@ items:
     sell-amount: 1
     sell-price: 1280
   17:
-    material: TURTLE_SCUTE
+    material: MOSSY_COBBLESTONE
     slot: 17
-    display-name: "Tarczka Żółwia"
+    custom-id: GENERATOR_BRUK_T1
+    display-name: "Generator Bruku"
+    lore:
+      - "Postaw na wyspie - co jakiś czas"
+      - "można wykopać z niego bruk (cobblestone)"
+      - "Blok sam się odbudowuje po wykopaniu"
+      - "Kopie się WYŁĄCZNIE łopatą"
+      - "Narzędzie ze specjalnym Silk Touchem"
+      - "zbiera cały generator zamiast dropu"
     amount: 1
-    buy-price: 20000
+    buy-price: 8000
   18:
     material: NETHERITE_SCRAP
     slot: 18

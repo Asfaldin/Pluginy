@@ -25,7 +25,7 @@ commands:
     permission-message: "&cNie masz permisji do tej komendy!"
   '@sklep':
     description: Administracyjna edycja cen sklepu
-    usage: /@sklep <info|cena|reset|resetall|mnoznik>
+    usage: /@sklep <info|cena|reset|resetall|mnoznik|rotacja>
     permission: mainplugins.shop.admin
 
 permissions:

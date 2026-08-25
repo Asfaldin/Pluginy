@@ -9,11 +9,14 @@ import elo.mainplugins.shop.gui.ShopGuiContent;
 import elo.mainplugins.shop.gui.ShopGuiStyle;
 import elo.mainplugins.shop.gui.ShopSlotEntry;
 import elo.mainplugins.shop.gui.ShopSlotRole;
+import io.papermc.paper.datacomponent.DataComponentTypes;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.MusicInstrument;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -369,6 +372,35 @@ public class ShopManager implements Listener {
         return -1;
     }
 
+    /**
+     * Fizyczne sloty GUI (w kolejności wypełniania) na stronę kategorii.
+     *
+     * Gdy cała kategoria mieści się na jednej stronie I ma mniej itemów niż jeden
+     * rząd siatki (typowe dla "Kolekcji" - zawsze dokładnie 5 rotacyjnych pozycji),
+     * centrujemy je w jednym, środkowym rzędzie zamiast upychać od lewej-górnej
+     * krawędzi. W każdym innym wypadku (kategoria wielostronicowa) zwraca zwykłą,
+     * pełną listę slotów bez zmian.
+     *
+     * WAŻNE: render (otworzKategorieStrona) i klik (onInventoryClick) MUSZĄ wołać
+     * to identycznie - inaczej klik trafi w zupełnie inny item niż ten widoczny.
+     */
+    private List<Integer> slotyStrony(List<ShopSlotEntry> itemSlots, int liczbaItemowLacznie, boolean jednaStrona) {
+        List<Integer> pelne = itemSlots.stream().map(ShopSlotEntry::slot).toList();
+        if (!jednaStrona || liczbaItemowLacznie >= pelne.size()) return pelne;
+
+        // Grupujemy sloty po rzędzie (rząd = numer_slotu / 9), zachowując kolejność z configu.
+        LinkedHashMap<Integer, List<Integer>> rzedy = new LinkedHashMap<>();
+        for (int slot : pelne) rzedy.computeIfAbsent(slot / 9, k -> new ArrayList<>()).add(slot);
+        List<List<Integer>> listaRzedow = new ArrayList<>(rzedy.values());
+
+        int najszerszyRzad = listaRzedow.stream().mapToInt(List::size).max().orElse(pelne.size());
+        if (liczbaItemowLacznie > najszerszyRzad) return pelne; // nie mieści się w jednym rzędzie - nie kombinujemy
+
+        List<Integer> wybranyRzad = listaRzedow.get((listaRzedow.size() - 1) / 2);
+        int wciecie = Math.max(0, (wybranyRzad.size() - liczbaItemowLacznie) / 2);
+        return new ArrayList<>(wybranyRzad.subList(wciecie, wciecie + liczbaItemowLacznie));
+    }
+
     /** Puste, bezimienne szkło do wypełniania tła GUI. */
     private ItemStack pane(Material material) {
         ItemStack item = new ItemStack(material);
@@ -479,6 +511,7 @@ public class ShopManager implements Listener {
 
         int pageStart = page * rozmiarStrony;
         int pageEnd = Math.min(pageStart + rozmiarStrony, itemKeys.size());
+        List<Integer> sloty = slotyStrony(itemSlots, itemKeys.size(), totalPages == 1);
 
         for (int i = pageStart; i < pageEnd; i++) {
             String path = "categories." + catKey + ".items." + itemKeys.get(i) + ".";
@@ -499,6 +532,7 @@ public class ShopManager implements Listener {
             // natychmiastowe kupno całego lota. Realną ilość (lot / wybór 1-8-16-32-64) widać
             // dopiero w lore i po kliknięciu.
             ItemStack item = new ItemStack(material, 1);
+            zastosujInstrument(item, path);
             ItemMeta meta = item.getItemMeta();
             meta.displayName(customDisplayName != null
                     ? Component.text(customDisplayName, NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD)
@@ -506,7 +540,9 @@ public class ShopManager implements Listener {
 
             List<Component> lore = new ArrayList<>();
             for (String linia : customLore) {
-                lore.add(Component.text(linia, NamedTextColor.LIGHT_PURPLE).decoration(TextDecoration.ITALIC, false));
+                lore.add(linia.equals(LORE_OFERTA_CZASOWA)
+                        ? teczowyTekst(linia, true)
+                        : Component.text(linia, NamedTextColor.LIGHT_PURPLE).decoration(TextDecoration.ITALIC, false));
             }
             if (!customLore.isEmpty()) lore.add(Component.empty());
 
@@ -564,7 +600,7 @@ public class ShopManager implements Listener {
             meta.lore(lore);
             item.setItemMeta(meta);
 
-            gui.setItem(itemSlots.get(i - pageStart).slot(), item);
+            gui.setItem(sloty.get(i - pageStart), item);
         }
 
         // Pasek nawigacyjny - sloty czytane z sklep-gui.yml (category-page.layout)
@@ -859,6 +895,43 @@ public class ShopManager implements Listener {
         kupIlosc(player, ref, ilosc);
     }
 
+    /** Kolejność kolorów dla teczowego tekstu - patrz teczowyTekst(). */
+    private static final NamedTextColor[] TECZA = {
+            NamedTextColor.RED, NamedTextColor.GOLD, NamedTextColor.YELLOW,
+            NamedTextColor.GREEN, NamedTextColor.AQUA, NamedTextColor.LIGHT_PURPLE
+    };
+
+    /** Etykieta rotacyjnej oferty (patrz RotacjaManager) - jedyna linia lore renderowana na tęczowo. */
+    private static final String LORE_OFERTA_CZASOWA = "OFERTA CZASOWA";
+
+    /** Ten sam tekst, litera po literze w kolejnych kolorach tęczy - zamiast jednego stałego koloru linii. */
+    private Component teczowyTekst(String tekst, boolean bold) {
+        Component wynik = Component.empty();
+        for (int i = 0; i < tekst.length(); i++) {
+            Component litera = Component.text(String.valueOf(tekst.charAt(i)), TECZA[i % TECZA.length])
+                    .decoration(TextDecoration.ITALIC, false)
+                    .decoration(TextDecoration.BOLD, bold);
+            wynik = wynik.append(litera);
+        }
+        return wynik;
+    }
+
+    /**
+     * Wpina komponent instrumentu (róg kozi) z pola "instrument" w categories/*.yml,
+     * jeśli takie pole jest ustawione - patrz kategoria "kolekcja" / RotacjaManager.
+     * Bez tego wszystkie rogi kóz byłyby identycznym, domyślnym GOAT_HORN.
+     */
+    private void zastosujInstrument(ItemStack item, String configPath) {
+        String instrument = sklepConfig.getString(configPath + "instrument", null);
+        if (instrument == null) return;
+        MusicInstrument muzInstrument = MusicInstrument.getByKey(NamespacedKey.minecraft(instrument));
+        if (muzInstrument == null) {
+            plugin.getLogger().warning("Shop: nieznany instrument '" + instrument + "' w " + configPath);
+            return;
+        }
+        item.setData(DataComponentTypes.INSTRUMENT, muzInstrument);
+    }
+
     /** Buduje kupiony item; jeśli wpis ma custom-id, doczepia PDC tag + display-name + lore (patrz kategorie "spawnery"/"kolekcja"). */
     private ItemStack stworzKupionyItem(Material material, int amount, String configPath) {
         String customId = sklepConfig.getString(configPath + "custom-id", null);
@@ -866,6 +939,7 @@ public class ShopManager implements Listener {
         List<String> lore = sklepConfig.getStringList(configPath + "lore");
 
         ItemStack item = stworzBazowyItem(material, amount, customId);
+        zastosujInstrument(item, configPath);
         if (customId == null && displayName == null && lore.isEmpty()) return item;
 
         ItemMeta meta = item.getItemMeta();
@@ -875,7 +949,9 @@ public class ShopManager implements Listener {
         if (!lore.isEmpty()) {
             List<Component> loreComponents = new ArrayList<>();
             for (String linia : lore) {
-                loreComponents.add(Component.text(linia, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+                loreComponents.add(linia.equals(LORE_OFERTA_CZASOWA)
+                        ? teczowyTekst(linia, true)
+                        : Component.text(linia, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
             }
             meta.lore(loreComponents);
         }
@@ -1264,19 +1340,24 @@ public class ShopManager implements Listener {
                 return;
             }
 
-            int localIndex = lokalnyIndexDlaSlotu(slotKlikniecia, itemSlotyKategorii);
-            if (localIndex < 0) return; // Kliknięcie w tło/poza siatkę - nie ma tam żadnego itemu
-
             ConfigurationSection itemsSection = sklepConfig.getConfigurationSection("categories." + catKey + ".items");
             if (itemsSection == null) return;
 
             // Ta sama arytmetyka co przy renderowaniu w otworzKategorieStrona() - kolejność
-            // w sklep.yml + numer strony + slot w siatce muszą się zgadzać 1:1, inaczej
-            // klik trafi w zupełnie inny item niż ten widoczny na ekranie. Stąd też to samo
-            // sortowanie (per gracz), co przy renderze, musi zostać zastosowane i tutaj.
+            // w sklep.yml + numer strony + slot w siatce (w tym ewentualne centrowanie,
+            // patrz slotyStrony) muszą się zgadzać 1:1, inaczej klik trafi w zupełnie inny
+            // item niż ten widoczny na ekranie. Stąd też to samo sortowanie (per gracz),
+            // co przy renderze, musi zostać zastosowane i tutaj.
             boolean poSkupieKlik = sortowaniePoSkupie.getOrDefault(player.getUniqueId(), false);
             List<String> itemKeys = posortujItemy(catKey, new ArrayList<>(itemsSection.getKeys(false)), poSkupieKlik);
-            int absoluteIndex = currentPage * Math.max(itemSlotyKategorii.size(), 1) + localIndex;
+            int rozmiarStronyKlik = Math.max(itemSlotyKategorii.size(), 1);
+            boolean jednaStronaKlik = itemKeys.size() <= rozmiarStronyKlik;
+            List<Integer> slotyKlik = slotyStrony(itemSlotyKategorii, itemKeys.size(), jednaStronaKlik);
+
+            int localIndex = slotyKlik.indexOf(slotKlikniecia);
+            if (localIndex < 0) return; // Kliknięcie w tło/poza siatkę - nie ma tam żadnego itemu
+
+            int absoluteIndex = currentPage * rozmiarStronyKlik + localIndex;
             if (absoluteIndex < 0 || absoluteIndex >= itemKeys.size()) return;
 
             String path = "categories." + catKey + ".items." + itemKeys.get(absoluteIndex) + ".";

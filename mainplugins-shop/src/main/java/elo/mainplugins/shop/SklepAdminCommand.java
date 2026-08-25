@@ -23,6 +23,7 @@ import java.util.Map;
 public class SklepAdminCommand implements CommandExecutor, TabCompleter {
 
     private final ShopManager shopManager;
+    private final RotacjaManager rotacjaManager;
 
     /**
      * Kto na co czeka z potwierdzeniem. Klucz to UUID gracza (albo "KONSOLA"),
@@ -39,8 +40,9 @@ public class SklepAdminCommand implements CommandExecutor, TabCompleter {
         return (s instanceof Player p) ? p.getUniqueId().toString() : "KONSOLA";
     }
 
-    public SklepAdminCommand(ShopManager shopManager) {
+    public SklepAdminCommand(ShopManager shopManager, RotacjaManager rotacjaManager) {
         this.shopManager = shopManager;
+        this.rotacjaManager = rotacjaManager;
     }
 
     @Override
@@ -206,6 +208,17 @@ public class SklepAdminCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
 
+            case "rotacja" -> {
+                if (args.length >= 2 && args[1].equalsIgnoreCase("wymus")) {
+                    rotacjaManager.wymusRotacje();
+                    sender.sendMessage(zielony("Wymuszono rotacje - nowa oferta w Kolekcji juz zapisana "
+                            + "i ogloszona na czacie."));
+                    return true;
+                }
+                pokazRotacje(sender);
+                return true;
+            }
+
             default -> {
                 pomoc(sender);
                 return true;
@@ -353,6 +366,32 @@ public class SklepAdminCommand implements CommandExecutor, TabCompleter {
         s.sendMessage(szary("/@sklep event <item> <0.5-1.5>    ustaw i zablokuj (event)"));
         s.sendMessage(szary("/@sklep event <item> off          odblokuj"));
         s.sendMessage(szary("/@sklep event lista               co jest zablokowane"));
+        s.sendMessage(szary("/@sklep rotacja                   info o rotacji Kolekcji"));
+        s.sendMessage(szary("/@sklep rotacja wymus              wymus nowa rotacje TERAZ"));
+    }
+
+    /** Status rotacyjnej oferty w kategorii "Kolekcja" - patrz RotacjaManager. */
+    private void pokazRotacje(CommandSender sender) {
+        sender.sendMessage(Component.text("=== Rotacja: Kolekcja ===", NamedTextColor.GOLD, TextDecoration.BOLD));
+        sender.sendMessage(szary("Nastepna zmiana oferty za: " + rotacjaManager.dniDoRotacji() + " dni"));
+        sender.sendMessage(szary("Pula: " + rotacjaManager.rozmiarPuli() + " itemow, na chlodzeniu: "
+                + rotacjaManager.naChlodzeniu()));
+
+        var cfg = shopManager.getSklepConfig();
+        var itemsSection = cfg.getConfigurationSection("categories.kolekcja.items");
+        if (itemsSection == null || itemsSection.getKeys(false).isEmpty()) {
+            sender.sendMessage(szary("Aktualna oferta jest pusta - albo jeszcze przed pierwsza rotacja "
+                    + "(odpala sie sama do minuty po starcie), albo cos poszlo nie tak."));
+        } else {
+            sender.sendMessage(Component.text("Aktualna oferta:", NamedTextColor.LIGHT_PURPLE));
+            for (String klucz : itemsSection.getKeys(false)) {
+                String path = "categories.kolekcja.items." + klucz + ".";
+                String nazwa = cfg.getString(path + "display-name", cfg.getString(path + "material", "?"));
+                int cena = cfg.getInt(path + "buy-price", -1);
+                sender.sendMessage(szary("  - " + nazwa + "  (" + (cena < 0 ? "?" : cena + " $") + ")"));
+            }
+        }
+        sender.sendMessage(szary("Wymus nowa rotacje teraz: /@sklep rotacja wymus"));
     }
 
     private static Component zielony(String t) { return Component.text(t, NamedTextColor.GREEN); }
@@ -371,7 +410,7 @@ public class SklepAdminCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 1) {
             for (String s : List.of("info", "cena", "reset", "resetall", "mnoznik",
-                                    "event", "tak", "nie")) {
+                                    "event", "rotacja", "tak", "nie")) {
                 if (s.startsWith(args[0].toLowerCase())) wynik.add(s);
             }
         } else if (args.length == 2 && args[0].equalsIgnoreCase("event")) {
@@ -380,7 +419,10 @@ public class SklepAdminCommand implements CommandExecutor, TabCompleter {
             for (String id : shopManager.wszystkieIdentyfikatory()) {
                 if (id.startsWith(pref)) wynik.add(id);
             }
-        } else if (args.length == 2 && !args[0].equalsIgnoreCase("resetall")) {
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("rotacja")) {
+            if ("wymus".startsWith(args[1].toLowerCase())) wynik.add("wymus");
+        } else if (args.length == 2 && !args[0].equalsIgnoreCase("resetall")
+                && !args[0].equalsIgnoreCase("rotacja")) {
             String pref = args[1].toUpperCase();
             for (String id : shopManager.wszystkieIdentyfikatory()) {
                 if (id.startsWith(pref)) wynik.add(id);

@@ -4,7 +4,6 @@ import org.bukkit.Material;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Cała liczbowa/danych konfiguracja systemu wysp wczytana z wyspy-config.yml (patrz
@@ -32,13 +31,7 @@ public record IslandTuning(
         Map<Integer, Integer> kosztBazowyIloscPoziomy,
         int kosztBazowyIloscDomyslny,
         Map<Integer, Integer> kosztBazowySzybkoscPoziomy,
-        int kosztBazowySzybkoscDomyslny,
-        int snifferPromienZbioru,
-        int snifferWysokoscZbioru,
-        int snifferPromienSzukaniaSkrzyni,
-        int snifferPromienWedrowania,
-        long snifferSkanOdstepTicks,
-        Set<Material> snifferUprawy
+        int kosztBazowySzybkoscDomyslny
 ) {
     /** Od próby "odProby" (włącznie) w górę obowiązuje "milisekundy" - lista MUSI być posortowana rosnąco po odProby. */
     public record CooldownProg(int odProby, long milisekundy) {}

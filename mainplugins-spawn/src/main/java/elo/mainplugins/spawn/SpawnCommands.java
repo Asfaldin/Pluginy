@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * /spawn i /warp (każdy), /@setspawn [info], /@obszar <wand|usun|lista|info|moby|border> ...,
+ * /spawn i /warp (każdy), /@setspawn [info], /@obszar <wand|usun|lista|info|moby|ryby|border> ...,
  * /@setwarp <nazwa> i /@delwarp <nazwa> - te ostatnie cztery chronione uprawnieniem
  * mainplugins.spawn.admin (patrz plugin.yml - Bukkit sam odrzuca wywołanie zanim trafi do
  * onCommand). Cała logika w SpawnManager/ObszarManager/WarpManager. Ta sama klasa dostarcza
@@ -26,12 +26,12 @@ import java.util.Set;
  */
 public class SpawnCommands implements CommandExecutor, TabCompleter {
 
-    private static final List<String> PODKOMENDY_OBSZAR = List.of("wand", "usun", "lista", "info", "moby", "border");
+    private static final List<String> PODKOMENDY_OBSZAR = List.of("wand", "usun", "lista", "info", "moby", "ryby", "border");
     private static final List<String> PODKOMENDY_SETSPAWN = List.of("info");
     private static final List<String> TYPY_MOBOW = List.of("pasywne", "agresywne");
     private static final List<String> STANY = List.of("on", "off");
     // Podkomendy, których drugi argument to nazwa istniejącego obszaru - patrz onTabComplete.
-    private static final List<String> PODKOMENDY_Z_NAZWA = List.of("wand", "usun", "info", "moby", "border");
+    private static final List<String> PODKOMENDY_Z_NAZWA = List.of("wand", "usun", "info", "moby", "ryby", "border");
 
     private final SpawnManager spawnManager;
     private final ObszarManager obszarManager;
@@ -98,7 +98,7 @@ public class SpawnCommands implements CommandExecutor, TabCompleter {
 
     private void handleObszar(Player player, String[] args) {
         if (args.length == 0) {
-            player.sendMessage(Component.text("Użycie: /@obszar <wand|usun|lista|info|moby|border> ...", NamedTextColor.RED));
+            player.sendMessage(Component.text("Użycie: /@obszar <wand|usun|lista|info|moby|ryby|border> ...", NamedTextColor.RED));
             return;
         }
 
@@ -133,7 +133,8 @@ public class SpawnCommands implements CommandExecutor, TabCompleter {
                 obszarManager.info(player, args[1]);
             }
             case "moby" -> handleObszarMoby(player, args);
-            default -> player.sendMessage(Component.text("Użycie: /@obszar <wand|usun|lista|info|moby|border> ...", NamedTextColor.RED));
+            case "ryby" -> handleObszarRyby(player, args);
+            default -> player.sendMessage(Component.text("Użycie: /@obszar <wand|usun|lista|info|moby|ryby|border> ...", NamedTextColor.RED));
         }
     }
 
@@ -145,6 +146,14 @@ public class SpawnCommands implements CommandExecutor, TabCompleter {
         boolean pasywne = args[2].equalsIgnoreCase("pasywne");
         boolean wlacz = args[3].equalsIgnoreCase("on");
         obszarManager.ustawMoby(player, args[1], pasywne, wlacz);
+    }
+
+    private void handleObszarRyby(Player player, String[] args) {
+        if (args.length < 3 || !isStan(args[2])) {
+            player.sendMessage(Component.text("Użycie: /@obszar ryby <nazwa> <on|off>", NamedTextColor.RED));
+            return;
+        }
+        obszarManager.ustawRyby(player, args[1], args[2].equalsIgnoreCase("on"));
     }
 
     private boolean isTyp(String s) {
@@ -180,6 +189,9 @@ public class SpawnCommands implements CommandExecutor, TabCompleter {
         if (podkomenda.equals("moby")) {
             if (args.length == 3) return dopasuj(args[2], TYPY_MOBOW);
             if (args.length == 4) return dopasuj(args[3], STANY);
+        }
+        if (podkomenda.equals("ryby") && args.length == 3) {
+            return dopasuj(args[2], STANY);
         }
 
         return List.of();

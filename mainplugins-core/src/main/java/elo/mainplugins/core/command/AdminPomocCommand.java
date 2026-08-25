@@ -51,7 +51,7 @@ public class AdminPomocCommand implements CommandExecutor {
             )),
             new Sekcja("Spawn i obszary", List.of(
                     new Wpis("/@setspawn [info]", "Ustaw główny punkt spawnu"),
-                    new Wpis("/@obszar <wand|usun|lista|info|moby|border> ...", "Zarządzaj chronionymi obszarami"),
+                    new Wpis("/@obszar <wand|usun|lista|info|moby|ryby|border> ...", "Zarządzaj chronionymi obszarami"),
                     new Wpis("/@setwarp <nazwa>", "Ustaw/nadpisz warp w aktualnej lokalizacji"),
                     new Wpis("/@delwarp <nazwa>", "Usuń istniejący warp")
             ))
@@ -65,10 +65,6 @@ public class AdminPomocCommand implements CommandExecutor {
                     new Wpis("/@dajskrzynie2", "Daj sobie Otchłanną Skrzynkę (tier 2)"),
                     new Wpis("/@dajskrzynie3", "Daj sobie Skrzynkę DARKSTAR (tier 3)"),
                     new Wpis("/@reloadcrates", "Wczytaj pule nagród wszystkich tierów na nowo")
-            )),
-            new Sekcja("Wędkarstwo (testowe)", List.of(
-                    new Wpis("/@dajwedke <1|2|3>", "Daj sobie wędkę danego tieru"),
-                    new Wpis("/@dajrecepture <niebianska|kosmiczna>", "Daj sobie recepturę")
             ))
     );
 

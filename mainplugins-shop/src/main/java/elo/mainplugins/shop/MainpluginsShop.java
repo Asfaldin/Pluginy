@@ -16,12 +16,14 @@ import java.util.List;
 public final class MainpluginsShop extends JavaPlugin {
 
     private ShopManager shopManager;
+    private RotacjaManager rotacjaManager;
 
     @Override
     public void onEnable() {
         EconomyService economyService = CoreAPI.getEconomyService();
         shopManager = new ShopManager(this, economyService);
         getServer().getPluginManager().registerEvents(shopManager, this);
+        rotacjaManager = new RotacjaManager(this, shopManager);
 
         CommandExecutor executor = new CommandExecutor() {
             @Override
@@ -71,14 +73,17 @@ public final class MainpluginsShop extends JavaPlugin {
         }
 
         if (getCommand("@sklep") != null) {
-            SklepAdminCommand adminCmd = new SklepAdminCommand(shopManager);
+            SklepAdminCommand adminCmd = new SklepAdminCommand(shopManager, rotacjaManager);
             getCommand("@sklep").setExecutor(adminCmd);
             getCommand("@sklep").setTabCompleter(adminCmd);
         }
     }
 
+    public RotacjaManager getRotacjaManager() { return rotacjaManager; }
+
     @Override
     public void onDisable() {
+        if (rotacjaManager != null) rotacjaManager.zamknij();
         if (shopManager != null && shopManager.getCeny() != null) {
             shopManager.getCeny().zamknij();
         }

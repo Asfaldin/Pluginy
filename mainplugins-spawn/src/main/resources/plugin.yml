@@ -14,7 +14,7 @@ commands:
     permission-message: "&cNie masz permisji do tej komendy!"
   "@obszar":
     description: Zarządzaj chronionymi obszarami serwera (spawn, w przyszłości też warpy)
-    usage: "/@obszar <wand|usun|lista|info|moby|border> <nazwa> ..."
+    usage: "/@obszar <wand|usun|lista|info|moby|ryby|border> <nazwa> ..."
     permission: mainplugins.spawn.admin
     permission-message: "&cNie masz permisji do tej komendy!"
   warp:

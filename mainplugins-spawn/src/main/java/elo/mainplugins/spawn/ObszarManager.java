@@ -1,5 +1,6 @@
 package elo.mainplugins.spawn;
 
+import elo.mainplugins.core.api.ObszarService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -49,7 +50,7 @@ import java.util.UUID;
  * aktualnie edytuje jego różdżka (edytowanyObszar), więc kilku adminów może jednocześnie
  * zaznaczać różne obszary bez wchodzenia sobie w drogę.
  */
-public class ObszarManager implements Listener {
+public class ObszarManager implements Listener, ObszarService {
 
     private final Plugin plugin;
     private final File plikObszarow;
@@ -92,6 +93,7 @@ public class ObszarManager implements Listener {
             }
             obszar.mobyPasywneDozwolone = configObszarow.getBoolean(path + "moby-pasywne", true);
             obszar.mobyAgresywneDozwolone = configObszarow.getBoolean(path + "moby-agresywne", false);
+            obszar.rybyDozwolone = configObszarow.getBoolean(path + "ryby-dozwolone", false);
 
             obszary.put(nazwa, obszar);
         }
@@ -114,6 +116,7 @@ public class ObszarManager implements Listener {
             }
             configObszarow.set(path + "moby-pasywne", obszar.mobyPasywneDozwolone);
             configObszarow.set(path + "moby-agresywne", obszar.mobyAgresywneDozwolone);
+            configObszarow.set(path + "ryby-dozwolone", obszar.rybyDozwolone);
         }
 
         try {
@@ -156,7 +159,8 @@ public class ObszarManager implements Listener {
         player.sendMessage(Component.text("Obszar \"" + nazwa + "\": ", NamedTextColor.YELLOW)
                 .append(Component.text(obszar.opisRozmiaru() + " bloków, świat " + swiat, NamedTextColor.GRAY)));
         player.sendMessage(Component.text("Moby pasywne: " + (obszar.mobyPasywneDozwolone ? "wł." : "wył.")
-                + "   Moby agresywne: " + (obszar.mobyAgresywneDozwolone ? "wł." : "wył."), NamedTextColor.GRAY));
+                + "   Moby agresywne: " + (obszar.mobyAgresywneDozwolone ? "wł." : "wył.")
+                + "   Łowisko: " + (obszar.rybyDozwolone ? "wł." : "wył."), NamedTextColor.GRAY));
     }
 
     public void ustawMoby(Player player, String nazwa, boolean pasywne, boolean dozwolone) {
@@ -165,6 +169,15 @@ public class ObszarManager implements Listener {
         else obszar.mobyAgresywneDozwolone = dozwolone;
         zapisz();
         player.sendMessage(Component.text("Moby " + (pasywne ? "pasywne" : "agresywne") + " w obszarze \"" + nazwa + "\": "
+                + (dozwolone ? "włączone" : "wyłączone"), NamedTextColor.GREEN));
+    }
+
+    /** Włącza/wyłącza obszar jako "łowisko" (patrz {@link #jestLowiskiem(Location)}) - komenda /@obszar ryby. */
+    public void ustawRyby(Player player, String nazwa, boolean dozwolone) {
+        Obszar obszar = obszary.computeIfAbsent(nazwa, k -> new Obszar());
+        obszar.rybyDozwolone = dozwolone;
+        zapisz();
+        player.sendMessage(Component.text("Łowisko w obszarze \"" + nazwa + "\": "
                 + (dozwolone ? "włączone" : "wyłączone"), NamedTextColor.GREEN));
     }
 
@@ -362,5 +375,18 @@ public class ObszarManager implements Listener {
             if (obszar.zawiera(loc)) return obszar;
         }
         return null;
+    }
+
+    /**
+     * {@inheritDoc} Implementacja {@link ObszarService} dla mainplugins-fishing (patrz
+     * FishingManager#onFish) - w odróżnieniu od {@link #znajdzObszarPod} nie wystarczy
+     * byle jaki obszar, musi mieć jawnie włączoną flagę ryby-dozwolone (/@obszar ryby).
+     */
+    @Override
+    public boolean jestLowiskiem(Location loc) {
+        for (Obszar obszar : obszary.values()) {
+            if (obszar.rybyDozwolone && obszar.zawiera(loc)) return true;
+        }
+        return false;
     }
 }

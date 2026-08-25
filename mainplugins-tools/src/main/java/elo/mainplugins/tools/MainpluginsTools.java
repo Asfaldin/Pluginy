@@ -8,7 +8,6 @@ import elo.mainplugins.tools.pickaxe.BrukSurowceManager;
 import elo.mainplugins.tools.pickaxe.GemType;
 import elo.mainplugins.tools.pickaxe.PickaxeSkillManager;
 import elo.mainplugins.tools.pickaxe.PickaxeType;
-import elo.mainplugins.tools.special.NiszczycielManager;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -34,9 +33,6 @@ public final class MainpluginsTools extends JavaPlugin {
         EvolvingToolManager evolvingToolManager = new EvolvingToolManager(this, CoreAPI.getEconomyService());
         getServer().getPluginManager().registerEvents(evolvingToolManager, this);
         levelableToolsManager.setEvolvingToolManager(evolvingToolManager);
-
-        NiszczycielManager niszczycielManager = new NiszczycielManager(this);
-        getServer().getPluginManager().registerEvents(niszczycielManager, this);
 
         if (getCommand("@addlvl") != null) {
             getCommand("@addlvl").setExecutor((sender, command, label, args) -> {

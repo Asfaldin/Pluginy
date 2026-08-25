@@ -88,17 +88,3 @@ spawnery:
   koszt-bazowy-szybkosc:
     poziomy: { 1: 3500, 2: 7000, 3: 12000 }
     domyslny: 24000
-
-# "Sniffer Farmera" - item ze sklepu, sadzi/zbiera uprawy w promieniu (patrz SnifferManager).
-sniffer:
-  promien-zbioru: 6
-  wysokosc-zbioru: 2
-  promien-szukania-skrzyni: 8
-  promien-wedrowania: 4
-  skan-odstep-sekundy: 5
-  uprawy:
-    - WHEAT
-    - CARROTS
-    - POTATOES
-    - BEETROOTS
-    - NETHER_WART

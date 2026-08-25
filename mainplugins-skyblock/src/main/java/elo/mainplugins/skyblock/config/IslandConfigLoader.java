@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.logging.Logger;
 
 /**
@@ -62,13 +61,6 @@ public final class IslandConfigLoader {
         Map<Integer, Integer> kosztBazowySzybkoscPoziomy = parsePoziomyKosztow(cfg, "spawnery.koszt-bazowy-szybkosc.poziomy", log);
         int kosztBazowySzybkoscDomyslny = cfg.getInt("spawnery.koszt-bazowy-szybkosc.domyslny", 24000);
 
-        int snifferPromienZbioru = cfg.getInt("sniffer.promien-zbioru", 6);
-        int snifferWysokoscZbioru = cfg.getInt("sniffer.wysokosc-zbioru", 2);
-        int snifferPromienSzukaniaSkrzyni = cfg.getInt("sniffer.promien-szukania-skrzyni", 8);
-        int snifferPromienWedrowania = cfg.getInt("sniffer.promien-wedrowania", 4);
-        long snifferSkanOdstepTicks = cfg.getInt("sniffer.skan-odstep-sekundy", 5) * 20L;
-        Set<Material> snifferUprawy = parseMaterialSet(cfg.getStringList("sniffer.uprawy"), log, "sniffer.uprawy");
-
         log.info("wyspy-config.yml: wczytano konfiguracje (" + spawnerTypy.size() + " typow spawnerow, "
                 + wartosciBlokow.size() + " wycenionych blokow).");
 
@@ -80,9 +72,7 @@ public final class IslandConfigLoader {
                 maxDlugoscNazwyWyspy, zapasNaSchemat, chunkiNaTick,
                 wartosciBlokow, spawnerMaxPoziom, spawnerTypy,
                 kosztBazowyIloscPoziomy, kosztBazowyIloscDomyslny,
-                kosztBazowySzybkoscPoziomy, kosztBazowySzybkoscDomyslny,
-                snifferPromienZbioru, snifferWysokoscZbioru, snifferPromienSzukaniaSkrzyni,
-                snifferPromienWedrowania, snifferSkanOdstepTicks, snifferUprawy
+                kosztBazowySzybkoscPoziomy, kosztBazowySzybkoscDomyslny
         );
     }
 
@@ -157,18 +147,5 @@ public final class IslandConfigLoader {
             }
         }
         return mapa;
-    }
-
-    private static Set<Material> parseMaterialSet(List<String> raw, Logger log, String context) {
-        Set<Material> set = new java.util.LinkedHashSet<>();
-        for (String s : raw) {
-            Material material = Material.matchMaterial(s);
-            if (material == null) {
-                log.warning("wyspy-config.yml: " + context + " ma nieznany material '" + s + "' - pomijam.");
-                continue;
-            }
-            set.add(material);
-        }
-        return set;
     }
 }

@@ -98,11 +98,6 @@ public class PoradnikManager implements Listener {
                         "moba - postaw go na wyspie, a będzie sam generował dropy.\n\n" +
                         "Poziom spawnera podbijesz w Ulepszeniach Wyspy."),
 
-                strona("ITEMY SPECJALNE",
-                        "Niszczyciel - kilof z Haste X, PPM niszczy 3x3 bloków naraz.\n\n" +
-                        "Sniffer Farmera - postaw go na wyspie (PPM), a sam zbiera " +
-                        "i sadzi dojrzałe uprawy w pobliżu. Max 1 na wyspę."),
-
                 strona("OD CZEGO ZACZĄĆ?",
                         "1. Otwórz /zadania i zrób pierwsze zadanie Głównej Ścieżki\n" +
                         "2. Zbieraj podstawowe surowce i sprzedawaj w /sklep\n" +

@@ -2,3 +2,14 @@ name: MainpluginsFarming
 version: ${project.version}
 main: elo.mainplugins.farming.MainpluginsFarming
 api-version: '1.20'
+
+commands:
+  "@reloadfarming":
+    description: Wczytaj farming-config.yml na nowo, bez restartu serwera
+    permission: mainplugins.farming.reload
+    permission-message: "&cNie masz permisji do tej komendy!"
+
+permissions:
+  mainplugins.farming.reload:
+    description: Pozwala przeladowac konfiguracje upraw specjalnych
+    default: op

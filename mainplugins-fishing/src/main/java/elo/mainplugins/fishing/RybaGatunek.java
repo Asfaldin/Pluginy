@@ -9,7 +9,7 @@ import org.bukkit.Material;
  * "Rybak" w mainplugins-quests - to jedyny "kontrakt" łączący te trzy niezależne moduły
  * (patrz CustomItemKeys w mainplugins-core).
  */
-record RybaGatunek(String customId, String nazwa, Material material, NamedTextColor kolor, Rzadkosc rzadkosc, int waga) {
+public record RybaGatunek(String customId, String nazwa, Material material, NamedTextColor kolor, Rzadkosc rzadkosc, int waga) {
 
-    enum Rzadkosc { ZWYKLA, NIEZWYKLA, RZADKA, EPICKA, LEGENDARNA }
+    public enum Rzadkosc { ZWYKLA, NIEZWYKLA, RZADKA, EPICKA, LEGENDARNA }
 }

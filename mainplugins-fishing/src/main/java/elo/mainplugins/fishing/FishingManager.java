@@ -4,6 +4,7 @@ import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.CrateService;
 import elo.mainplugins.core.api.ObszarService;
 import elo.mainplugins.core.util.CustomItemKeys;
+import elo.mainplugins.fishing.config.FishingConfig;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -47,21 +48,18 @@ import java.util.concurrent.ThreadLocalRandom;
 public class FishingManager implements Listener {
 
     private final Plugin plugin;
-
-    private static final List<RybaGatunek> GATUNKI = List.of(
-            new RybaGatunek("FISH_KARP_MIELIZNY", "Karp Mielizny", Material.COD, NamedTextColor.GRAY, RybaGatunek.Rzadkosc.ZWYKLA, 40),
-            new RybaGatunek("FISH_SREBRNY_LESZCZ", "Srebrny Leszcz", Material.SALMON, NamedTextColor.GRAY, RybaGatunek.Rzadkosc.ZWYKLA, 30),
-            new RybaGatunek("FISH_TECZOWY_SKRZELACZ", "Tęczowy Skrzelacz", Material.TROPICAL_FISH, NamedTextColor.GREEN, RybaGatunek.Rzadkosc.NIEZWYKLA, 15),
-            new RybaGatunek("FISH_KOLCZASTY_NURKACZ", "Kolczasty Nurkacz", Material.PUFFERFISH, NamedTextColor.GREEN, RybaGatunek.Rzadkosc.NIEZWYKLA, 10),
-            new RybaGatunek("FISH_SZMARAGDOWY_WEGORZ", "Szmaragdowy Węgorz", Material.TROPICAL_FISH, NamedTextColor.AQUA, RybaGatunek.Rzadkosc.RZADKA, 4),
-            new RybaGatunek("FISH_MGLAWICOWY_SUM", "Mgławicowy Sum", Material.COD, NamedTextColor.AQUA, RybaGatunek.Rzadkosc.RZADKA, 1)
-    );
+    private volatile FishingConfig config;
 
     // Aktywna minigra "pasek" - patrz rozpocznijMinigre.
     private final Map<UUID, FishingMinigame> aktywneMinigry = new HashMap<>();
 
-    public FishingManager(Plugin plugin) {
+    public FishingManager(Plugin plugin, FishingConfig config) {
         this.plugin = plugin;
+        this.config = config;
+    }
+
+    public void aktualizujKonfiguracje(FishingConfig nowy) {
+        this.config = nowy;
     }
 
     // ==================================================================== Przedmioty ====
@@ -97,16 +95,17 @@ public class FishingManager implements Listener {
     // ==================================================================== Losowanie ====
 
     private RybaGatunek losujRybe() {
+        List<RybaGatunek> gatunki = config.gatunki();
         int suma = 0;
-        for (RybaGatunek g : GATUNKI) suma += g.waga();
+        for (RybaGatunek g : gatunki) suma += g.waga();
 
         int los = ThreadLocalRandom.current().nextInt(suma);
         int akumulator = 0;
-        for (RybaGatunek g : GATUNKI) {
+        for (RybaGatunek g : gatunki) {
             akumulator += g.waga();
             if (los < akumulator) return g;
         }
-        return GATUNKI.getLast();
+        return gatunki.getLast();
     }
 
     /**
@@ -117,7 +116,7 @@ public class FishingManager implements Listener {
     private void rzucBonusowaSkrzynke(Player player) {
         CrateService crateService = CoreAPI.getCrateService();
         if (crateService == null) return;
-        if (ThreadLocalRandom.current().nextDouble(100.0) >= 3.0) return;
+        if (ThreadLocalRandom.current().nextDouble(100.0) >= config.bonusowaSkrzynkaSzansaProcent()) return;
 
         ItemStack skrzynka = crateService.stworzSkrzynke(1);
         var nieZmieszczone = player.getInventory().addItem(skrzynka);
@@ -140,6 +139,7 @@ public class FishingManager implements Listener {
 
         ObszarService obszarService = CoreAPI.getObszarService();
         if (obszarService == null || !obszarService.jestLowiskiem(event.getHook().getLocation())) return;
+        if (config.gatunki().isEmpty()) return; // fishing-config.yml bez gatunkow - zostaw wanilijskie lowienie
 
         event.setCancelled(true);
         event.getHook().remove();
@@ -153,7 +153,7 @@ public class FishingManager implements Listener {
         UUID uuid = player.getUniqueId();
         player.playSound(player.getLocation(), Sound.ENTITY_FISHING_BOBBER_SPLASH, 1.0f, 1.0f);
 
-        FishingMinigame gra = new FishingMinigame(plugin, player, gatunek,
+        FishingMinigame gra = new FishingMinigame(plugin, player, gatunek, config.minigra(),
                 () -> {
                     aktywneMinigry.remove(uuid);
                     nagrodaZaPolow(player, gatunek);

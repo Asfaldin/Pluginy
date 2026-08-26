@@ -1,0 +1,45 @@
+# Konfiguracja lochu/bossa (mainplugins-dungeons, proof-of-concept - patrz komentarz
+# klasy DungeonManager) - w pelni edytowalna bez rekompilacji. Przeladowanie na zywo:
+# /@reloaddungeons (dziala tylko na PRZYSZLE generowanie platform/potworow/bossa -
+# juz postawione bloki nie sa retroaktywnie przebudowywane).
+#
+# UWAGA: custom-id trofeum bossa (DUNGEON_TROFEUM_WLADCA_LOCHU) zostaje na stale
+# zaszyty w kodzie - quest Glownej Sciezki "Pierwszy Loch" (quests-content.yml)
+# wymaga dokladnie tego identyfikatora, zmiana by zerwala ten quest.
+
+miejsce:
+  bazowy-x: 0
+  bazowy-y: 250
+  bazowy-z: 5000
+  odstep-pokoi: 40
+  liczba-pokoi: 4
+  promien-pokoju: 6
+  material-podlogi-pokoju: DEEPSLATE_TILES
+  material-sciany-pokoju: DEEPSLATE_BRICKS
+  wysokosc-sciany-pokoju: 4
+  promien-areny-bossa: 10
+  material-podlogi-areny: BLACKSTONE
+  material-sciany-areny: POLISHED_BLACKSTONE_BRICKS
+  wysokosc-sciany-areny: 5
+
+# ilosc/hp/obrazenia straznikow w pokoju N (liczac od 0) = bazowa + na-pokoj * N
+pokoje:
+  encja: ZOMBIE
+  ilosc-bazowa: 3
+  ilosc-na-pokoj: 1
+  hp-bazowe: 20
+  hp-na-pokoj: 10
+  obrazenia-bazowe: 3
+  obrazenia-na-pokoj: 1
+
+boss:
+  encja: PIGLIN_BRUTE
+  encja-slugi: ZOMBIE
+  max-hp: 200
+  obrazenia-ataku: 8
+  obrazenia-pocisku: 6
+  okres-umiejetnosci-sekundy: 3
+  prog-przywolania-slug-1: 0.66
+  prog-przywolania-slug-2: 0.33
+  prog-szalu: 0.30
+  nagroda-monety: 500

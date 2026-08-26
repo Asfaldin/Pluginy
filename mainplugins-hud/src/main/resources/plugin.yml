@@ -6,6 +6,17 @@ depend: [MainpluginsCore]
 softdepend: [PlaceholderAPI]
 loadbefore: [TAB]
 
+commands:
+  "@reloadhud":
+    description: Wczytaj hud-config.yml na nowo, bez restartu serwera
+    permission: mainplugins.hud.reload
+    permission-message: "&cNie masz permisji do tej komendy!"
+
+permissions:
+  mainplugins.hud.reload:
+    description: Pozwala przeladowac konfiguracje HUD/placeholderow
+    default: op
+
 # Ten modul juz nie renderuje wlasnego Taba (patrz historia - wlasny resourcepack/font
 # byl zbyt kruchy: format paczki, hosting, przepelnienie tekstu). Zamiast tego wystawia
 # dane Skyblocka jako placeholdery %mainplugins_...% (patrz MainpluginsPlaceholders) do

@@ -1,0 +1,63 @@
+# Typy i ustawienia customowych spawnerow (mainplugins-spawners) - w pelni
+# edytowalne bez rekompilacji. Przeladowanie na zywo: /@reloadspawnery
+#
+# UWAGA: klucz kazdego typu (np. "COW") jest zapisywany w spawnery.yml (ktory
+# spawner gdzie stoi, per-instancja) i w PDC podniesionego itemu - zmiana albo
+# usuniecie ID typu, ktory gracze juz maja postawiony, zepsuje ich zapisany
+# stan (spawner przestanie sie wczytywac). Ten sam identyfikator MUSI sie
+# zgadzac z custom-id w mainplugins-shop categories/spawnery.yml ORAZ z id w
+# mainplugins-skyblock wyspy-config.yml (spawnery.typy) - nic tego nie
+# synchronizuje automatycznie, trzeba pilnowac recznie po obu stronach.
+
+typy:
+  COW:
+    encja: COW
+    nazwa-odmieniona: "Krów"
+    nazwa-pojedyncza: "Krowa"
+  SHEEP:
+    encja: SHEEP
+    nazwa-odmieniona: "Owiec"
+    nazwa-pojedyncza: "Owca"
+  PIG:
+    encja: PIG
+    nazwa-odmieniona: "Świń"
+    nazwa-pojedyncza: "Świnia"
+  CHICKEN:
+    encja: CHICKEN
+    nazwa-odmieniona: "Kur"
+    nazwa-pojedyncza: "Kura"
+  SPIDER:
+    encja: SPIDER
+    nazwa-odmieniona: "Pająków"
+    nazwa-pojedyncza: "Pająk"
+  ZOMBIE:
+    encja: ZOMBIE
+    nazwa-odmieniona: "Zombie"
+    nazwa-pojedyncza: "Zombie"
+  SKELETON:
+    encja: SKELETON
+    nazwa-odmieniona: "Szkieletów"
+    nazwa-pojedyncza: "Szkielet"
+  CREEPER:
+    encja: CREEPER
+    nazwa-odmieniona: "Creeperów"
+    nazwa-pojedyncza: "Creeper"
+  BREEZE:
+    encja: BREEZE
+    nazwa-odmieniona: "Breeze'ów"
+    nazwa-pojedyncza: "Breeze"
+
+# interwal-sekund(poziom) = interwal-sekund-bazowy + interwal-sekund-na-poziom * poziom
+# ilosc-na-cykl(poziom)   = ilosc-na-cykl-bazowa + ilosc-na-cykl-na-poziom * poziom
+# Domyslne wartosci ponizej dają dokladnie stara, hardkodowana progresje:
+# interwal 32/28/24/20/16s i ilosc 5/6/7/8/9 dla poziomow 1-5.
+ustawienia:
+  max-poziom: 5
+  limit-kolejki: 50
+  interwal-sekund-bazowy: 36
+  interwal-sekund-na-poziom: -4
+  ilosc-na-cykl-bazowa: 4
+  ilosc-na-cykl-na-poziom: 1
+  limit-spawnerow-na-wyspe: 10
+  promien-aktywnosci-gracza: 16
+  narzedzie-zbierania: STICK

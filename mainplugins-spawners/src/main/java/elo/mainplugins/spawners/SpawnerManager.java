@@ -5,6 +5,8 @@ import elo.mainplugins.core.api.IslandService;
 import elo.mainplugins.core.api.IslandSummary;
 import elo.mainplugins.core.util.AsyncConfigSaver;
 import elo.mainplugins.core.util.CustomItemKeys;
+import elo.mainplugins.spawners.config.SpawnerConfig;
+import elo.mainplugins.spawners.config.SpawnerTypeDef;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -52,7 +54,7 @@ public class SpawnerManager implements Listener {
 
     private static class Instancja {
         final Location lokalizacja;
-        final SpawnerType typ;
+        final SpawnerTypeDef typ;
         final UUID ownerUUID;
         long nastepnySpawnMillis;
 
@@ -64,23 +66,12 @@ public class SpawnerManager implements Listener {
         int rozmiarStosu = 0;
         UUID zywyMobId; // null = obecnie żadna encja nie reprezentuje stosu (czeka na najbliższy cykl)
 
-        Instancja(Location lokalizacja, SpawnerType typ, UUID ownerUUID) {
+        Instancja(Location lokalizacja, SpawnerTypeDef typ, UUID ownerUUID) {
             this.lokalizacja = lokalizacja;
             this.typ = typ;
             this.ownerUUID = ownerUUID;
         }
     }
-
-    // Promień (bloki) w jakim musi być JAKIŚ gracz, żeby spawner w ogóle próbował spawnować -
-    // bez tego spawner mielił bez sensu nawet gdy właściciel jest na drugim końcu mapy
-    // (chunk czasem zostaje wczytany z innych powodów niż obecność gracza). Jak w vanilla.
-    private static final int PROMIEN_AKTYWNOSCI_GRACZA = 16;
-
-    /** Ile spawnerów łącznie może stać na jednej wyspie. */
-    private static final int LIMIT_SPAWNEROW_NA_WYSPE = 10;
-
-    /** Czym się zbiera spawner. */
-    private static final Material NARZEDZIE_ZBIERANIA = Material.STICK;
 
     // Sufiksy kluczy w IslandSummary.spawnerLevels() - MUSZĄ się zgadzać 1:1 z tymi
     // samymi literałami w IslandManager (mainplugins-skyblock). Dwa osobne poziomy
@@ -96,9 +87,11 @@ public class SpawnerManager implements Listener {
     // Odwrotna mapa mob -> spawner który go wyprodukował, żeby onSmierc wiedział skąd go wypisać
     // bez przeszukiwania wszystkich instancji.
     private final Map<UUID, Instancja> mobyDoSpawnera = new HashMap<>();
+    private volatile SpawnerConfig config;
 
-    public SpawnerManager(Plugin plugin) {
+    public SpawnerManager(Plugin plugin, SpawnerConfig config) {
         this.plugin = plugin;
+        this.config = config;
         this.plikSpawnerow = new File(plugin.getDataFolder(), "spawnery.yml");
         if (!plikSpawnerow.exists()) {
             plikSpawnerow.getParentFile().mkdirs();
@@ -131,10 +124,9 @@ public class SpawnerManager implements Listener {
 
             if (loc.getBlock().getType() != Material.SPAWNER) continue; // ktoś usunął blok poza BlockBreakEvent
 
-            SpawnerType typ;
-            try {
-                typ = SpawnerType.valueOf(configSpawnerow.getString(path + "type", ""));
-            } catch (IllegalArgumentException e) {
+            SpawnerTypeDef typ = config.typ(configSpawnerow.getString(path + "type", ""));
+            if (typ == null) {
+                plugin.getLogger().warning("Pominięto spawner - nieznany typ '" + configSpawnerow.getString(path + "type") + "' (usunięty ze spawnery-typy.yml?).");
                 continue;
             }
 
@@ -163,7 +155,7 @@ public class SpawnerManager implements Listener {
             configSpawnerow.set(path + "x", loc.getBlockX());
             configSpawnerow.set(path + "y", loc.getBlockY());
             configSpawnerow.set(path + "z", loc.getBlockZ());
-            configSpawnerow.set(path + "type", instancja.typ.name());
+            configSpawnerow.set(path + "type", instancja.typ.id());
             configSpawnerow.set(path + "owner", instancja.ownerUUID.toString());
         }
         saverSpawnerow.oznaczZmiane();
@@ -171,6 +163,11 @@ public class SpawnerManager implements Listener {
 
     public void zamknij() {
         saverSpawnerow.zamknij();
+    }
+
+    /** Podmienia typy/ustawienia spawnerów na żywo - patrz /@reloadspawnery. Już postawione instancje zachowują swój typ (odczyt przez id). */
+    public void aktualizujKonfiguracje(SpawnerConfig nowy) {
+        this.config = nowy;
     }
 
     private String kluczLokalizacji(Location loc) {
@@ -188,18 +185,14 @@ public class SpawnerManager implements Listener {
         String typName = meta.getPersistentDataContainer().get(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING);
         if (typName == null) return; // zwykły wanilijski spawner (np. z creative) - zostaw jak jest
 
-        SpawnerType typ;
-        try {
-            typ = SpawnerType.valueOf(typName);
-        } catch (IllegalArgumentException e) {
-            return;
-        }
+        SpawnerTypeDef typ = config.typ(typName);
+        if (typ == null) return; // nieznany typ (spoza spawnery-typy.yml) - nie nasz custom-id
 
         Player player = event.getPlayer();
         Block block = event.getBlockPlaced();
 
         if (block.getState() instanceof CreatureSpawner state) {
-            state.setSpawnedType(typ.getEntityType());
+            state.setSpawnedType(typ.entityType());
             state.setMaxNearbyEntities(0); // wyłącza wanilijski spawn - o spawnie decyduje wyłącznie nasz harmonogram
             state.update(true, false);
         }
@@ -211,10 +204,11 @@ public class SpawnerManager implements Listener {
             if (summary != null) ownerUUID = summary.ownerUUID();
         }
 
+        int limit = config.ustawienia().limitSpawnerowNaWyspe();
         int juzPostawione = policzSpawneryWyspy(ownerUUID);
-        if (juzPostawione >= LIMIT_SPAWNEROW_NA_WYSPE) {
+        if (juzPostawione >= limit) {
             player.sendMessage(Component.text("Limit spawnerów na wyspę: "
-                    + LIMIT_SPAWNEROW_NA_WYSPE + " (masz już " + juzPostawione + ").",
+                    + limit + " (masz już " + juzPostawione + ").",
                     NamedTextColor.RED));
             event.setCancelled(true);   // blok nie zostaje postawiony, item wraca do ekwipunku
             return;
@@ -226,7 +220,7 @@ public class SpawnerManager implements Listener {
         instancje.put(kluczLokalizacji(loc), instancja);
         zapisz();
 
-        player.sendMessage(Component.text("Postawiono spawner: " + typ.getNazwaOdmieniona() + "!", NamedTextColor.GREEN));
+        player.sendMessage(Component.text("Postawiono spawner: " + typ.nazwaOdmieniona() + "!", NamedTextColor.GREEN));
     }
 
     /**
@@ -296,7 +290,7 @@ public class SpawnerManager implements Listener {
         if (block == null || block.getType() != Material.SPAWNER) return;
 
         Player player = event.getPlayer();
-        if (player.getInventory().getItemInMainHand().getType() != NARZEDZIE_ZBIERANIA) return;
+        if (player.getInventory().getItemInMainHand().getType() != config.ustawienia().narzedzieZbierania()) return;
 
         Instancja instancja = instancje.get(kluczLokalizacji(block.getLocation()));
         if (instancja == null) return;   // wanilijski spawner - nie nasz, zostaw w spokoju
@@ -312,7 +306,7 @@ public class SpawnerManager implements Listener {
         event.setCancelled(true);   // nie otwieraj GUI spawnera ani nic innego
 
         Location loc = block.getLocation();
-        SpawnerType typ = instancja.typ;
+        SpawnerTypeDef typ = instancja.typ;
 
         usunSpawner(loc);
         block.setType(Material.AIR);
@@ -320,15 +314,15 @@ public class SpawnerManager implements Listener {
         // Item z custom-id, żeby po podniesieniu i postawieniu był tym samym typem.
         ItemStack drop = new ItemStack(Material.SPAWNER);
         ItemMeta meta = drop.getItemMeta();
-        meta.displayName(Component.text("Spawner: " + typ.getNazwaOdmieniona(),
+        meta.displayName(Component.text("Spawner: " + typ.nazwaOdmieniona(),
                 NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
         meta.getPersistentDataContainer()
-                .set(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING, typ.name());
+                .set(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING, typ.id());
         meta.setEnchantmentGlintOverride(true);
         drop.setItemMeta(meta);
 
         loc.getWorld().dropItemNaturally(loc.clone().add(0.5, 0.5, 0.5), drop);
-        player.sendMessage(Component.text("Zebrano spawner: " + typ.getNazwaOdmieniona() + "!",
+        player.sendMessage(Component.text("Zebrano spawner: " + typ.nazwaOdmieniona() + "!",
                 NamedTextColor.GREEN));
     }
 
@@ -368,8 +362,8 @@ public class SpawnerManager implements Listener {
 
             int poziomIlosci = pobierzPoziom(instancja, SUFIKS_ILOSC);
             int poziomSzybkosci = pobierzPoziom(instancja, SUFIKS_SZYBKOSC);
-            int limit = SpawnerType.LIMIT_KOLEJKI;
-            int iloscDoSpawnu = SpawnerType.iloscNaCykl(poziomIlosci);
+            int limit = config.ustawienia().limitKolejki();
+            int iloscDoSpawnu = config.ustawienia().iloscNaCykl(poziomIlosci);
 
             if (instancja.rozmiarStosu < limit) {
                 instancja.rozmiarStosu = Math.min(limit, instancja.rozmiarStosu + iloscDoSpawnu);
@@ -382,7 +376,7 @@ public class SpawnerManager implements Listener {
                 aktualizujNametag(instancja);
             }
 
-            instancja.nastepnySpawnMillis = teraz + SpawnerType.interwalSekund(poziomSzybkosci) * 1000L;
+            instancja.nastepnySpawnMillis = teraz + config.ustawienia().interwalSekund(poziomSzybkosci) * 1000L;
         }
     }
 
@@ -418,7 +412,8 @@ public class SpawnerManager implements Listener {
      */
     private boolean wZasiegu(Location spawnerLoc, Location punkt) {
         if (!spawnerLoc.getWorld().equals(punkt.getWorld())) return false;
-        if (spawnerLoc.distanceSquared(punkt) <= (double) PROMIEN_AKTYWNOSCI_GRACZA * PROMIEN_AKTYWNOSCI_GRACZA) return true;
+        int promien = config.ustawienia().promienAktywnosciGracza();
+        if (spawnerLoc.distanceSquared(punkt) <= (double) promien * promien) return true;
 
         return (spawnerLoc.getBlockX() >> 4) == (punkt.getBlockX() >> 4)
                 && (spawnerLoc.getBlockZ() >> 4) == (punkt.getBlockZ() >> 4);
@@ -427,7 +422,7 @@ public class SpawnerManager implements Listener {
     /** Jak wyżej, ale pozwala pominąć jednego gracza przy liczeniu - używane przy PlayerQuitEvent,
      *  gdzie w momencie sprawdzania wychodzący gracz wciąż widnieje jako "online". */
     private boolean gracsAktywujeSpawner(Location loc, UUID wyklucz) {
-        for (Player gracz : loc.getWorld().getNearbyPlayers(loc, PROMIEN_AKTYWNOSCI_GRACZA)) {
+        for (Player gracz : loc.getWorld().getNearbyPlayers(loc, config.ustawienia().promienAktywnosciGracza())) {
             if (!gracz.getUniqueId().equals(wyklucz)) return true;
         }
 
@@ -443,7 +438,7 @@ public class SpawnerManager implements Listener {
 
     /** Spawnuje encję reprezentującą wierzch stosu tego spawnera i rejestruje ją jako "żywą". */
     private void odrodzMoba(Instancja instancja, Location gdzie) {
-        Entity encja = gdzie.getWorld().spawnEntity(gdzie, instancja.typ.getEntityType());
+        Entity encja = gdzie.getWorld().spawnEntity(gdzie, instancja.typ.entityType());
         if (encja instanceof LivingEntity zywa) {
             zywa.setRemoveWhenFarAway(true); // ma despawnować jak zwykły dziki mob (zwierzęta domyślnie by NIE despawnowały)
         }
@@ -463,7 +458,7 @@ public class SpawnerManager implements Listener {
             encja.eject();
             pojazd.remove();
         }
-        encja.getPersistentDataContainer().set(CustomItemKeys.SPAWNER_MOB_SOURCE, PersistentDataType.STRING, instancja.typ.name());
+        encja.getPersistentDataContainer().set(CustomItemKeys.SPAWNER_MOB_SOURCE, PersistentDataType.STRING, instancja.typ.id());
 
         instancja.zywyMobId = encja.getUniqueId();
         mobyDoSpawnera.put(encja.getUniqueId(), instancja);
@@ -476,7 +471,7 @@ public class SpawnerManager implements Listener {
         if (!(Bukkit.getEntity(instancja.zywyMobId) instanceof LivingEntity zywa)) return;
 
         if (instancja.rozmiarStosu > 1) {
-            zywa.customName(Component.text(instancja.typ.getNazwaPojedyncza() + " x" + instancja.rozmiarStosu, NamedTextColor.YELLOW));
+            zywa.customName(Component.text(instancja.typ.nazwaPojedyncza() + " x" + instancja.rozmiarStosu, NamedTextColor.YELLOW));
             zywa.setCustomNameVisible(true);
         } else {
             zywa.customName(null);
@@ -512,7 +507,7 @@ public class SpawnerManager implements Listener {
         IslandSummary summary = islandService.getIslandOf(instancja.ownerUUID);
         if (summary == null) return 1;
 
-        return summary.spawnerLevels().getOrDefault(instancja.typ.name() + sufiks, 1);
+        return summary.spawnerLevels().getOrDefault(instancja.typ.id() + sufiks, 1);
     }
 
     /**
@@ -523,7 +518,7 @@ public class SpawnerManager implements Listener {
      */
     private void zainicjujKolejnySpawn(Instancja instancja) {
         int poziomSzybkosci = pobierzPoziom(instancja, SUFIKS_SZYBKOSC);
-        instancja.nastepnySpawnMillis = System.currentTimeMillis() + SpawnerType.interwalSekund(poziomSzybkosci) * 1000L;
+        instancja.nastepnySpawnMillis = System.currentTimeMillis() + config.ustawienia().interwalSekund(poziomSzybkosci) * 1000L;
     }
 
     /**

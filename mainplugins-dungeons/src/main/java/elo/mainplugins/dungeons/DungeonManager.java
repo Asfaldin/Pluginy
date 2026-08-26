@@ -4,6 +4,7 @@ import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.CrateService;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.util.CustomItemKeys;
+import elo.mainplugins.dungeons.config.DungeonConfig;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -53,12 +54,12 @@ import java.util.concurrent.ThreadLocalRandom;
  *
  * Dwa tryby, każdy z WŁASNĄ komendą:
  * - /tpboss - od razu arena z bossem (starcie 1v1).
- * - /tpdun - sekwencja {@link #LICZBA_POKOI} pokoi z rosnącą liczbą/mocą mobów do
- *   wyczyszczenia, na końcu ten sam boss co /tpboss.
+ * - /tpdun - sekwencja pokoi (liczba konfigurowalna, patrz dungeons-config.yml) z rosnącą
+ *   liczbą/mocą mobów do wyczyszczenia, na końcu ten sam boss co /tpboss.
  *
- * Wszystko generowane WYSOKO w niebie (Y={@link #BAZOWY_Y}) w pierwszym załadowanym
- * świecie, żeby nie ryzykować nadpisania realnych bloków graczy - jeśli to zły świat/
- * wysokość dla tego serwera, zmień STAŁE na górze pliku.
+ * Wszystko generowane WYSOKO w niebie (domyślnie Y=250) w pierwszym załadowanym świecie,
+ * żeby nie ryzykować nadpisania realnych bloków graczy - jeśli to zły świat/wysokość dla
+ * tego serwera, zmień dungeons-config.yml (miejsce.bazowy-y).
  *
  * Sesje są PER GRACZ (nie globalne) - każdy, kto wejdzie komendą, dostaje własne moby/
  * bossa otagowane jego UUID (PDC), więc kilku graczy może korzystać z tej samej fizycznej
@@ -70,23 +71,6 @@ import java.util.concurrent.ThreadLocalRandom;
  * przyjąć jako dowód zwycięstwa.
  */
 public class DungeonManager implements Listener {
-
-    // ==================================================== Konfiguracja miejsca ====
-
-    private static final int BAZOWY_Y = 250; // wysoko ponad typowym terenem/budowlami
-    private static final int BAZOWY_X = 0;
-    private static final int BAZOWY_Z = 5000; // daleko od spawnu, żeby nie kolidować z niczym
-    private static final int ODSTEP_POKOI = 40; // odległość między platformami pokoi (blocks)
-
-    private static final int LICZBA_POKOI = 4; // pokoje z mobami PRZED bossem (patrz też SLOT bossa = LICZBA_POKOI)
-
-    // ==================================================== Boss - balans ====
-
-    private static final double BOSS_MAX_HP = 200.0;
-    private static final double BOSS_ATTACK_DMG = 8.0;
-    private static final double BOSS_PROJECTILE_DMG = 6.0;
-    private static final long BOSS_SKILL_OKRES_TICKS = 60L; // co ile ticków (3s) odpala się cykl umiejętności
-    private static final double NAGRODA_MONETY = 500.0;
 
     // Tag CustomItemKeys.CUSTOM_ITEM_ID trofeum bossa - odczytywany przez mainplugins-quests
     // (QuestManager, quest Głównej Ścieżki "Pierwszy Loch") bez twardej zależności między modułami.
@@ -101,19 +85,32 @@ public class DungeonManager implements Listener {
     private final Map<UUID, BossSession> aktywniBossowie = new HashMap<>();
 
     private boolean platformyWygenerowane = false;
+    private volatile DungeonConfig config;
 
-    public DungeonManager(Plugin plugin) {
+    public DungeonManager(Plugin plugin, DungeonConfig config) {
         this.plugin = plugin;
+        this.config = config;
         this.pkDungeonOwner = new NamespacedKey(plugin, "dungeon_owner");
         this.pkBossOwner = new NamespacedKey(plugin, "boss_owner");
         this.pkProjectile = new NamespacedKey(plugin, "boss_projectile");
+    }
+
+    /**
+     * Podmienia konfigurację na żywo - patrz /@reloaddungeons. Resetuje flagę
+     * "platformy już wygenerowane", żeby najbliższe /tpboss lub /tpdun przebudowało
+     * platformy z nowymi parametrami - ale bloki z POPRZEDNIEJ lokalizacji/rozmiaru
+     * NIE są sprzątane, więc zmiana promienia/pozycji może zostawić osierocone bloki.
+     */
+    public void aktualizujKonfiguracje(DungeonConfig nowy) {
+        this.config = nowy;
+        this.platformyWygenerowane = false;
     }
 
     // ==================================================== Sesje ====
 
     /** Stan przejścia lochu jednego gracza (patrz /tpdun) - moby aktualnego pokoju + który to pokój. */
     private static final class DungeonSession {
-        int pokoj; // 0..LICZBA_POKOI-1 = pokoje z mobami, LICZBA_POKOI = pokój bossa
+        int pokoj; // 0..(liczba-pokoi - 1) = pokoje z mobami, liczba-pokoi = pokój bossa
         final Set<UUID> zywMoby = new HashSet<>();
     }
 
@@ -153,7 +150,7 @@ public class DungeonManager implements Listener {
         zakonczBossa(player, false); // czysty start, jeśli walczył z bossem osobno
         DungeonSession session = new DungeonSession();
         aktywneLochy.put(player.getUniqueId(), session);
-        player.sendMessage(Component.text("Wchodzisz do lochu - " + LICZBA_POKOI + " pokoi, na końcu boss!", NamedTextColor.GOLD, TextDecoration.BOLD));
+        player.sendMessage(Component.text("Wchodzisz do lochu - " + config.miejsce().liczbaPokoi() + " pokoi, na końcu boss!", NamedTextColor.GOLD, TextDecoration.BOLD));
         wejdzDoPokoju(player, session, 0);
         return true;
     }
@@ -164,10 +161,11 @@ public class DungeonManager implements Listener {
         if (platformyWygenerowane) return;
         platformyWygenerowane = true;
 
-        for (int i = 0; i < LICZBA_POKOI; i++) {
-            zbudujPlatforme(pokojLokacja(i), 6, Material.DEEPSLATE_TILES, Material.DEEPSLATE_BRICKS, 4);
+        DungeonConfig.Miejsce m = config.miejsce();
+        for (int i = 0; i < m.liczbaPokoi(); i++) {
+            zbudujPlatforme(pokojLokacja(i), m.promienPokoju(), m.materialPodlogiPokoju(), m.materialScianyPokoju(), m.wysokoscScianyPokoju());
         }
-        zbudujPlatforme(arenaBossaLokacja(), 10, Material.BLACKSTONE, Material.POLISHED_BLACKSTONE_BRICKS, 5);
+        zbudujPlatforme(arenaBossaLokacja(), m.promienArenyBossa(), m.materialPodlogiAreny(), m.materialScianyAreny(), m.wysokoscScianyAreny());
     }
 
     private void zbudujPlatforme(Location center, int promien, Material podloga, Material sciana, int wysokoscSciany) {
@@ -197,19 +195,23 @@ public class DungeonManager implements Listener {
     }
 
     private Location pokojLokacja(int index) {
-        return new Location(swiat(), BAZOWY_X + index * ODSTEP_POKOI, BAZOWY_Y, BAZOWY_Z);
+        DungeonConfig.Miejsce m = config.miejsce();
+        return new Location(swiat(), m.bazowyX() + index * m.odstepPokoi(), m.bazowyY(), m.bazowyZ());
     }
 
     private Location arenaBossaLokacja() {
-        return new Location(swiat(), BAZOWY_X + LICZBA_POKOI * ODSTEP_POKOI, BAZOWY_Y, BAZOWY_Z);
+        DungeonConfig.Miejsce m = config.miejsce();
+        return new Location(swiat(), m.bazowyX() + m.liczbaPokoi() * m.odstepPokoi(), m.bazowyY(), m.bazowyZ());
     }
 
     // ==================================================== Pokoje lochu (/tpdun) ====
 
     private void wejdzDoPokoju(Player player, DungeonSession session, int indeksPokoju) {
         session.pokoj = indeksPokoju;
+        DungeonConfig.Pokoje p = config.pokoje();
+        int liczbaPokoi = config.miejsce().liczbaPokoi();
 
-        if (indeksPokoju >= LICZBA_POKOI) {
+        if (indeksPokoju >= liczbaPokoi) {
             // Ostatni "pokój" to arena bossa - ten sam mechanizm co /tpboss.
             Location arena = arenaBossaLokacja();
             player.teleport(arena.clone().add(0.5, 1, 0.5));
@@ -220,16 +222,16 @@ public class DungeonManager implements Listener {
 
         Location pokoj = pokojLokacja(indeksPokoju);
         player.teleport(pokoj.clone().add(0.5, 1, 0.5));
-        player.sendMessage(Component.text("Pokój " + (indeksPokoju + 1) + "/" + LICZBA_POKOI + " - pokonaj strażników!", NamedTextColor.YELLOW));
+        player.sendMessage(Component.text("Pokój " + (indeksPokoju + 1) + "/" + liczbaPokoi + " - pokonaj strażników!", NamedTextColor.YELLOW));
 
         session.zywMoby.clear();
-        int ilosc = 3 + indeksPokoju;
-        double hp = 20 + indeksPokoju * 10;
-        double dmg = 3 + indeksPokoju;
+        int ilosc = p.iloscDlaPokoju(indeksPokoju);
+        double hp = p.hpDlaPokoju(indeksPokoju);
+        double dmg = p.obrazeniaDlaPokoju(indeksPokoju);
         for (int i = 0; i < ilosc; i++) {
             double angle = (2 * Math.PI / ilosc) * i;
             Location spawn = pokoj.clone().add(3 * Math.cos(angle), 0.1, 3 * Math.sin(angle));
-            LivingEntity mob = (LivingEntity) pokoj.getWorld().spawnEntity(spawn, EntityType.ZOMBIE);
+            LivingEntity mob = (LivingEntity) pokoj.getWorld().spawnEntity(spawn, p.encja());
             mob.customName(Component.text("Strażnik Lochu " + (indeksPokoju + 1), NamedTextColor.RED));
             mob.setCustomNameVisible(true);
             var maxHealthAttr = mob.getAttribute(Attribute.MAX_HEALTH);
@@ -285,14 +287,15 @@ public class DungeonManager implements Listener {
     private void rozpocznijWalkeZBossem(Player player, Location arena) {
         Component nazwaBossa = Component.text("Władca Lochu", NamedTextColor.DARK_RED, TextDecoration.BOLD);
 
-        LivingEntity boss = (LivingEntity) arena.getWorld().spawnEntity(arena.clone().add(0, 1, 0), EntityType.PIGLIN_BRUTE);
+        DungeonConfig.Boss b = config.boss();
+        LivingEntity boss = (LivingEntity) arena.getWorld().spawnEntity(arena.clone().add(0, 1, 0), b.encja());
         boss.customName(nazwaBossa);
         boss.setCustomNameVisible(true);
         var maxHealthAttr = boss.getAttribute(Attribute.MAX_HEALTH);
-        if (maxHealthAttr != null) maxHealthAttr.setBaseValue(BOSS_MAX_HP);
-        boss.setHealth(BOSS_MAX_HP);
+        if (maxHealthAttr != null) maxHealthAttr.setBaseValue(b.maxHp());
+        boss.setHealth(b.maxHp());
         var attackAttr = boss.getAttribute(Attribute.ATTACK_DAMAGE);
-        if (attackAttr != null) attackAttr.setBaseValue(BOSS_ATTACK_DMG);
+        if (attackAttr != null) attackAttr.setBaseValue(b.obrazeniaAtaku());
         boss.getPersistentDataContainer().set(pkBossOwner, PersistentDataType.STRING, player.getUniqueId().toString());
 
         BossSession session = new BossSession();
@@ -301,7 +304,7 @@ public class DungeonManager implements Listener {
         player.showBossBar(session.pasek);
         aktywniBossowie.put(player.getUniqueId(), session);
 
-        session.skillTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> cyklUmiejetnosciBossa(player, session), BOSS_SKILL_OKRES_TICKS, BOSS_SKILL_OKRES_TICKS);
+        session.skillTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> cyklUmiejetnosciBossa(player, session), b.okresUmiejetnosciTicks(), b.okresUmiejetnosciTicks());
     }
 
     /**
@@ -317,8 +320,9 @@ public class DungeonManager implements Listener {
             return;
         }
 
+        DungeonConfig.Boss b = config.boss();
         var maxHealthAttr = boss.getAttribute(Attribute.MAX_HEALTH);
-        double maxHp = maxHealthAttr != null ? maxHealthAttr.getBaseValue() : BOSS_MAX_HP;
+        double maxHp = maxHealthAttr != null ? maxHealthAttr.getBaseValue() : b.maxHp();
         double pct = boss.getHealth() / maxHp;
         session.pasek.progress((float) Math.max(0, Math.min(1, pct)));
 
@@ -328,17 +332,17 @@ public class DungeonManager implements Listener {
         pocisk.getPersistentDataContainer().set(pkProjectile, PersistentDataType.STRING, player.getUniqueId().toString());
 
         // 2) Przywołanie sług
-        if (pct <= 0.66 && !session.sludzy66) {
+        if (pct <= b.progSlug1() && !session.sludzy66) {
             session.sludzy66 = true;
             przywolajSlugi(player, session, boss.getLocation());
         }
-        if (pct <= 0.33 && !session.sludzy33) {
+        if (pct <= b.progSlug2() && !session.sludzy33) {
             session.sludzy33 = true;
             przywolajSlugi(player, session, boss.getLocation());
         }
 
         // 3) Faza szału
-        if (pct <= 0.30 && !session.szal) {
+        if (pct <= b.progSzalu() && !session.szal) {
             session.szal = true;
             boss.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 999999, 1, true, true));
             boss.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, 999999, 0, true, true));
@@ -355,7 +359,7 @@ public class DungeonManager implements Listener {
         for (int i = 0; i < 2; i++) {
             double angle = ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
             Location spawn = przy.clone().add(2 * Math.cos(angle), 0, 2 * Math.sin(angle));
-            LivingEntity sluga = (LivingEntity) przy.getWorld().spawnEntity(spawn, EntityType.ZOMBIE);
+            LivingEntity sluga = (LivingEntity) przy.getWorld().spawnEntity(spawn, config.boss().encjaSlugi());
             sluga.customName(Component.text("Sługa Lochu", NamedTextColor.RED));
             sluga.setCustomNameVisible(true);
             sluga.getPersistentDataContainer().set(pkBossOwner, PersistentDataType.STRING, player.getUniqueId().toString());
@@ -369,7 +373,7 @@ public class DungeonManager implements Listener {
         String ownerStr = projectile.getPersistentDataContainer().get(pkProjectile, PersistentDataType.STRING);
         if (ownerStr == null) return;
         if (event.getHitEntity() instanceof Player player && player.getUniqueId().equals(UUID.fromString(ownerStr))) {
-            player.damage(BOSS_PROJECTILE_DMG);
+            player.damage(config.boss().obrazeniaPocisku());
             player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_HURT, 1f, 1f);
         }
     }
@@ -384,9 +388,10 @@ public class DungeonManager implements Listener {
             ));
             player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
 
+            double nagroda = config.boss().nagrodaMonety();
             EconomyService economyService = CoreAPI.getEconomyService();
-            economyService.dodajKase(ownerId, NAGRODA_MONETY);
-            player.sendMessage(Component.text("Nagroda: +" + (long) NAGRODA_MONETY + " $", NamedTextColor.GREEN));
+            economyService.dodajKase(ownerId, nagroda);
+            player.sendMessage(Component.text("Nagroda: +" + (long) nagroda + " $", NamedTextColor.GREEN));
 
             CrateService crateService = CoreAPI.getCrateService();
             if (crateService != null) {

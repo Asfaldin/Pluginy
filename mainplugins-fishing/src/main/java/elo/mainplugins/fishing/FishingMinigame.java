@@ -1,5 +1,6 @@
 package elo.mainplugins.fishing;
 
+import elo.mainplugins.fishing.config.FishingConfig;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -20,12 +21,12 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 final class FishingMinigame {
 
-    private static final int SZEROKOSC_PASKA = 40;
-    private static final double GRAWITACJA = 1.35;
-    private static final double IMPULS_KLIKNIECIA = 0.62;
-    private static final long OKRES_TICKOW = 2L;
-    private static final double DT = OKRES_TICKOW / 20.0;
-    private static final long MAKSYMALNY_CZAS_TICKOW = 20L * 30;
+    private final int szerokoscPaska;
+    private final double grawitacja;
+    private final double impulsKlikniecia;
+    private final long okresTickow;
+    private final double dt;
+    private final long maksymalnyCzasTickow;
 
     private final Player player;
     private final Runnable naSukces;
@@ -45,39 +46,46 @@ final class FishingMinigame {
     private double postep = 0.45;
     private long tickiOdStartu = 0;
 
-    FishingMinigame(Plugin plugin, Player player, RybaGatunek gatunek, Runnable naSukces, Runnable naPorazke) {
+    FishingMinigame(Plugin plugin, Player player, RybaGatunek gatunek, FishingConfig.MinigryConfig cfg, Runnable naSukces, Runnable naPorazke) {
         this.player = player;
         this.naSukces = naSukces;
         this.naPorazke = naPorazke;
 
+        this.szerokoscPaska = cfg.szerokoscPaska();
+        this.grawitacja = cfg.grawitacja();
+        this.impulsKlikniecia = cfg.impulsKlikniecia();
+        this.okresTickow = cfg.okresTickow();
+        this.dt = okresTickow / 20.0;
+        this.maksymalnyCzasTickow = cfg.maksymalnyCzasTickow();
+
         int trudnosc = gatunek.rzadkosc().ordinal(); // 0 (zwykła) .. 4 (legendarna)
-        this.polowaSzerokosciSuwaka = clamp(0.20 - 0.022 * trudnosc, 0.09, 0.20);
-        this.predkoscRyby = 0.35 + 0.18 * trudnosc;
-        this.tempoNapelniania = clamp(0.55 - 0.05 * trudnosc, 0.30, 0.55);
-        this.tempoOprozniania = 0.32 + 0.05 * trudnosc;
+        this.polowaSzerokosciSuwaka = cfg.polowaSzerokosciSuwaka().wartosc(trudnosc);
+        this.predkoscRyby = cfg.predkoscRyby().wartosc(trudnosc);
+        this.tempoNapelniania = cfg.tempoNapelniania().wartosc(trudnosc);
+        this.tempoOprozniania = cfg.tempoOprozniania().wartosc(trudnosc);
 
         this.pasek = BossBar.bossBar(Component.text("Łowienie..."), (float) postep, BossBar.Color.RED, BossBar.Overlay.PROGRESS);
         player.showBossBar(pasek);
 
-        this.task = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, OKRES_TICKOW, OKRES_TICKOW);
+        this.task = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, okresTickow, okresTickow);
     }
 
     /** Wywoływane z FishingManager.onInteract przy PPM, dopóki minigra trwa - "podbicie" suwaka w górę. */
     void kliknij() {
-        predkoscSuwaka = IMPULS_KLIKNIECIA;
+        predkoscSuwaka = impulsKlikniecia;
     }
 
     private void tick() {
-        tickiOdStartu += OKRES_TICKOW;
+        tickiOdStartu += okresTickow;
 
         if (Math.abs(celRyby - pozycjaRyby) < 0.02) {
             celRyby = ThreadLocalRandom.current().nextDouble(0.05, 0.95);
         }
         double kierunek = Math.signum(celRyby - pozycjaRyby);
-        pozycjaRyby = clamp(pozycjaRyby + kierunek * predkoscRyby * DT, 0.0, 1.0);
+        pozycjaRyby = clamp(pozycjaRyby + kierunek * predkoscRyby * dt, 0.0, 1.0);
 
-        predkoscSuwaka -= GRAWITACJA * DT;
-        pozycjaSuwaka += predkoscSuwaka * DT;
+        predkoscSuwaka -= grawitacja * dt;
+        pozycjaSuwaka += predkoscSuwaka * dt;
         if (pozycjaSuwaka < polowaSzerokosciSuwaka) {
             pozycjaSuwaka = polowaSzerokosciSuwaka;
             predkoscSuwaka = 0.0;
@@ -87,7 +95,7 @@ final class FishingMinigame {
         }
 
         boolean naRybie = Math.abs(pozycjaRyby - pozycjaSuwaka) <= polowaSzerokosciSuwaka;
-        postep = clamp(postep + (naRybie ? tempoNapelniania : -tempoOprozniania) * DT, 0.0, 1.0);
+        postep = clamp(postep + (naRybie ? tempoNapelniania : -tempoOprozniania) * dt, 0.0, 1.0);
 
         pasek.progress((float) postep);
         pasek.color(naRybie ? BossBar.Color.GREEN : BossBar.Color.RED);
@@ -97,18 +105,18 @@ final class FishingMinigame {
             zakoncz(true);
         } else if (postep <= 0.0) {
             zakoncz(false);
-        } else if (tickiOdStartu >= MAKSYMALNY_CZAS_TICKOW) {
+        } else if (tickiOdStartu >= maksymalnyCzasTickow) {
             zakoncz(false);
         }
     }
 
     private Component zbudujPasek() {
-        int slotRyby = (int) Math.round(pozycjaRyby * (SZEROKOSC_PASKA - 1));
-        int start = (int) Math.round((pozycjaSuwaka - polowaSzerokosciSuwaka) * (SZEROKOSC_PASKA - 1));
-        int koniec = (int) Math.round((pozycjaSuwaka + polowaSzerokosciSuwaka) * (SZEROKOSC_PASKA - 1));
+        int slotRyby = (int) Math.round(pozycjaRyby * (szerokoscPaska - 1));
+        int start = (int) Math.round((pozycjaSuwaka - polowaSzerokosciSuwaka) * (szerokoscPaska - 1));
+        int koniec = (int) Math.round((pozycjaSuwaka + polowaSzerokosciSuwaka) * (szerokoscPaska - 1));
 
         Component wynik = Component.text("Łowienie: ", NamedTextColor.GOLD);
-        for (int i = 0; i < SZEROKOSC_PASKA; i++) {
+        for (int i = 0; i < szerokoscPaska; i++) {
             boolean wSuwaku = i >= start && i <= koniec;
             if (i == slotRyby) {
                 wynik = wynik.append(Component.text("✦", wSuwaku ? NamedTextColor.GREEN : NamedTextColor.RED));

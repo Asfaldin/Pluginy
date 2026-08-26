@@ -8,6 +8,7 @@ import elo.mainplugins.core.api.Rank;
 import elo.mainplugins.core.api.RankService;
 import elo.mainplugins.core.api.TopGracz;
 import elo.mainplugins.core.util.MoneyFormat;
+import elo.mainplugins.hud.config.HudConfig;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -32,59 +33,17 @@ import java.util.Locale;
  */
 public class MainpluginsPlaceholders extends PlaceholderExpansion {
 
-    private static final int MAX_TOP = 10;
-
-    /**
-     * Pro tipy rotujące razem ze wskazówką rynkową w wierszu 1 stopki.
-     * Kolejność ma znaczenie tylko o tyle, że jest stała - dzięki temu rotacja
-     * oparta o czas (patrz wskazowka()) daje przewidywalną, powtarzalną
-     * sekwencję zamiast losowej.
-     */
-    private static final String[] PRO_TIPY = {
-        "&7Zbierz spawner: &fPPM patykiem",
-        "&7Sortuj sklep: &fPPM na przycisk",
-        "&7Szukaj w sklepie: &fkliknij tabliczkę",
-        "&7Limit spawnerów: &f10 na wyspę",
-        "&7Ceny resetują się co &f14 dni",
-        "&7Wpisz &f/komendy",
-        "&7Wpisz &f/questy &7po nagrody",
-        "&7Handluj graczami: &f/targ",
-        "&7Powiększ wyspę: &f/is menu",
-        "&7Dołącz na &9Discord&7!",
-        "&7Zaproś znajomego na wyspę",
-        "&7Wpisz &f/menu",
-    };
-
-    /** Szerokość (w znakach), do której dopełniane są pro tipy - żeby panel nie zmieniał
-     *  szerokości przy każdej rotacji wskazówki. Licząc bez kodów koloru (&7, &f itd.). */
-    private static final int SZEROKOSC_PRO_TIPU = 32;
-
-    /** Co ile sekund zmienia się treść wiersza 1 stopki. */
-    private static final int SEKUND_NA_SLAJD = 8;
-
-    /**
-     * Co która zmiana slajdu to wskazówka rynkowa (reszta to pro tipy).
-     * 3 = rynkowa co trzeci slajd, żeby nie zdominowała rotacji obok 12 tipów.
-     */
-    private static final int CO_KTORY_SLAJD_RYNKOWY = 3;
-
     private final EconomyService economyManager;
-    private final CenyService cenyService;   // może być null - szukane dynamicznie, patrz znajdzCenyService()
+    private volatile HudConfig config;
 
-    public MainpluginsPlaceholders(EconomyService economyManager) {
+    public MainpluginsPlaceholders(EconomyService economyManager, HudConfig config) {
         this.economyManager = economyManager;
-        this.cenyService = null;
+        this.config = config;
     }
 
-    /**
-     * Przeciążenie - CenyService jest opcjonalny (shop mógłby się jeszcze
-     * nie włączyć albo w ogóle nie być wgrany), więc i tak odpytujemy
-     * ServicesManager na bieżąco przy każdym żądaniu (patrz znajdzCenyService()),
-     * a nie raz przy starcie - shop może się włączyć PO hud (kolejność pluginów).
-     */
-    public MainpluginsPlaceholders(EconomyService economyManager, CenyService cenyServiceIgnored) {
-        this.economyManager = economyManager;
-        this.cenyService = null;
+    /** Podmienia pro tipy/ustawienia/fake-dane na żywo - patrz /@reloadhud. */
+    public void aktualizujKonfiguracje(HudConfig nowy) {
+        this.config = nowy;
     }
 
     @Override
@@ -193,7 +152,7 @@ public class MainpluginsPlaceholders extends PlaceholderExpansion {
         }
 
         Integer indeks = wyciagnijIndeks(params, "top_gracz_linia_pad_");
-        if (indeks != null) return liniaTopGracza(indeks, SZEROKOSC_PAD_GRACZA);
+        if (indeks != null) return liniaTopGracza(indeks, config.szerokoscPadGracza());
 
         indeks = wyciagnijIndeks(params, "top_gracz_linia_");
         if (indeks != null) return liniaTopGracza(indeks, 0);
@@ -203,15 +162,6 @@ public class MainpluginsPlaceholders extends PlaceholderExpansion {
 
         return null;
     }
-
-    /**
-     * Szerokosc (w ZNAKACH, nie pikselach) do jakiej dopelniana jest spacjami linijka
-     * gracza w wariancie "_pad_" - uzywana gdy Top Gracze i Top Wyspy sa sklejane w
-     * jedna linie naglowka/stopki TAB (bez siatki Layout - patrz komentarz klasowy).
-     * Font Minecrafta nie jest monospace, wiec to przyblizenie, nie piksel-perfect -
-     * ale bez wlasnego resourcepacka (patrz historia projektu) to jedyna opcja.
-     */
-    private static final int SZEROKOSC_PAD_GRACZA = 34;
 
     /**
      * Cala sformatowana linijka rankingu graczy (numer + nick + kasa) albo "" gdy
@@ -238,13 +188,13 @@ public class MainpluginsPlaceholders extends PlaceholderExpansion {
     }
 
     private TopGracz pobierzTopGraczaLubNull(int indeks1based) {
-        List<TopGracz> top = HudData.pobierzTopGraczy(economyManager, MAX_TOP);
+        List<TopGracz> top = HudData.pobierzTopGraczy(economyManager, config.maxTop(), config.fakeTopGraczy());
         int i = indeks1based - 1;
         return i >= 0 && i < top.size() ? top.get(i) : null;
     }
 
     private IslandSummary pobierzTopWyspeLubNull(int indeks1based) {
-        List<IslandSummary> top = HudData.pobierzTopWysp(MAX_TOP);
+        List<IslandSummary> top = HudData.pobierzTopWysp(config.maxTop(), config.fakeTopWysp());
         int i = indeks1based - 1;
         return i >= 0 && i < top.size() ? top.get(i) : null;
     }
@@ -268,17 +218,19 @@ public class MainpluginsPlaceholders extends PlaceholderExpansion {
      * co POWINNO być widoczne w TEJ sekundzie.
      */
     private String wskazowka() {
-        long slajd = (System.currentTimeMillis() / 1000L / SEKUND_NA_SLAJD);
+        long slajd = (System.currentTimeMillis() / 1000L / config.sekundNaSlajd());
 
-        if (slajd % CO_KTORY_SLAJD_RYNKOWY == 0) {
+        if (slajd % config.coKtorySlajdRynkowy() == 0) {
             String rynkowa = wskazowkaRynkowa();
-            if (rynkowa != null) return dopelnij(rynkowa, SZEROKOSC_PRO_TIPU);
+            if (rynkowa != null) return dopelnij(rynkowa, config.szerokoscProTipu());
             // Brak sensownej wskazówki rynkowej (np. shop nie wgrany, albo
             // akurat nic się nie odchyla od bazy) - spadamy na pro tip zamiast
             // pustego wiersza.
         }
-        int indeks = (int) (slajd % PRO_TIPY.length);
-        return dopelnij(PRO_TIPY[indeks], SZEROKOSC_PRO_TIPU);
+        List<String> proTipy = config.proTipy();
+        if (proTipy.isEmpty()) return "";
+        int indeks = (int) (slajd % proTipy.size());
+        return dopelnij(proTipy.get(indeks), config.szerokoscProTipu());
     }
 
     /**

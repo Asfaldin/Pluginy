@@ -1,5 +1,6 @@
 package elo.mainplugins.chatfilter;
 
+import elo.mainplugins.chatfilter.config.ChatFilterConfig;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.Rank;
 import elo.mainplugins.core.api.RankService;
@@ -12,24 +13,37 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 
 /**
- * Blokuje wiadomości pisane w większości WIELKIMI LITERAMI (>60% liter to caps). Krótkie
- * wiadomości (poniżej MIN_DLUGOSC znaków) są pominięte, żeby nie łapać normalnych "OK",
- * "GG", "LOL" itp. - to naturalny sposób pisania krótkich zwrotów, nie "krzyczenie".
+ * Blokuje wiadomości pisane w większości WIELKIMI LITERAMI (próg konfigurowalny). Krótkie
+ * wiadomości (poniżej konfigurowalnej minimalnej długości) są pominięte, żeby nie łapać
+ * normalnych "OK", "GG", "LOL" itp. - to naturalny sposób pisania krótkich zwrotów, nie
+ * "krzyczenie".
  *
  * Liczymy TYLKO litery (Character.isUpperCase/isLowerCase - działa też na polskie znaki
  * jak Ą/Ł/Ż) - cyfry, spacje i symbole nie wliczają się do proporcji w żadną stronę.
+ *
+ * Konfiguracja (włącz/wyłącz, min-dlugosc, prog-procent, wyjęte rangi) w
+ * chatfilter-config.yml - patrz ChatFilterConfigLoader.
  */
 public class CapsLockManager implements Listener {
 
-    private static final int MIN_DLUGOSC = 8;
-    private static final double PROG_CAPS = 0.6;
+    private volatile ChatFilterConfig.AntyCaps cfg;
+
+    public CapsLockManager(ChatFilterConfig.AntyCaps cfg) {
+        this.cfg = cfg;
+    }
+
+    public void aktualizujKonfiguracje(ChatFilterConfig.AntyCaps cfg) {
+        this.cfg = cfg;
+    }
 
     @EventHandler(ignoreCancelled = true)
     public void onChat(AsyncChatEvent event) {
-        if (pobierzRange(event.getPlayer()) == Rank.ADMIN) return;
+        ChatFilterConfig.AntyCaps aktualna = cfg;
+        if (!aktualna.enabled()) return;
+        if (aktualna.exemptRangi().contains(pobierzRange(event.getPlayer()))) return;
 
         String wiadomosc = PlainTextComponentSerializer.plainText().serialize(event.message());
-        if (wiadomosc.length() < MIN_DLUGOSC) return;
+        if (wiadomosc.length() < aktualna.minDlugosc()) return;
 
         int wielkie = 0;
         int litery = 0;
@@ -44,7 +58,7 @@ public class CapsLockManager implements Listener {
         }
         if (litery == 0) return; // brak liter (same cyfry/symbole) - nie ma czego oceniać
 
-        if ((double) wielkie / litery > PROG_CAPS) {
+        if ((double) wielkie / litery > aktualna.progUlamek()) {
             event.setCancelled(true);
             event.getPlayer().sendMessage(Component.text(
                     "Nie możesz tego napisać - za dużo wielkich liter, wyłącz caps locka!",

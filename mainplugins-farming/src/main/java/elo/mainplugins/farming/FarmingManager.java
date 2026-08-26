@@ -1,5 +1,6 @@
 package elo.mainplugins.farming;
 
+import elo.mainplugins.farming.config.FarmingConfig;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -29,9 +30,11 @@ public class FarmingManager implements Listener {
     private final File plikUpraw;
     private final FileConfiguration configUpraw;
     private final Set<String> zloteMarchewki = new HashSet<>();
+    private volatile FarmingConfig config;
 
-    public FarmingManager(Plugin plugin) {
+    public FarmingManager(Plugin plugin, FarmingConfig config) {
         this.plugin = plugin;
+        this.config = config;
         this.plikUpraw = new File(plugin.getDataFolder(), "uprawy.yml");
         if (!plikUpraw.exists()) {
             plikUpraw.getParentFile().mkdirs();
@@ -39,6 +42,10 @@ public class FarmingManager implements Listener {
         }
         this.configUpraw = YamlConfiguration.loadConfiguration(plikUpraw);
         zloteMarchewki.addAll(configUpraw.getStringList("zlote-marchewki"));
+    }
+
+    public void aktualizujKonfiguracje(FarmingConfig nowy) {
+        this.config = nowy;
     }
 
     @EventHandler
@@ -81,11 +88,7 @@ public class FarmingManager implements Listener {
         }
 
         event.setDropItems(false);
-        block.getWorld().dropItemNaturally(block.getLocation(), new ItemStack(Material.GOLDEN_CARROT, losowaIlosc()));
-    }
-
-    private int losowaIlosc() {
-        return 2 + (int) (Math.random() * 3); // 2-4 szt.
+        block.getWorld().dropItemNaturally(block.getLocation(), new ItemStack(Material.GOLDEN_CARROT, config.losowaIloscZlotejMarchewki()));
     }
 
     private String kluczLokalizacji(Location loc) {

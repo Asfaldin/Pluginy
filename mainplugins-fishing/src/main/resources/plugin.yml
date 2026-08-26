@@ -7,3 +7,12 @@ depend: [MainpluginsCore]
 commands:
   wedka:
     description: Daj sobie wędkę do specjalnego łowienia.
+  "@reloadfishing":
+    description: Wczytaj fishing-config.yml na nowo, bez restartu serwera
+    permission: mainplugins.fishing.reload
+    permission-message: "&cNie masz permisji do tej komendy!"
+
+permissions:
+  mainplugins.fishing.reload:
+    description: Pozwala przeladowac konfiguracje lowienia
+    default: op

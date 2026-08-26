@@ -16,8 +16,15 @@ commands:
     usage: /<command> <gracz>
     permission: mainplugins.ranks.admin
     permission-message: "&cNie masz permisji do tej komendy!"
+  "@reloadrangi":
+    description: Wczytaj ranks-config.yml (wygląd rang) na nowo, bez restartu serwera
+    permission: mainplugins.ranks.reload
+    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.ranks.admin:
     description: Dostęp do nadawania/zmiany rang graczy
+    default: op
+  mainplugins.ranks.reload:
+    description: Pozwala przeładować wygląd rang
     default: op

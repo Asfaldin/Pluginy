@@ -4,3 +4,14 @@ main: elo.mainplugins.spawners.MainpluginsSpawners
 api-version: '1.20'
 depend: [MainpluginsCore]
 softdepend: [MainpluginsSkyblock]
+
+commands:
+  "@reloadspawnery":
+    description: Wczytaj spawnery-typy.yml na nowo, bez restartu serwera
+    permission: mainplugins.spawners.reload
+    permission-message: "&cNie masz permisji do tej komendy!"
+
+permissions:
+  mainplugins.spawners.reload:
+    description: Pozwala przeładować typy i ustawienia customowych spawnerów
+    default: op

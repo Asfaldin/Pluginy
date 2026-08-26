@@ -1,0 +1,20 @@
+# Wyglad rang na czacie/tabliscie - w pelni edytowalny bez rekompilacji.
+# Przeladowanie na zywo, bez restartu serwera: /@reloadrangi
+#
+# Same trzy range (GRACZ/VIP/ADMIN) sa na stale wbudowane w caly ekosystem
+# (Rank.java w mainplugins-core, m.in. Admin = realny op Bukkita) - tutaj
+# konfigurowalny jest TYLKO ich wyglad, nie sam zestaw rang.
+#
+# prefix: tekst przed nickiem (kody koloru & jak zwykle), pusty string = brak.
+# kolor-nicku: kolor samego nicku (nazwa NamedTextColor, np. WHITE/GOLD/RED).
+
+wygladu:
+  GRACZ:
+    prefix: ""
+    kolor-nicku: WHITE
+  VIP:
+    prefix: "&6&l[VIP] "
+    kolor-nicku: GOLD
+  ADMIN:
+    prefix: "&c&l[ADMIN] "
+    kolor-nicku: RED

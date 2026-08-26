@@ -590,18 +590,18 @@ categories:
       - id: 1
         title: "Pierwszy Połów"
         description: ["Złów i przynieś swoje pierwsze ryby zwykłą wędką."]
-        requirement: {type: ITEM, materials: [{material: COD, amount: 5, custom-id: FISH_KARP_MIELIZNY, display-name: "Karp Mielizny"}]}
+        requirement: {type: ITEM, materials: [{material: COD, amount: 5, custom-id: FISH_ZWYKLA, display-name: "Zwykła Rybka"}]}
         rewards: [{type: ITEM, material: EMERALD, amount: 5}]
         reward-label: "5x Szmaragd"
       - id: 2
         title: "W Głąb Wody"
-        description: ["Łów dalej - tym razem srebrne leszcze."]
-        requirement: {type: ITEM, materials: [{material: SALMON, amount: 8, custom-id: FISH_SREBRNY_LESZCZ, display-name: "Srebrny Leszcz"}]}
+        description: ["Łów dalej - tym razem coś lepszego."]
+        requirement: {type: ITEM, materials: [{material: SALMON, amount: 8, custom-id: FISH_SUPER, display-name: "Super Rybka"}]}
         rewards: [{type: MONEY, amount: 500}]
       - id: 3
         title: "Kolekcjoner Łusek"
         description: ["Złów coś rzadszego niż zwykłe ryby."]
-        requirement: {type: ITEM, materials: [{material: TROPICAL_FISH, amount: 1, custom-id: FISH_TECZOWY_SKRZELACZ, display-name: "Tęczowy Skrzelacz"}]}
+        requirement: {type: ITEM, materials: [{material: TROPICAL_FISH, amount: 1, custom-id: FISH_MISTYCZNA, display-name: "Mistyczna Rybka"}]}
         rewards: [{type: MONEY, amount: 350}]
       - id: 4
         title: "Sekret Kowala"

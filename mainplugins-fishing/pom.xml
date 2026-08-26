@@ -16,9 +16,8 @@
 
     <!--
         Łowienie: własne gatunki ryb (custom PDC, sprzedawane przez mainplugins-shop po
-        custom-id), tiery wędek i ich upgrade w kowadle, opcjonalny bonusowy drop skrzynek
-        z mainplugins-crates przez CoreAPI.getCrateService() - stąd zależność od Core
-        (provided, core ląduje na serwerze jako osobny jar, patrz komentarz w pom.xml rodzica).
+        custom-id), tiery wędek i ich upgrade w kowadle - stąd zależność od Core (provided,
+        core ląduje na serwerze jako osobny jar, patrz komentarz w pom.xml rodzica).
     -->
     <dependencies>
         <dependency>

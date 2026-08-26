@@ -1,65 +1,23 @@
-# Konfiguracja lowienia (mainplugins-fishing) - w pelni edytowalna bez rekompilacji.
-# Przeladowanie na zywo: /@reloadfishing
+# Konfiguracja lowienia (mainplugins-fishing) - tuning minigry i bonusowej skrzynki,
+# w pelni edytowalny bez rekompilacji. Przeladowanie na zywo: /@reloadfishing
 #
-# UWAGA: kazdy custom-id gatunku musi sie zgadzac 1:1 z sklep.yml (kategoria
-# "ryby_wedkarskie") i z custom-id wymogow questow kategorii "Rybak" w
-# mainplugins-quests - zmiana/usuniecie istniejacego ID zepsuje ta zgodnosc.
-# rzadkosc steruje trudnoscia minigry (patrz sekcja minigra) i blaskiem itemu -
-# dozwolone wartosci: ZWYKLA, NIEZWYKLA, RZADKA, EPICKA, LEGENDARNA.
-
-gatunki:
-  FISH_KARP_MIELIZNY:
-    nazwa: "Karp Mielizny"
-    material: COD
-    kolor: GRAY
-    rzadkosc: ZWYKLA
-    waga: 40
-  FISH_SREBRNY_LESZCZ:
-    nazwa: "Srebrny Leszcz"
-    material: SALMON
-    kolor: GRAY
-    rzadkosc: ZWYKLA
-    waga: 30
-  FISH_TECZOWY_SKRZELACZ:
-    nazwa: "Tęczowy Skrzelacz"
-    material: TROPICAL_FISH
-    kolor: GREEN
-    rzadkosc: NIEZWYKLA
-    waga: 15
-  FISH_KOLCZASTY_NURKACZ:
-    nazwa: "Kolczasty Nurkacz"
-    material: PUFFERFISH
-    kolor: GREEN
-    rzadkosc: NIEZWYKLA
-    waga: 10
-  FISH_SZMARAGDOWY_WEGORZ:
-    nazwa: "Szmaragdowy Węgorz"
-    material: TROPICAL_FISH
-    kolor: AQUA
-    rzadkosc: RZADKA
-    waga: 4
-  FISH_MGLAWICOWY_SUM:
-    nazwa: "Mgławicowy Sum"
-    material: COD
-    kolor: AQUA
-    rzadkosc: RZADKA
-    waga: 1
+# Gatunki ryb NIE sa tutaj - patrz ryby.yml (osobny plik w tym samym folderze danych).
 
 # Trudnosc minigry "pasek" zalezna liniowo od trudnosci = rzadkosc.ordinal() (0-4):
 # polowa-szerokosci-suwaka(t) = clamp(bazowa + na-trudnosc*t, min, max)
-# predkosc-ryby(t)            = bazowa + na-trudnosc*t
+# predkosc-ryby(t)            = clamp(bazowa + na-trudnosc*t, min, max)
 # tempo-napelniania(t)        = clamp(bazowa + na-trudnosc*t, min, max)
-# tempo-oprozniania(t)        = bazowa + na-trudnosc*t
+# tempo-oprozniania(t)        = clamp(bazowa + na-trudnosc*t, min, max)
 minigra:
   szerokosc-paska: 40
-  grawitacja: 1.35
-  impuls-kliknieca: 0.62
+  grawitacja: 0.65
+  impuls-kliknieca: 0.38
   okres-tickow: 2
   maksymalny-czas-sekund: 30
-  polowa-szerokosci-suwaka: {bazowa: 0.20, na-trudnosc: -0.022, min: 0.09, max: 0.20}
-  predkosc-ryby: {bazowa: 0.35, na-trudnosc: 0.18, min: 0.0, max: 999.0}
-  tempo-napelniania: {bazowa: 0.55, na-trudnosc: -0.05, min: 0.30, max: 0.55}
-  tempo-oprozniania: {bazowa: 0.32, na-trudnosc: 0.05, min: 0.0, max: 999.0}
+  polowa-szerokosci-suwaka: {bazowa: 0.10, na-trudnosc: -0.011, min: 0.05, max: 0.10}
+  predkosc-ryby: {bazowa: 0.10, na-trudnosc: 0.05, min: 0.0, max: 999.0}
+  tempo-napelniania: {bazowa: 0.18, na-trudnosc: -0.015, min: 0.10, max: 0.18}
+  tempo-oprozniania: {bazowa: 0.12, na-trudnosc: 0.02, min: 0.12, max: 0.20}
 
 bonusowa-skrzynka:
   szansa-procent: 3.0

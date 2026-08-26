@@ -198,8 +198,9 @@ public class RotacjaManager {
 
         int slot = PIERWSZY_SLOT_ROTACYJNY;
         for (Map<?, ?> item : wylosowane) {
+            String material = String.valueOf(item.get("material"));
             String sciezka = "items." + slot + ".";
-            kat.set(sciezka + "material", String.valueOf(item.get("material")));
+            kat.set(sciezka + "material", material);
             kat.set(sciezka + "slot", slot);
             kat.set(sciezka + "display-name", String.valueOf(item.get("nazwa")));
             kat.set(sciezka + "amount", 1);
@@ -210,6 +211,11 @@ public class RotacjaManager {
             // dokladnie tak jak lore w kazdej innej kategorii w tym projekcie.
             List<String> lore = new ArrayList<>();
             lore.add("OFERTA CZASOWA");
+            // Plyty i rogi koze nie maja zadnej innej funkcji poza kolekcjonowaniem -
+            // jasno o tym mowimy, zeby gracz nie szukal do nich zastosowania.
+            if (material.startsWith("MUSIC_DISC") || material.equals("GOAT_HORN")) {
+                lore.add("Rzecz kolekcjonerska");
+            }
             lore.add("Dostepne przez ograniczony czas");
             kat.set(sciezka + "lore", lore);
 

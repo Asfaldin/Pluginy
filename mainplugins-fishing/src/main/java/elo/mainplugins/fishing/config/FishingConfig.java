@@ -1,14 +1,11 @@
 package elo.mainplugins.fishing.config;
 
-import elo.mainplugins.fishing.RybaGatunek;
-
-import java.util.List;
-
 /**
- * Cała konfiguracja łowienia wczytana z fishing-config.yml (patrz FishingConfigLoader) -
- * jeden niemutowalny snapshot, podmieniany w całości przy /@reloadfishing.
+ * Tuning minigry i bonusowej skrzynki wczytany z fishing-config.yml (patrz
+ * FishingConfigLoader) - jeden niemutowalny snapshot, podmieniany w całości przy
+ * /@reloadfishing. Gatunki ryb NIE są tutaj - patrz ryby.yml / FishingManager.wczytajGatunki.
  */
-public record FishingConfig(List<RybaGatunek> gatunki, MinigryConfig minigra, double bonusowaSkrzynkaSzansaProcent) {
+public record FishingConfig(MinigryConfig minigra, double bonusowaSkrzynkaSzansaProcent) {
 
     /** Formuła liniowa bazowa + naTrudnosc*trudnosc, przycięta do [min, max]. */
     public record Formula(double bazowa, double naTrudnosc, double min, double max) {

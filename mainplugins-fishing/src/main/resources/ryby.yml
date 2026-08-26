@@ -1,0 +1,36 @@
+# Gatunki ryb do lowienia w obszarach lowisk (patrz ObszarService, flaga ryby-dozwolone
+# ustawiana /@obszar ryby w mainplugins-spawn). customId musi zgadzac sie 1:1 z sklep.yml
+# (kategoria "ryby_wedkarskie") i z customId-ami wymogow questow kategorii "Rybak" w
+# mainplugins-quests - to jedyny "kontrakt" laczacy te trzy niezalezne moduly (patrz
+# CustomItemKeys w mainplugins-core). Jesli custom-id ma wpis w rejestrze custom itemow
+# (mainplugins-core, custom-items.yml - np. FISH_MISTYCZNA z wlasnym modelem z
+# resourcepacka) to on wygrywa, a material/name/color ponizej sluzy tylko jako fallback,
+# gdyby rejestru zabraklo.
+#
+# rarity: ZWYKLA / NIEZWYKLA / RZADKA / EPICKA / LEGENDARNA (od RZADKA w gore ryba dostaje
+#         enchant glint w fallbackowym budowaniu itemu).
+# weight:  waga losowania (im wyzsza, tym czesciej ta ryba wypada) - to NIE jest procent
+#          bezposrednio, szansa = weight / suma wszystkich weight ponizej.
+#
+# Wagi TYMCZASOWO wyrownane (1/1/1 = kazda ryba ma taka sama szanse) na czas testow
+# minigry - docelowy rozklad rzadkosci byl 50/30/5, wrocic do tego przed wdrozeniem
+# na produkcje.
+gatunki:
+  - custom-id: FISH_ZWYKLA
+    name: "Zwykła Rybka"
+    material: COD
+    color: GRAY
+    rarity: ZWYKLA
+    weight: 1
+  - custom-id: FISH_SUPER
+    name: "Super Rybka"
+    material: SALMON
+    color: GREEN
+    rarity: NIEZWYKLA
+    weight: 1
+  - custom-id: FISH_MISTYCZNA
+    name: "Mistyczna Rybka"
+    material: TROPICAL_FISH
+    color: LIGHT_PURPLE
+    rarity: RZADKA
+    weight: 1

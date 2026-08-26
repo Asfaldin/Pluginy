@@ -24,8 +24,13 @@ final class FishingMinigame {
     // Spowolnione (v1 byla za szybka do ogarniecia) - grawitacja/impuls ok. 2.5x
     // lagodniejsze, tempo napelniania/oprozniania ~35% wolniejsze, patrz tez
     // predkoscRyby nizej (rzeczywisty czynnik "ryba sie wyrywa").
-    private static final double GRAWITACJA = 0.55;
-    private static final double IMPULS_KLIKNIECIA = 0.30;
+    // Grawitacja/impuls tuningowane w dwie strony: najpierw zmniejszone (bylo 0.55/0.30),
+    // bo suwak "nie wyrabial" doganiac rybki w gore - ale za wolno tez OPADAL (ruch w
+    // lewo/w dol paska), wiec teraz grawitacja z powrotem podkrecona (mocniej niz nawet
+    // oryginalne 0.55) przy zachowaniu mocniejszego impulsu z gory - szybszy ruch w OBIE
+    // strony, nie tylko w gore.
+    private static final double GRAWITACJA = 0.65;
+    private static final double IMPULS_KLIKNIECIA = 0.38;
     private static final long OKRES_TICKOW = 2L;
     private static final double DT = OKRES_TICKOW / 20.0;
     private static final long MAKSYMALNY_CZAS_TICKOW = 20L * 30;
@@ -54,13 +59,21 @@ final class FishingMinigame {
         this.naPorazke = naPorazke;
 
         int trudnosc = gatunek.rzadkosc().ordinal(); // 0 (zwykła) .. 4 (legendarna)
-        this.polowaSzerokosciSuwaka = clamp(0.20 - 0.022 * trudnosc, 0.09, 0.20);
+        // Suwak (okno, które musi nakrywać ✦) ok. o połowę węższy niż wcześniej (było
+        // 0.09-0.20 połówki szerokości) - trudniej trafić i utrzymać się na rybie.
+        this.polowaSzerokosciSuwaka = clamp(0.10 - 0.011 * trudnosc, 0.05, 0.10);
         // Ryba "wyrywa się" (ucieka do losowego celu) wyraźnie wolniej niż wcześniej -
         // było 0.35 + 0.18*trudnosc, co przy zwykłej rybie robiło pełny przelot paska
         // w ~1.4s. Teraz ~3.5x wolniej.
         this.predkoscRyby = 0.10 + 0.05 * trudnosc;
-        this.tempoNapelniania = clamp(0.35 - 0.03 * trudnosc, 0.20, 0.35);
-        this.tempoOprozniania = 0.20 + 0.03 * trudnosc;
+        // Napełnianie miernika połowu ok. o połowę wolniejsze niż wcześniej (było
+        // 0.20-0.35) - cały połów trwa wyraźnie dłużej nawet przy trafianiu w rybę.
+        this.tempoNapelniania = clamp(0.18 - 0.015 * trudnosc, 0.10, 0.18);
+        // Kara za pudłowanie była wyraźnie ostrzejsza niż nagroda za trafienie (było
+        // 0.20-0.32, ~1.5-2x tempoNapelniania) - jedno spudłowanie kasowało więcej postępu
+        // niż zdążyło się zdobyć trafiając. Teraz zbliżone do tempa napełniania (nawet
+        // lekko łagodniejsze), żeby chwilowe zgubienie ryby nie zerowało progresu.
+        this.tempoOprozniania = clamp(0.12 + 0.02 * trudnosc, 0.12, 0.20);
 
         this.pasek = BossBar.bossBar(Component.text("Łowienie..."), (float) postep, BossBar.Color.RED, BossBar.Overlay.PROGRESS);
         player.showBossBar(pasek);

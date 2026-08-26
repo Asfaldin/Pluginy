@@ -7,3 +7,24 @@ depend: [MainpluginsCore]
 commands:
   wedka:
     description: Daj sobie wędkę do specjalnego łowienia.
+  "@reloadfishing":
+    description: Wczytaj gatunki ryb (ryby.yml) na nowo, bez restartu serwera
+    permission: mainplugins.fishing.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+  wedka1:
+    description: "[TEST] Wędka wymuszająca 1. gatunek z ryby.yml (Zwykła), branie prawie natychmiastowe"
+    permission: mainplugins.fishing.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+  wedka2:
+    description: "[TEST] Wędka wymuszająca 2. gatunek z ryby.yml (Super), branie prawie natychmiastowe"
+    permission: mainplugins.fishing.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+  wedka3:
+    description: "[TEST] Wędka wymuszająca 3. gatunek z ryby.yml (Mistyczna), branie prawie natychmiastowe"
+    permission: mainplugins.fishing.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+
+permissions:
+  mainplugins.fishing.admin:
+    description: Dostęp do przeładowania konfiguracji łowienia i wędek testowych
+    default: op

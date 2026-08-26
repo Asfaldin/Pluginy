@@ -23,5 +23,31 @@ public final class MainpluginsFishing extends JavaPlugin {
                 return true;
             });
         }
+
+        if (getCommand("@reloadfishing") != null) {
+            getCommand("@reloadfishing").setExecutor((sender, command, label, args) -> {
+                fishingManager.wczytajGatunki();
+                sender.sendMessage("§aGatunki ryb zostały przeładowane.");
+                return true;
+            });
+        }
+
+        // Wędki testowe /wedka1../wedka3 - patrz FishingManager.stworzWedkeTestowa. Za
+        // permisją mainplugins.fishing.admin (patrz plugin.yml) - NIE dla zwykłych graczy,
+        // bo wymuszają gatunek i prawie natychmiastowe branie.
+        for (int i = 1; i <= 3; i++) {
+            int indeks = i;
+            if (getCommand("wedka" + i) != null) {
+                getCommand("wedka" + i).setExecutor((sender, command, label, args) -> {
+                    if (!(sender instanceof Player player)) {
+                        sender.sendMessage("Tylko gracz moze uzyc tej komendy.");
+                        return true;
+                    }
+                    player.getInventory().addItem(fishingManager.stworzWedkeTestowa(indeks));
+                    player.sendMessage("§aOtrzymałeś wędkę testową #" + indeks + ".");
+                    return true;
+                });
+            }
+        }
     }
 }

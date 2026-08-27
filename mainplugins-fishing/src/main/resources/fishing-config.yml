@@ -12,7 +12,13 @@ minigra:
   szerokosc-paska: 40
   grawitacja: 0.65
   impuls-kliknieca: 0.38
-  okres-tickow: 2
+  # 1 = co tyknięcie serwera (20Hz), zmienione z 2 (10Hz) dla płynniejszej animacji paska -
+  # patrz FishingMinigame. Fizyka i tak liczona przez dt, więc trudność się nie zmienia.
+  okres-tickow: 1
+  # UWAGA: obecnie NIEUŻYWANE przez FishingMinigame - ryba wyrywa się WYŁĄCZNIE gdy miernik
+  # połowu realnie spadnie do zera, bez limitu czasu (był tu wcześniej twardy timeout kończący
+  # minigrę porażką niezależnie od wyniku - mylące, więc świadomie wyłączony). Wartość zostaje
+  # w configu na wypadek gdyby ktoś chciał to jednak kiedyś przywrócić.
   maksymalny-czas-sekund: 30
   polowa-szerokosci-suwaka: {bazowa: 0.10, na-trudnosc: -0.011, min: 0.05, max: 0.10}
   predkosc-ryby: {bazowa: 0.10, na-trudnosc: 0.05, min: 0.0, max: 999.0}

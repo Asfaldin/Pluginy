@@ -96,7 +96,8 @@ public class PomocCommand implements CommandExecutor {
     private static final List<Sekcja> STRONA_4 = List.of(
             new Sekcja("Zadania i Łowienie", List.of(
                     new Wpis("/zadania (/quest)", "Otwórz listę zadań i odbierz nagrody"),
-                    new Wpis("/wedka", "Odbierz wędkę do łowienia")
+                    new Wpis("/wedka", "Odbierz wędkę do łowienia"),
+                    new Wpis("/rybpasek <gora|dol>", "Ustaw gdzie ma się wyświetlać pasek minigry łowienia")
             )),
             new Sekcja("Inne", List.of(
                     new Wpis("/wycisz <gracz> (/mute)", "Wycisz gracza tylko dla siebie (ponownie = odcisz)"),

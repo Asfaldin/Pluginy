@@ -7,6 +7,9 @@ depend: [MainpluginsCore]
 commands:
   wedka:
     description: Daj sobie wędkę do specjalnego łowienia.
+  rybpasek:
+    description: Ustaw gdzie ma się wyświetlać pasek minigry łowienia (gora ekranu / dol nad paskiem XP)
+    usage: "/<command> <gora|dol>"
   "@reloadfishing":
     description: Wczytaj gatunki ryb (ryby.yml) na nowo, bez restartu serwera
     permission: mainplugins.fishing.admin
@@ -21,6 +24,18 @@ commands:
     permission-message: "&cNie masz permisji do tej komendy!"
   wedka3:
     description: "[TEST] Wędka wymuszająca 3. gatunek z ryby.yml (Mistyczna), branie prawie natychmiastowe"
+    permission: mainplugins.fishing.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+  wedkazrownowazona:
+    description: "[TEST] Wędka profilu Zrównoważona (baseline, bez zmian) - normalne losowanie gatunku"
+    permission: mainplugins.fishing.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+  wedkacierpliwa:
+    description: "[TEST] Wędka profilu Cierpliwego - szerszy suwak/wolniejsza ryba, wolniejszy połów, szanse w stronę pospolitszych ryb"
+    permission: mainplugins.fishing.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+  wedkaszarpana:
+    description: "[TEST] Wędka profilu Szarpana - wąski suwak/szybka ryba, szybki połów przy trafieniu, szanse w stronę rzadszych ryb"
     permission: mainplugins.fishing.admin
     permission-message: "&cNie masz permisji do tej komendy!"
 

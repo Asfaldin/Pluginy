@@ -72,17 +72,21 @@ public class FishingManager implements Listener {
     // Aktywna minigra "pasek" - patrz rozpocznijMinigre.
     private final Map<UUID, FishingMinigame> aktywneMinigry = new HashMap<>();
 
+    /** Gatunek + profil wędki wylosowane/ustalone RAZEM przy rzucie - patrz oczekujaceGatunki niżej. */
+    private record OczekujacyPolow(RybaGatunek gatunek, WedkaProfil profil) {}
+
     // Runnable zatrzymujący trwający efekt złowienia (świecące cząsteczki/laser, patrz
     // efektZlapania) - działa dopóki minigra trwa, gaszone na sukces/porażkę/rozłączenie
     // (patrz zakonczEfektPolowu).
     private final Map<UUID, Runnable> aktywneEfektyPolowu = new HashMap<>();
 
-    // Gatunek wylosowany JUŻ przy rzucie (nie dopiero przy braniu) w łowisku - dzięki temu
-    // przy BITE efekt (patrz efektZlapania) od razu wie jakim kolorem świecić, bez
-    // dodatkowego losowania w tym momencie. Zdejmowane przy BITE (przechodzi do minigry)
-    // albo przy dowolnym innym/końcowym stanie zdarzenia (patrz onFish) - żeby nic nie
-    // zostawało "wiszące" po spudłowanym rzucie.
-    private final Map<UUID, RybaGatunek> oczekujaceGatunki = new HashMap<>();
+    // Gatunek (+ profil wędki, patrz OczekujacyPolow) wylosowany JUŻ przy rzucie (nie
+    // dopiero przy braniu) w łowisku - dzięki temu przy BITE efekt (patrz efektZlapania)
+    // od razu wie jakim kolorem świecić, a minigra dostaje profil ustalony w momencie
+    // rzutu, nie brania (gdyby gracz zdążył zmienić wędkę w ręce w międzyczasie).
+    // Zdejmowane przy BITE (przechodzi do minigry) albo przy dowolnym innym/końcowym
+    // stanie zdarzenia (patrz onFish) - żeby nic nie zostawało "wiszące" po spudłowanym rzucie.
+    private final Map<UUID, OczekujacyPolow> oczekujaceGatunki = new HashMap<>();
 
     // Tag na wędkach TESTOWYCH (patrz stworzWedkeTestowa/@wedka1-3 w MainpluginsFishing) -
     // trzyma 0-based indeks do gatunki, żeby onFish mógł wymusić konkretny gatunek zamiast
@@ -90,10 +94,42 @@ public class FishingManager implements Listener {
     // testów na permisji mainplugins.fishing.admin - normalna /wedka tego tagu nie ma.
     private final NamespacedKey tagWedkiTestowej;
 
+    // Tag na wędkach TESTOWYCH PROFILU (patrz stworzWedkeProfilTestowa/@wedkacierpliwa itd.
+    // w MainpluginsFishing) - trzyma nazwę stałej WedkaProfil. W odróżnieniu od tagu wyżej
+    // NIE wymusza gatunku - normalne losowanie (patrz losujRybe) dalej działa, tylko z
+    // biasem tego profilu, żeby dało się realnie przetestować wpływ wędki na szanse na
+    // gatunek, a nie tylko na fizykę suwaka.
+    private final NamespacedKey tagProfiluTestowego;
+
+    // Tag na SAMYM GRACZU (nie na itemie) - preferencja gdzie ma się wyświetlać pasek
+    // minigry (patrz PozycjaPaska, komenda /rybpasek w MainpluginsFishing). Trwały
+    // (PersistentDataContainer gracza), więc pamiętany między sesjami bez osobnego pliku.
+    private final NamespacedKey tagPozycjaPaska;
+
     public FishingManager(Plugin plugin) {
         this.plugin = plugin;
         this.tagWedkiTestowej = new NamespacedKey(plugin, "wedka_test_indeks");
+        this.tagProfiluTestowego = new NamespacedKey(plugin, "wedka_test_profil");
+        this.tagPozycjaPaska = new NamespacedKey(plugin, "fishing_pozycja_paska");
         wczytajGatunki();
+    }
+
+    // ==================================================================== Preferencje gracza ====
+
+    /** Patrz tagPozycjaPaska - PozycjaPaska.GORA (dotychczasowe zachowanie) jeśli gracz nigdy nic nie ustawiał. */
+    public PozycjaPaska pozycjaPaska(Player player) {
+        String nazwa = player.getPersistentDataContainer().get(tagPozycjaPaska, PersistentDataType.STRING);
+        if (nazwa == null) return PozycjaPaska.GORA;
+        try {
+            return PozycjaPaska.valueOf(nazwa);
+        } catch (IllegalArgumentException e) {
+            return PozycjaPaska.GORA;
+        }
+    }
+
+    /** Wywoływane z komendy /rybpasek (patrz MainpluginsFishing). */
+    public void ustawPozycjePaska(Player player, PozycjaPaska pozycja) {
+        player.getPersistentDataContainer().set(tagPozycjaPaska, PersistentDataType.STRING, pozycja.name());
     }
 
     // ==================================================================== Konfiguracja ====
@@ -170,6 +206,26 @@ public class FishingManager implements Listener {
     }
 
     /**
+     * WYŁĄCZNIE do testów (patrz /wedkazrownowazona, /wedkacierpliwa, /wedkaszarpana w
+     * MainpluginsFishing, za permisją mainplugins.fishing.admin) - wędka otagowana danym
+     * WedkaProfil. W odróżnieniu od stworzWedkeTestowa wyżej NIE wymusza gatunku - onFish
+     * dalej losuje normalnie (patrz losujRybe), tylko z biasem tego profilu, i minigra
+     * (patrz FishingMinigame) dostaje jego mnożniki fizyki suwaka.
+     */
+    public ItemStack stworzWedkeProfilTestowa(WedkaProfil profil) {
+        ItemStack item = new ItemStack(Material.FISHING_ROD);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.text("Wędka " + profil.nazwa() + " [TEST]", profil.kolor(), TextDecoration.BOLD));
+        meta.lore(List.of(
+                Component.text("Profil testowy: " + profil.nazwa() + ".", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("Normalne losowanie gatunku, z biasem tego profilu.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        meta.getPersistentDataContainer().set(tagProfiluTestowego, PersistentDataType.STRING, profil.name());
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    /**
      * Jeśli gatunek ma wpis w rejestrze custom itemów (patrz mainplugins-core,
      * custom-items.yml) - np. FISH_MISTYCZNA z własnym modelem z resourcepacka -
      * wydajemy DOKŁADNIE ten item stamtąd (ten sam wzorzec co ShopManager.stworzBazowyItem).
@@ -207,19 +263,44 @@ public class FishingManager implements Listener {
 
     // ==================================================================== Losowanie ====
 
-    private RybaGatunek losujRybe() {
+    /**
+     * Waga z ryby.yml, przemnożona przez profil.mnoznikRzadkosci() do potęgi rzadkości
+     * gatunku (patrz WedkaProfil) - ZWYKLA (ordinal 0) zawsze wychodzi bez zmian, każdy
+     * kolejny stopień rzadkości mnoży się profilem o kolejną potęgę. Stąd double zamiast
+     * int (mnożenie wag przestaje dawać liczby całkowite).
+     */
+    private double wagaEfektywna(RybaGatunek g, WedkaProfil profil) {
+        return g.waga() * Math.pow(profil.mnoznikRzadkosci(), g.rzadkosc().ordinal());
+    }
+
+    private RybaGatunek losujRybe(WedkaProfil profil) {
         if (gatunki.isEmpty()) return null;
 
-        int suma = 0;
-        for (RybaGatunek g : gatunki) suma += g.waga();
+        double suma = 0;
+        for (RybaGatunek g : gatunki) suma += wagaEfektywna(g, profil);
 
-        int los = ThreadLocalRandom.current().nextInt(suma);
-        int akumulator = 0;
+        double los = ThreadLocalRandom.current().nextDouble(suma);
+        double akumulator = 0;
         for (RybaGatunek g : gatunki) {
-            akumulator += g.waga();
+            akumulator += wagaEfektywna(g, profil);
             if (los < akumulator) return g;
         }
         return gatunki.getLast();
+    }
+
+    /** Patrz stworzWedkeProfilTestowa - WedkaProfil.ZROWNOWAZONA (bez zmian) jeśli gracz nie trzyma otagowanej wędki testowej. */
+    private WedkaProfil profilZWedki(Player player) {
+        ItemStack wRece = player.getInventory().getItemInMainHand();
+        if (!wRece.hasItemMeta()) return WedkaProfil.ZROWNOWAZONA;
+
+        String nazwa = wRece.getItemMeta().getPersistentDataContainer().get(tagProfiluTestowego, PersistentDataType.STRING);
+        if (nazwa == null) return WedkaProfil.ZROWNOWAZONA;
+
+        try {
+            return WedkaProfil.valueOf(nazwa);
+        } catch (IllegalArgumentException e) {
+            return WedkaProfil.ZROWNOWAZONA;
+        }
     }
 
     // ==================================================================== Łowienie ====
@@ -250,14 +331,15 @@ public class FishingManager implements Listener {
         if (obszarService == null || !obszarService.jestLowiskiem(event.getHook().getLocation())) return;
 
         if (event.getState() == PlayerFishEvent.State.FISHING) {
+            WedkaProfil profil = profilZWedki(event.getPlayer());
             RybaGatunek wymuszony = wymuszonyGatunekZWedkiTestowej(event.getPlayer());
-            RybaGatunek gatunek = wymuszony != null ? wymuszony : losujRybe();
+            RybaGatunek gatunek = wymuszony != null ? wymuszony : losujRybe(profil);
             if (gatunek == null) return; // ryby.yml pusty/uszkodzony - patrz wczytajGatunki, zostawiamy wanilijskie łowienie
 
             // Zapis PRZED próbą przyspieszenia brania - jeśli setWaitTime akurat rzuci
             // wyjątek (nieudokumentowane ograniczenie tej wersji MC), wymuszony gatunek
             // i tak zostaje zapamiętany, zamiast po cichu spaść do losowania na BITE.
-            oczekujaceGatunki.put(uuid, gatunek);
+            oczekujaceGatunki.put(uuid, new OczekujacyPolow(gatunek, profil));
 
             if (wymuszony != null) {
                 event.getPlayer().sendMessage(Component.text("[TEST] Wymuszono: " + gatunek.nazwa(), NamedTextColor.YELLOW));
@@ -272,21 +354,23 @@ public class FishingManager implements Listener {
 
         // BITE - ryba naprawdę doszła do spławika
         Location lokalizacjaHaka = event.getHook().getLocation().clone();
-        RybaGatunek gatunek = oczekujaceGatunki.remove(uuid);
-        if (gatunek == null) {
+        OczekujacyPolow oczekujacy = oczekujaceGatunki.remove(uuid);
+        if (oczekujacy == null) {
             // Asekuracyjnie, gdyby FISHING nie doszedl do glosu (np. hak w locie byl jeszcze
             // poza granicami lowiska, a osiadl w nim dopiero pozniej) - sprawdzamy wedke
             // testowa TERAZ, zamiast od razu skakac do czystego losowania, zeby wymuszanie
             // gatunku dzialalo niezaleznie od tego kiedy dokladnie hak wpadl w granice.
+            WedkaProfil profil = profilZWedki(event.getPlayer());
             RybaGatunek wymuszony = wymuszonyGatunekZWedkiTestowej(event.getPlayer());
-            gatunek = wymuszony != null ? wymuszony : losujRybe();
+            RybaGatunek gatunek = wymuszony != null ? wymuszony : losujRybe(profil);
+            oczekujacy = gatunek != null ? new OczekujacyPolow(gatunek, profil) : null;
         }
-        if (gatunek == null) return;
+        if (oczekujacy == null) return;
 
         event.setCancelled(true);
         event.getHook().remove();
 
-        rozpocznijMinigre(event.getPlayer(), gatunek, lokalizacjaHaka);
+        rozpocznijMinigre(event.getPlayer(), oczekujacy.gatunek(), oczekujacy.profil(), lokalizacjaHaka);
     }
 
     /** Patrz stworzWedkeTestowa - null jeśli gracz nie trzyma wędki testowej albo jej indeks wypadł poza aktualną listę gatunki (np. po edycji ryby.yml). */
@@ -337,13 +421,13 @@ public class FishingManager implements Listener {
 
     // ==================================================================== Minigra "pasek" ====
 
-    private void rozpocznijMinigre(Player player, RybaGatunek gatunek, Location lokalizacjaHaka) {
+    private void rozpocznijMinigre(Player player, RybaGatunek gatunek, WedkaProfil profil, Location lokalizacjaHaka) {
         UUID uuid = player.getUniqueId();
         player.playSound(player.getLocation(), Sound.ENTITY_FISHING_BOBBER_SPLASH, 1.0f, 1.0f);
 
         aktywneEfektyPolowu.put(uuid, efektZlapania(player, gatunek, lokalizacjaHaka));
 
-        FishingMinigame gra = new FishingMinigame(plugin, player, gatunek,
+        FishingMinigame gra = new FishingMinigame(plugin, player, gatunek, profil, pozycjaPaska(player),
                 () -> {
                     aktywneMinigry.remove(uuid);
                     zakonczEfektPolowu(uuid);

@@ -9,8 +9,15 @@ commands:
     description: Teleportuje do areny bossa (walka 1v1 z customowym bossem)
   tpdun:
     description: Teleportuje do lochu (kilka pokoi z mobami, na końcu boss)
+  "@reloaddungeons":
+    description: Wczytaj dungeons-config.yml na nowo, bez restartu serwera
+    permission: mainplugins.dungeons.reload
+    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.dungeons.use:
     description: Pozwala uzywac /tpboss i /tpdun
     default: true
+  mainplugins.dungeons.reload:
+    description: Pozwala przeladowac konfiguracje lochu/bossa
+    default: op

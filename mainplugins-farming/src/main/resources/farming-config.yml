@@ -1,0 +1,6 @@
+# Konfiguracja upraw specjalnych (mainplugins-farming) - w pelni edytowalna bez
+# rekompilacji. Przeladowanie na zywo: /@reloadfarming
+
+zlota-marchewka:
+  ilosc-min: 2
+  ilosc-max: 4

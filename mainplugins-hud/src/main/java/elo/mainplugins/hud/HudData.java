@@ -17,40 +17,29 @@ import java.util.UUID;
  * ServicesManager na bieżąco, zamiast raz w konstruktorze (Skyblock mógłby
  * włączyć się później niż HUD).
  *
- * Topki (najbogatsi/największe wyspy) pokazują dane zmyślone, jeśli prawdziwych
- * jeszcze nie ma (świeży serwer, zero graczy z kasą albo zero wysp) - żeby HUD
- * od pierwszej sekundy wyglądał gotowo, a nie pusto. Dane o TOBIE (własna wyspa)
- * nigdy nie są zmyślane - albo są prawdziwe, albo pokazujemy szczerze "Brak".
+ * Topki (najbogatsi/największe wyspy) pokazują dane zmyślone (patrz hud-config.yml
+ * fake-top-graczy/fake-top-wysp), jeśli prawdziwych jeszcze nie ma (świeży serwer, zero
+ * graczy z kasą albo zero wysp) - żeby HUD od pierwszej sekundy wyglądał gotowo, a nie
+ * pusto. Dane o TOBIE (własna wyspa) nigdy nie są zmyślane - albo są prawdziwe, albo
+ * pokazujemy szczerze "Brak".
  */
 final class HudData {
 
     private HudData() {}
 
-    private static final List<TopGracz> FAKE_TOP_GRACZY = List.of(
-            new TopGracz(null, "Steve", 15000.0),
-            new TopGracz(null, "Alex", 10500.0),
-            new TopGracz(null, "Notch", 8200.0)
-    );
-
-    private static final List<IslandSummary> FAKE_TOP_WYSP = List.of(
-            new IslandSummary(null, "Steve", 120, 3, java.util.Map.of()),
-            new IslandSummary(null, "Alex", 95, 2, java.util.Map.of()),
-            new IslandSummary(null, "Notch", 80, 1, java.util.Map.of())
-    );
-
-    static List<TopGracz> pobierzTopGraczy(EconomyService economy, int limit) {
+    static List<TopGracz> pobierzTopGraczy(EconomyService economy, int limit, List<TopGracz> fake) {
         List<TopGracz> realne = economy.getTop(limit);
         if (!realne.isEmpty()) return realne;
-        return FAKE_TOP_GRACZY.subList(0, Math.min(limit, FAKE_TOP_GRACZY.size()));
+        return fake.subList(0, Math.min(limit, fake.size()));
     }
 
-    static List<IslandSummary> pobierzTopWysp(int limit) {
+    static List<IslandSummary> pobierzTopWysp(int limit, List<IslandSummary> fake) {
         IslandService islandService = znajdzIslandService();
         if (islandService != null) {
             List<IslandSummary> realne = islandService.getTopIslands(limit);
             if (!realne.isEmpty()) return realne;
         }
-        return FAKE_TOP_WYSP.subList(0, Math.min(limit, FAKE_TOP_WYSP.size()));
+        return fake.subList(0, Math.min(limit, fake.size()));
     }
 
     /** Prawdziwa wyspa gracza albo null - nigdy nie zmyślona, patrz komentarz klasy. */

@@ -4,10 +4,10 @@ import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.Rank;
 import elo.mainplugins.core.api.RankService;
 import elo.mainplugins.core.api.TytulService;
+import elo.mainplugins.ranks.config.RanksConfig;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -44,9 +44,11 @@ public class RankManager implements RankService, Listener {
     private final File plikRang;
     private final FileConfiguration configRang;
     private final Map<UUID, Rank> cache = new HashMap<>();
+    private volatile RanksConfig wygladRang;
 
-    public RankManager(Plugin plugin) {
+    public RankManager(Plugin plugin, RanksConfig wygladRang) {
         this.plugin = plugin;
+        this.wygladRang = wygladRang;
         this.plikRang = new File(plugin.getDataFolder(), "ranks.yml");
         if (!plikRang.exists()) {
             plikRang.getParentFile().mkdirs();
@@ -54,6 +56,11 @@ public class RankManager implements RankService, Listener {
         }
         this.configRang = YamlConfiguration.loadConfiguration(plikRang);
         wczytaj();
+    }
+
+    /** Podmienia wygląd rang (prefiks/kolor) na żywo - patrz /@reloadrangi. Przypisania graczy do rang (ranks.yml) są nietknięte. */
+    public void aktualizujWygladRang(RanksConfig nowy) {
+        this.wygladRang = nowy;
     }
 
     private void wczytaj() {
@@ -125,21 +132,13 @@ public class RankManager implements RankService, Listener {
         odswiezTabliste(player);
     }
 
-    /** Tag przed nickiem w tabliście i na czacie - GRACZ nie ma żadnego. */
+    /** Tag przed nickiem w tabliście i na czacie - wygląd (tekst/kolor) z ranks-config.yml, patrz RanksConfigLoader. */
     Component prefixDlaRangi(Rank rank) {
-        return switch (rank) {
-            case ADMIN -> Component.text("[ADMIN] ", NamedTextColor.RED, TextDecoration.BOLD);
-            case VIP -> Component.text("[VIP] ", NamedTextColor.GOLD, TextDecoration.BOLD);
-            case GRACZ -> Component.empty();
-        };
+        return wygladRang.dla(rank).prefix();
     }
 
     private NamedTextColor kolorNicku(Rank rank) {
-        return switch (rank) {
-            case ADMIN -> NamedTextColor.RED;
-            case VIP -> NamedTextColor.GOLD;
-            case GRACZ -> NamedTextColor.WHITE;
-        };
+        return wygladRang.dla(rank).kolorNicku();
     }
 
     /**

@@ -1,9 +1,11 @@
 package elo.mainplugins.fishing;
 
 import elo.mainplugins.core.CoreAPI;
+import elo.mainplugins.core.api.CrateService;
 import elo.mainplugins.core.api.CustomItemService;
 import elo.mainplugins.core.api.ObszarService;
 import elo.mainplugins.core.util.CustomItemKeys;
+import elo.mainplugins.fishing.config.FishingConfig;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -48,8 +50,9 @@ import java.util.concurrent.ThreadLocalRandom;
  * looty. POZA łowiskiem plugin się w ogóle nie wtrąca - zwykłe wanilijskie łowienie.
  *
  * Świadomie wycięte na razie (wraca później jako osobny etap, patrz historia gita):
- * tiery wędek, łowienie w powietrzu/nad pustką, upgrade wędki w kowadle (receptury),
- * bonusowy drop skrzynki z mainplugins-crates po udanym połowie.
+ * tiery wędek (ale patrz WedkaProfil - "style gry", nie tiery progresji), łowienie w
+ * powietrzu/nad pustką, upgrade wędki w kowadle (receptury). Bonusowy drop skrzynki z
+ * mainplugins-crates JEST już (patrz rzucBonusowaSkrzynke, tuning w fishing-config.yml).
  *
  * Zero zależności od mainplugins-quests/mainplugins-shop: gatunki ryb są rozpoznawane
  * wyłącznie po współdzielonym CustomItemKeys.CUSTOM_ITEM_ID (patrz mainplugins-core) -
@@ -58,6 +61,11 @@ import java.util.concurrent.ThreadLocalRandom;
 public class FishingManager implements Listener {
 
     private final Plugin plugin;
+
+    // Tuning minigry i bonusowej skrzynki - fishing-config.yml, przeladowywalny bez
+    // restartu (patrz aktualizujKonfiguracje / @reloadfishing). Gatunki ryb NIE sa tutaj -
+    // patrz gatunki nizej.
+    private volatile FishingConfig config;
 
     // Gatunki ryb do losowania - wczytywane z ryby.yml (w folderze danych tego pluginu,
     // patrz wczytajGatunki) zamiast trzymane na sztywno w kodzie, zeby dalo sie je tuningowac
@@ -106,8 +114,9 @@ public class FishingManager implements Listener {
     // (PersistentDataContainer gracza), więc pamiętany między sesjami bez osobnego pliku.
     private final NamespacedKey tagPozycjaPaska;
 
-    public FishingManager(Plugin plugin) {
+    public FishingManager(Plugin plugin, FishingConfig config) {
         this.plugin = plugin;
+        this.config = config;
         this.tagWedkiTestowej = new NamespacedKey(plugin, "wedka_test_indeks");
         this.tagProfiluTestowego = new NamespacedKey(plugin, "wedka_test_profil");
         this.tagPozycjaPaska = new NamespacedKey(plugin, "fishing_pozycja_paska");
@@ -132,13 +141,19 @@ public class FishingManager implements Listener {
         player.getPersistentDataContainer().set(tagPozycjaPaska, PersistentDataType.STRING, pozycja.name());
     }
 
+    /** Przeladowuje tuning minigry/bonusowej skrzynki (fishing-config.yml) i gatunki ryb (ryby.yml) - patrz komenda @reloadfishing. */
+    public void aktualizujKonfiguracje(FishingConfig nowy) {
+        this.config = nowy;
+        wczytajGatunki();
+    }
+
     // ==================================================================== Konfiguracja ====
 
     /**
      * Wczytuje gatunki ryb z ryby.yml w folderze danych pluginu (kopiowanego z zasobow
      * przy pierwszym uruchomieniu, patrz plugin.saveResource) - ten sam wzorzec co
      * RotacjaManager.wczytajPule() w mainplugins-shop. Publiczna, zeby dalo sie przeladowac
-     * bez restartu serwera (patrz komenda @reloadfishing w MainpluginsFishing).
+     * bez restartu serwera (patrz komenda @reloadfishing w MainpluginsFishing / aktualizujKonfiguracje).
      */
     public void wczytajGatunki() {
         File plik = new File(plugin.getDataFolder(), "ryby.yml");
@@ -146,9 +161,9 @@ public class FishingManager implements Listener {
             plugin.saveResource("ryby.yml", false);
         }
 
-        FileConfiguration config = YamlConfiguration.loadConfiguration(plik);
+        FileConfiguration plikRyb = YamlConfiguration.loadConfiguration(plik);
         List<RybaGatunek> wczytane = new ArrayList<>();
-        for (Map<?, ?> wpis : config.getMapList("gatunki")) {
+        for (Map<?, ?> wpis : plikRyb.getMapList("gatunki")) {
             try {
                 String customId = String.valueOf(wpis.get("custom-id"));
                 String nazwa = String.valueOf(wpis.get("name"));
@@ -303,6 +318,23 @@ public class FishingManager implements Listener {
         }
     }
 
+    /**
+     * Niezależny bonusowy drop skrzynki z mainplugins-crates po udanym połowie - płaska
+     * szansa na razie (brak tierów wędki do skalowania nią, patrz javadoc klasy). Cichy
+     * no-op, jeśli mainplugins-crates nie jest wgrany (opcjonalny serwis, patrz CoreAPI).
+     */
+    private void rzucBonusowaSkrzynke(Player player) {
+        CrateService crateService = CoreAPI.getCrateService();
+        if (crateService == null) return;
+        if (ThreadLocalRandom.current().nextDouble(100.0) >= config.bonusowaSkrzynkaSzansaProcent()) return;
+
+        ItemStack skrzynka = crateService.stworzSkrzynke(1);
+        var nieZmieszczone = player.getInventory().addItem(skrzynka);
+        nieZmieszczone.values().forEach(i -> player.getWorld().dropItemNaturally(player.getLocation(), i));
+        player.sendMessage(Component.text("Z haczyka wypadła też skrzynka!", NamedTextColor.GOLD, TextDecoration.BOLD));
+        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+    }
+
     // ==================================================================== Łowienie ====
 
     /**
@@ -329,6 +361,7 @@ public class FishingManager implements Listener {
 
         ObszarService obszarService = CoreAPI.getObszarService();
         if (obszarService == null || !obszarService.jestLowiskiem(event.getHook().getLocation())) return;
+        if (gatunki.isEmpty()) return; // ryby.yml bez gatunkow - zostaw wanilijskie lowienie
 
         if (event.getState() == PlayerFishEvent.State.FISHING) {
             WedkaProfil profil = profilZWedki(event.getPlayer());
@@ -427,7 +460,7 @@ public class FishingManager implements Listener {
 
         aktywneEfektyPolowu.put(uuid, efektZlapania(player, gatunek, lokalizacjaHaka));
 
-        FishingMinigame gra = new FishingMinigame(plugin, player, gatunek, profil, pozycjaPaska(player),
+        FishingMinigame gra = new FishingMinigame(plugin, player, gatunek, profil, config.minigra(), pozycjaPaska(player),
                 () -> {
                     aktywneMinigry.remove(uuid);
                     zakonczEfektPolowu(uuid);
@@ -454,6 +487,7 @@ public class FishingManager implements Listener {
         player.sendMessage(Component.text("Złowiłeś: ", NamedTextColor.GREEN)
                 .append(Component.text(zlowiona.nazwa(), zlowiona.kolor(), TextDecoration.BOLD)));
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+        rzucBonusowaSkrzynke(player);
     }
 
     /** Jedyna rola tego handlera: przekazać rytmiczne PPM gracza do jego aktywnej minigry (patrz FishingMinigame.kliknij). */

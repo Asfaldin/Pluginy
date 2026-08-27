@@ -1,0 +1,37 @@
+# Konfiguracja HUD/placeholderow (mainplugins-hud) - w pelni edytowalna bez
+# rekompilacji. Przeladowanie na zywo: /@reloadhud
+#
+# pro-tipy: rotujace linijki wiersza 1 stopki (obok wskazowki rynkowej) - kody
+# koloru & jak zwykle. fake-top-*: dane pokazywane w %mainplugins_top_...%,
+# zanim na serwerze pojawia sie prawdziwi gracze z kasa/wyspami.
+
+pro-tipy:
+  - "&7Zbierz spawner: &fPPM patykiem"
+  - "&7Sortuj sklep: &fPPM na przycisk"
+  - "&7Szukaj w sklepie: &fkliknij tabliczkę"
+  - "&7Limit spawnerów: &f10 na wyspę"
+  - "&7Ceny resetują się co &f14 dni"
+  - "&7Wpisz &f/komendy"
+  - "&7Wpisz &f/questy &7po nagrody"
+  - "&7Handluj graczami: &f/targ"
+  - "&7Powiększ wyspę: &f/is menu"
+  - "&7Dołącz na &9Discord&7!"
+  - "&7Zaproś znajomego na wyspę"
+  - "&7Wpisz &f/menu"
+
+ustawienia:
+  max-top: 10
+  sekund-na-slajd: 8
+  co-ktory-slajd-rynkowy: 3
+  szerokosc-pro-tipu: 32
+  szerokosc-pad-gracza: 34
+
+fake-top-graczy:
+  - {nick: "Steve", kasa: 15000.0}
+  - {nick: "Alex", kasa: 10500.0}
+  - {nick: "Notch", kasa: 8200.0}
+
+fake-top-wysp:
+  - {nick: "Steve", rozmiar: 120, czlonkowie: 3}
+  - {nick: "Alex", rozmiar: 95, czlonkowie: 2}
+  - {nick: "Notch", rozmiar: 80, czlonkowie: 1}

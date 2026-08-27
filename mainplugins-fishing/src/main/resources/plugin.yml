@@ -11,7 +11,7 @@ commands:
     description: Ustaw gdzie ma się wyświetlać pasek minigry łowienia (gora ekranu / dol nad paskiem XP)
     usage: "/<command> <gora|dol>"
   "@reloadfishing":
-    description: Wczytaj gatunki ryb (ryby.yml) na nowo, bez restartu serwera
+    description: Wczytaj fishing-config.yml i ryby.yml na nowo, bez restartu serwera
     permission: mainplugins.fishing.admin
     permission-message: "&cNie masz permisji do tej komendy!"
   wedka1:

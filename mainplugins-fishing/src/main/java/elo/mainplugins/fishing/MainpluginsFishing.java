@@ -1,5 +1,6 @@
 package elo.mainplugins.fishing;
 
+import elo.mainplugins.fishing.config.FishingConfigLoader;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -9,7 +10,7 @@ public final class MainpluginsFishing extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        fishingManager = new FishingManager(this);
+        fishingManager = new FishingManager(this, FishingConfigLoader.load(this));
         getServer().getPluginManager().registerEvents(fishingManager, this);
 
         if (getCommand("wedka") != null) {
@@ -55,8 +56,8 @@ public final class MainpluginsFishing extends JavaPlugin {
 
         if (getCommand("@reloadfishing") != null) {
             getCommand("@reloadfishing").setExecutor((sender, command, label, args) -> {
-                fishingManager.wczytajGatunki();
-                sender.sendMessage("§aGatunki ryb zostały przeładowane.");
+                fishingManager.aktualizujKonfiguracje(FishingConfigLoader.load(this));
+                sender.sendMessage("§aKonfiguracja lowienia (fishing-config.yml + ryby.yml) zostala przeladowana.");
                 return true;
             });
         }

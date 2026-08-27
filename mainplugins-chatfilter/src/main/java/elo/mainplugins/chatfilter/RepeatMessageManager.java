@@ -1,5 +1,6 @@
 package elo.mainplugins.chatfilter;
 
+import elo.mainplugins.chatfilter.config.ChatFilterConfig;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.Rank;
 import elo.mainplugins.core.api.RankService;
@@ -27,15 +28,31 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * ConcurrentHashMap z tego samego powodu co w MuteManager - AsyncChatEvent leci
  * na osobnym wątku.
+ *
+ * Konfiguracja (włącz/wyłącz, wyjęte rangi) w chatfilter-config.yml - patrz
+ * ChatFilterConfigLoader.
  */
 public class RepeatMessageManager implements Listener {
 
+    private volatile ChatFilterConfig.PowtorzonaWiadomosc cfg;
+
     private final Map<UUID, String> ostatniaWiadomosc = new ConcurrentHashMap<>();
+
+    public RepeatMessageManager(ChatFilterConfig.PowtorzonaWiadomosc cfg) {
+        this.cfg = cfg;
+    }
+
+    public void aktualizujKonfiguracje(ChatFilterConfig.PowtorzonaWiadomosc cfg) {
+        this.cfg = cfg;
+    }
 
     @EventHandler(ignoreCancelled = true)
     public void onChat(AsyncChatEvent event) {
+        ChatFilterConfig.PowtorzonaWiadomosc aktualna = cfg;
+        if (!aktualna.enabled()) return;
+
         Player player = event.getPlayer();
-        if (pobierzRange(player) == Rank.ADMIN) return;
+        if (aktualna.exemptRangi().contains(pobierzRange(player))) return;
 
         String wiadomosc = PlainTextComponentSerializer.plainText().serialize(event.message());
         // put() PRZED sprawdzeniem jest celowo bezwarunkowe: gdy wiadomość zostanie

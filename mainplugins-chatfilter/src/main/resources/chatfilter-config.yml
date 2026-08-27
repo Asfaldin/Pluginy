@@ -1,0 +1,36 @@
+# Konfiguracja filtrow czatu - w pelni edytowalna bez rekompilacji.
+# Przeladowanie na zywo, bez restartu serwera: /@reloadchatfilter
+#
+# Kazdy filtr ma "enabled" (wlacz/wylacz) i "exempt-rangi" (lista rang
+# pomijanych przez ten filtr - GRACZ/VIP/ADMIN, patrz mainplugins-core Rank).
+# Anty-spam (cooldown) NIE ma exempt-rangi - dziala dla wszystkich oprocz
+# permisji mainplugins.chatfilter.bypass (bez zmian, ustawiana w plugin.yml).
+
+anti-spam:
+  enabled: true
+  cooldown-sekundy: 5.0
+
+anti-caps:
+  enabled: true
+  min-dlugosc: 8
+  prog-procent: 60
+  exempt-rangi: [ADMIN]
+
+dlugosc-wiadomosci:
+  enabled: true
+  limit-znakow: 128
+  exempt-rangi: [ADMIN]
+
+anti-reklama:
+  enabled: true
+  koncowki-domen: [pl, com, net, org, gg, io, eu, de, co, xyz, info, tv, me, shop, site, online, club, top, biz]
+  exempt-rangi: [ADMIN]
+
+powtorzona-wiadomosc:
+  enabled: true
+  exempt-rangi: [ADMIN]
+
+powtarzajace-znaki:
+  enabled: true
+  min-powtorzen: 5
+  exempt-rangi: [ADMIN]

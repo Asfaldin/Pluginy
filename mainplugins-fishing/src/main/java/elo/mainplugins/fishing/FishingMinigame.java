@@ -1,5 +1,6 @@
 package elo.mainplugins.fishing;
 
+import elo.mainplugins.fishing.config.FishingConfig;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -17,35 +18,35 @@ import java.util.concurrent.ThreadLocalRandom;
  * FishingManager.onInteract), grawitacja ściąga go w dół. Nakładanie się suwaka na
  * rybkę napełnia miernik połowu (BossBar.progress), brak nakładania go opróżnia.
  * Trudność (szerokość suwaka, prędkość rybki, tempo napełniania/opróżniania) zależy od
- * rzadkości gatunku wylosowanego jeszcze przed startem minigry - a NA TO z kolei nakłada
- * się profil trzymanej wędki (patrz WedkaProfil), który tymi samymi czterema wartościami
- * kręci dalej w swoją stronę (mnożnik 1.0 = bez zmian, czyli WedkaProfil.ZROWNOWAZONA).
+ * rzadkości gatunku wylosowanego jeszcze przed startem minigry (bazowe wartości z
+ * fishing-config.yml, patrz FishingConfig) - a NA TO z kolei nakłada się profil trzymanej
+ * wędki (patrz WedkaProfil), który tymi samymi czterema wartościami kręci dalej w swoją
+ * stronę (mnożnik 1.0 = bez zmian, czyli WedkaProfil.ZROWNOWAZONA).
  */
 final class FishingMinigame {
 
-    private static final int SZEROKOSC_PASKA = 40;
-    // Patrz zbudujMiernikPostepu - krótszy niż SZEROKOSC_PASKA, bo to tylko dodatkowy
-    // miernik ogólnego postępu (WYŁĄCZNIE dla action bara/PozycjaPaska.DOL), nie sam suwak.
+    // Patrz zbudujMiernikPostepu - krótszy niż szerokoscPaska, bo to tylko dodatkowy
+    // miernik ogólnego postępu (WYŁĄCZNIE dla action bara/PozycjaPaska.DOL), nie sam
+    // suwak. Stała, nie w fishing-config.yml - to czysto kosmetyczny wymiar renderowania,
+    // nie tuning trudności minigry jak pola niżej.
     private static final int SZEROKOSC_MIERNIKA_POSTEPU = 12;
-    // Spowolnione (v1 byla za szybka do ogarniecia) - grawitacja/impuls ok. 2.5x
-    // lagodniejsze, tempo napelniania/oprozniania ~35% wolniejsze, patrz tez
-    // predkoscRyby nizej (rzeczywisty czynnik "ryba sie wyrywa").
-    // Grawitacja/impuls tuningowane w dwie strony: najpierw zmniejszone (bylo 0.55/0.30),
-    // bo suwak "nie wyrabial" doganiac rybki w gore - ale za wolno tez OPADAL (ruch w
-    // lewo/w dol paska), wiec teraz grawitacja z powrotem podkrecona (mocniej niz nawet
-    // oryginalne 0.55) przy zachowaniu mocniejszego impulsu z gory - szybszy ruch w OBIE
-    // strony, nie tylko w gore.
-    private static final double GRAWITACJA = 0.65;
-    private static final double IMPULS_KLIKNIECIA = 0.38;
-    // Okres tyknięcia zmniejszony 2->1 (10Hz -> 20Hz, co tick serwera) wyłącznie dla
-    // płynności animacji paska - cała fizyka liczona jest przez DT (sekundy na tyknięcie),
-    // więc trudność/tempo gry się NIE zmieniają, tylko rozdzielczość czasowa ruchu.
-    private static final long OKRES_TICKOW = 1L;
-    private static final double DT = OKRES_TICKOW / 20.0;
 
     // Progi postępu, przy których (raz, przy pierwszym przekroczeniu) leci narastający
     // dźwięk "coraz bliżej" - patrz tick(). Czysto kosmetyczne, nie wpływają na trudność.
     private static final double[] KAMIENIE_MILOWE_POSTEPU = {0.5, 0.75, 0.9};
+
+    // Tuning minigry wczytany z fishing-config.yml (patrz FishingConfig/FishingConfigLoader)
+    // - przeładowywalny bez restartu przez /@reloadfishing (FishingManager.aktualizujKonfiguracje).
+    private final int szerokoscPaska;
+    private final double grawitacja;
+    private final double impulsKlikniecia;
+    private final long okresTickow;
+    private final double dt;
+    // Świadomie NIE używane w tick() - patrz komentarz przy warunku końca minigry niżej:
+    // ryba ma się wyrywać WYŁĄCZNIE gdy miernik realnie spadnie do zera, bez limitu czasu.
+    // Pole zostaje wczytane z configu (na wypadek gdyby to jednak kiedyś wróciło), po
+    // prostu tu nie jest konsultowane.
+    private final long maksymalnyCzasTickow;
 
     private final Player player;
     private final Runnable naSukces;
@@ -73,34 +74,29 @@ final class FishingMinigame {
     private boolean poprzednioNaRybie = false;
     private final boolean[] kamienieOdpalone = new boolean[KAMIENIE_MILOWE_POSTEPU.length];
 
-    FishingMinigame(Plugin plugin, Player player, RybaGatunek gatunek, WedkaProfil profil, PozycjaPaska pozycja, Runnable naSukces, Runnable naPorazke) {
+    FishingMinigame(Plugin plugin, Player player, RybaGatunek gatunek, WedkaProfil profil, FishingConfig.MinigryConfig cfg, PozycjaPaska pozycja, Runnable naSukces, Runnable naPorazke) {
         this.player = player;
         this.naSukces = naSukces;
         this.naPorazke = naPorazke;
         this.pozycja = pozycja;
 
+        this.szerokoscPaska = cfg.szerokoscPaska();
+        this.grawitacja = cfg.grawitacja();
+        this.impulsKlikniecia = cfg.impulsKlikniecia();
+        this.okresTickow = cfg.okresTickow();
+        this.dt = okresTickow / 20.0;
+        this.maksymalnyCzasTickow = cfg.maksymalnyCzasTickow();
+
         int trudnosc = gatunek.rzadkosc().ordinal(); // 0 (zwykła) .. 4 (legendarna)
-        // Suwak (okno, które musi nakrywać ✦) ok. o połowę węższy niż wcześniej (było
-        // 0.09-0.20 połówki szerokości) - trudniej trafić i utrzymać się na rybie.
-        // Profil wędki (patrz WedkaProfil) potem jeszcze przemnaża tę wartość w swoją
-        // stronę - clamp na końcu to tylko twardy bezpiecznik przed degeneratywnymi
-        // wartościami (np. suwak węższy niż da się fizycznie trafić), nie tuning sam w sobie.
-        double szerokoscBazowa = clamp(0.10 - 0.011 * trudnosc, 0.05, 0.10);
-        this.polowaSzerokosciSuwaka = clamp(szerokoscBazowa * profil.mnoznikSzerokosciSuwaka(), 0.03, 0.17);
-        // Ryba "wyrywa się" (ucieka do losowego celu) wyraźnie wolniej niż wcześniej -
-        // było 0.35 + 0.18*trudnosc, co przy zwykłej rybie robiło pełny przelot paska
-        // w ~1.4s. Teraz ~3.5x wolniej.
-        this.predkoscRyby = clamp((0.10 + 0.05 * trudnosc) * profil.mnoznikPredkosciRyby(), 0.02, 0.6);
-        // Napełnianie miernika połowu ok. o połowę wolniejsze niż wcześniej (było
-        // 0.20-0.35) - cały połów trwa wyraźnie dłużej nawet przy trafianiu w rybę.
-        double napelnianieBazowe = clamp(0.18 - 0.015 * trudnosc, 0.10, 0.18);
-        this.tempoNapelniania = clamp(napelnianieBazowe * profil.mnoznikTempaNapelniania(), 0.04, 0.34);
-        // Kara za pudłowanie była wyraźnie ostrzejsza niż nagroda za trafienie (było
-        // 0.20-0.32, ~1.5-2x tempoNapelniania) - jedno spudłowanie kasowało więcej postępu
-        // niż zdążyło się zdobyć trafiając. Teraz zbliżone do tempa napełniania (nawet
-        // lekko łagodniejsze), żeby chwilowe zgubienie ryby nie zerowało progresu.
-        double oprozznianieBazowe = clamp(0.12 + 0.02 * trudnosc, 0.12, 0.20);
-        this.tempoOprozniania = clamp(oprozznianieBazowe * profil.mnoznikTempaOprozniania(), 0.05, 0.32);
+        // Bazowa wartość zależna od rzadkości gatunku liczona z fishing-config.yml (patrz
+        // FishingConfig.Formula.wartosc) - profil wędki (patrz WedkaProfil) potem jeszcze
+        // przemnaża ją w swoją stronę. Zewnętrzny clamp to tylko twardy bezpiecznik przed
+        // degeneratywnymi wartościami (np. suwak węższy niż da się fizycznie trafić), nie
+        // tuning sam w sobie.
+        this.polowaSzerokosciSuwaka = clamp(cfg.polowaSzerokosciSuwaka().wartosc(trudnosc) * profil.mnoznikSzerokosciSuwaka(), 0.03, 0.17);
+        this.predkoscRyby = clamp(cfg.predkoscRyby().wartosc(trudnosc) * profil.mnoznikPredkosciRyby(), 0.02, 0.6);
+        this.tempoNapelniania = clamp(cfg.tempoNapelniania().wartosc(trudnosc) * profil.mnoznikTempaNapelniania(), 0.04, 0.34);
+        this.tempoOprozniania = clamp(cfg.tempoOprozniania().wartosc(trudnosc) * profil.mnoznikTempaOprozniania(), 0.05, 0.32);
 
         // Patrz PozycjaPaska - GORA dostaje prawdziwy bossbar (u góry ekranu, z natywnym
         // paskiem wypełnienia), DOL w ogóle go nie tworzy (patrz tick() - tam zamiast tego
@@ -112,12 +108,12 @@ final class FishingMinigame {
             this.pasek = null;
         }
 
-        this.task = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, OKRES_TICKOW, OKRES_TICKOW);
+        this.task = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, okresTickow, okresTickow);
     }
 
     /** Wywoływane z FishingManager.onInteract przy PPM, dopóki minigra trwa - "podbicie" suwaka w górę. */
     void kliknij() {
-        predkoscSuwaka = IMPULS_KLIKNIECIA;
+        predkoscSuwaka = impulsKlikniecia;
     }
 
     private void tick() {
@@ -125,10 +121,10 @@ final class FishingMinigame {
             celRyby = ThreadLocalRandom.current().nextDouble(0.05, 0.95);
         }
         double kierunek = Math.signum(celRyby - pozycjaRyby);
-        pozycjaRyby = clamp(pozycjaRyby + kierunek * predkoscRyby * DT, 0.0, 1.0);
+        pozycjaRyby = clamp(pozycjaRyby + kierunek * predkoscRyby * dt, 0.0, 1.0);
 
-        predkoscSuwaka -= GRAWITACJA * DT;
-        pozycjaSuwaka += predkoscSuwaka * DT;
+        predkoscSuwaka -= grawitacja * dt;
+        pozycjaSuwaka += predkoscSuwaka * dt;
         if (pozycjaSuwaka < polowaSzerokosciSuwaka) {
             pozycjaSuwaka = polowaSzerokosciSuwaka;
             predkoscSuwaka = 0.0;
@@ -138,7 +134,7 @@ final class FishingMinigame {
         }
 
         boolean naRybie = Math.abs(pozycjaRyby - pozycjaSuwaka) <= polowaSzerokosciSuwaka;
-        postep = clamp(postep + (naRybie ? tempoNapelniania : -tempoOprozniania) * DT, 0.0, 1.0);
+        postep = clamp(postep + (naRybie ? tempoNapelniania : -tempoOprozniania) * dt, 0.0, 1.0);
 
         // Cichy "klik" DOKŁADNIE w momencie wejścia/wyjścia z trafienia (nie co tyknięcie,
         // dopóki trwa) - słyszalne potwierdzenie trafienia niezależnie od patrzenia na pasek.
@@ -174,7 +170,8 @@ final class FishingMinigame {
         // ledwo), ryba NIE wyrywa się sama z siebie po jakimś czasie. Porażka wyłącznie
         // gdy miernik realnie spadnie do zera (patrz historia: wcześniej był tu jeszcze
         // twardy limit ok. 30s kończący się porażką NIEZALEŻNIE od tego jak szła walka -
-        // mylące, bo "ryba się wyrywała" nawet w trakcie wygrywanej minigry).
+        // mylące, bo "ryba się wyrywała" nawet w trakcie wygrywanej minigry). maksymalnyCzasTickow
+        // z fishing-config.yml celowo NIE jest tu konsultowane, patrz pole wyżej.
         if (postep >= 1.0) {
             zakoncz(true);
         } else if (postep <= 0.0) {
@@ -192,12 +189,12 @@ final class FishingMinigame {
      * płynniej się wypełnia w miarę jak suwak przesuwa się o ułamek szerokości znaku.
      */
     private Component zbudujSuwakStrip(boolean naRybie) {
-        int slotRyby = (int) Math.round(pozycjaRyby * (SZEROKOSC_PASKA - 1));
-        double startCiagly = (pozycjaSuwaka - polowaSzerokosciSuwaka) * (SZEROKOSC_PASKA - 1);
-        double koniecCiagly = (pozycjaSuwaka + polowaSzerokosciSuwaka) * (SZEROKOSC_PASKA - 1);
+        int slotRyby = (int) Math.round(pozycjaRyby * (szerokoscPaska - 1));
+        double startCiagly = (pozycjaSuwaka - polowaSzerokosciSuwaka) * (szerokoscPaska - 1);
+        double koniecCiagly = (pozycjaSuwaka + polowaSzerokosciSuwaka) * (szerokoscPaska - 1);
 
         Component wynik = Component.empty();
-        for (int i = 0; i < SZEROKOSC_PASKA; i++) {
+        for (int i = 0; i < szerokoscPaska; i++) {
             if (i == slotRyby) {
                 wynik = wynik.append(Component.text("✦", naRybie ? NamedTextColor.GREEN : NamedTextColor.RED));
                 continue;

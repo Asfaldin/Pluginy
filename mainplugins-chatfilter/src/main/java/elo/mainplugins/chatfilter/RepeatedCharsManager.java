@@ -1,5 +1,6 @@
 package elo.mainplugins.chatfilter;
 
+import elo.mainplugins.chatfilter.config.ChatFilterConfig;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.Rank;
 import elo.mainplugins.core.api.RankService;
@@ -11,26 +12,39 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 
-import java.util.regex.Pattern;
-
 /**
- * Blokuje wiadomości z tym samym znakiem powtórzonym 5+ razy POD RZĄD (np. "aaaaaaaaa",
- * "!!!!!!!!!"). To co innego niż RepeatMessageManager - tamten łapie powtórki CAŁEJ
- * wiadomości MIĘDZY dwoma wiadomościami, ten łapie spam znakiem WEWNĄTRZ jednej.
+ * Blokuje wiadomości z tym samym znakiem powtórzonym min-powtorzen+ razy POD RZĄD (np.
+ * "aaaaaaaaa", "!!!!!!!!!"). To co innego niż RepeatMessageManager - tamten łapie
+ * powtórki CAŁEJ wiadomości MIĘDZY dwoma wiadomościami, ten łapie spam znakiem WEWNĄTRZ
+ * jednej.
  *
- * Próg 5 celowo pozwala na normalne, casualowe "noooo"/"hahaha" (te mają max 3-4
- * powtórzenia tego samego znaku pod rząd), łapiąc tylko realny spam.
+ * Domyślny próg 5 celowo pozwala na normalne, casualowe "noooo"/"hahaha" (te mają max
+ * 3-4 powtórzenia tego samego znaku pod rząd), łapiąc tylko realny spam.
+ *
+ * Konfiguracja (włącz/wyłącz, min-powtorzen, wyjęte rangi) w chatfilter-config.yml -
+ * patrz ChatFilterConfigLoader. Wzorzec regexu jest przebudowywany przy każdym
+ * /@reloadchatfilter, nie tylko przy starcie serwera.
  */
 public class RepeatedCharsManager implements Listener {
 
-    private static final Pattern POWTORZENIA = Pattern.compile("(.)\\1{4,}");
+    private volatile ChatFilterConfig.PowtarzajaceZnaki cfg;
+
+    public RepeatedCharsManager(ChatFilterConfig.PowtarzajaceZnaki cfg) {
+        this.cfg = cfg;
+    }
+
+    public void aktualizujKonfiguracje(ChatFilterConfig.PowtarzajaceZnaki cfg) {
+        this.cfg = cfg;
+    }
 
     @EventHandler(ignoreCancelled = true)
     public void onChat(AsyncChatEvent event) {
-        if (pobierzRange(event.getPlayer()) == Rank.ADMIN) return;
+        ChatFilterConfig.PowtarzajaceZnaki aktualna = cfg;
+        if (!aktualna.enabled()) return;
+        if (aktualna.exemptRangi().contains(pobierzRange(event.getPlayer()))) return;
 
         String wiadomosc = PlainTextComponentSerializer.plainText().serialize(event.message());
-        if (POWTORZENIA.matcher(wiadomosc).find()) {
+        if (aktualna.wzorzec().matcher(wiadomosc).find()) {
             event.setCancelled(true);
             event.getPlayer().sendMessage(Component.text(
                     "Nie możesz tego napisać - zbyt wiele powtarzających się znaków pod rząd!",

@@ -16,20 +16,38 @@
 # minigry - docelowy rozklad rzadkosci byl 50/30/5, wrocic do tego przed wdrozeniem
 # na produkcje.
 gatunki:
-  - custom-id: FISH_ZWYKLA
-    name: "Zwykła Rybka"
+  - custom-id: FISH_KARP
+    name: "Karp"
     material: COD
     color: GRAY
     rarity: ZWYKLA
     weight: 1
-  - custom-id: FISH_SUPER
-    name: "Super Rybka"
+  - custom-id: FISH_DORSZ_ATLANTYCKI
+    name: "Dorsz Atlantycki"
+    material: COD
+    color: GRAY
+    rarity: ZWYKLA
+    weight: 1
+  - custom-id: FISH_SUM
+    name: "Sum"
     material: SALMON
     color: GREEN
     rarity: NIEZWYKLA
     weight: 1
-  - custom-id: FISH_MISTYCZNA
-    name: "Mistyczna Rybka"
+  - custom-id: FISH_STRZELCZYK_PASIASTY
+    name: "Strzelczyk Pasiasty"
+    material: SALMON
+    color: GREEN
+    rarity: NIEZWYKLA
+    weight: 1
+  - custom-id: FISH_WIOSLOZAB
+    name: "Wiosłozab"
+    material: TROPICAL_FISH
+    color: LIGHT_PURPLE
+    rarity: RZADKA
+    weight: 1
+  - custom-id: FISH_LATIMERIA
+    name: "Latimeria"
     material: TROPICAL_FISH
     color: LIGHT_PURPLE
     rarity: RZADKA

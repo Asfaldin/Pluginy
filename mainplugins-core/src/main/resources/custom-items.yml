@@ -142,24 +142,58 @@ items:
       - "&8Wrzuć wszystko do stołu rzemieślniczego -"
       - "&8pozycja w siatce nie ma znaczenia."
 
-  # Nagroda z minigry lowienia (mainplugins-fishing, FishingManager.GATUNKI) - docelowo
-  # jedyny gatunek ryby z prawdziwym custom modelem (rekin z resourcepacka), reszta
-  # gatunkow to zwykle przefarbowane wanilijskie materialy budowane bezposrednio w Javie.
+  # Gatunki lowienia (mainplugins-fishing, ryby.yml) z prawdziwym custom modelem z
+  # resourcepacka (AllTheFish V4, przepakowany do mainplugins-core/resourcepack/assets/
+  # mainplugins/{items,models/item,textures/item}/ryba_<id>.*) - 2 gatunki na tier
+  # rzadkosci (ZWYKLA/NIEZWYKLA/RZADKA). Reszta gatunkow w ryby.yml (jesli jakas dojdzie
+  # bez wpisu tutaj) to zwykle przefarbowane wanilijskie materialy budowane w Javie.
   #
-  # POLE "model" CELOWO WYLACZONE NA RAZIE - gotowe pliki resourcepacka juz sa
-  # (mainplugins-core/resourcepack/assets/mainplugins/{items,models/item,textures/item}/
-  # ryba_mistyczna.*), ale ZYWY serwer produkcyjny jeszcze ich nie ma (stary link w
-  # resourcepack.yml, tylko kilofy). Wlaczenie "model" bez zaktualizowania live paczki
-  # pokazuje graczom fioletowo-czarny blok "brak modelu", nie fallback do wanilii.
-  # Do wlaczenia: odkomentuj linie ponizej PO tym, jak nowy zip (z rekinem w srodku)
-  # trafi na hosting i nowy link+hash wladuje sie do resourcepack.yml na serwerze.
-  FISH_MISTYCZNA:
-    material: TROPICAL_FISH
-    name: "&d&lMistyczna Rybka"
+  # UWAGA: pole "model" tu jest AKTYWNE - wymaga zaktualizowanej live paczki (nowy zip
+  # spakowany z mainplugins-core/resourcepack/ + nowy link/hash w resourcepack.yml na
+  # serwerze), inaczej gracze z paczka zobacza fioletowo-czarny blok "brak modelu"
+  # zamiast rybki (patrz komentarz w resourcepack.yml jak wgrac nowa paczke).
+  FISH_KARP:
+    material: COD
+    name: "&7&lKarp"
     lore:
-      - "&7Rzadka ryba spowita tajemnica."
-      - "&7Nikt nie wie, skad naprawde pochodzi."
-    # model: "mainplugins:ryba_mistyczna"
+      - "&7Pospolita ryba slodkowodna."
+    model: "mainplugins:ryba_karp"
+
+  FISH_DORSZ_ATLANTYCKI:
+    material: COD
+    name: "&7&lDorsz Atlantycki"
+    lore:
+      - "&7Klasyczny mieszkaniec plytkich wod."
+    model: "mainplugins:ryba_dorsz_atlantycki"
+
+  FISH_SUM:
+    material: SALMON
+    name: "&a&lSum"
+    lore:
+      - "&7Wiekszy i rzadszy niz zwykle ryby."
+    model: "mainplugins:ryba_sum"
+
+  FISH_STRZELCZYK_PASIASTY:
+    material: SALMON
+    name: "&a&lStrzelczyk Pasiasty"
+    lore:
+      - "&7Potrafi zestrzelic owada strumieniem wody."
+    model: "mainplugins:ryba_strzelczyk_pasiasty"
+
+  FISH_WIOSLOZAB:
+    material: TROPICAL_FISH
+    name: "&d&lWioslozab"
+    lore:
+      - "&7Rzadka, wstegowata ryba z glebin."
+    model: "mainplugins:ryba_wioslozab"
+    glint: true
+
+  FISH_LATIMERIA:
+    material: TROPICAL_FISH
+    name: "&d&lLatimeria"
+    lore:
+      - "&7Zywa skamienialosc sprzed milionow lat."
+    model: "mainplugins:ryba_latimeria"
     glint: true
 
   GENERATOR_BRUK_T1:

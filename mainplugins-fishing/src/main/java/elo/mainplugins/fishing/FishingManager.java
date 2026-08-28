@@ -69,12 +69,10 @@ public class FishingManager implements Listener {
 
     // Gatunki ryb do losowania - wczytywane z ryby.yml (w folderze danych tego pluginu,
     // patrz wczytajGatunki) zamiast trzymane na sztywno w kodzie, zeby dalo sie je tuningowac
-    // (wagi/rzadkosc/nazwy) bez rekompilacji. Tymczasowo tylko 3 gatunki w domyslnym pliku,
-    // po prostu nazwane wg rzadkosci (na czas dopracowywania minigry) - dokladnie te sloty
-    // co juz sa wymogami questow kategorii "Rybak" (patrz quests-content.yml), zeby nic nie
-    // zepsuc. FISH_MISTYCZNA ma prawdziwy custom model z resourcepacka (patrz custom-items.yml
-    // + stworzRybe nizej) - jedyny gatunek, ktory NIE jest budowany bezposrednio z golego
-    // Materialu, jesli rejestr custom itemow go zna.
+    // (wagi/rzadkosc/nazwy) bez rekompilacji. Domyslny plik ma 6 gatunkow (po 2 na tier
+    // ZWYKLA/NIEZWYKLA/RZADKA - Karp+Dorsz, Sum+Strzelczyk, Wioslozab+Latimeria), wszystkie
+    // z prawdziwym custom modelem z resourcepacka (patrz custom-items.yml + stworzRybe
+    // nizej) zamiast budowane bezposrednio z golego Materialu.
     private final List<RybaGatunek> gatunki = new ArrayList<>();
 
     // Aktywna minigra "pasek" - patrz rozpocznijMinigre.
@@ -242,7 +240,7 @@ public class FishingManager implements Listener {
 
     /**
      * Jeśli gatunek ma wpis w rejestrze custom itemów (patrz mainplugins-core,
-     * custom-items.yml) - np. FISH_MISTYCZNA z własnym modelem z resourcepacka -
+     * custom-items.yml) - np. FISH_KARP z własnym modelem z resourcepacka -
      * wydajemy DOKŁADNIE ten item stamtąd (ten sam wzorzec co ShopManager.stworzBazowyItem).
      * W przeciwnym razie (reszta gatunków - zwykłe przefarbowane materiały) budujemy
      * item ręcznie, tak jak dotychczas.

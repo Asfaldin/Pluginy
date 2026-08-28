@@ -29,7 +29,6 @@ public final class FishingConfigLoader {
                 cfg.getDouble("minigra.grawitacja", 0.65),
                 cfg.getDouble("minigra.impuls-kliknieca", 0.38),
                 Math.max(1, cfg.getInt("minigra.okres-tickow", 2)),
-                Math.max(1, cfg.getInt("minigra.maksymalny-czas-sekund", 30)) * 20L,
                 formula(cfg, "minigra.polowa-szerokosci-suwaka", 0.10, -0.011, 0.05, 0.10),
                 formula(cfg, "minigra.predkosc-ryby", 0.10, 0.05, 0.0, 999.0),
                 formula(cfg, "minigra.tempo-napelniania", 0.18, -0.015, 0.10, 0.18),

@@ -16,7 +16,7 @@ public record FishingConfig(MinigryConfig minigra, double bonusowaSkrzynkaSzansa
 
     public record MinigryConfig(
             int szerokoscPaska, double grawitacja, double impulsKlikniecia,
-            long okresTickow, long maksymalnyCzasTickow,
+            long okresTickow,
             Formula polowaSzerokosciSuwaka, Formula predkoscRyby, Formula tempoNapelniania, Formula tempoOprozniania
     ) {}
 }

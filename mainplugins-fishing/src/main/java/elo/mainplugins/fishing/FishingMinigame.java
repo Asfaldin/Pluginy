@@ -42,11 +42,6 @@ final class FishingMinigame {
     private final double impulsKlikniecia;
     private final long okresTickow;
     private final double dt;
-    // Świadomie NIE używane w tick() - patrz komentarz przy warunku końca minigry niżej:
-    // ryba ma się wyrywać WYŁĄCZNIE gdy miernik realnie spadnie do zera, bez limitu czasu.
-    // Pole zostaje wczytane z configu (na wypadek gdyby to jednak kiedyś wróciło), po
-    // prostu tu nie jest konsultowane.
-    private final long maksymalnyCzasTickow;
 
     private final Player player;
     private final Runnable naSukces;
@@ -85,7 +80,6 @@ final class FishingMinigame {
         this.impulsKlikniecia = cfg.impulsKlikniecia();
         this.okresTickow = cfg.okresTickow();
         this.dt = okresTickow / 20.0;
-        this.maksymalnyCzasTickow = cfg.maksymalnyCzasTickow();
 
         int trudnosc = gatunek.rzadkosc().ordinal(); // 0 (zwykła) .. 4 (legendarna)
         // Bazowa wartość zależna od rzadkości gatunku liczona z fishing-config.yml (patrz
@@ -170,8 +164,7 @@ final class FishingMinigame {
         // ledwo), ryba NIE wyrywa się sama z siebie po jakimś czasie. Porażka wyłącznie
         // gdy miernik realnie spadnie do zera (patrz historia: wcześniej był tu jeszcze
         // twardy limit ok. 30s kończący się porażką NIEZALEŻNIE od tego jak szła walka -
-        // mylące, bo "ryba się wyrywała" nawet w trakcie wygrywanej minigry). maksymalnyCzasTickow
-        // z fishing-config.yml celowo NIE jest tu konsultowane, patrz pole wyżej.
+        // mylące, bo "ryba się wyrywała" nawet w trakcie wygrywanej minigry).
         if (postep >= 1.0) {
             zakoncz(true);
         } else if (postep <= 0.0) {

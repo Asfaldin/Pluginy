@@ -1,0 +1,29 @@
+name: MainpluginsRedstone
+version: ${project.version}
+main: elo.mainplugins.redstone.MainpluginsRedstone
+api-version: '1.20'
+depend: [MainpluginsCore]
+
+commands:
+  "@dajredstone":
+    description: (Admin) Nadaje redstone-item po custom-id z redstone-items.yml
+    usage: "/<command> <id> [gracz] [ilość]"
+    permission: mainplugins.redstone.dajredstone
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@dajall":
+    description: (Admin) Nadaje po 1 sztuce każdego redstone-itemu naraz (kabel + stacja + sadzarka)
+    usage: "/<command> [gracz]"
+    permission: mainplugins.redstone.dajredstone
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@reloadredstone":
+    description: (Admin) Wczytaj redstone-items.yml na nowo, bez restartu serwera
+    permission: mainplugins.redstone.reloadredstone
+    permission-message: "&cNie masz permisji do tej komendy!"
+
+permissions:
+  mainplugins.redstone.dajredstone:
+    description: Pozwala nadac dowolny redstone-item (kabel/stacje/sadzarke) po custom-id, albo caly zestaw naraz (@dajall)
+    default: op
+  mainplugins.redstone.reloadredstone:
+    description: Dostep do przeladowania redstone-items.yml
+    default: op

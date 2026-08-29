@@ -1,0 +1,540 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  osiagniecia.yml — system osiągnięć zbudowany NA wbudowanych advancementach.
+#
+#  Dwa rodzaje źródeł zdobycia (pole "zrodlo"):
+#
+#   • vanilla:<klucz>           — powiązanie z wbudowanym advancementem Minecrafta.
+#                                 Minecraft pokazuje swój natywny "toast", a plugin
+#                                 dokłada nagrodę do odebrania w /osiagniecia.
+#                                 Klucz bez namespace = minecraft: (np.
+#                                 "vanilla:story/mine_diamond"). Pełną listę kluczy
+#                                 znajdziesz w /advancement lub na minecraft.wiki.
+#
+#   • custom:kasa              — miej na koncie ≥ "prog" złotówek
+#   • custom:ranga             — miej rangę ≥ "ranga" (GRACZ < VIP < ADMIN)
+#   • custom:czas-gry          — przegraj łącznie ≥ "godziny" godzin
+#   • custom:advancementy      — ukończ łącznie ≥ "prog" DOWOLNYCH advancementów
+#   • custom:statystyka        — wbudowana statystyka ≥ "prog"; dla statystyk
+#                                 blokowych/itemowych podaj "material", dla
+#                                 mobowych "istota" (EntityType)
+#
+#  Nagrody ("nagrody:", lista) — typy: MONEY, ITEM, CUSTOM_ITEM, CRATE, COMMAND.
+#  Nagroda NIE jest wręczana automatycznie — gracz odbiera ją klikając w GUI
+#  (chyba że ustawisz "auto: true" na osiągnięciu).
+#
+#  DATAPACK (sekcja "datapack:") — gdy włączony, plugin generuje datapack w
+#  <świat>/datapacks/mainplugins-osiagniecia/, dzięki czemu WŁASNE osiągnięcia
+#  pojawiają się w natywnym ekranie ESC → Postępy (własne zakładki + toast).
+#  To nie NMS — zwykłe pliki JSON czytane przez waniliowe MC. Zmiany widoczne
+#  dopiero po /reload lub restarcie serwera (plugin przypomni w konsoli).
+#
+#  Przeładowanie na żywo: /@reloadosiagniecia
+# ─────────────────────────────────────────────────────────────────────────────
+
+gui:
+  tytul: "&8» &6Osiągnięcia"
+  rozmiar: 54            # wielokrotność 9, 18–54; ostatni rząd to nawigacja
+  tlo: GRAY_STAINED_GLASS_PANE
+
+powiadomienia:
+  dzwiek: "ui.toast.challenge_complete"   # surowy klucz dźwięku (Player#playSound)
+  tytul: "&6&lOSIĄGNIĘCIE ZDOBYTE"
+  podtytul: "&e%nazwa%"
+  efekt-rzadkich: true                    # widowiskowy efekt dla "spektakularne: true"
+
+sprawdzanie-co-sekund: 10                 # jak często sprawdzać warunki custom
+
+nagrody:
+  # true  = nagroda leci OD RAZU przy zdobyciu (bez klikania w /osiagniecia).
+  #         Gdy brak miejsca w ekwipunku - przedmioty czekają w kolejce i lecą
+  #         automatycznie, gdy miejsce się zwolni (przy zamknięciu ekwipunku,
+  #         wejściu na serwer i cyklicznie).
+  # false = nagrody odbierane ręcznie klikiem w GUI /osiagniecia.
+  # Pojedyncze osiągnięcie może to nadpisać własnym polem "auto: true/false".
+  auto-wszystkie: true
+
+datapack:
+  wlaczony: true                         # generuj datapack → własne osiągnięcia w ESC → Postępy
+  namespace: mpa                         # przestrzeń nazw advancementów (a-z, 0-9, _.-)
+  tlo-domyslne: "minecraft:textures/block/stone.png"   # tło drzewka, gdy kategoria nie poda własnego
+
+# ─────────────── ZAKŁADKI ───────────────
+# tlo-zakladki (opcjonalne) — tekstura tła drzewka w natywnym ekranie, np.
+#   "minecraft:textures/block/deepslate.png"
+kategorie:
+  eksploracja:
+    nazwa: "&aEksploracja"
+    ikona: COMPASS
+    kolejnosc: 1
+    tlo-zakladki: "minecraft:textures/block/dirt.png"
+  walka:
+    nazwa: "&cWalka"
+    ikona: DIAMOND_SWORD
+    kolejnosc: 2
+  rolnictwo:
+    nazwa: "&2Rolnictwo i hodowla"
+    ikona: WHEAT
+    kolejnosc: 3
+  ekonomia:
+    nazwa: "&6Ekonomia"
+    ikona: GOLD_INGOT
+    kolejnosc: 4
+  bieglosc:
+    nazwa: "&bBiegłość"
+    ikona: NETHER_STAR
+    kolejnosc: 5
+  test:
+    nazwa: "&dTest"
+    ikona: BARRIER
+    kolejnosc: 6
+    tlo-zakladki: "minecraft:textures/block/target_side.png"
+
+# ─────────────── OSIĄGNIĘCIA ───────────────
+# ramka (opcjonalne, datapack): task (domyślnie) | goal | challenge — kształt
+#   ramki ikony w natywnym ekranie. "spektakularne: true" domyślnie daje challenge.
+osiagniecia:
+
+  # ---- vanilla: eksploracja ----
+  kamienny-wiek:
+    kategoria: eksploracja
+    zrodlo: "vanilla:story/mine_stone"
+    ikona: COBBLESTONE
+    nazwa: "&fKamienny wiek"
+    opis:
+      - "&7Wykop kamień kilofem."
+    nagrody:
+      - typ: MONEY
+        ilosc: 250
+
+  diamenty:
+    kategoria: eksploracja
+    zrodlo: "vanilla:story/mine_diamond"
+    ikona: DIAMOND
+    nazwa: "&bDiamenty!"
+    ramka: goal
+    opis:
+      - "&7Zdobądź swój pierwszy diament."
+    nagrody:
+      - typ: MONEY
+        ilosc: 2000
+      - typ: ITEM
+        material: DIAMOND
+        ilosc: 3
+
+  do-netheru:
+    kategoria: eksploracja
+    zrodlo: "vanilla:story/enter_the_nether"
+    ikona: OBSIDIAN
+    nazwa: "&cTrzeba zejść głębiej"
+    opis:
+      - "&7Zbuduj portal i wejdź do Netheru."
+    nagrody:
+      - typ: CRATE
+        tier: 1
+
+  koniec:
+    kategoria: eksploracja
+    zrodlo: "vanilla:story/enter_the_end"
+    ikona: END_STONE
+    nazwa: "&5Koniec?"
+    opis:
+      - "&7Wejdź do wymiaru Kraju (The End)."
+    spektakularne: true
+    nagrody:
+      - typ: CRATE
+        tier: 2
+
+  # ---- vanilla: walka ----
+  lowca-potworow:
+    kategoria: walka
+    zrodlo: "vanilla:adventure/kill_a_mob"
+    ikona: ROTTEN_FLESH
+    nazwa: "&cŁowca potworów"
+    opis:
+      - "&7Zabij dowolnego wrogiego moba."
+    nagrody:
+      - typ: MONEY
+        ilosc: 300
+
+  uwolnij-kraj:
+    kategoria: walka
+    zrodlo: "vanilla:end/kill_dragon"
+    ikona: DRAGON_HEAD
+    nazwa: "&5Uwolnij Kraj"
+    opis:
+      - "&7Pokonaj Smoka Kresu."
+    ukryte: true
+    spektakularne: true
+    nagrody:
+      - typ: MONEY
+        ilosc: 25000
+      - typ: CRATE
+        tier: 3
+      - typ: COMMAND
+        komenda: "broadcast &5&l%gracz% &dpokonał Smoka Kresu!"
+
+  # ---- custom: walka (statystyka) ----
+  pogromca:
+    kategoria: walka
+    zrodlo: "custom:statystyka"
+    statystyka: MOB_KILLS
+    prog: 1000
+    ikona: NETHERITE_SWORD
+    nazwa: "&4Pogromca"
+    opis:
+      - "&7Zabij łącznie 1000 mobów."
+    nagrody:
+      - typ: MONEY
+        ilosc: 5000
+
+  # ---- vanilla: rolnictwo ----
+  siewca:
+    kategoria: rolnictwo
+    zrodlo: "vanilla:husbandry/plant_seed"
+    ikona: WHEAT_SEEDS
+    nazwa: "&2Ziarnko do ziarnka"
+    opis:
+      - "&7Zasadź nasiono i obserwuj, jak rośnie."
+    nagrody:
+      - typ: ITEM
+        material: BONE_MEAL
+        ilosc: 16
+
+  hodowca:
+    kategoria: rolnictwo
+    zrodlo: "vanilla:husbandry/breed_an_animal"
+    ikona: EGG
+    nazwa: "&2Hodowca"
+    opis:
+      - "&7Rozmnóż dwa zwierzęta."
+    nagrody:
+      - typ: MONEY
+        ilosc: 400
+
+  wedkarz:
+    kategoria: rolnictwo
+    zrodlo: "custom:statystyka"
+    statystyka: FISH_CAUGHT
+    prog: 250
+    ikona: FISHING_ROD
+    nazwa: "&3Cierpliwy wędkarz"
+    opis:
+      - "&7Złów 250 ryb."
+    nagrody:
+      - typ: CRATE
+        tier: 1
+
+  # ---- custom: ekonomia ----
+  pierwsza-wyplata:
+    kategoria: ekonomia
+    zrodlo: "custom:kasa"
+    prog: 10000
+    ikona: IRON_INGOT
+    nazwa: "&6Pierwsza wypłata"
+    opis:
+      - "&7Uzbieraj 10 000$ na koncie."
+    nagrody:
+      - typ: MONEY
+        ilosc: 1000
+
+  milioner:
+    kategoria: ekonomia
+    zrodlo: "custom:kasa"
+    prog: 1000000
+    ikona: EMERALD_BLOCK
+    nazwa: "&aMilioner"
+    opis:
+      - "&7Uzbieraj 1 000 000$ na koncie."
+    spektakularne: true
+    nagrody:
+      - typ: CRATE
+        tier: 3
+      - typ: COMMAND
+        komenda: "broadcast &a&l%gracz% &2został Milionerem!"
+
+  vip:
+    kategoria: ekonomia
+    zrodlo: "custom:ranga"
+    ranga: VIP
+    ikona: GOLD_BLOCK
+    nazwa: "&6Wsparcie serwera"
+    opis:
+      - "&7Zdobądź rangę VIP."
+    auto: true
+    nagrody:
+      - typ: MONEY
+        ilosc: 5000
+
+  # ---- custom: biegłość (meta) ----
+  weteran:
+    kategoria: bieglosc
+    zrodlo: "custom:czas-gry"
+    godziny: 24
+    ikona: CLOCK
+    nazwa: "&bWeteran"
+    opis:
+      - "&7Spędź na serwerze łącznie 24 godziny."
+    nagrody:
+      - typ: CRATE
+        tier: 2
+
+  kolekcjoner-advancementow:
+    kategoria: bieglosc
+    zrodlo: "custom:advancementy"
+    prog: 50
+    ikona: KNOWLEDGE_BOOK
+    nazwa: "&bKolekcjoner"
+    opis:
+      - "&7Ukończ 50 dowolnych advancementów Minecrafta."
+    nagrody:
+      - typ: MONEY
+        ilosc: 7500
+      - typ: CRATE
+        tier: 2
+
+  # ---- vanilla: eksploracja (c.d.) ----
+  oko-szpieg:
+    kategoria: eksploracja
+    zrodlo: "vanilla:story/follow_ender_eye"
+    ikona: ENDER_EYE
+    nazwa: "&5Oko szpieg"
+    opis:
+      - "&7Podążaj za Okiem Kresu."
+    nagrody:
+      - typ: MONEY
+        ilosc: 1500
+
+  twierdza:
+    kategoria: eksploracja
+    zrodlo: "vanilla:nether/find_fortress"
+    ikona: NETHER_BRICK
+    nazwa: "&cStraszna twierdza"
+    opis:
+      - "Przełam się do Twierdzy Netheru."
+    nagrody:
+      - typ: MONEY
+        ilosc: 2000
+
+  wedrowiec:
+    kategoria: eksploracja
+    zrodlo: "custom:statystyka"
+    statystyka: WALK_ONE_CM
+    prog: 10000000
+    ikona: LEATHER_BOOTS
+    nazwa: "&aWędrowiec"
+    opis:
+      - "&7Przejdź pieszo 100 km."
+    ramka: goal
+    nagrody:
+      - typ: CRATE
+        tier: 1
+
+  # ---- vanilla: walka (c.d.) ----
+  w-ogien:
+    kategoria: walka
+    zrodlo: "vanilla:nether/obtain_blaze_rod"
+    ikona: BLAZE_ROD
+    nazwa: "&6W ogień"
+    opis:
+      - "&7Zdobądź różdżkę Blaze'a."
+    nagrody:
+      - typ: MONEY
+        ilosc: 1200
+
+  withering-heights:
+    kategoria: walka
+    zrodlo: "vanilla:nether/summon_wither"
+    ikona: WITHER_SKELETON_SKULL
+    nazwa: "&8Przyzwanie Withera"
+    opis:
+      - "&7Przyzwij Withera."
+    ukryte: true
+    spektakularne: true
+    nagrody:
+      - typ: CRATE
+        tier: 3
+
+  zabojca-graczy:
+    kategoria: walka
+    zrodlo: "custom:statystyka"
+    statystyka: PLAYER_KILLS
+    prog: 50
+    ikona: IRON_SWORD
+    nazwa: "&4PvP: Zabójca"
+    opis:
+      - "&7Pokonaj 50 innych graczy."
+    ramka: goal
+    nagrody:
+      - typ: MONEY
+        ilosc: 4000
+
+  # ---- vanilla/custom: rolnictwo (c.d.) ----
+  najlepszy-przyjaciel:
+    kategoria: rolnictwo
+    zrodlo: "vanilla:husbandry/tame_an_animal"
+    ikona: LEAD
+    nazwa: "&2Najlepszy przyjaciel"
+    opis:
+      - "&7Oswój dowolne zwierzę."
+    nagrody:
+      - typ: MONEY
+        ilosc: 500
+
+  kombajn:
+    kategoria: rolnictwo
+    zrodlo: "custom:statystyka"
+    statystyka: MINE_BLOCK
+    material: WHEAT
+    prog: 2000
+    ikona: DIAMOND_HOE
+    nazwa: "&6Kombajn"
+    opis:
+      - "&7Zbierz 2000 dojrzałej pszenicy."
+    ramka: goal
+    nagrody:
+      - typ: MONEY
+        ilosc: 3000
+      - typ: ITEM
+        material: GOLDEN_CARROT
+        ilosc: 32
+
+  # ---- custom: ekonomia (c.d.) ----
+  handlarz:
+    kategoria: ekonomia
+    zrodlo: "custom:statystyka"
+    statystyka: TRADED_WITH_VILLAGER
+    prog: 100
+    ikona: EMERALD
+    nazwa: "&6Handlarz"
+    opis:
+      - "&7Wymień się z wieśniakami 100 razy."
+    nagrody:
+      - typ: MONEY
+        ilosc: 2500
+
+  gruba-ryba:
+    kategoria: ekonomia
+    zrodlo: "custom:kasa"
+    prog: 100000
+    ikona: DIAMOND
+    nazwa: "&aGruba ryba"
+    opis:
+      - "&7Uzbieraj 100 000$ na koncie."
+    nagrody:
+      - typ: CRATE
+        tier: 2
+
+  # ---- custom: biegłość (c.d.) ----
+  staly-bywalec:
+    kategoria: bieglosc
+    zrodlo: "custom:czas-gry"
+    godziny: 100
+    ikona: BELL
+    nazwa: "&bStały bywalec"
+    opis:
+      - "&7Spędź na serwerze łącznie 100 godzin."
+    ramka: goal
+    nagrody:
+      - typ: CRATE
+        tier: 3
+
+  prawie-komplet:
+    kategoria: bieglosc
+    zrodlo: "custom:advancementy"
+    prog: 100
+    ikona: NETHER_STAR
+    nazwa: "&bPrawie komplet"
+    opis:
+      - "&7Ukończ 100 dowolnych advancementów Minecrafta."
+    spektakularne: true
+    nagrody:
+      - typ: MONEY
+        ilosc: 20000
+      - typ: CRATE
+        tier: 3
+
+  # ═══════════ TEST — łatwe do wyzwolenia, do sprawdzania systemu ═══════════
+  test-kasa:
+    kategoria: test
+    zrodlo: "custom:kasa"
+    prog: 1
+    ikona: GOLD_NUGGET
+    nazwa: "&dTest: masz kasę"
+    opis:
+      - "&7Miej co najmniej 1$ (zwykle od razu)."
+    nagrody:
+      - typ: MONEY
+        ilosc: 100
+
+  test-skok:
+    kategoria: test
+    zrodlo: "custom:statystyka"
+    statystyka: JUMP
+    prog: 5
+    ikona: RABBIT_FOOT
+    nazwa: "&dTest: podskocz 5x"
+    opis:
+      - "&7Wciśnij spację pięć razy."
+    nagrody:
+      - typ: MONEY
+        ilosc: 100
+      - typ: ITEM
+        material: DIRT
+        ilosc: 16
+
+  test-chodzenie:
+    kategoria: test
+    zrodlo: "custom:statystyka"
+    statystyka: WALK_ONE_CM
+    prog: 300
+    ikona: LEATHER_BOOTS
+    nazwa: "&dTest: przejdź 3 kratki"
+    opis:
+      - "&7Zrób trzy kroki."
+    nagrody:
+      - typ: ITEM
+        material: COOKED_BEEF
+        ilosc: 8
+
+  test-advancementy:
+    kategoria: test
+    zrodlo: "custom:advancementy"
+    prog: 1
+    ikona: MAP
+    nazwa: "&dTest: 1 advancement"
+    opis:
+      - "&7Zdobądź jakikolwiek advancement Minecrafta."
+    nagrody:
+      - typ: MONEY
+        ilosc: 250
+
+  test-skrzynia:
+    kategoria: test
+    zrodlo: "custom:statystyka"
+    statystyka: JUMP
+    prog: 20
+    ikona: CHEST
+    nazwa: "&dTest: nagroda-skrzynia"
+    opis:
+      - "&7Podskocz 20 razy - sprawdza kolejkę zaległych nagród."
+    ramka: goal
+    nagrody:
+      - typ: ITEM
+        material: DIAMOND_BLOCK
+        ilosc: 5
+      - typ: CRATE
+        tier: 1
+
+  test-widowisko:
+    kategoria: test
+    zrodlo: "custom:statystyka"
+    statystyka: JUMP
+    prog: 40
+    ikona: FIREWORK_ROCKET
+    nazwa: "&dTest: widowisko"
+    opis:
+      - "&7Podskocz 40 razy - sprawdza efekt \"spektakularne\"."
+    spektakularne: true
+    nagrody:
+      - typ: MONEY
+        ilosc: 500

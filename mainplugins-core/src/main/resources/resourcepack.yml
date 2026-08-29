@@ -13,6 +13,10 @@
 # Puste url = paczka WYLACZONA (nic nie jest wysylane graczom).
 # ==========================================================================
 
+# UWAGA: do paczki doszly reskiny redstone (assets/minecraft/textures/.../redstone_dust_*,
+# item/redstone) uzywane przez Kabel Przesylowy z mainplugins-redstone - NIE sa jeszcze
+# w zipie pod tym hashem. Przy najblizszym rebuildzie paczki z mainplugins-core/resourcepack/
+# wgraj nowy zip na mc-packs.net i podmien url+hash ponizej.
 url: "https://download.mc-packs.net/pack/d8d73d84d81f06197bef173d762de0bd496de364.zip"
 hash: "d8d73d84d81f06197bef173d762de0bd496de364"
 wymagany: false

@@ -11,8 +11,10 @@ import elo.mainplugins.core.command.MoneyUndoCommand;
 import elo.mainplugins.core.command.PayCommand;
 import elo.mainplugins.core.command.PomocCommand;
 import elo.mainplugins.core.command.PortfelCommand;
+import elo.mainplugins.core.api.LicenseService;
 import elo.mainplugins.core.customitem.CustomItemManager;
 import elo.mainplugins.core.economy.EconomyManager;
+import elo.mainplugins.core.license.LicenseManager;
 import elo.mainplugins.core.util.TabCompleteUtils;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -36,6 +38,9 @@ public final class MainpluginsCore extends JavaPlugin {
 
         CustomItemManager customItemManager = new CustomItemManager(this);
         getServer().getServicesManager().register(CustomItemService.class, customItemManager, this, ServicePriority.Normal);
+
+        LicenseManager licenseManager = new LicenseManager(this);
+        getServer().getServicesManager().register(LicenseService.class, licenseManager, this, ServicePriority.Normal);
 
         getServer().getPluginManager().registerEvents(new ResourcePackManager(this), this);
 

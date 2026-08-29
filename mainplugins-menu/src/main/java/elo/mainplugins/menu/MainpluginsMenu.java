@@ -10,6 +10,17 @@ public final class MainpluginsMenu extends JavaPlugin {
         MenuPomocyManager menuPomocyManager = new MenuPomocyManager(this);
         getServer().getPluginManager().registerEvents(menuPomocyManager, this);
 
+        TrybManager trybManager = new TrybManager(this);
+        getServer().getPluginManager().registerEvents(trybManager, this);
+
+        if (getCommand("@reloadtryb") != null) {
+            getCommand("@reloadtryb").setExecutor((sender, command, label, args) -> {
+                trybManager.przeladujKonfiguracje();
+                sender.sendMessage("§aTryb-gui.yml zostało przeładowane.");
+                return true;
+            });
+        }
+
         if (getCommand("menu") != null) {
             getCommand("menu").setExecutor((sender, command, label, args) -> {
                 if (!(sender instanceof Player player)) {

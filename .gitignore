@@ -1,5 +1,7 @@
 target/
 dist/
+hs_err_pid*.log
+replay_pid*.log
 
 # Spakowane archiwa resourcepacka (output do wgrania na hosting typu mc-packs.net) -
 # zrodlo to mainplugins-core/resourcepack/, te pliki to tylko lokalny "build artifact".

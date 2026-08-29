@@ -1,0 +1,111 @@
+# Rejestr redstone-itemów mainplugins-redstone. Zero powiązania z klasycznym wanilijskim
+# przewodzeniem redstone (żaden graf/zanik sygnału) - tylko lokalne "czy ten blok jest
+# zasilony" jako bramka on/off dla STATION i HARVESTER (patrz RedstonePower).
+#
+# Od przebudowy: urządzenia i Kabel to PRAWDZIWE postawione bloki (pełna kolizja, łamią
+# się jak zwykłe bloki, chronione przed wybuchem/tłokiem/wodą). Tożsamość i stan trzyma
+# redstone-urzadzenia.yml (bloki nie mają PDC). PPM w urządzenie = nasze custom GUI/status,
+# nie wanilijskie zachowanie bloku bazowego.
+#
+#   CABLE         - Kabel Przesyłowy: cienki blok kładziony na wierzchu (jak dywan),
+#                   łączy się z sąsiednimi kablami (krok w poziomie, ±1 w pionie) i
+#                   dotykającymi urządzeniami/skrzynkami. Łącze danych bez zaniku.
+#                   Zniszczenie = wypada Kabel, NIGDY wanilijski redstone.
+#   STATION       - Stacja Drona (sadzenie): zasilona redstone I połączona kablem z Sadzarką.
+#   HARVESTER     - Stacja Zbierania: zasilona redstone I połączona kablem ze skrzynką.
+#   GOLEM_STATION - Stacja Zbiorcza: postawiona obok skrzynki źródłowej (Łącznik Skrzynek).
+#   PLANTER       - Sadzarka Automatyczna: postawiona obok zaoranej ziemi (Farmland).
+#   CHEST_LINKER  - Łącznik Skrzynek: PPM w dwie skrzynki po kolei (nie jest blokiem).
+#
+# Pola każdego wpisu pod items.<ID>:
+#   kind      - WYMAGANE. CABLE | STATION | HARVESTER | GOLEM_STATION | PLANTER | CHEST_LINKER.
+#   material  - WYMAGANE. Dla urządzeń/kabla: BLOK, który faktycznie zostanie postawiony
+#               (inertny, bez wanilijskiego GUI). Teksturę podmienisz resourcepackiem
+#               przez pole 'model'. Dla CHEST_LINKER: zwykły item w ręce.
+#   name/lore - jak w custom-items.yml (kody koloru &).
+#   model     - opcjonalny własny model z resourcepacka, Key "<namespace>:<ścieżka>".
+#   glint     - opcjonalny, domyślnie false.
+# Wydawanie: /@dajredstone <id> [gracz] [ilość], albo /@dajall [gracz]. Reload: /@reloadredstone.
+
+items:
+  KABEL_PRZESYLOWY:
+    kind: CABLE
+    # Item i postawiony blok = redstone (REDSTONE w ręce -> vanilla stawia REDSTONE_WIRE),
+    # ale plugin ZERUJE jego sygnał (BlockRedstoneEvent -> 0) - wygląda jak pył redstone
+    # z resourcepacka i sam się łączy w linie, a nic realnie nie zasila.
+    # Bez pola 'model' - używa reskinowanej tekstury item/redstone z resourcepacka.
+    material: REDSTONE
+    name: "&e&lKabel Przesyłowy"
+    lore:
+      - "&7Kładź na ziemi jak pył redstone."
+      - "&7Łączy się sam z sąsiednimi kablami"
+      - "&7oraz z urządzeniami i skrzynkami."
+      - "&7Łączy Stację (Drona/Zbierania) z"
+      - "&7Sadzarką albo skrzynką."
+      - "&8Nie przewodzi prądu i nie zostaje"
+      - "&8po nim wanilijski redstone."
+
+  STACJA_DRONA:
+    kind: STATION
+    material: LODESTONE
+    # model: "mainplugins:stacja_drona"
+    name: "&b&lStacja Drona"
+    lore:
+      - "&7Prawdziwy blok - łamie się jak każdy inny."
+      - "&7Musi być zasilona PRAWDZIWYM redstone,"
+      - "&7żeby w ogóle działać."
+      - "&7Musi być połączona Kablem Przesyłowym"
+      - "&7z Sadzarką, żeby wypuścić drona."
+      - "&7Dron lata po siatce 5x5 pól wokół pola"
+      - "&7sadzarki i sadzi puste miejsca."
+      - "&8PPM - status podłączenia."
+
+  STACJA_ZBIERANIA:
+    kind: HARVESTER
+    material: CHISELED_DEEPSLATE
+    # model: "mainplugins:stacja_zbierania"
+    name: "&d&lStacja Zbierania"
+    lore:
+      - "&7Prawdziwy blok - łamie się jak każdy inny."
+      - "&7Musi być zasilona PRAWDZIWYM redstone,"
+      - "&7żeby w ogóle działać."
+      - "&7Musi być połączona Kablem Przesyłowym"
+      - "&7ze skrzynką, żeby wypuścić drona."
+      - "&7Zbieracz lata po siatce 5x5 pól wokół TEJ"
+      - "&7stacji i zbiera dojrzałe uprawy do skrzynki."
+      - "&8PPM - status podłączenia."
+
+  STACJA_ZBIORCZA:
+    kind: GOLEM_STATION
+    material: CHISELED_POLISHED_BLACKSTONE
+    # model: "mainplugins:stacja_zbiorcza"
+    name: "&6&lStacja Zbiorcza"
+    lore:
+      - "&7Prawdziwy blok - łamie się jak każdy inny."
+      - "&7Postaw obok skrzynki źródłowej,"
+      - "&7połączonej Łącznikiem Skrzynek."
+      - "&7Wypuszcza golema, który kursuje"
+      - "&7ze skrzynki źródłowej do docelowej."
+      - "&8Bez kabla i redstone."
+
+  LACZNIK_SKRZYNEK:
+    kind: CHEST_LINKER
+    material: NAME_TAG
+    # model: "mainplugins:lacznik_skrzynek"
+    name: "&f&lŁącznik Skrzynek"
+    lore:
+      - "&7PPM w skrzynkę źródłową,"
+      - "&7potem PPM w skrzynkę docelową."
+      - "&7Zużywa się przy udanym połączeniu."
+
+  SADZARKA_AUTOMATYCZNA:
+    kind: PLANTER
+    material: CHISELED_TUFF
+    # model: "mainplugins:sadzarka"
+    name: "&6&lSadzarka Automatyczna"
+    lore:
+      - "&7Prawdziwy blok - łamie się jak każdy inny."
+      - "&7Postaw obok zaoranej ziemi (Farmland)."
+      - "&7PPM - włóż nasiona do slotu."
+      - "&7Sadzi na polu, które wskaże jej dron"
+      - "&7ze Stacji Drona podłączonej kablem."

@@ -1,5 +1,7 @@
 package elo.mainplugins.spawn;
 
+import elo.mainplugins.core.CoreAPI;
+import elo.mainplugins.core.api.ObszarService;
 import elo.mainplugins.core.api.SpawnService;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -12,6 +14,14 @@ public final class MainpluginsSpawn extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        // Plugin płatny - patrz javadoc LicenseService oraz license-server/README.md.
+        if (!CoreAPI.getLicenseService().isLicensed("spawn")) {
+            getLogger().severe("Brak ważnej licencji dla mainplugins-spawn - plugin zostanie wyłączony.");
+            getLogger().severe("Skonfiguruj klucz w license.yml (folder danych MainpluginsCore, sekcja 'keys: spawn: ...') i zrestartuj serwer.");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+
         spawnManager = new SpawnManager(this);
         obszarManager = new ObszarManager(this);
         warpManager = new WarpManager(this);

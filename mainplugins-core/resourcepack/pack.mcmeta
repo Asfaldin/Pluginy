@@ -1,6 +1,8 @@
 {
   "pack": {
-    "pack_format": 55,
-    "description": "Mainplugins - custom tekstury itemow (typy kilofa i kolejne)"
+    "pack_format": 84,
+    "description": "Mainplugins - custom tekstury (kilofy, ryba mistyczna, redstone/kabel)",
+    "min_format": [84, 0],
+    "max_format": [96, 0]
   }
 }

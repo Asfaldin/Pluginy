@@ -1,5 +1,6 @@
 package elo.mainplugins.fishing;
 
+import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.fishing.config.FishingConfigLoader;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -18,6 +19,14 @@ public final class MainpluginsFishing extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        // Plugin płatny - patrz javadoc LicenseService oraz license-server/README.md.
+        if (!CoreAPI.getLicenseService().isLicensed("fishing")) {
+            getLogger().severe("Brak ważnej licencji dla mainplugins-fishing - plugin zostanie wyłączony.");
+            getLogger().severe("Skonfiguruj klucz w license.yml (folder danych MainpluginsCore, sekcja 'keys: fishing: ...') i zrestartuj serwer.");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+
         statsManager = new FishingStatsManager(this);
         wiaderkoManager = new WiaderkoManager(this);
         lowiskoManager = new LowiskoManager(this);

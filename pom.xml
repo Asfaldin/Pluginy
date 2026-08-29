@@ -40,11 +40,13 @@
         <module>mainplugins-announcer</module>
         <module>mainplugins-crates</module>
         <module>mainplugins-farming</module>
+        <module>mainplugins-redstone</module>
         <module>mainplugins-spawners</module>
         <module>mainplugins-spawn</module>
         <module>mainplugins-fishing</module>
         <module>mainplugins-dungeons</module>
         <module>mainplugins-chatfilter</module>
+        <module>mainplugins-advancements</module>
     </modules>
 
     <properties>

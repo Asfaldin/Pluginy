@@ -4,6 +4,7 @@ import elo.mainplugins.core.api.CrateService;
 import elo.mainplugins.core.api.CustomItemService;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.IslandService;
+import elo.mainplugins.core.api.LicenseService;
 import elo.mainplugins.core.api.MarketService;
 import elo.mainplugins.core.api.QuestService;
 import elo.mainplugins.core.api.RankService;
@@ -96,5 +97,19 @@ public final class CoreAPI {
     public static CustomItemService getCustomItemService() {
         RegisteredServiceProvider<CustomItemService> rsp = Bukkit.getServicesManager().getRegistration(CustomItemService.class);
         return rsp != null ? rsp.getProvider() : null;
+    }
+
+    /**
+     * Weryfikacja licencji dla płatnych pluginów (patrz javadoc {@link LicenseService}).
+     * Rejestrowany przez sam mainplugins-core jak {@code CustomItemService} - dostępny
+     * zawsze, gdy tylko Core jest włączony. Rzuca jak {@link #getEconomyService()},
+     * bo płatny plugin bez tego serwisu i tak nie ma jak się poprawnie włączyć.
+     */
+    public static LicenseService getLicenseService() {
+        RegisteredServiceProvider<LicenseService> rsp = Bukkit.getServicesManager().getRegistration(LicenseService.class);
+        if (rsp == null) {
+            throw new IllegalStateException("MainpluginsCore nie jest włączony lub nie zarejestrował jeszcze LicenseService - sprawdź plugin.yml (depend: [MainpluginsCore]).");
+        }
+        return rsp.getProvider();
     }
 }

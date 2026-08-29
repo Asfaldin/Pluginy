@@ -1,0 +1,37 @@
+# Ekran wyboru trybu gry - pokazuje sie przy KAZDYM wejsciu na serwer (patrz
+# TrybManager#onJoin), zaraz po tym jak gracz normalnie wladuje sie w swoim miejscu
+# (wyspa/spawn/lozko - nic tutaj tego NIE zmienia, wybor "Skyblock Classic+" po prostu
+# zamyka okno i gracz zostaje tam gdzie juz jest). Przeladowanie na zywo: /@reloadtryb
+#
+# size: rozmiar okna (wielokrotnosc 9, 9-54)
+# tlo: material wypelniajacy puste sloty
+#
+# classic / mmo:
+#   slot: numer slotu
+#   material: ikona
+#   nazwa: nazwa wyswietlana
+#   lore: lista linii opisu
+#   zablokowany: opcjonalny bool (domyslnie false) - klikniecie NIE zamyka okna,
+#                zamiast tego gracz dostaje komunikatZablokowany na action-barze
+#   komunikatZablokowany: tresc komunikatu dla zablokowanej opcji
+
+size: 27
+tlo: BLACK_STAINED_GLASS_PANE
+
+classic:
+  slot: 11
+  material: GRASS_BLOCK
+  nazwa: "&a&lSkyblock Classic+"
+  lore:
+    - "&7Klasyczny tryb wyspowy."
+    - "&7Kliknij, aby kontynuować grę."
+
+mmo:
+  slot: 15
+  material: BARRIER
+  nazwa: "&c&lSkyblock MMO+"
+  zablokowany: true
+  lore:
+    - "&7Nowy tryb z rozbudowanym systemem MMO."
+    - "&c&lWkrótce dostępny!"
+  komunikatZablokowany: "&cTryb Skyblock MMO+ będzie dostępny wkrótce!"

@@ -1,0 +1,23 @@
+# ==========================================================================
+# Config dla ProtocolLib - PLIK DLA SERWERA, nie dla repo/mainplugins.
+# GDZIE WGRAĆ: plugins/ProtocolLib/config.yml, potem restart.
+#
+# WAZNE: sprawdzilem caly kod mainplugins-* (wszystkie pom.xml) - ProtocolLib
+# NIE JEST juz nigdzie uzywany przez nasz wlasny kod (byla proba fejkowania
+# lasera beacona w mainplugins-fishing przez ProtocolLib, porzucona po tym jak
+# rozlaczyla gracza na zywo - patrz MistycznyLaser.java, zastapiona w 100%
+# bezpiecznym Bukkit Display API). Jesli TAB albo inny zainstalowany plugin go
+# wymaga jako soft-dependency, to i tak dziala on samych defaultach ponizej -
+# nie ma tu niczego do dostosowania pod nasz serwer. Jesli okaze sie ze NIC go
+# juz nie wymaga, mozna go bezpiecznie zdjac z serwera calkowicie.
+# ==========================================================================
+
+global:
+  debug: false
+  metrics: true
+  auto updates: true
+  background compiler: true
+  suppressed reports: []
+  disabled priorities: {}
+  script engine: null
+  optimized packets: []

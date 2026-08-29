@@ -1,0 +1,20 @@
+# ==========================================================================
+# Config dla PlaceholderAPI - PLIK DLA SERWERA, nie dla repo/mainplugins.
+# GDZIE WGRAĆ: plugins/PlaceholderAPI/config.yml, potem restart (ten config
+# NIE ma /papi reload-friendly wszystkich pol, restart jest pewniejszy).
+#
+# Nasze wlasne placeholdery (%mainplugins_...%) NIE potrzebuja tu zadnego
+# wpisu - rejestruja sie same z kodu (mainplugins-hud/MainpluginsPlaceholders,
+# PlaceholderExpansion.register() przy starcie tego pluginu). Ten plik to
+# tylko ogolne ustawienia samego PlaceholderAPI, w wiekszosci defaulty.
+# ==========================================================================
+
+check-updates: true
+placeholder-hooking: true
+plugin-metrics: true
+
+# Cache - poprawia wydajnosc jesli ktos uzywa TYCH SAMYCH placeholderow w wielu
+# miejscach naraz (tab + scoreboard + gui itd.) w tej samej sekundzie.
+cache:
+  enabled: true
+  refresh-interval: 1000

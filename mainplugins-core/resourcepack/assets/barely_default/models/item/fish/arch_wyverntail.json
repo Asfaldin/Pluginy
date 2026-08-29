@@ -1,0 +1,7 @@
+{
+	"credit": "Consider supporting Barely Default to help keep the pack going - http://youtube.com/@MushirMickeyJoe/join",
+	"parent": "barely_default:item/fish/wyverntail",
+	"textures": {
+		"layer0": "barely_default:item/fish/arch_wyverntail"
+	}
+}

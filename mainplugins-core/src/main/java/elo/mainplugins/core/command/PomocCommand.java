@@ -97,7 +97,9 @@ public class PomocCommand implements CommandExecutor {
             new Sekcja("Zadania i Łowienie", List.of(
                     new Wpis("/zadania (/quest)", "Otwórz listę zadań i odbierz nagrody"),
                     new Wpis("/wedka", "Odbierz wędkę do łowienia"),
-                    new Wpis("/rybpasek <gora|dol>", "Ustaw gdzie ma się wyświetlać pasek minigry łowienia")
+                    new Wpis("/rybpasek <gora|dol>", "Ustaw gdzie ma się wyświetlać pasek minigry łowienia"),
+                    new Wpis("/rybtop", "Ranking sumy złowionych kg + rekord serwera na najcięższą rybę"),
+                    new Wpis("/rybindeks", "Twój indeks rybacki - gatunki które już złowiłeś, ile sztuk i rekord wagi")
             )),
             new Sekcja("Inne", List.of(
                     new Wpis("/wycisz <gracz> (/mute)", "Wycisz gracza tylko dla siebie (ponownie = odcisz)"),

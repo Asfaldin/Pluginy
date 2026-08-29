@@ -10,20 +10,28 @@ commands:
   rybpasek:
     description: Ustaw gdzie ma się wyświetlać pasek minigry łowienia (gora ekranu / dol nad paskiem XP)
     usage: "/<command> <gora|dol>"
+  rybtop:
+    description: Ranking sumy zlowionych kg (na zawsze) + rekord serwera na najciezsza rybe
+  rybindeks:
+    description: Twoj indeks rybacki - gatunki ktore juz zlowiles, ile sztuk i twoj rekord wagi na kazdy
   "@reloadfishing":
     description: Wczytaj fishing-config.yml i ryby.yml na nowo, bez restartu serwera
     permission: mainplugins.fishing.admin
     permission-message: "&cNie masz permisji do tej komendy!"
+  "@resetrybtop":
+    description: Wyczysc CALKOWICIE statystyki rybackie (suma kg, rekordy gatunkow) - nieodwracalne
+    permission: mainplugins.fishing.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
   wedka1:
-    description: "[TEST] Wędka wymuszająca 1. gatunek z ryby.yml (Zwykła), branie prawie natychmiastowe"
+    description: "[TEST] Wędka wymuszająca 1. gatunek z ryby.yml (Karp), branie prawie natychmiastowe"
     permission: mainplugins.fishing.admin
     permission-message: "&cNie masz permisji do tej komendy!"
   wedka2:
-    description: "[TEST] Wędka wymuszająca 2. gatunek z ryby.yml (Super), branie prawie natychmiastowe"
+    description: "[TEST] Wędka wymuszająca 2. gatunek z ryby.yml (Dorsz Atlantycki), branie prawie natychmiastowe"
     permission: mainplugins.fishing.admin
     permission-message: "&cNie masz permisji do tej komendy!"
   wedka3:
-    description: "[TEST] Wędka wymuszająca 3. gatunek z ryby.yml (Mistyczna), branie prawie natychmiastowe"
+    description: "[TEST] Wędka wymuszająca 3. gatunek z ryby.yml (Sum), branie prawie natychmiastowe"
     permission: mainplugins.fishing.admin
     permission-message: "&cNie masz permisji do tej komendy!"
   wedkazrownowazona:

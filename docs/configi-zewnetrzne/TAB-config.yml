@@ -1,0 +1,97 @@
+# ==========================================================================
+# Config dla pluginu TAB (by NEZNAMY) - PLIK DLA SERWERA, nie dla repo/mainplugins.
+#
+# GDZIE WGRAĆ: plugins/TAB/config.yml na żywym serwerze (podmień caly plik),
+# potem /tab reload (albo restart serwera).
+#
+# WAŻNE ZASTRZEŻENIE: TAB ma spory, dosc czesto zmieniajacy sie config miedzy
+# wersjami (3.x/4.x/5.x). Ten plik jest napisany wg standardowego, od dawna
+# stabilnego schematu TAB - jesli po wgraniu w logu serwera pojawi sie "Unknown
+# property"/podobne ostrzezenie przy jakiejs sekcji, to znak ze zainstalowana
+# wersja TAB nazywa cos inaczej - podesla mi ten fragment logu, poprawie.
+#
+# Nasz system rang (mainplugins-ranks) NIE nadaje prawdziwych uprawnien
+# Bukkit/Vault - dlatego zamiast grup wg uprawnien, ranga jest wpiaieta
+# BEZPOSREDNIO przez gotowy placeholder %mainplugins_ranga%, ktory juz zwraca
+# cala sformatowana nazwe z kolorem (np. "&c&lAdmin", "&6&lVIP", "&7Gracz") -
+# patrz mainplugins-hud/MainpluginsPlaceholders.java.
+# ==========================================================================
+
+scoreboard-teams:
+  enabled: true
+  # Prefiks przed nickiem w tabliscie I nad glowa gracza (nametag) - sama ranga,
+  # placeholder juz ma kolor wbudowany.
+  name-tag-format: "%mainplugins_ranga% &f%player%"
+
+  # Sortowanie graczy w tabliscie - PLACEHOLDER_A_TO_Z na samej randze dziala
+  # tylko "z grubsza" (sortuje alfabetycznie po tekscie placeholdera, nie wg
+  # WAZNOSCI rangi) - jesli zalezy Ci na dokladnym Admin->VIP->Gracz, powiedz,
+  # dorzuce w mainplugins-hud osobny numeryczny placeholder (np.
+  # %mainplugins_ranga_waga%: Admin=0, VIP=1, Gracz=2) specjalnie pod sortowanie.
+  sorting-types:
+    - "PLACEHOLDER_A_TO_Z:%mainplugins_ranga%"
+
+# ==================================================================== Tablist ====
+header-footer:
+  header:
+    - ""
+    - "&b&lSKYBLOCK"
+    - ""
+  footer:
+    - ""
+    - "%mainplugins_wskazowka%"
+    - "%mainplugins_event_info%"
+    - ""
+    - "&7Ranking graczy:"
+    - "%mainplugins_top_gracz_linia_1%"
+    - "%mainplugins_top_gracz_linia_2%"
+    - "%mainplugins_top_gracz_linia_3%"
+    - ""
+    - "&7Ranking wysp:"
+    - "%mainplugins_top_wyspa_linia_1%"
+    - "%mainplugins_top_wyspa_linia_2%"
+    - "%mainplugins_top_wyspa_linia_3%"
+    - ""
+    - "&7Gracze online: &f%online%&7/&f%mainplugins_maxplayers%"
+    - ""
+
+# ==================================================================== Scoreboard (boczny panel) ====
+scoreboard:
+  enabled: true
+  toggle-command: "/sb"
+  default-scoreboard: "domyslny"
+  scoreboards:
+    domyslny:
+      title: "&b&lSKYBLOCK"
+      lines:
+        - "&7"
+        - "&7Ranga: %mainplugins_ranga%"
+        - "&7Kasa: &a%mainplugins_saldo%$"
+        - "&7Miejsce w rankingu: &f#%mainplugins_moje_miejsce%"
+        - "&7 "
+        - "&7Wyspa: &f%mainplugins_wyspa_opis%"
+        - "&7Czas gry: &f%mainplugins_czas_gry%"
+        - "&7  "
+        - "&7graj.nazwaserwera.pl"
+
+# ==================================================================== Belowname (nad hotbarem, opcjonalne) ====
+belowname:
+  enabled: false
+
+# ==================================================================== Bossbar (nieuzywane na razie) ====
+bossbar:
+  enabled: false
+
+# Odswiezanie naszych wlasnych placeholderow (PlaceholderAPI, nie natywne TAB
+# %online%/%tps%) - 500ms wystarcza, dane i tak zmieniaja sie najwyzej raz na
+# sekunde/slajd (patrz HudConfig.sekundNaSlajd w mainplugins-hud).
+placeholders:
+  refresh-intervals:
+    "%mainplugins_ranga%": 2000
+    "%mainplugins_saldo%": 1000
+    "%mainplugins_moje_miejsce%": 5000
+    "%mainplugins_czas_gry%": 10000
+    "%mainplugins_wyspa_opis%": 5000
+    "%mainplugins_wskazowka%": 1000
+    "%mainplugins_event_info%": 5000
+  default-refresh-interval: 1000

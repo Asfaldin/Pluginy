@@ -142,11 +142,15 @@ items:
       - "&8Wrzuć wszystko do stołu rzemieślniczego -"
       - "&8pozycja w siatce nie ma znaczenia."
 
-  # Gatunki lowienia (mainplugins-fishing, ryby.yml) z prawdziwym custom modelem z
-  # resourcepacka (AllTheFish V4, przepakowany do mainplugins-core/resourcepack/assets/
-  # mainplugins/{items,models/item,textures/item}/ryba_<id>.*) - 2 gatunki na tier
-  # rzadkosci (ZWYKLA/NIEZWYKLA/RZADKA). Reszta gatunkow w ryby.yml (jesli jakas dojdzie
-  # bez wpisu tutaj) to zwykle przefarbowane wanilijskie materialy budowane w Javie.
+  # Gatunki lowienia (mainplugins-fishing, ryby.yml) - WSZYSTKIE 30 (2026-08-29, 5 na
+  # kazda z 6 rzadkosci) maja tu wlasny model. Oryginalne 6 (ZWYKLA/NIEZWYKLA/RZADKA, po
+  # 2 kazda) uzywaja namespace "mainplugins" (AllTheFish V4, wybrane recznie i przepakowane
+  # do mainplugins-core/resourcepack/assets/mainplugins/...). Pozostale 24 (w tym caly
+  # EPICKA/LEGENDARNA/MITYCZNA) uzywaja namespace "barely_default" - modele POZYCZONE z
+  # duzo wiekszej biblioteki tego samego autora, "AllTheFish V4 - 26.2" (200 gatunkow w
+  # paczce), skopiowane do mainplugins-core/resourcepack/assets/barely_default/ bez zmian.
+  # Gdyby jakis gatunek w ryby.yml zostal dodany BEZ wpisu tutaj, dostanie zwykly
+  # przefarbowany wanilijski material budowany w Javie (fallback, patrz FishingManager).
   #
   # UWAGA: pole "model" tu jest AKTYWNE - wymaga zaktualizowanej live paczki (nowy zip
   # spakowany z mainplugins-core/resourcepack/ + nowy link/hash w resourcepack.yml na
@@ -194,6 +198,204 @@ items:
     lore:
       - "&7Zywa skamienialosc sprzed milionow lat."
     model: "mainplugins:ryba_latimeria"
+    glint: true
+
+  # ============================================================================
+  # 2026-08-29: 24 nowych gatunkow (Rzadkosc rozszerzona z 3 do 6 poziomow, patrz
+  # RybaGatunek.Rzadkosc) - modele/tekstury POZYCZONE z zewnetrznego resourcepacka
+  # "AllTheFish V4" (namespace "barely_default", NIE "mainplugins" jak reszta) - patrz
+  # mainplugins-core/resourcepack/assets/barely_default/. To NIE oryginalna tworczosc
+  # tego projektu jak reszta itemow w tym pliku - tymczasowy wybor gotowych modeli z
+  # duzej biblioteki (200 gatunkow w paczce), dopoki ktos nie zrobi dla nich wlasnych.
+  # ============================================================================
+
+  FISH_PLOC:
+    material: SALMON
+    name: "&7&lPłoć"
+    lore:
+      - "&7Mała, pospolita rybka rzeczna."
+    model: "barely_default:item/fish/dace"
+
+  FISH_LESZCZ:
+    material: COD
+    name: "&f&lLeszcz"
+    lore:
+      - "&7Szeroki, płaski mieszkaniec stawów."
+    model: "barely_default:item/fish/crucian_carp"
+
+  FISH_SLEDZ:
+    material: SALMON
+    name: "&f&lŚledź"
+    lore:
+      - "&7Małe ryby pływające w dużych ławicach."
+    model: "barely_default:item/fish/anchovy"
+
+  FISH_SZCZUPAK:
+    material: TROPICAL_FISH
+    name: "&a&lSzczupak"
+    lore:
+      - "&7Drapieżnik czyhający w szuwarach."
+    model: "barely_default:item/fish/pike"
+
+  FISH_WEGORZ:
+    material: PUFFERFISH
+    name: "&a&lWęgorz"
+    lore:
+      - "&7Wężowaty kształt, ślisko się wymyka."
+    model: "barely_default:item/fish/eel"
+
+  FISH_JESIOTR:
+    material: COD
+    name: "&2&lJesiotr"
+    lore:
+      - "&7Stary jak dinozaury, cierpliwie czeka na dnie."
+    model: "barely_default:item/fish/sturgeon"
+
+  FISH_MARLIN_BLEKITNY:
+    material: TROPICAL_FISH
+    name: "&9&lMarlin Błękitny"
+    lore:
+      - "&7Szybki jak torpeda, z długim dziobem."
+    model: "barely_default:item/fish/blue_marlin"
+    glint: true
+
+  FISH_MIECZNIK:
+    material: PUFFERFISH
+    name: "&d&lMiecznik"
+    lore:
+      - "&7Uzbrojony w mieczowaty dziób."
+    model: "barely_default:item/fish/dorado"
+    glint: true
+
+  FISH_MANTA_OLBRZYMIA:
+    material: COD
+    name: "&5&lManta Olbrzymia"
+    lore:
+      - "&7Majestatycznie szybuje w toni."
+    model: "barely_default:item/fish/ocean_sunfish"
+    glint: true
+
+  FISH_REKIN_WIELORYBI:
+    material: PUFFERFISH
+    name: "&3&lRekin Wielorybi"
+    lore:
+      - "&7Największa ryba oceanu."
+    model: "barely_default:item/fish/seven_finned_death"
+    glint: true
+
+  FISH_ZARLACZ_BIALY:
+    material: PUFFERFISH
+    name: "&b&lŻarłacz Biały"
+    lore:
+      - "&7Królowa oceanicznych drapieżników."
+    model: "barely_default:item/fish/the_beastfish"
+    glint: true
+
+  FISH_TUNCZYK_BLEKITNOPLETWY:
+    material: TROPICAL_FISH
+    name: "&1&lTuńczyk Błękitnopłetwy"
+    lore:
+      - "&7Cenny okaz, ceniony przez smakoszy."
+    model: "barely_default:item/fish/tuna"
+    glint: true
+
+  FISH_KALMAR_OLBRZYMI:
+    material: SALMON
+    name: "&3&lKalmar Olbrzymi"
+    lore:
+      - "&7Mackami sięga z otchłani."
+    model: "barely_default:item/fish/voodoo_dollfin"
+    glint: true
+
+  FISH_OSMIORNICA_OLBRZYMIA:
+    material: COD
+    name: "&b&lOśmiornica Olbrzymia Pacyficzna"
+    lore:
+      - "&7Inteligentny gigant głębin."
+    model: "barely_default:item/fish/wolf_fish"
+    glint: true
+
+  FISH_WAZ_MORSKI:
+    material: TROPICAL_FISH
+    name: "&4&lWąż Morski"
+    lore:
+      - "&7Legendarny wężowaty stwór mórz."
+    model: "barely_default:item/fish/arch_wyverntail"
+    glint: true
+
+  FISH_KRAKEN:
+    material: PUFFERFISH
+    name: "&4&lKraken"
+    lore:
+      - "&7Postrach żeglarzy z dawnych opowieści."
+    model: "barely_default:item/fish/the_fish_of_cthulu"
+    glint: true
+
+  FISH_LEWIATAN:
+    material: SALMON
+    name: "&c&lLewiatan"
+    lore:
+      - "&7Biblijny władca morskich głębin."
+    model: "barely_default:item/fish/laviathan_fry"
+    glint: true
+
+  FISH_MEGALODON:
+    material: COD
+    name: "&c&lMegalodon"
+    lore:
+      - "&7Prehistoryczny rekin, który podobno nigdy nie wyginął."
+    model: "barely_default:item/fish/giant_snakehead"
+    glint: true
+
+  FISH_SMOK_MORSKI:
+    material: TROPICAL_FISH
+    name: "&6&lSmok Morski"
+    lore:
+      - "&7Skrzy się jak łuska smoka."
+    model: "barely_default:item/fish/wyverntail"
+    glint: true
+
+  FISH_FENIKS_MORSKI:
+    material: SALMON
+    name: "&6&lFeniks Morski"
+    lore:
+      - "&7Odradza się z każdym połowem."
+    model: "barely_default:item/fish/flarefin_koi"
+    glint: true
+
+  FISH_DUCH_GLEBIN:
+    material: TROPICAL_FISH
+    name: "&f&lDuch Głębin"
+    lore:
+      - "&7Widziany tylko przez tych, którzy naprawdę szukają."
+    model: "barely_default:item/fish/mirage_fish"
+    glint: true
+
+  FISH_ISKRA_OTCHLANI:
+    material: PUFFERFISH
+    name: "&d&lIskra Otchłani"
+    lore:
+      - "&7Skra ognia w najciemniejszej toni."
+    model: "barely_default:item/fish/prismite"
+    glint: true
+
+  FISH_ZJAWA_OCEANU:
+    material: COD
+    name: "&f&lZjawa Oceanu"
+    lore:
+      - "&7Nikt nie wie, czy naprawdę istnieje."
+    model: "barely_default:item/fish/the_uncatchable"
+    glint: true
+
+  # ZLOTY GRAAL calego systemu wedkarskiego - patrz ryby.yml (kg do 200) i rozmowa z
+  # userem 2026-08-29.
+  FISH_ZLOTY_KARP_BOGOW:
+    material: COD
+    name: "&e&lZłoty Karp Bogów"
+    lore:
+      - "&6PRAWDZIWY GRAAL WĘDKARSTWA."
+      - "&7Legenda mówi, że przynosi fortunę."
+    model: "barely_default:item/fish/golden_carp"
     glint: true
 
   GENERATOR_BRUK_T1:

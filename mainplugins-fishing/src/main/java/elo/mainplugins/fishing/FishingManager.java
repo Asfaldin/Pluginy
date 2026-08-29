@@ -22,10 +22,12 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -36,6 +38,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -61,6 +64,12 @@ import java.util.concurrent.ThreadLocalRandom;
 public class FishingManager implements Listener {
 
     private final Plugin plugin;
+
+    // Statystyki rybackie graczy (suma zlowionych kg + rekord najciezszej ryby, patrz
+    // /rybtop w MainpluginsFishing) - osobny plik/manager, ten sam wzorzec co
+    // EconomyManager w mainplugins-core. Wstrzykiwany, nie tworzony tutaj, zeby
+    // MainpluginsFishing mogl go zamknac (zapis natychmiastowy) w onDisable().
+    private final FishingStatsManager statystyki;
 
     // Tuning minigry i bonusowej skrzynki - fishing-config.yml, przeladowywalny bez
     // restartu (patrz aktualizujKonfiguracje / @reloadfishing). Gatunki ryb NIE sa tutaj -
@@ -112,9 +121,10 @@ public class FishingManager implements Listener {
     // (PersistentDataContainer gracza), więc pamiętany między sesjami bez osobnego pliku.
     private final NamespacedKey tagPozycjaPaska;
 
-    public FishingManager(Plugin plugin, FishingConfig config) {
+    public FishingManager(Plugin plugin, FishingConfig config, FishingStatsManager statystyki) {
         this.plugin = plugin;
         this.config = config;
+        this.statystyki = statystyki;
         this.tagWedkiTestowej = new NamespacedKey(plugin, "wedka_test_indeks");
         this.tagProfiluTestowego = new NamespacedKey(plugin, "wedka_test_profil");
         this.tagPozycjaPaska = new NamespacedKey(plugin, "fishing_pozycja_paska");
@@ -145,6 +155,11 @@ public class FishingManager implements Listener {
         wczytajGatunki();
     }
 
+    /** Wszystkie znane gatunki, w KANONICZNEJ kolejnosci z ryby.yml - patrz /rybindeks w MainpluginsFishing (kolejnosc wyswietlania indeksu). Defensywna kopia. */
+    public List<RybaGatunek> gatunki() {
+        return List.copyOf(gatunki);
+    }
+
     // ==================================================================== Konfiguracja ====
 
     /**
@@ -169,7 +184,15 @@ public class FishingManager implements Listener {
                 NamedTextColor kolor = parsujKolor(wpis.get("color") != null ? String.valueOf(wpis.get("color")) : "white");
                 RybaGatunek.Rzadkosc rzadkosc = RybaGatunek.Rzadkosc.valueOf(String.valueOf(wpis.get("rarity")));
                 int waga = wpis.get("weight") != null ? ((Number) wpis.get("weight")).intValue() : 1;
-                wczytane.add(new RybaGatunek(customId, nazwa, material, kolor, rzadkosc, Math.max(1, waga)));
+                // Domyslne kg-* (gdyby ktos dodal nowy gatunek i zapomnial ich dopisac) -
+                // baseline identyczny z ZWYKLA (patrz ryby.yml), zeby brakujacy wpis dostal
+                // rozsadna, gotowa do gry wartosc zamiast psuc losowanie wagi/NPE.
+                double kgTypowyMin = liczbaZMapy(wpis, "kg-typowy-min", 10.0);
+                double kgTypowyMax = liczbaZMapy(wpis, "kg-typowy-max", 20.0);
+                double kgMin = liczbaZMapy(wpis, "kg-min", 5.0);
+                double kgMax = liczbaZMapy(wpis, "kg-max", 40.0);
+                wczytane.add(new RybaGatunek(customId, nazwa, material, kolor, rzadkosc, Math.max(1, waga),
+                        kgTypowyMin, kgTypowyMax, kgMin, kgMax));
             } catch (Exception e) {
                 plugin.getLogger().warning("Zły wpis w ryby.yml, pomijam: " + e.getMessage());
             }
@@ -187,6 +210,11 @@ public class FishingManager implements Listener {
     private NamedTextColor parsujKolor(String nazwa) {
         NamedTextColor kolor = NamedTextColor.NAMES.value(nazwa.toLowerCase());
         return kolor != null ? kolor : NamedTextColor.WHITE;
+    }
+
+    private double liczbaZMapy(Map<?, ?> wpis, String klucz, double domyslna) {
+        Object wartosc = wpis.get(klucz);
+        return wartosc instanceof Number number ? number.doubleValue() : domyslna;
     }
 
     // ==================================================================== Przedmioty ====
@@ -243,25 +271,49 @@ public class FishingManager implements Listener {
      * custom-items.yml) - np. FISH_KARP z własnym modelem z resourcepacka -
      * wydajemy DOKŁADNIE ten item stamtąd (ten sam wzorzec co ShopManager.stworzBazowyItem).
      * W przeciwnym razie (reszta gatunków - zwykłe przefarbowane materiały) budujemy
-     * item ręcznie, tak jak dotychczas.
+     * item ręcznie, tak jak dotychczas. Bez wagi w lore - patrz stworzRybe (polow) i
+     * iconaIndeksu (GUI /rybindeks), ktore dorzucaja WLASNE, rozne linie lore na tej samej bazie.
      */
-    private ItemStack stworzRybe(RybaGatunek gatunek) {
+    private ItemStack bazowyItemRyby(RybaGatunek gatunek) {
         CustomItemService rejestr = CoreAPI.getCustomItemService();
-        if (rejestr != null && rejestr.exists(gatunek.customId())) {
-            ItemStack custom = rejestr.create(gatunek.customId(), 1);
-            if (custom != null) return custom;
-        }
+        ItemStack custom = (rejestr != null && rejestr.exists(gatunek.customId())) ? rejestr.create(gatunek.customId(), 1) : null;
+        if (custom != null) return custom;
 
         ItemStack item = new ItemStack(gatunek.material());
         ItemMeta meta = item.getItemMeta();
         meta.displayName(Component.text(gatunek.nazwa(), gatunek.kolor(), TextDecoration.BOLD));
-        meta.lore(List.of(Component.text(opisRzadkosci(gatunek.rzadkosc()), gatunek.kolor()).decoration(TextDecoration.ITALIC, false)));
+        meta.lore(new ArrayList<>(List.of(Component.text(opisRzadkosci(gatunek.rzadkosc()), gatunek.kolor()).decoration(TextDecoration.ITALIC, false))));
         meta.getPersistentDataContainer().set(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING, gatunek.customId());
         if (gatunek.rzadkosc().ordinal() >= RybaGatunek.Rzadkosc.RZADKA.ordinal()) {
             meta.setEnchantmentGlintOverride(true);
         }
         item.setItemMeta(meta);
         return item;
+    }
+
+    /**
+     * Item wydawany graczowi po udanym polowie - bazowy item gatunku (patrz
+     * bazowyItemRyby) plus osobna linia lore z wagą TEJ KONKRETNEJ złowionej ryby (patrz
+     * losujWageDziesieteKg) - stąd dwie złowione ryby tego samego gatunku prawie nigdy
+     * nie są identycznym stackiem (różna waga w lore), więc się NIE STAPIAJĄ w
+     * ekwipunku. Świadomy kompromis: każda ryba ma swoją indywidualną wagę (cały sens
+     * rankingu /rybtop), kosztem zajmowania większej liczby slotów przy intensywnym
+     * łowieniu. Quest/sklep i tak liczą po custom-id w PDC, NIE po pełnym porównaniu
+     * itemu, więc różna waga/lore niczego tam nie psuje.
+     */
+    private ItemStack stworzRybe(RybaGatunek gatunek, int wagaDziesieteKg) {
+        ItemStack item = bazowyItemRyby(gatunek);
+
+        ItemMeta meta = item.getItemMeta();
+        List<Component> lore = meta.hasLore() ? new ArrayList<>(meta.lore()) : new ArrayList<>();
+        lore.add(Component.text("Waga: " + formatKg(wagaDziesieteKg) + " kg", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        meta.lore(lore);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private static String formatKg(int wagaDziesieteKg) {
+        return String.format(Locale.ROOT, "%.1f", wagaDziesieteKg / 10.0);
     }
 
     private String opisRzadkosci(RybaGatunek.Rzadkosc r) {
@@ -271,6 +323,7 @@ public class FishingManager implements Listener {
             case RZADKA -> "Rzadka ryba";
             case EPICKA -> "Epicka ryba";
             case LEGENDARNA -> "Legendarna ryba";
+            case MITYCZNA -> "Mityczna ryba";
         };
     }
 
@@ -299,6 +352,49 @@ public class FishingManager implements Listener {
             if (los < akumulator) return g;
         }
         return gatunki.getLast();
+    }
+
+    // Ile prob odrzucenia-i-ponownego-losowania (patrz losujWageDziesieteKg) zanim
+    // poddamy sie i przytniemy do granicy - czysty bezpiecznik na wypadek zle
+    // skonfigurowanego gatunku w ryby.yml (np. kg-typowy szerszy niz kg-twardy), zeby
+    // NIGDY nie zapetlic sie w nieskonczonosc. Przy sensownym configu (typowy MIESCI
+    // SIE w twardym) prawie zawsze trafiamy w 1-2 probach.
+    private static final int MAX_PROB_LOSOWANIA_WAGI = 100;
+
+    // Ile "odchylen standardowych" ma dzielic srodek typowego zakresu od kg-max, czyli
+    // jak bardzo jackpotowy ma byc najciezszy mozliwy okaz (patrz losujWageDziesieteKg).
+    // 4.0 odchylenia = szansa na wynik TAK DALEKI od srodka (czyli - w praktyce - na
+    // wylosowanie czegos w okolicy kg-max) to ok. 1 na 31 500 polowow danego gatunku -
+    // ustalone z userem 2026-08-29 (chcial "1 na 30 000"). Ta sama stala dla kazdego
+    // gatunku, wiec kazdy ma swoj najciezszy mozliwy okaz rownie rzadki WZGLEDEM WLASNEJ
+    // skali, niezaleznie jak szeroki/waski ma zakres w ryby.yml.
+    private static final double ILOSC_SIGMA_DO_MAKSIMUM = 4.0;
+
+    /**
+     * Losuje fizyczna wage konkretnej zlowionej ryby w "dziesiatych kg" (np. 143 = 14.3kg) -
+     * rozklad normalny (Random.nextGaussian) wysrodkowany na srodku kg-typowy-min/max z
+     * gatunku. Sigma dobrane TAK, ZEBY DYSTANS OD SRODKA DO KG-MAX ODPOWIADAL
+     * ILOSC_SIGMA_DO_MAKSIMUM ODCHYLENIOM (patrz jej javadoc) - nie od szerokosci samego
+     * typowego zakresu, bo w tej grze kg-max bywa DUZO dalej od srodka niz kg-min (patrz
+     * ryby.yml - np. Karp: srodek 15, kg-min tylko 10 od niego, kg-max az 25) - to celowo
+     * asymetryczne, bo tylko GORNY kraniec ma byc prawdziwym jackpotem (male okazy moga
+     * byc relatywnie czestsze, tak jak user chcial - podkreslal trudnosc tylko dla duzej
+     * ryby). Wynik spoza twardego limitu (kg-min/kg-max) jest ODRZUCANY i losowany ponownie
+     * (zamiast przyciety do granicy) - dzieki temu szansa zanika plynnie do zera, zamiast
+     * tworzyc sztuczny "garb" dokladnie na granicy limitu.
+     */
+    private int losujWageDziesieteKg(RybaGatunek gatunek) {
+        double srodek = (gatunek.kgTypowyMin() + gatunek.kgTypowyMax()) / 2.0;
+        double sigma = Math.max(0.01, (gatunek.kgMax() - srodek) / ILOSC_SIGMA_DO_MAKSIMUM);
+
+        double waga = srodek;
+        for (int proba = 0; proba < MAX_PROB_LOSOWANIA_WAGI; proba++) {
+            waga = srodek + ThreadLocalRandom.current().nextGaussian() * sigma;
+            if (waga >= gatunek.kgMin() && waga <= gatunek.kgMax()) break;
+        }
+        waga = Math.max(gatunek.kgMin(), Math.min(gatunek.kgMax(), waga)); // bezpiecznik, patrz MAX_PROB_LOSOWANIA_WAGI
+
+        return (int) Math.round(waga * 10);
     }
 
     /** Patrz stworzWedkeProfilTestowa - WedkaProfil.ZROWNOWAZONA (bez zmian) jeśli gracz nie trzyma otagowanej wędki testowej. */
@@ -455,6 +551,11 @@ public class FishingManager implements Listener {
     private void rozpocznijMinigre(Player player, RybaGatunek gatunek, WedkaProfil profil, Location lokalizacjaHaka) {
         UUID uuid = player.getUniqueId();
         player.playSound(player.getLocation(), Sound.ENTITY_FISHING_BOBBER_SPLASH, 1.0f, 1.0f);
+        // Wyrazny "dzwonek" DOKLADNIE w momencie brania - inny instrument niz
+        // pling/bass uzywane wewnatrz samej minigry (patrz FishingMinigame.tick) zeby
+        // gracz od razu, po samym dzwieku (bez patrzenia na ekran), wiedzial ze RYBA
+        // WLASNIE WZIELA i minigra ruszyla - trzeba zaczac klikac PPM.
+        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BELL, 1.0f, 1.4f);
 
         aktywneEfektyPolowu.put(uuid, efektZlapania(player, gatunek, lokalizacjaHaka));
 
@@ -478,14 +579,260 @@ public class FishingManager implements Listener {
     }
 
     private void nagrodaZaPolow(Player player, RybaGatunek zlowiona) {
-        ItemStack ryba = stworzRybe(zlowiona);
+        int wagaDziesieteKg = losujWageDziesieteKg(zlowiona);
+
+        ItemStack ryba = stworzRybe(zlowiona, wagaDziesieteKg);
         var nieZmieszczone = player.getInventory().addItem(ryba);
         nieZmieszczone.values().forEach(i -> player.getWorld().dropItemNaturally(player.getLocation(), i));
 
         player.sendMessage(Component.text("Złowiłeś: ", NamedTextColor.GREEN)
-                .append(Component.text(zlowiona.nazwa(), zlowiona.kolor(), TextDecoration.BOLD)));
+                .append(Component.text(zlowiona.nazwa(), zlowiona.kolor(), TextDecoration.BOLD))
+                .append(Component.text(" (" + formatKg(wagaDziesieteKg) + " kg)", NamedTextColor.GRAY)));
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
         rzucBonusowaSkrzynke(player);
+
+        statystyki.zanotujPolow(player.getUniqueId(), player.getName(), zlowiona.customId(), zlowiona.nazwa(), wagaDziesieteKg);
+
+        FishingStatsManager.NowyRekordGatunku rekord = statystyki.zanotujRekordGatunkuJesliNowy(zlowiona.customId(), zlowiona.nazwa(), wagaDziesieteKg, player.getUniqueId(), player.getName());
+        if (rekord != null) ogloszRekordGatunku(player, zlowiona, wagaDziesieteKg, rekord);
+    }
+
+    /**
+     * Publiczne ogloszenie na czacie CALEGO serwera (patrz Bukkit.broadcast - ten sam
+     * wzorzec co CrateManager przy wygranej ze skrzynki) - WYLACZNIE gdy polow byl nowym
+     * rekordem SWOJEGO GATUNKU (patrz zanotujRekordGatunkuJesliNowy), nie za kazdym razem -
+     * zwykle polowy zostaja prywatne (patrz wiadomosc w nagrodaZaPolow wyzej). Inne
+     * brzmienie dla pierwszego kiedykolwiek okazu danego gatunku (nie ma czego bic) vs
+     * realnego pobicia czyjegos rekordu (dorzuca kto i ile trzymal poprzednio, dla
+     * wiekszego "flexu" - patrz rozmowa z userem 2026-08-29).
+     */
+    private void ogloszRekordGatunku(Player player, RybaGatunek gatunek, int wagaDziesieteKg, FishingStatsManager.NowyRekordGatunku rekord) {
+        Component naglowek = Component.text("🏆 ", NamedTextColor.GOLD);
+        Component polow = Component.text(gatunek.nazwa() + " (" + formatKg(wagaDziesieteKg) + " kg)", gatunek.kolor(), TextDecoration.BOLD);
+
+        if (rekord.pierwszy()) {
+            Bukkit.broadcast(naglowek
+                    .append(Component.text(player.getName(), NamedTextColor.YELLOW, TextDecoration.BOLD))
+                    .append(Component.text(" złowił ", NamedTextColor.GOLD))
+                    .append(polow)
+                    .append(Component.text(" — rekord serwera na ten gatunek!", NamedTextColor.GOLD)));
+        } else {
+            Component poprzedni = rekord.poprzedniNick() != null
+                    ? Component.text(" (poprzedni rekord: " + String.format(Locale.ROOT, "%.1f", rekord.poprzedniaWagaKg()) + " kg, " + rekord.poprzedniNick() + ")", NamedTextColor.GRAY)
+                    : Component.text(" (poprzedni rekord: " + String.format(Locale.ROOT, "%.1f", rekord.poprzedniaWagaKg()) + " kg)", NamedTextColor.GRAY);
+            Bukkit.broadcast(naglowek
+                    .append(Component.text(player.getName(), NamedTextColor.YELLOW, TextDecoration.BOLD))
+                    .append(Component.text(" POBIŁ REKORD SERWERA! ", NamedTextColor.GOLD, TextDecoration.BOLD))
+                    .append(polow)
+                    .append(poprzedni));
+        }
+    }
+
+    // ==================================================================== GUI: Indeks Rybacki ====
+
+    // Rozpoznawcza fraza w tytule GUI (patrz onInventoryClick) - ten sam wzorzec co
+    // MarketManager.onInventoryClick (title.contains(...), NIE startsWith - Component
+    // zserializowany przez .toString() niesie ze soba dodatkowe metadane formatowania,
+    // wiec dokladne dopasowanie prefiksu bywa zawodne, "contains" na charakterystycznym
+    // kawalku tekstu jest niezawodne).
+    private static final String TYTUL_INDEKSU = "Indeks Rybacki";
+    private static final int SLOT_ODZNAKA_RZADKOSCI = 4;
+    private static final int SLOT_POSTEP_OGOLNY = 47;
+    private static final int SLOT_ZAMKNIJ_INDEKSU = 49;
+    private static final int SLOT_POPRZEDNIA_RZADKOSC = 45;
+    private static final int SLOT_NASTEPNA_RZADKOSC = 53;
+    private static final int RZAD_RYB_START = 19; // srodkowy rzad (patrz otworzIndeks), 7 slotow: 19-25
+    private static final int RZAD_RYB_KONIEC = 25;
+
+    // Ktora rzadkosc dany gracz ogląda w GUI /rybindeks TERAZ - patrz otworzIndeks(player,
+    // tier) i przyciski poprzednia/nastepna w onInventoryClick. Pamietane per-gracz (nie
+    // globalnie), zeby ponowne otwarcie komenda wracalo tam gdzie gracz skonczyl.
+    private final Map<UUID, RybaGatunek.Rzadkosc> tierIndeksuGracza = new HashMap<>();
+
+    /** Rzadkosci, ktore maja CHOCIAZ JEDEN gatunek w ryby.yml, w kolejnosci enuma - patrz otworzIndeks (EPICKA/LEGENDARNA na razie puste, wiec sie nie pojawiaja w przelaczniku). */
+    private List<RybaGatunek.Rzadkosc> rzadkosciZGatunkami() {
+        List<RybaGatunek.Rzadkosc> wynik = new ArrayList<>();
+        for (RybaGatunek.Rzadkosc tier : RybaGatunek.Rzadkosc.values()) {
+            for (RybaGatunek g : gatunki) {
+                if (g.rzadkosc() == tier) {
+                    wynik.add(tier);
+                    break;
+                }
+            }
+        }
+        return wynik;
+    }
+
+    /** Otwiera GUI "Indeks Rybacki" na rzadkości, na której gracz ostatnio skończył (albo pierwszej dostępnej) - patrz /rybindeks w MainpluginsFishing. */
+    public void otworzIndeks(Player player) {
+        List<RybaGatunek.Rzadkosc> tiery = rzadkosciZGatunkami();
+        if (tiery.isEmpty()) {
+            player.sendMessage(Component.text("Żadne gatunki ryb nie są jeszcze skonfigurowane.", NamedTextColor.RED));
+            return;
+        }
+        RybaGatunek.Rzadkosc zapamietany = tierIndeksuGracza.get(player.getUniqueId());
+        otworzIndeks(player, tiery.contains(zapamietany) ? zapamietany : tiery.get(0));
+    }
+
+    /**
+     * Otwiera GUI "Indeks Rybacki" na KONKRETNEJ rzadkości - jedna sekcja na ekran (patrz
+     * SLOT_ODZNAKA_RZADKOSCI/RZAD_RYB_*), z przyciskami "« poprzednia/następna »" do
+     * przełączania między rzadkościami (patrz onInventoryClick) zamiast wszystkich
+     * naraz w oddzielnych rzędach - user 2026-08-29 wolał to od poprzedniej wersji.
+     * Gatunek JUŻ złowiony (patrz FishingStatsManager.getIndeks) pokazuje prawdziwą ikonę
+     * z lore (ile sztuk + osobisty rekord wagi), a JESZCZE nieodkryty pokazuje WYŁĄCZNIE
+     * czerwoną szybę - zero nazwy/lore zdradzającej co to za ryba.
+     */
+    private void otworzIndeks(Player player, RybaGatunek.Rzadkosc tier) {
+        tierIndeksuGracza.put(player.getUniqueId(), tier);
+        List<RybaGatunek.Rzadkosc> tiery = rzadkosciZGatunkami();
+        int indeksTieru = tiery.indexOf(tier);
+
+        Map<String, FishingStatsManager.WpisIndeksu> odkryte = new HashMap<>();
+        for (FishingStatsManager.WpisIndeksu wpis : statystyki.getIndeks(player.getUniqueId())) {
+            odkryte.put(wpis.customId(), wpis);
+        }
+
+        Inventory gui = Bukkit.createInventory(null, 54, Component.text(TYTUL_INDEKSU + " — " + nazwaTieru(tier), NamedTextColor.AQUA, TextDecoration.BOLD));
+
+        ItemStack tlo = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        ItemMeta mTlo = tlo.getItemMeta();
+        mTlo.displayName(Component.empty());
+        tlo.setItemMeta(mTlo);
+        for (int i = 0; i < 54; i++) gui.setItem(i, tlo);
+
+        List<RybaGatunek> gatunkiTieru = new ArrayList<>();
+        for (RybaGatunek g : gatunki) if (g.rzadkosc() == tier) gatunkiTieru.add(g);
+
+        int slot = RZAD_RYB_START;
+        int znalezionychWTierze = 0;
+        for (RybaGatunek gatunek : gatunkiTieru) {
+            if (slot > RZAD_RYB_KONIEC) break; // bezpiecznik, gdyby kiedys jedna rzadkosc miala wiecej niz 7 gatunkow
+            FishingStatsManager.WpisIndeksu wpis = odkryte.get(gatunek.customId());
+            if (wpis != null) {
+                znalezionychWTierze++;
+                gui.setItem(slot, iconaIndeksu(gatunek, wpis));
+            } else {
+                gui.setItem(slot, nieodkrytaIkona());
+            }
+            slot++;
+        }
+
+        ItemStack odznaka = etykietaTieru(tier);
+        ItemMeta mOdznaka = odznaka.getItemMeta();
+        mOdznaka.lore(List.of(Component.text(znalezionychWTierze + " / " + gatunkiTieru.size() + " odkrytych w tej sekcji", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+        odznaka.setItemMeta(mOdznaka);
+        gui.setItem(SLOT_ODZNAKA_RZADKOSCI, odznaka);
+
+        ItemStack postep = new ItemStack(Material.NAUTILUS_SHELL);
+        ItemMeta mPostep = postep.getItemMeta();
+        mPostep.displayName(Component.text("Odkryto łącznie: " + odkryte.size() + " / " + gatunki.size() + " gatunków", NamedTextColor.YELLOW, TextDecoration.BOLD));
+        postep.setItemMeta(mPostep);
+        gui.setItem(SLOT_POSTEP_OGOLNY, postep);
+
+        if (indeksTieru > 0) gui.setItem(SLOT_POPRZEDNIA_RZADKOSC, strzalkaTieru(tiery.get(indeksTieru - 1), true));
+        if (indeksTieru < tiery.size() - 1) gui.setItem(SLOT_NASTEPNA_RZADKOSC, strzalkaTieru(tiery.get(indeksTieru + 1), false));
+
+        ItemStack zamknij = new ItemStack(Material.BARRIER);
+        ItemMeta mZamknij = zamknij.getItemMeta();
+        mZamknij.displayName(Component.text("Zamknij", NamedTextColor.RED, TextDecoration.BOLD));
+        zamknij.setItemMeta(mZamknij);
+        gui.setItem(SLOT_ZAMKNIJ_INDEKSU, zamknij);
+
+        player.openInventory(gui);
+    }
+
+    /** Przycisk przełączający na sąsiednią rzadkość - patrz otworzIndeks/onInventoryClick. */
+    private ItemStack strzalkaTieru(RybaGatunek.Rzadkosc docelowa, boolean poprzednia) {
+        ItemStack item = new ItemStack(Material.SPECTRAL_ARROW);
+        ItemMeta meta = item.getItemMeta();
+        String nazwa = poprzednia ? "« " + nazwaTieru(docelowa) : nazwaTieru(docelowa) + " »";
+        meta.displayName(Component.text(nazwa, NamedTextColor.YELLOW, TextDecoration.BOLD));
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private String nazwaTieru(RybaGatunek.Rzadkosc tier) {
+        return switch (tier) {
+            case ZWYKLA -> "Zwykłe";
+            case NIEZWYKLA -> "Niezwykłe";
+            case RZADKA -> "Rzadkie";
+            case EPICKA -> "Epickie";
+            case LEGENDARNA -> "Legendarne";
+            case MITYCZNA -> "Mityczne";
+        };
+    }
+
+    /** Odznaka aktualnie oglądanej rzadkości (patrz SLOT_ODZNAKA_RZADKOSCI) - lore z licznikiem dorzuca otworzIndeks. */
+    private ItemStack etykietaTieru(RybaGatunek.Rzadkosc tier) {
+        Material szklo = switch (tier) {
+            case ZWYKLA -> Material.WHITE_STAINED_GLASS_PANE;
+            case NIEZWYKLA -> Material.LIME_STAINED_GLASS_PANE;
+            case RZADKA -> Material.MAGENTA_STAINED_GLASS_PANE;
+            case EPICKA -> Material.PURPLE_STAINED_GLASS_PANE;
+            case LEGENDARNA -> Material.ORANGE_STAINED_GLASS_PANE;
+            case MITYCZNA -> Material.CYAN_STAINED_GLASS_PANE;
+        };
+        ItemStack item = new ItemStack(szklo);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.text(nazwaTieru(tier), NamedTextColor.GRAY, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    /** Placeholder nieodkrytego gatunku - CELOWO tylko czerwona szyba, bez nazwy/lore, żeby niczego nie zdradzić (user 2026-08-29). */
+    private ItemStack nieodkrytaIkona() {
+        ItemStack item = new ItemStack(Material.RED_STAINED_GLASS_PANE);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.empty());
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    /** Ikona jednego odkrytego gatunku w GUI indeksu - bazowy item (patrz bazowyItemRyby) plus lore z liczbą sztuk i osobistym rekordem wagi TEGO gracza (nie mylić z wagą pojedynczej złowionej ryby w stworzRybe). */
+    private ItemStack iconaIndeksu(RybaGatunek gatunek, FishingStatsManager.WpisIndeksu wpis) {
+        ItemStack item = bazowyItemRyby(gatunek);
+
+        ItemMeta meta = item.getItemMeta();
+        List<Component> lore = meta.hasLore() ? new ArrayList<>(meta.lore()) : new ArrayList<>();
+        lore.add(Component.text("Złowionych: " + wpis.zlowionychSztuk() + " szt.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.text("Twój rekord: " + String.format(Locale.ROOT, "%.1f", wpis.rekordKg()) + " kg", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        meta.lore(lore);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    /**
+     * Obsługa GUI /rybindeks: "Zamknij" zamyka, strzałki poprzednia/następna przełączają
+     * na sąsiednią rzadkość (patrz otworzIndeks(player, tier)) - ponowne otwarcie
+     * inventory wewnątrz handlera klika, ten sam wzorzec co paginacja w
+     * MarketManager.onInventoryClick. Klikanie samych rybek/odznaki nic nie robi, to
+     * czysto podgląd.
+     */
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        String tytul = event.getView().title().toString();
+        if (!tytul.contains(TYTUL_INDEKSU)) return;
+
+        event.setCancelled(true);
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+
+        int slot = event.getRawSlot();
+        if (slot == SLOT_ZAMKNIJ_INDEKSU) {
+            player.closeInventory();
+            return;
+        }
+
+        List<RybaGatunek.Rzadkosc> tiery = rzadkosciZGatunkami();
+        RybaGatunek.Rzadkosc aktualny = tierIndeksuGracza.get(player.getUniqueId());
+        int indeks = tiery.indexOf(aktualny);
+        if (indeks < 0) return;
+
+        if (slot == SLOT_POPRZEDNIA_RZADKOSC && indeks > 0) {
+            otworzIndeks(player, tiery.get(indeks - 1));
+        } else if (slot == SLOT_NASTEPNA_RZADKOSC && indeks < tiery.size() - 1) {
+            otworzIndeks(player, tiery.get(indeks + 1));
+        }
     }
 
     /** Jedyna rola tego handlera: przekazać rytmiczne PPM gracza do jego aktywnej minigry (patrz FishingMinigame.kliknij). */

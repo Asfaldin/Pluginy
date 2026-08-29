@@ -1,54 +1,360 @@
 # Gatunki ryb do lowienia w obszarach lowisk (patrz ObszarService, flaga ryby-dozwolone
-# ustawiana /@obszar ryby w mainplugins-spawn). customId musi zgadzac sie 1:1 z sklep.yml
-# (kategoria "ryby_wedkarskie") i z customId-ami wymogow questow kategorii "Rybak" w
-# mainplugins-quests - to jedyny "kontrakt" laczacy te trzy niezalezne moduly (patrz
-# CustomItemKeys w mainplugins-core). Jesli custom-id ma wpis w rejestrze custom itemow
-# (mainplugins-core, custom-items.yml - np. FISH_MISTYCZNA z wlasnym modelem z
-# resourcepacka) to on wygrywa, a material/name/color ponizej sluzy tylko jako fallback,
-# gdyby rejestru zabraklo.
+# ustawiana /@obszar ryby w mainplugins-spawn). customId musi zgadzac sie 1:1 z
+# mainplugins-shop (kategoria "ryby_wedkarskie") i z customId-ami wymogow questow kategorii
+# "Rybak" w mainplugins-quests - to jedyny "kontrakt" laczacy te trzy niezalezne moduly
+# (patrz CustomItemKeys w mainplugins-core). Jesli custom-id ma wpis w rejestrze custom itemow
+# (mainplugins-core, custom-items.yml) to on wygrywa (wlasny model z resourcepacka), a
+# material/name/color ponizej sluzy tylko jako fallback.
 #
-# rarity: ZWYKLA / NIEZWYKLA / RZADKA / EPICKA / LEGENDARNA (od RZADKA w gore ryba dostaje
-#         enchant glint w fallbackowym budowaniu itemu).
-# weight:  waga losowania (im wyzsza, tym czesciej ta ryba wypada) - to NIE jest procent
-#          bezposrednio, szansa = weight / suma wszystkich weight ponizej.
+# 2026-08-29: rozszerzone z 6 do 30 gatunkow (po 5 na kazda z 6 rzadkosci, patrz
+# RybaGatunek.Rzadkosc - drabinka "Wariant A": Zwykla/Niezwykla/Rzadka/Epicka/Legendarna/
+# Mityczna). WSZYSTKIE 30 maja teraz wlasny model w custom-items.yml - oryginalnych 6
+# (Karp/Dorsz/Sum/Strzelczyk/Wioslozab/Latimeria) ma modele z resourcepacka "AllTheFish V4"
+# (namespace mainplugins), reszta (24 nowe) ma modele POZYCZONE z duzo wiekszej biblioteki
+# tego samego autora - "AllTheFish V4 - 26.2" (namespace barely_default, 200 gatunkow w
+# paczce) - patrz mainplugins-core/resourcepack/assets/barely_default/. Dobierane recznie
+# tematycznie do kazdej nazwy (np. Szczupak -> pike, Marlin Blekitny -> blue_marlin,
+# Zloty Karp Bogow -> golden_carp) - latwo podmienic pojedynczo w custom-items.yml, jesli
+# ktos zrobi dla ktoregos gatunku wlasny, dedykowany model w przyszlosci.
 #
-# Wagi TYMCZASOWO wyrownane (1/1/1 = kazda ryba ma taka sama szanse) na czas testow
-# minigry - docelowy rozklad rzadkosci byl 50/30/5, wrocic do tego przed wdrozeniem
-# na produkcje.
+# rarity: ZWYKLA / NIEZWYKLA / RZADKA / EPICKA / LEGENDARNA / MITYCZNA (od RZADKA w gore
+#         ryba dostaje enchant glint w fallbackowym budowaniu itemu).
+# weight:  waga losowania GATUNKU (im wyzsza, tym czesciej TEN GATUNEK wypada) - to NIE jest
+#          procent bezposrednio, szansa = weight / suma wszystkich weight ponizej. NIE mylic
+#          z waga fizyczna ryby w kg (patrz kg-* nizej) - to dwa zupelnie inne "wagi".
+#
+# Wagi losowania WCIAZ wyrownane (1 = kazda ryba w danej rzadkosci ma taka sama szanse) na
+# czas testow - docelowy rozklad miedzy RZADKOSCIAMI (nie gatunkami) byl kiedys 50/30/5,
+# teraz ze rzadkosci jest 6 trzeba to przemyslec na nowo i ustalic PRZED wdrozeniem na
+# produkcje - wciaz nieodhaczone, teraz dotyczy juz wszystkich 30 gatunkow, nie tylko 6.
+#
+# kg-typowy-min / kg-typowy-max: typowy zakres fizycznej wagi zlowionej ryby w kg (patrz
+#   FishingManager.losujWageDziesieteKg) - rozklad normalny wysrodkowany na srodku tego
+#   zakresu, wiec WIEKSZOSC polowow wypada w okolicy tych granic.
+# kg-min / kg-max: twardy limit - skrajnie rzadkie "jackpotowe" odchyly w dol/gore. Wynik
+#   spoza tego przedzialu jest odrzucany i losowany ponownie (patrz ILOSC_SIGMA_DO_MAKSIMUM
+#   w FishingManager - kazdy gatunek ma ~1/31500 szanse na wynik blisko WLASNEGO kg-max).
+#
+# Kazdy gatunek ma WLASNY zakres kg - ogolny trend to "wyzsza rzadkosc = wiecej kg" (srednia
+# typowego zakresu na rzadkosc rosnie: Zwykla ~13kg -> Niezwykla ~28kg -> Rzadka ~50kg ->
+# Epicka ~66kg -> Legendarna ~102kg -> Mityczna ~113-125kg), ale w obrebie jednej rzadkosci
+# gatunki tez sie roznia (czasem mocno, czasem prawie wcale - user 2026-08-29 chcial
+# realistyczna, nie mechaniczna progresje). MITYCZNA ma swiadomy wyjatek: Zloty Karp Bogow
+# jest ZDECYDOWANIE ciezszy od pozostalych 4 mitycznych gatunkow - prawdziwy "swiety graal"
+# calego systemu, jedyna ryba z limitem siegajacym 200kg.
 gatunki:
+
+  # ==================================================================== ZWYKLA ====
   - custom-id: FISH_KARP
     name: "Karp"
     material: COD
     color: GRAY
     rarity: ZWYKLA
     weight: 1
+    kg-typowy-min: 8.0
+    kg-typowy-max: 18.0
+    kg-min: 4.0
+    kg-max: 35.0
   - custom-id: FISH_DORSZ_ATLANTYCKI
     name: "Dorsz Atlantycki"
     material: COD
     color: GRAY
     rarity: ZWYKLA
     weight: 1
-  - custom-id: FISH_SUM
-    name: "Sum"
+    kg-typowy-min: 12.0
+    kg-typowy-max: 25.0
+    kg-min: 6.0
+    kg-max: 45.0
+  - custom-id: FISH_PLOC
+    name: "Płoć"
     material: SALMON
-    color: GREEN
-    rarity: NIEZWYKLA
+    color: GRAY
+    rarity: ZWYKLA
     weight: 1
+    kg-typowy-min: 5.0
+    kg-typowy-max: 12.0
+    kg-min: 2.0
+    kg-max: 25.0
+  - custom-id: FISH_LESZCZ
+    name: "Leszcz"
+    material: COD
+    color: WHITE
+    rarity: ZWYKLA
+    weight: 1
+    kg-typowy-min: 10.0
+    kg-typowy-max: 22.0
+    kg-min: 5.0
+    kg-max: 40.0
+  - custom-id: FISH_SLEDZ
+    name: "Śledź"
+    material: SALMON
+    color: WHITE
+    rarity: ZWYKLA
+    weight: 1
+    kg-typowy-min: 6.0
+    kg-typowy-max: 14.0
+    kg-min: 3.0
+    kg-max: 28.0
+
+  # ==================================================================== NIEZWYKLA ====
   - custom-id: FISH_STRZELCZYK_PASIASTY
     name: "Strzelczyk Pasiasty"
     material: SALMON
     color: GREEN
     rarity: NIEZWYKLA
     weight: 1
+    kg-typowy-min: 15.0
+    kg-typowy-max: 28.0
+    kg-min: 8.0
+    kg-max: 45.0
+  - custom-id: FISH_SUM
+    name: "Sum"
+    material: SALMON
+    color: GREEN
+    rarity: NIEZWYKLA
+    weight: 1
+    kg-typowy-min: 25.0
+    kg-typowy-max: 45.0
+    kg-min: 12.0
+    kg-max: 80.0
+  - custom-id: FISH_SZCZUPAK
+    name: "Szczupak"
+    material: TROPICAL_FISH
+    color: GREEN
+    rarity: NIEZWYKLA
+    weight: 1
+    kg-typowy-min: 18.0
+    kg-typowy-max: 32.0
+    kg-min: 9.0
+    kg-max: 55.0
+  - custom-id: FISH_WEGORZ
+    name: "Węgorz"
+    material: PUFFERFISH
+    color: GREEN
+    rarity: NIEZWYKLA
+    weight: 1
+    kg-typowy-min: 14.0
+    kg-typowy-max: 26.0
+    kg-min: 7.0
+    kg-max: 42.0
+  - custom-id: FISH_JESIOTR
+    name: "Jesiotr"
+    material: COD
+    color: DARK_GREEN
+    rarity: NIEZWYKLA
+    weight: 1
+    kg-typowy-min: 30.0
+    kg-typowy-max: 50.0
+    kg-min: 15.0
+    kg-max: 90.0
+
+  # ==================================================================== RZADKA ====
   - custom-id: FISH_WIOSLOZAB
     name: "Wiosłozab"
     material: TROPICAL_FISH
     color: LIGHT_PURPLE
     rarity: RZADKA
     weight: 1
+    kg-typowy-min: 30.0
+    kg-typowy-max: 50.0
+    kg-min: 15.0
+    kg-max: 80.0
   - custom-id: FISH_LATIMERIA
     name: "Latimeria"
     material: TROPICAL_FISH
     color: LIGHT_PURPLE
     rarity: RZADKA
     weight: 1
+    kg-typowy-min: 40.0
+    kg-typowy-max: 65.0
+    kg-min: 20.0
+    kg-max: 100.0
+  - custom-id: FISH_MARLIN_BLEKITNY
+    name: "Marlin Błękitny"
+    material: TROPICAL_FISH
+    color: BLUE
+    rarity: RZADKA
+    weight: 1
+    kg-typowy-min: 45.0
+    kg-typowy-max: 70.0
+    kg-min: 22.0
+    kg-max: 110.0
+  - custom-id: FISH_MIECZNIK
+    name: "Miecznik"
+    material: PUFFERFISH
+    color: LIGHT_PURPLE
+    rarity: RZADKA
+    weight: 1
+    kg-typowy-min: 40.0
+    kg-typowy-max: 65.0
+    kg-min: 20.0
+    kg-max: 100.0
+  - custom-id: FISH_MANTA_OLBRZYMIA
+    name: "Manta Olbrzymia"
+    material: COD
+    color: DARK_PURPLE
+    rarity: RZADKA
+    weight: 1
+    kg-typowy-min: 35.0
+    kg-typowy-max: 60.0
+    kg-min: 18.0
+    kg-max: 95.0
+
+  # ==================================================================== EPICKA ====
+  - custom-id: FISH_REKIN_WIELORYBI
+    name: "Rekin Wielorybi"
+    material: PUFFERFISH
+    color: DARK_AQUA
+    rarity: EPICKA
+    weight: 1
+    kg-typowy-min: 60.0
+    kg-typowy-max: 95.0
+    kg-min: 30.0
+    kg-max: 140.0
+  - custom-id: FISH_ZARLACZ_BIALY
+    name: "Żarłacz Biały"
+    material: PUFFERFISH
+    color: AQUA
+    rarity: EPICKA
+    weight: 1
+    kg-typowy-min: 50.0
+    kg-typowy-max: 80.0
+    kg-min: 25.0
+    kg-max: 120.0
+  - custom-id: FISH_TUNCZYK_BLEKITNOPLETWY
+    name: "Tuńczyk Błękitnopłetwy"
+    material: TROPICAL_FISH
+    color: DARK_BLUE
+    rarity: EPICKA
+    weight: 1
+    kg-typowy-min: 55.0
+    kg-typowy-max: 85.0
+    kg-min: 28.0
+    kg-max: 125.0
+  - custom-id: FISH_KALMAR_OLBRZYMI
+    name: "Kalmar Olbrzymi"
+    material: SALMON
+    color: DARK_AQUA
+    rarity: EPICKA
+    weight: 1
+    kg-typowy-min: 45.0
+    kg-typowy-max: 75.0
+    kg-min: 22.0
+    kg-max: 115.0
+  - custom-id: FISH_OSMIORNICA_OLBRZYMIA
+    name: "Ośmiornica Olbrzymia Pacyficzna"
+    material: COD
+    color: AQUA
+    rarity: EPICKA
+    weight: 1
+    kg-typowy-min: 40.0
+    kg-typowy-max: 70.0
+    kg-min: 20.0
+    kg-max: 105.0
+
+  # ==================================================================== LEGENDARNA ====
+  - custom-id: FISH_WAZ_MORSKI
+    name: "Wąż Morski"
+    material: TROPICAL_FISH
+    color: DARK_RED
+    rarity: LEGENDARNA
+    weight: 1
+    kg-typowy-min: 75.0
+    kg-typowy-max: 110.0
+    kg-min: 35.0
+    kg-max: 150.0
+  - custom-id: FISH_KRAKEN
+    name: "Kraken"
+    material: PUFFERFISH
+    color: DARK_RED
+    rarity: LEGENDARNA
+    weight: 1
+    kg-typowy-min: 85.0
+    kg-typowy-max: 125.0
+    kg-min: 40.0
+    kg-max: 160.0
+  - custom-id: FISH_LEWIATAN
+    name: "Lewiatan"
+    material: SALMON
+    color: RED
+    rarity: LEGENDARNA
+    weight: 1
+    kg-typowy-min: 90.0
+    kg-typowy-max: 130.0
+    kg-min: 45.0
+    kg-max: 170.0
+  - custom-id: FISH_MEGALODON
+    name: "Megalodon"
+    material: COD
+    color: RED
+    rarity: LEGENDARNA
+    weight: 1
+    kg-typowy-min: 95.0
+    kg-typowy-max: 135.0
+    kg-min: 48.0
+    kg-max: 175.0
+  - custom-id: FISH_SMOK_MORSKI
+    name: "Smok Morski"
+    material: TROPICAL_FISH
+    color: GOLD
+    rarity: LEGENDARNA
+    weight: 1
+    kg-typowy-min: 70.0
+    kg-typowy-max: 105.0
+    kg-min: 32.0
+    kg-max: 145.0
+
+  # ==================================================================== MITYCZNA ====
+  - custom-id: FISH_FENIKS_MORSKI
+    name: "Feniks Morski"
+    material: SALMON
+    color: GOLD
+    rarity: MITYCZNA
+    weight: 1
+    kg-typowy-min: 100.0
+    kg-typowy-max: 140.0
+    kg-min: 50.0
+    kg-max: 180.0
+  - custom-id: FISH_DUCH_GLEBIN
+    name: "Duch Głębin"
+    material: TROPICAL_FISH
+    color: WHITE
+    rarity: MITYCZNA
+    weight: 1
+    kg-typowy-min: 90.0
+    kg-typowy-max: 130.0
+    kg-min: 45.0
+    kg-max: 170.0
+  - custom-id: FISH_ISKRA_OTCHLANI
+    name: "Iskra Otchłani"
+    material: PUFFERFISH
+    color: LIGHT_PURPLE
+    rarity: MITYCZNA
+    weight: 1
+    kg-typowy-min: 95.0
+    kg-typowy-max: 135.0
+    kg-min: 48.0
+    kg-max: 175.0
+  - custom-id: FISH_ZJAWA_OCEANU
+    name: "Zjawa Oceanu"
+    material: COD
+    color: WHITE
+    rarity: MITYCZNA
+    weight: 1
+    kg-typowy-min: 85.0
+    kg-typowy-max: 125.0
+    kg-min: 42.0
+    kg-max: 165.0
+  # ZLOTY GRAAL calego systemu - celowo, DUZO ciezszy od pozostalych 4 mitycznych ryb
+  # powyzej (patrz komentarz na gorze pliku) - user 2026-08-29 chcial jedna wyraznie
+  # wyrozniajaca sie ryba z limitem siegajacym az 200kg.
+  - custom-id: FISH_ZLOTY_KARP_BOGOW
+    name: "Złoty Karp Bogów"
+    material: COD
+    color: YELLOW
+    rarity: MITYCZNA
+    weight: 1
+    kg-typowy-min: 140.0
+    kg-typowy-max: 180.0
+    kg-min: 70.0
+    kg-max: 200.0

@@ -1,2 +1,8 @@
 target/
 dist/
+
+# Spakowane archiwa resourcepacka (output do wgrania na hosting typu mc-packs.net) -
+# zrodlo to mainplugins-core/resourcepack/, te pliki to tylko lokalny "build artifact".
+mainplugins-core/resourcepack.rar
+mainplugins-core/resourcepack/*.zip
+mainplugins-core/resourcepack/*.rar

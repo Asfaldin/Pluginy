@@ -72,6 +72,17 @@ public class FishingManager implements Listener {
     // MainpluginsFishing mogl go zamknac (zapis natychmiastowy) w onDisable().
     private final FishingStatsManager statystyki;
 
+    // Awaryjny wylacznik WSZYSTKICH publicznych ogloszen na czacie zwiazanych z rybami
+    // (rekord gatunku/serwera, skompletowanie indeksu - patrz ogloszRekordGatunku/
+    // ogloszRekordSerwera/ogloszUkonczenieIndeksu) - user 2026-08-30: "gdyby ktos znalazl
+    // jakiegos buga" (np. zly polow spamujacy caly serwer ogloszeniami). Komenda
+    // /@rybykomunikaty w MainpluginsFishing. CELOWO tylko w pamieci (nie w pliku) - to
+    // doraznie narzedzie na czas trwania problemu, nie trwale ustawienie; restart serwera
+    // sam w sobie odblokowuje. NIE wycisza prywatnej wiadomosci "Zlowiles: ..." (patrz
+    // nagrodaZaPolow) - to nie jest ryzyko spamu calego serwera, tylko normalny feedback
+    // dla samego lowiacego.
+    private volatile boolean komunikatyZablokowane = false;
+
     // Bezdenne Wiaderko (patrz WiaderkoManager, user 2026-08-30) - ryby przy udanym
     // polowie leca NAJPIERW tutaj (patrz nagrodaZaPolow), zanim trafia do zwyklego
     // ekwipunku. Wstrzykiwane jak statystyki wyzej - MainpluginsFishing rejestruje je
@@ -129,6 +140,12 @@ public class FishingManager implements Listener {
     // (PersistentDataContainer gracza), więc pamiętany między sesjami bez osobnego pliku.
     private final NamespacedKey tagPozycjaPaska;
 
+    // Tag na SAMYM GRACZU - styl paska (tekstowy vs graficzny, patrz StylPaska) - user
+    // 2026-08-30. Rozłączny od tagPozycjaPaska/tagStronaPaska nizej: tekstowy uzywa
+    // tagPozycjaPaska (gora/dol), graficzny uzywa tagStronaPaska (lewo/prawo).
+    private final NamespacedKey tagStylPaska;
+    private final NamespacedKey tagStronaPaska;
+
     public FishingManager(Plugin plugin, FishingConfig config, FishingStatsManager statystyki, WiaderkoManager wiaderko) {
         this.plugin = plugin;
         this.config = config;
@@ -137,6 +154,8 @@ public class FishingManager implements Listener {
         this.tagWedkiTestowej = new NamespacedKey(plugin, "wedka_test_indeks");
         this.tagProfiluTestowego = new NamespacedKey(plugin, "wedka_test_profil");
         this.tagPozycjaPaska = new NamespacedKey(plugin, "fishing_pozycja_paska");
+        this.tagStylPaska = new NamespacedKey(plugin, "fishing_styl_paska");
+        this.tagStronaPaska = new NamespacedKey(plugin, "fishing_strona_paska");
         wczytajGatunki();
     }
 
@@ -158,10 +177,52 @@ public class FishingManager implements Listener {
         player.getPersistentDataContainer().set(tagPozycjaPaska, PersistentDataType.STRING, pozycja.name());
     }
 
+    /** Patrz tagStylPaska - StylPaska.TEKSTOWY (dotychczasowe, jedyne zachowanie sprzed 2026-08-30) jeśli gracz nigdy nic nie ustawiał. */
+    public StylPaska stylPaska(Player player) {
+        String nazwa = player.getPersistentDataContainer().get(tagStylPaska, PersistentDataType.STRING);
+        if (nazwa == null) return StylPaska.TEKSTOWY;
+        try {
+            return StylPaska.valueOf(nazwa);
+        } catch (IllegalArgumentException e) {
+            return StylPaska.TEKSTOWY;
+        }
+    }
+
+    /** Patrz tagStylPaska - przełącznik w Ustawieniach (patrz otworzUstawienia). */
+    public void ustawStylPaska(Player player, StylPaska styl) {
+        player.getPersistentDataContainer().set(tagStylPaska, PersistentDataType.STRING, styl.name());
+    }
+
+    /** Patrz tagStronaPaska - StronaPaska.PRAWO domyślnie jeśli gracz nigdy nic nie ustawiał. */
+    public StronaPaska stronaPaska(Player player) {
+        String nazwa = player.getPersistentDataContainer().get(tagStronaPaska, PersistentDataType.STRING);
+        if (nazwa == null) return StronaPaska.PRAWO;
+        try {
+            return StronaPaska.valueOf(nazwa);
+        } catch (IllegalArgumentException e) {
+            return StronaPaska.PRAWO;
+        }
+    }
+
+    /** Patrz tagStronaPaska - przełącznik w Ustawieniach (patrz otworzUstawienia). */
+    public void ustawStronePaska(Player player, StronaPaska strona) {
+        player.getPersistentDataContainer().set(tagStronaPaska, PersistentDataType.STRING, strona.name());
+    }
+
     /** Przeladowuje tuning minigry/bonusowej skrzynki (fishing-config.yml) i gatunki ryb (ryby.yml) - patrz komenda @reloadfishing. */
     public void aktualizujKonfiguracje(FishingConfig nowy) {
         this.config = nowy;
         wczytajGatunki();
+    }
+
+    /** Patrz komunikatyZablokowane - komenda /@rybykomunikaty w MainpluginsFishing. */
+    public boolean czyKomunikatyZablokowane() {
+        return komunikatyZablokowane;
+    }
+
+    /** Patrz komunikatyZablokowane - komenda /@rybykomunikaty w MainpluginsFishing. */
+    public void ustawKomunikatyZablokowane(boolean zablokowane) {
+        this.komunikatyZablokowane = zablokowane;
     }
 
     /** Wszystkie znane gatunki, w KANONICZNEJ kolejnosci z ryby.yml - patrz /rybiemenu w MainpluginsFishing (kolejnosc wyswietlania indeksu). Defensywna kopia. */
@@ -588,7 +649,7 @@ public class FishingManager implements Listener {
 
         aktywneEfektyPolowu.put(uuid, efektZlapania(player, gatunek, lokalizacjaHaka));
 
-        FishingMinigame gra = new FishingMinigame(plugin, player, gatunek, profil, config.minigra(), pozycjaPaska(player),
+        FishingMinigame gra = new FishingMinigame(plugin, player, gatunek, profil, config.minigra(), pozycjaPaska(player), stylPaska(player), stronaPaska(player),
                 () -> {
                     aktywneMinigry.remove(uuid);
                     zakonczEfektPolowu(uuid);
@@ -650,10 +711,11 @@ public class FishingManager implements Listener {
         if (rekord != null) ogloszRekordGatunku(player, zlowiona, wagaDziesieteKg, rekord);
 
         // Rekord SERWERA (dowolny gatunek, patrz FishingStatsManager.getRekordSerwera) -
-        // osobny od rekordu gatunku wyzej, bez wlasnego ogloszenia na czacie (na razie
-        // pokazywany tylko w /rybtop). Ta sama zasada remisu co rekord gatunku (patrz
-        // zanotujRekordSerweraJesliNowy - scisle ">" ), user 2026-08-30.
-        statystyki.zanotujRekordSerweraJesliNowy(player.getUniqueId(), player.getName(), zlowiona.nazwa(), wagaDziesieteKg);
+        // osobny od rekordu gatunku wyzej, z WLASNYM ogloszeniem na czacie (user
+        // 2026-08-30: chcial wyroznienie ze to "najwieksza ryba na serwerze", nie tylko
+        // widoczne w /rybtop). Ta sama zasada remisu co rekord gatunku (scisle ">").
+        FishingStatsManager.NowyRekordSerwera rekordSerwera = statystyki.zanotujRekordSerweraJesliNowy(player.getUniqueId(), player.getName(), zlowiona.nazwa(), wagaDziesieteKg);
+        if (rekordSerwera != null) ogloszRekordSerwera(player, zlowiona, wagaDziesieteKg, rekordSerwera);
 
         if (nowyGatunekWIndeksie && !gatunki.isEmpty() && statystyki.getIndeks(player.getUniqueId()).size() == gatunki.size()) {
             ogloszUkonczenieIndeksu(player);
@@ -670,6 +732,7 @@ public class FishingManager implements Listener {
      * wiekszego "flexu" - patrz rozmowa z userem 2026-08-29).
      */
     private void ogloszRekordGatunku(Player player, RybaGatunek gatunek, int wagaDziesieteKg, FishingStatsManager.NowyRekordGatunku rekord) {
+        if (komunikatyZablokowane) return;
         Component naglowek = Component.text("🏆 ", NamedTextColor.GOLD);
         Component polow = Component.text(gatunek.nazwa() + " (" + formatKg(wagaDziesieteKg) + " kg)", gatunek.kolor(), TextDecoration.BOLD);
 
@@ -692,6 +755,37 @@ public class FishingManager implements Listener {
     }
 
     /**
+     * Ogłoszenie na czacie CAŁEGO serwera przy pobiciu OGÓLNEGO rekordu serwera - dowolny
+     * gatunek, patrz FishingStatsManager.zanotujRekordSerweraJesliNowy (user 2026-08-30:
+     * "wyróżnienie że to największa ryba na serwerze"). CELOWO inne hasło/emoji (👑, nie
+     * 🏆) niż ogloszRekordGatunku wyżej - tamto ogłoszenie mówi "rekord serwera" ale ma na
+     * myśli TYLKO dany gatunek, więc to musi się jednoznacznie odróżniać, żeby graczy nie
+     * zmyliło który rekord właśnie padł. Ten sam wzorzec "pierwszy vs. pobił czyjś" co tam.
+     */
+    private void ogloszRekordSerwera(Player player, RybaGatunek gatunek, int wagaDziesieteKg, FishingStatsManager.NowyRekordSerwera rekord) {
+        if (komunikatyZablokowane) return;
+        Component naglowek = Component.text("👑 ", NamedTextColor.GOLD);
+        Component polow = Component.text(gatunek.nazwa() + " (" + formatKg(wagaDziesieteKg) + " kg)", gatunek.kolor(), TextDecoration.BOLD);
+
+        if (rekord.pierwszy()) {
+            Bukkit.broadcast(naglowek
+                    .append(Component.text(player.getName(), NamedTextColor.YELLOW, TextDecoration.BOLD))
+                    .append(Component.text(" złowił ", NamedTextColor.GOLD))
+                    .append(polow)
+                    .append(Component.text(" — NAJWIĘKSZA ryba w historii serwera!", NamedTextColor.GOLD, TextDecoration.BOLD)));
+        } else {
+            Component poprzedni = Component.text(" (poprzedni rekord: " + rekord.poprzedniGatunek() + ", "
+                    + String.format(Locale.ROOT, "%.1f", rekord.poprzedniaWagaKg()) + " kg"
+                    + (rekord.poprzedniNick() != null ? ", " + rekord.poprzedniNick() : "") + ")", NamedTextColor.GRAY);
+            Bukkit.broadcast(naglowek
+                    .append(Component.text(player.getName(), NamedTextColor.YELLOW, TextDecoration.BOLD))
+                    .append(Component.text(" POBIŁ REKORD CAŁEGO SERWERA! ", NamedTextColor.GOLD, TextDecoration.BOLD))
+                    .append(polow)
+                    .append(poprzedni));
+        }
+    }
+
+    /**
      * Ogłoszenie na czacie CAŁEGO serwera przy SKOMPLETOWANIU całego indeksu rybackiego -
      * gracz złowił przynajmniej raz KAŻDY znany gatunek (patrz gatunki) - user 2026-08-30:
      * "informacja na czacie, z takim wyróżnieniem". Ten sam "świąteczny"
@@ -701,6 +795,7 @@ public class FishingManager implements Listener {
      * brakującego gatunku), nie przy każdym kolejnym połowie po skompletowaniu.
      */
     private void ogloszUkonczenieIndeksu(Player player) {
+        if (komunikatyZablokowane) return;
         Bukkit.broadcast(Component.text("🌊🏆🌊 ", NamedTextColor.AQUA, TextDecoration.BOLD)
                 .append(Component.text(player.getName(), NamedTextColor.YELLOW, TextDecoration.BOLD))
                 .append(Component.text(" SKOMPLETOWAŁ CAŁY INDEKS RYBACKI! ", NamedTextColor.GOLD, TextDecoration.BOLD))
@@ -905,15 +1000,19 @@ public class FishingManager implements Listener {
     // ==================================================================== GUI: Ustawienia ====
 
     private static final String TYTUL_USTAWIENIA = "Ustawienia Rybackie";
-    private static final int SLOT_USTAWIENIA_PASEK = 22; // srodek - jedyne ustawienie na razie, patrz otworzUstawienia
+    private static final int SLOT_USTAWIENIA_STYL = 22; // srodek - patrz otworzUstawienia
+    private static final int SLOT_USTAWIENIA_POZYCJA = 31; // pod stylem - TYLKO gdy TEKSTOWY (gora/dol)
+    private static final int SLOT_USTAWIENIA_STRONA = 31; // pod stylem - TYLKO gdy GRAFICZNY (lewo/prawo), ten sam slot co wyzej - rozlaczne
     private static final int SLOT_WROC_Z_USTAWIEN = 49;
 
     /**
-     * Otwiera "Ustawienia Rybackie" - na razie WYŁĄCZNIE pozycja paska minigry (patrz
-     * PozycjaPaska, dotychczasowa komenda /rybpasek) jako klikalny przełącznik zamiast
-     * komendy czatowej. User 2026-08-30: na pewno dojdzie więcej ustawień w przyszłości -
-     * stąd osobna, dedykowana strona (nie wciśnięte na siłę do Dziennika Rybaka), łatwa
-     * do rozbudowy o kolejne przełączniki bez przebudowy layoutu.
+     * Otwiera "Ustawienia Rybackie" - styl paska (Tekstowy/Graficzny, patrz StylPaska) na
+     * środku, a pod nim pozycja (góra/dół, patrz PozycjaPaska) - OBA style dzielą TĘ SAMĄ
+     * pozycję od 2026-08-31 (patrz PasekObrazkowy/FishingMinigame - "wersja A" graficznego
+     * paska renderuje się w BossBarze/action barze, dokładnie tak jak tekstowy, więc lewo/
+     * prawo (StronaPaska - "wersja B", patrz GraficznyPasek) na razie nieużywane w GUI,
+     * zostaje w kodzie na wypadek powrotu do tamtego pomysłu). Na pewno dojdzie więcej
+     * ustawień w przyszłości - stąd osobna, dedykowana strona.
      */
     public void otworzUstawienia(Player player) {
         Inventory gui = Bukkit.createInventory(null, 54, Component.text(TYTUL_USTAWIENIA, NamedTextColor.AQUA, TextDecoration.BOLD));
@@ -921,16 +1020,28 @@ public class FishingManager implements Listener {
         for (int i = 0; i < 54; i++) gui.setItem(i, morskaSzyba(i));
         dekoracjeMenuGlownego().forEach((slot, material) -> gui.setItem(slot, ozdobaMorska(material)));
 
-        PozycjaPaska aktualna = pozycjaPaska(player);
-        ItemStack pasek = new ItemStack(Material.COMPASS);
-        ItemMeta mPasek = pasek.getItemMeta();
-        mPasek.displayName(Component.text("Pozycja paska minigry", NamedTextColor.YELLOW, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
-        mPasek.lore(List.of(
-                Component.text("Aktualnie: " + aktualna.opis(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+        StylPaska stylAktualny = stylPaska(player);
+        ItemStack styl = new ItemStack(Material.PAINTING);
+        ItemMeta mStyl = styl.getItemMeta();
+        mStyl.displayName(Component.text("Styl paska minigry", NamedTextColor.YELLOW, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+        mStyl.lore(List.of(
+                Component.text("Aktualnie: " + stylAktualny.opis(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("Graficzny = ładniejsze tło z resourcepacka.", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false),
                 Component.text("Kliknij, aby przełączyć.", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
         ));
-        pasek.setItemMeta(mPasek);
-        gui.setItem(SLOT_USTAWIENIA_PASEK, pasek);
+        styl.setItemMeta(mStyl);
+        gui.setItem(SLOT_USTAWIENIA_STYL, styl);
+
+        PozycjaPaska pozycjaAktualna = pozycjaPaska(player);
+        ItemStack pozycja = new ItemStack(Material.COMPASS);
+        ItemMeta mPozycja = pozycja.getItemMeta();
+        mPozycja.displayName(Component.text("Pozycja paska minigry", NamedTextColor.YELLOW, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+        mPozycja.lore(List.of(
+                Component.text("Aktualnie: " + pozycjaAktualna.opis(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("Kliknij, aby przełączyć.", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        pozycja.setItemMeta(mPozycja);
+        gui.setItem(SLOT_USTAWIENIA_POZYCJA, pozycja);
 
         gui.setItem(SLOT_WROC_Z_USTAWIEN, przyciskPufferfish("« Wróć do menu"));
         player.openInventory(gui);
@@ -1145,7 +1256,7 @@ public class FishingManager implements Listener {
      * w /rybtop) - tutaj dostaje wreszcie miejsce w GUI.
      */
     private ItemStack itemSumyKg(Player player) {
-        ItemStack item = new ItemStack(Material.BUNDLE);
+        ItemStack item = new ItemStack(Material.ANVIL);
         ItemMeta meta = item.getItemMeta();
         meta.displayName(Component.text("Suma złowionych kg: " + String.format(Locale.ROOT, "%.1f", statystyki.sumaKg(player.getUniqueId())) + " kg", NamedTextColor.YELLOW, TextDecoration.BOLD));
         item.setItemMeta(meta);
@@ -1381,10 +1492,16 @@ public class FishingManager implements Listener {
         }
 
         if (ustawienia) {
-            if (slot == SLOT_USTAWIENIA_PASEK) {
+            if (slot == SLOT_USTAWIENIA_STYL) {
+                StylPaska nowy = stylPaska(player) == StylPaska.TEKSTOWY ? StylPaska.GRAFICZNY : StylPaska.TEKSTOWY;
+                ustawStylPaska(player, nowy);
+                otworzUstawienia(player);
+            } else if (slot == SLOT_USTAWIENIA_POZYCJA) {
+                // OBA style (patrz otworzUstawienia) dziela ta sama pozycje od 2026-08-31 -
+                // zaden warunek na styl tutaj juz nie potrzebny.
                 PozycjaPaska nowa = pozycjaPaska(player) == PozycjaPaska.GORA ? PozycjaPaska.DOL : PozycjaPaska.GORA;
                 ustawPozycjePaska(player, nowa);
-                otworzUstawienia(player); // ponowne otwarcie zeby lore od razu pokazalo nowa wartosc
+                otworzUstawienia(player);
             } else if (slot == SLOT_WROC_Z_USTAWIEN) {
                 otworzMenuGlowne(player);
             }

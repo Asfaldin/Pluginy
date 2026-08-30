@@ -127,6 +127,32 @@ public final class MainpluginsFishing extends JavaPlugin {
             });
         }
 
+        // /@rybykomunikaty wlacz|wylacz - awaryjny wylacznik WSZYSTKICH publicznych
+        // ogloszen na czacie zwiazanych z rybami (rekord gatunku/serwera, skompletowanie
+        // indeksu - patrz FishingManager.komunikatyZablokowane) - user 2026-08-30: "gdyby
+        // ktos znalazl jakiegos buga". Bez argumentu pokazuje aktualny stan. TYLKO w
+        // pamieci (nie w pliku) - doraznie narzedzie, nie trwale ustawienie.
+        if (getCommand("@rybykomunikaty") != null) {
+            getCommand("@rybykomunikaty").setExecutor((sender, command, label, args) -> {
+                if (args.length == 0) {
+                    sender.sendMessage("§eOgloszenia rybackie na czacie sa teraz: " + (fishingManager.czyKomunikatyZablokowane() ? "§cZABLOKOWANE" : "§aWLACZONE") + "§e. Uzyj /@rybykomunikaty wlacz|wylacz.");
+                    return true;
+                }
+                switch (args[0].toLowerCase(Locale.ROOT)) {
+                    case "wylacz" -> {
+                        fishingManager.ustawKomunikatyZablokowane(true);
+                        sender.sendMessage("§cOgloszenia rybackie na czacie ZABLOKOWANE (rekordy, skompletowanie indeksu).");
+                    }
+                    case "wlacz" -> {
+                        fishingManager.ustawKomunikatyZablokowane(false);
+                        sender.sendMessage("§aOgloszenia rybackie na czacie ODBLOKOWANE.");
+                    }
+                    default -> sender.sendMessage("§cUzycie: /@rybykomunikaty wlacz|wylacz");
+                }
+                return true;
+            });
+        }
+
         // Wędki testowe /wedka<rzadkosc> (np. /wedkazwykla, /wedkamityczna) - patrz
         // FishingManager.stworzWedkeTestowa. Każda wymusza LOSOWY gatunek z DANEJ
         // rzadkości (nie konkretny gatunek jak dawne /wedka1-3) i prawie natychmiastowe

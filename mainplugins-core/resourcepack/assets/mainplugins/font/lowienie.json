@@ -1,0 +1,11 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "mainplugins:font/lowienie_pasek",
+      "ascent": 52,
+      "height": 64,
+      "chars": ["\uF000"]
+    }
+  ]
+}

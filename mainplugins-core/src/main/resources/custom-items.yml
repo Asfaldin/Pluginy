@@ -398,6 +398,39 @@ items:
     model: "barely_default:item/fish/golden_carp"
     glint: true
 
+  # ============================================================================
+  # Graficzny pasek minigry lowienia (mainplugins-fishing, GraficznyPasek) - 6 plaskich
+  # "warstw" wyswietlanych jako ItemDisplay encje (patrz GraficznyPasek.java), nie
+  # wydawane graczom jako prawdziwe itemy. Material PAPER bez znaczenia - model zawsze
+  # nadpisuje wyglad. Wlasne, proste tekstury (user 2026-08-30, docelowo podmienione na
+  # cos ladniejszego - patrz rozmowa) - placki wygenerowane programistycznie, nie z
+  # zewnetrznego resourcepacka jak ryby.
+  # ============================================================================
+
+  LOWIENIE_TLO:
+    material: PAPER
+    model: "mainplugins:lowienie_tlo"
+
+  LOWIENIE_RAMKA:
+    material: PAPER
+    model: "mainplugins:lowienie_ramka"
+
+  LOWIENIE_SUWAK:
+    material: PAPER
+    model: "mainplugins:lowienie_suwak"
+
+  LOWIENIE_MIERNIK_TLO:
+    material: PAPER
+    model: "mainplugins:lowienie_miernik_tlo"
+
+  LOWIENIE_MIERNIK_FILL:
+    material: PAPER
+    model: "mainplugins:lowienie_miernik_fill"
+
+  LOWIENIE_RYBKA:
+    material: PAPER
+    model: "mainplugins:lowienie_rybka"
+
   GENERATOR_BRUK_T1:
     material: MOSSY_COBBLESTONE
     name: "&6&lGenerator Bruku"

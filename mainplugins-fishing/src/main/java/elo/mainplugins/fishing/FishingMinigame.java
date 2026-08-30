@@ -47,7 +47,8 @@ final class FishingMinigame {
     private final Runnable naSukces;
     private final Runnable naPorazke;
     private final PozycjaPaska pozycja;
-    /** Tylko dla PozycjaPaska.GORA - patrz konstruktor i tick(). Dla DOL zostaje null, bo w ogóle nie pokazujemy bossbara. */
+    private final StylPaska styl;
+    /** Tylko dla PozycjaPaska.GORA - patrz konstruktor i tick(). Dla DOL zostaje null, bo w ogóle nie pokazujemy bossbara (oba style, TEKSTOWY i GRAFICZNY, dzielą tę samą infrastrukturę bossbar/actionbar - jedyna różnica to TREŚĆ, patrz tick()). */
     private final BossBar pasek;
     private final BukkitTask task;
 
@@ -69,11 +70,19 @@ final class FishingMinigame {
     private boolean poprzednioNaRybie = false;
     private final boolean[] kamienieOdpalone = new boolean[KAMIENIE_MILOWE_POSTEPU.length];
 
-    FishingMinigame(Plugin plugin, Player player, RybaGatunek gatunek, WedkaProfil profil, FishingConfig.MinigryConfig cfg, PozycjaPaska pozycja, Runnable naSukces, Runnable naPorazke) {
+    // "strona" NIEUZYWANE od 2026-08-31 - user zobaczyl "wersje B" (GraficznyPasek, encje
+    // w swiecie 3D pozycjonowane lewo/prawo, patrz StronaPaska) na zywo i uznal ze
+    // wyglada "strasznie dziwnie" (bo to fizyczny obiekt w swiecie, nie plaski HUD).
+    // "Wersja A" nizej (PasekObrazkowy, obrazek jako custom font w BossBarze/action barze,
+    // dokladnie tak jak dziala TEKSTOWY) zastapila ja na razie - "strona" zostaje
+    // parametrem (i GraficznyPasek/StronaPaska zostaja w kodzie nieuzywane) na wypadek
+    // powrotu do tamtego pomyslu pozniej (user: "potem pogadamy o drugim").
+    FishingMinigame(Plugin plugin, Player player, RybaGatunek gatunek, WedkaProfil profil, FishingConfig.MinigryConfig cfg, PozycjaPaska pozycja, StylPaska styl, StronaPaska strona, Runnable naSukces, Runnable naPorazke) {
         this.player = player;
         this.naSukces = naSukces;
         this.naPorazke = naPorazke;
         this.pozycja = pozycja;
+        this.styl = styl;
 
         this.szerokoscPaska = cfg.szerokoscPaska();
         this.grawitacja = cfg.grawitacja();
@@ -94,7 +103,7 @@ final class FishingMinigame {
 
         // Patrz PozycjaPaska - GORA dostaje prawdziwy bossbar (u góry ekranu, z natywnym
         // paskiem wypełnienia), DOL w ogóle go nie tworzy (patrz tick() - tam zamiast tego
-        // leci action bar co tyknięcie).
+        // leci action bar co tyknięcie). Dotyczy OBU stylów - patrz javadoc pola pasek.
         if (pozycja == PozycjaPaska.GORA) {
             this.pasek = BossBar.bossBar(Component.text("Łowienie..."), (float) postep, BossBar.Color.RED, BossBar.Overlay.PROGRESS);
             player.showBossBar(pasek);
@@ -147,17 +156,23 @@ final class FishingMinigame {
             }
         }
 
+        // Prefiks-obrazek (patrz PasekObrazkowy) doklejany PRZED zwykla trescia TYLKO dla
+        // StylPaska.GRAFICZNY ("wersja A", user 2026-08-31) - sam suwak/miernik dalej
+        // liczony i rysowany DOKLADNIE tak samo jak w TEKSTOWYM (zbudujSuwakStrip/
+        // zbudujMiernikPostepu), tylko z doklejonym ladniejszym tlem z resourcepacka.
+        Component prefiks = styl == StylPaska.GRAFICZNY ? PasekObrazkowy.tlo() : Component.empty();
+
         if (pozycja == PozycjaPaska.GORA) {
             pasek.progress((float) postep);
             pasek.color(naRybie ? BossBar.Color.GREEN : BossBar.Color.RED);
-            pasek.name(zbudujSuwakStrip(naRybie));
+            pasek.name(prefiks.append(zbudujSuwakStrip(naRybie)));
         } else {
             // Action bar nie ma natywnego paska wypełnienia jak bossbar (to co widać u góry
             // POD tytułem, patrz pasek.progress/pasek.color wyżej) - więc dorzucamy własny,
             // krótki miernik postępu połowu (patrz zbudujMiernikPostepu) przed suwakiem,
             // inaczej dół w ogóle nie pokazywałby jak blisko końca jest połów.
             // Trzeba wysyłać co tyknięcie (inaczej znika po kilku sekundach, tak jak każdy action bar).
-            player.sendActionBar(zbudujMiernikPostepu(naRybie).append(Component.text(" ")).append(zbudujSuwakStrip(naRybie)));
+            player.sendActionBar(prefiks.append(zbudujMiernikPostepu(naRybie)).append(Component.text(" ")).append(zbudujSuwakStrip(naRybie)));
         }
 
         // Świadomie BEZ limitu czasu - dopóki gracz utrzymuje postęp powyżej zera (choćby
@@ -244,7 +259,7 @@ final class FishingMinigame {
         ukryjPasek();
     }
 
-    /** Sprząta jakikolwiek trwały ślad paska na ekranie gracza - bossbar (GORA) albo ostatnią linię action bara (DOL, inaczej wisiałaby kilka sekund po zakończeniu minigry). */
+    /** Sprząta jakikolwiek trwały ślad paska na ekranie gracza - bossbar (GORA) albo ostatnią linię action bara (DOL, inaczej wisiałaby kilka sekund po zakończeniu minigry). Dotyczy OBU stylów. */
     private void ukryjPasek() {
         if (pozycja == PozycjaPaska.GORA) {
             player.hideBossBar(pasek);

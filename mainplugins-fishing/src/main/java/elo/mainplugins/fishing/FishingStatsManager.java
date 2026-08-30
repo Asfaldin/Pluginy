@@ -326,23 +326,40 @@ public class FishingStatsManager {
     public record RekordSerwera(UUID uuid, String nick, double wagaKg, String gatunek) {}
 
     /**
+     * pierwszy = true jesli to byl PIERWSZY kiedykolwiek zlowiony okaz NA CALYM SERWERZE
+     * (wiec automatycznie "rekord"), false jesli realnie pobil czyjs poprzedni rekord -
+     * wtedy poprzedniaWagaKg/poprzedniNick/poprzedniGatunek opisuja co zostalo pobite
+     * (patrz FishingManager.ogloszRekordSerwera - inne brzmienie ogloszenia w obu przypadkach).
+     */
+    public record NowyRekordSerwera(boolean pierwszy, double poprzedniaWagaKg, String poprzedniNick, String poprzedniGatunek) {}
+
+    /**
      * Wywolywane po KAZDYM polowie (patrz FishingManager.nagrodaZaPolow, obok
      * zanotujRekordGatunkuJesliNowy) - jesli TA zlowiona ryba jest ciezsza niz DOTYCHCZASOWY
-     * rekord SERWERA (dowolny gatunek, patrz getRekordSerwera), zapisuje nowy rekord.
+     * rekord SERWERA (dowolny gatunek, patrz getRekordSerwera), zapisuje nowy rekord i
+     * zwraca informacje o nim (do publicznego ogloszenia na czacie, user 2026-08-30 chcial
+     * osobne wyroznienie OD rekordu gatunku - to najwieksza ryba na serwerze w ogole).
+     * Zwraca null, jesli to NIE byl nowy rekord (nic sie wtedy nie zapisuje/nie zmienia).
      * SCISLE ">" (nie ">="), NIE ROWNOSC - user 2026-08-30: przy DOKLADNYM remisie
      * dotychczasowy rekordzista ZATRZYMUJE rekord (kto pierwszy zlowil te wage, ten
      * trzyma, remis go nie przebija) - dokladnie ta sama zasada co juz mial rekord
      * gatunku wyzej.
      */
-    public void zanotujRekordSerweraJesliNowy(UUID uuid, String nick, String gatunek, int wagaDziesieteKg) {
+    public NowyRekordSerwera zanotujRekordSerweraJesliNowy(UUID uuid, String nick, String gatunek, int wagaDziesieteKg) {
         long obecnyRekord = naDziesiete(config.getDouble("rekord-serwera-global.rekord-kg", 0.0));
-        if (wagaDziesieteKg <= obecnyRekord) return;
+        if (wagaDziesieteKg <= obecnyRekord) return null;
+
+        boolean pierwszy = obecnyRekord <= 0;
+        String poprzedniNick = pierwszy ? null : config.getString("rekord-serwera-global.nick");
+        String poprzedniGatunek = pierwszy ? null : config.getString("rekord-serwera-global.gatunek");
 
         config.set("rekord-serwera-global.rekord-kg", wagaDziesieteKg / 10.0);
         config.set("rekord-serwera-global.uuid", uuid.toString());
         config.set("rekord-serwera-global.nick", nick);
         config.set("rekord-serwera-global.gatunek", gatunek);
         saver.oznaczZmiane();
+
+        return new NowyRekordSerwera(pierwszy, obecnyRekord / 10.0, poprzedniNick, poprzedniGatunek);
     }
 
     /**

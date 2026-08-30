@@ -23,6 +23,11 @@ commands:
     description: Wczytaj fishing-config.yml i ryby.yml na nowo, bez restartu serwera
     permission: mainplugins.fishing.admin
     permission-message: "&cNie masz permisji do tej komendy!"
+  "@rybykomunikaty":
+    description: "Awaryjnie wlacz/wylacz publiczne ogloszenia rybackie na czacie (rekordy, indeks) - np. przy bugu"
+    usage: "/<command> <wlacz|wylacz>"
+    permission: mainplugins.fishing.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
   "@resetrybtop":
     description: Wyczysc CALKOWICIE statystyki rybackie (suma kg, rekordy gatunkow) - nieodwracalne
     permission: mainplugins.fishing.admin

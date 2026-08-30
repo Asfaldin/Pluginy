@@ -16,6 +16,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -71,6 +72,12 @@ public class FishingManager implements Listener {
     // MainpluginsFishing mogl go zamknac (zapis natychmiastowy) w onDisable().
     private final FishingStatsManager statystyki;
 
+    // Bezdenne Wiaderko (patrz WiaderkoManager, user 2026-08-30) - ryby przy udanym
+    // polowie leca NAJPIERW tutaj (patrz nagrodaZaPolow), zanim trafia do zwyklego
+    // ekwipunku. Wstrzykiwane jak statystyki wyzej - MainpluginsFishing rejestruje je
+    // jako osobny Listener (wlasna obsluga GUI/PPM), FishingManager tylko z niego korzysta.
+    private final WiaderkoManager wiaderko;
+
     // Tuning minigry i bonusowej skrzynki - fishing-config.yml, przeladowywalny bez
     // restartu (patrz aktualizujKonfiguracje / @reloadfishing). Gatunki ryb NIE sa tutaj -
     // patrz gatunki nizej.
@@ -103,10 +110,11 @@ public class FishingManager implements Listener {
     // stanie zdarzenia (patrz onFish) - żeby nic nie zostawało "wiszące" po spudłowanym rzucie.
     private final Map<UUID, OczekujacyPolow> oczekujaceGatunki = new HashMap<>();
 
-    // Tag na wędkach TESTOWYCH (patrz stworzWedkeTestowa/@wedka1-3 w MainpluginsFishing) -
-    // trzyma 0-based indeks do gatunki, żeby onFish mógł wymusić konkretny gatunek zamiast
-    // losować, i przyspieszyć branie (patrz FishHook.setWaitTime) do testów. WYŁĄCZNIE do
-    // testów na permisji mainplugins.fishing.admin - normalna /wedka tego tagu nie ma.
+    // Tag na wędkach TESTOWYCH RZADKOŚCI (patrz stworzWedkeTestowa/@wedka<rzadkosc> w
+    // MainpluginsFishing) - trzyma nazwę stałej RybaGatunek.Rzadkosc, żeby onFish mógł
+    // wymusić LOSOWY gatunek z TEJ rzadkości zamiast losować spośród wszystkich, i
+    // przyspieszyć branie (patrz FishHook.setWaitTime) do testów. WYŁĄCZNIE do testów na
+    // permisji mainplugins.fishing.admin - normalna /wedka tego tagu nie ma.
     private final NamespacedKey tagWedkiTestowej;
 
     // Tag na wędkach TESTOWYCH PROFILU (patrz stworzWedkeProfilTestowa/@wedkacierpliwa itd.
@@ -121,10 +129,11 @@ public class FishingManager implements Listener {
     // (PersistentDataContainer gracza), więc pamiętany między sesjami bez osobnego pliku.
     private final NamespacedKey tagPozycjaPaska;
 
-    public FishingManager(Plugin plugin, FishingConfig config, FishingStatsManager statystyki) {
+    public FishingManager(Plugin plugin, FishingConfig config, FishingStatsManager statystyki, WiaderkoManager wiaderko) {
         this.plugin = plugin;
         this.config = config;
         this.statystyki = statystyki;
+        this.wiaderko = wiaderko;
         this.tagWedkiTestowej = new NamespacedKey(plugin, "wedka_test_indeks");
         this.tagProfiluTestowego = new NamespacedKey(plugin, "wedka_test_profil");
         this.tagPozycjaPaska = new NamespacedKey(plugin, "fishing_pozycja_paska");
@@ -155,7 +164,7 @@ public class FishingManager implements Listener {
         wczytajGatunki();
     }
 
-    /** Wszystkie znane gatunki, w KANONICZNEJ kolejnosci z ryby.yml - patrz /rybindeks w MainpluginsFishing (kolejnosc wyswietlania indeksu). Defensywna kopia. */
+    /** Wszystkie znane gatunki, w KANONICZNEJ kolejnosci z ryby.yml - patrz /rybiemenu w MainpluginsFishing (kolejnosc wyswietlania indeksu). Defensywna kopia. */
     public List<RybaGatunek> gatunki() {
         return List.copyOf(gatunki);
     }
@@ -225,23 +234,28 @@ public class FishingManager implements Listener {
     }
 
     /**
-     * WYŁĄCZNIE do testów (patrz /wedka1, /wedka2, /wedka3 w MainpluginsFishing, za
-     * permisją mainplugins.fishing.admin) - wędka otagowana indeksem (1-based) do gatunki
-     * z ryby.yml. W łowisku onFish rozpoznaje tag i: (1) wymusza TEN gatunek zamiast
-     * losować, (2) ustawia FishHook.setWaitTime na prawie natychmiastowe branie - żeby nie
-     * czekać za każdym razem na wanilijski losowy timer przy testowaniu minigry/efektów.
+     * WYŁĄCZNIE do testów (patrz /wedka<rzadkosc> w MainpluginsFishing, za permisją
+     * mainplugins.fishing.admin) - wędka otagowana daną RybaGatunek.Rzadkosc. W łowisku
+     * onFish rozpoznaje tag i: (1) wymusza LOSOWY gatunek z TEJ rzadkości zamiast losować
+     * spośród wszystkich, (2) ustawia FishHook.setWaitTime na prawie natychmiastowe branie
+     * - żeby nie czekać za każdym razem na wanilijski losowy timer przy testowaniu
+     * minigry/efektów danej rzadkości. Dodatkowo niesie też tag profilu TESTOWA_OP (patrz
+     * WedkaProfil, tagProfiluTestowego, user 2026-08-30: "mega mocne, żeby było prosto
+     * nimi wyłowić ryby") - fizyka minigry na najłatwiejszej granicy niezależnie od
+     * rzadkości (maksymalnie szeroki suwak, prawie nieruchoma ryba), żeby połów był
+     * banalny nawet dla MITYCZNEJ.
      */
-    public ItemStack stworzWedkeTestowa(int indeks1Based) {
+    public ItemStack stworzWedkeTestowa(RybaGatunek.Rzadkosc rzadkosc) {
         ItemStack item = new ItemStack(Material.FISHING_ROD);
         ItemMeta meta = item.getItemMeta();
-        String nazwaGatunku = (indeks1Based - 1 >= 0 && indeks1Based - 1 < gatunki.size())
-                ? gatunki.get(indeks1Based - 1).nazwa() : "?";
-        meta.displayName(Component.text("Wędka Testowa #" + indeks1Based + " (" + nazwaGatunku + ")", NamedTextColor.YELLOW, TextDecoration.BOLD));
+        meta.displayName(Component.text("Wędka Testowa [" + rzadkosc + "]", NamedTextColor.YELLOW, TextDecoration.BOLD));
         meta.lore(List.of(
-                Component.text("Wymusza " + indeks1Based + ". gatunek z ryby.yml", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                Component.text("i prawie natychmiastowe branie w łowisku.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+                Component.text("Wymusza LOSOWY gatunek rzadkości " + rzadkosc + " z ryby.yml", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("i prawie natychmiastowe branie w łowisku.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("Fizyka minigry: tryb OP (banalnie łatwe).", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
         ));
-        meta.getPersistentDataContainer().set(tagWedkiTestowej, PersistentDataType.INTEGER, indeks1Based - 1);
+        meta.getPersistentDataContainer().set(tagWedkiTestowej, PersistentDataType.STRING, rzadkosc.name());
+        meta.getPersistentDataContainer().set(tagProfiluTestowego, PersistentDataType.STRING, WedkaProfil.TESTOWA_OP.name());
         item.setItemMeta(meta);
         return item;
     }
@@ -272,7 +286,7 @@ public class FishingManager implements Listener {
      * wydajemy DOKŁADNIE ten item stamtąd (ten sam wzorzec co ShopManager.stworzBazowyItem).
      * W przeciwnym razie (reszta gatunków - zwykłe przefarbowane materiały) budujemy
      * item ręcznie, tak jak dotychczas. Bez wagi w lore - patrz stworzRybe (polow) i
-     * iconaIndeksu (GUI /rybindeks), ktore dorzucaja WLASNE, rozne linie lore na tej samej bazie.
+     * iconaIndeksu (GUI /rybiemenu), ktore dorzucaja WLASNE, rozne linie lore na tej samej bazie.
      */
     private ItemStack bazowyItemRyby(RybaGatunek gatunek) {
         CustomItemService rejestr = CoreAPI.getCustomItemService();
@@ -500,15 +514,30 @@ public class FishingManager implements Listener {
         rozpocznijMinigre(event.getPlayer(), oczekujacy.gatunek(), oczekujacy.profil(), lokalizacjaHaka);
     }
 
-    /** Patrz stworzWedkeTestowa - null jeśli gracz nie trzyma wędki testowej albo jej indeks wypadł poza aktualną listę gatunki (np. po edycji ryby.yml). */
+    /**
+     * Patrz stworzWedkeTestowa - null jeśli gracz nie trzyma wędki testowej rzadkości albo
+     * ryby.yml akurat nie ma ŻADNEGO gatunku tej rzadkości (np. po edycji ryby.yml). Gdy
+     * jest ich kilka (docelowo 5 na rzadkość, patrz ryby.yml), losuje jeden z nich - żeby
+     * dało się przetestować całą pulę danej rzadkości, nie tylko pierwszy wpis.
+     */
     private RybaGatunek wymuszonyGatunekZWedkiTestowej(Player player) {
         ItemStack wRece = player.getInventory().getItemInMainHand();
         if (!wRece.hasItemMeta()) return null;
 
-        Integer indeks = wRece.getItemMeta().getPersistentDataContainer().get(tagWedkiTestowej, PersistentDataType.INTEGER);
-        if (indeks == null || indeks < 0 || indeks >= gatunki.size()) return null;
+        String nazwaRzadkosci = wRece.getItemMeta().getPersistentDataContainer().get(tagWedkiTestowej, PersistentDataType.STRING);
+        if (nazwaRzadkosci == null) return null;
 
-        return gatunki.get(indeks);
+        RybaGatunek.Rzadkosc rzadkosc;
+        try {
+            rzadkosc = RybaGatunek.Rzadkosc.valueOf(nazwaRzadkosci);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+
+        List<RybaGatunek> pula = gatunki.stream().filter(g -> g.rzadkosc() == rzadkosc).toList();
+        if (pula.isEmpty()) return null;
+
+        return pula.get(ThreadLocalRandom.current().nextInt(pula.size()));
     }
 
     // ==================================================================== Efekt złowienia (cząsteczki) ====
@@ -578,12 +607,29 @@ public class FishingManager implements Listener {
         if (zatrzymaj != null) zatrzymaj.run();
     }
 
+    /**
+     * WYŁĄCZNIE stąd wolno wołać statystyki.zanotujPolow (patrz jedyne wywołanie niżej) -
+     * ta metoda jest wołana TYLKO z callbacku sukcesu minigry (patrz rozpocznijMinigre),
+     * czyli z realnego, ręcznego przejścia minigry po prawdziwym BITE w łowisku. To
+     * CELOWE zabezpieczenie indeksu/statystyk (user 2026-08-30: gracze będą mogli
+     * sprzedawać ryby na targu, więc samo POSIADANIE gatunku - kupno, prezent od gracza,
+     * przejście przez dozownik/podajnik itp. - NIE MOŻE nigdy zaliczać go do indeksu).
+     * Jeśli kiedyś powstanie sprzedaż ryb na targu (mainplugins-market) albo jakikolwiek
+     * inny system czytający ten custom-item, NIE WOLNO mu wołać zanotujPolow - indeks ma
+     * zostać zdobywany WYŁĄCZNIE przez realne złowienie.
+     */
     private void nagrodaZaPolow(Player player, RybaGatunek zlowiona) {
         int wagaDziesieteKg = losujWageDziesieteKg(zlowiona);
 
+        // Ryba leci NAJPIERW do Bezdennego Wiaderka, jesli gracz je gdziekolwiek ma (patrz
+        // WiaderkoManager.sprobujWlozycRybe) - dopiero gdy wiaderko jest pelne (albo go nie
+        // ma), normalna sciezka do ekwipunku/dropa jak dotychczas (user 2026-08-30).
         ItemStack ryba = stworzRybe(zlowiona, wagaDziesieteKg);
-        var nieZmieszczone = player.getInventory().addItem(ryba);
-        nieZmieszczone.values().forEach(i -> player.getWorld().dropItemNaturally(player.getLocation(), i));
+        ItemStack pozostalo = wiaderko.sprobujWlozycRybe(player, ryba);
+        if (pozostalo != null) {
+            var nieZmieszczone = player.getInventory().addItem(pozostalo);
+            nieZmieszczone.values().forEach(i -> player.getWorld().dropItemNaturally(player.getLocation(), i));
+        }
 
         player.sendMessage(Component.text("Złowiłeś: ", NamedTextColor.GREEN)
                 .append(Component.text(zlowiona.nazwa(), zlowiona.kolor(), TextDecoration.BOLD))
@@ -591,10 +637,27 @@ public class FishingManager implements Listener {
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
         rzucBonusowaSkrzynke(player);
 
+        // Sprawdzone PRZED zapisem polowu - czy TEN gatunek byl dla tego gracza jeszcze
+        // nieodkryty (patrz ogloszUkonczenieIndeksu nizej: strzelamy ogloszeniem o
+        // skompletowaniu WYLACZNIE w momencie zlowienia ostatniego brakujacego gatunku,
+        // nie za kazdym kolejnym polowem po fakcie).
+        boolean nowyGatunekWIndeksie = statystyki.getIndeks(player.getUniqueId()).stream()
+                .noneMatch(wpis -> wpis.customId().equals(zlowiona.customId()));
+
         statystyki.zanotujPolow(player.getUniqueId(), player.getName(), zlowiona.customId(), zlowiona.nazwa(), wagaDziesieteKg);
 
         FishingStatsManager.NowyRekordGatunku rekord = statystyki.zanotujRekordGatunkuJesliNowy(zlowiona.customId(), zlowiona.nazwa(), wagaDziesieteKg, player.getUniqueId(), player.getName());
         if (rekord != null) ogloszRekordGatunku(player, zlowiona, wagaDziesieteKg, rekord);
+
+        // Rekord SERWERA (dowolny gatunek, patrz FishingStatsManager.getRekordSerwera) -
+        // osobny od rekordu gatunku wyzej, bez wlasnego ogloszenia na czacie (na razie
+        // pokazywany tylko w /rybtop). Ta sama zasada remisu co rekord gatunku (patrz
+        // zanotujRekordSerweraJesliNowy - scisle ">" ), user 2026-08-30.
+        statystyki.zanotujRekordSerweraJesliNowy(player.getUniqueId(), player.getName(), zlowiona.nazwa(), wagaDziesieteKg);
+
+        if (nowyGatunekWIndeksie && !gatunki.isEmpty() && statystyki.getIndeks(player.getUniqueId()).size() == gatunki.size()) {
+            ogloszUkonczenieIndeksu(player);
+        }
     }
 
     /**
@@ -628,6 +691,308 @@ public class FishingManager implements Listener {
         }
     }
 
+    /**
+     * Ogłoszenie na czacie CAŁEGO serwera przy SKOMPLETOWANIU całego indeksu rybackiego -
+     * gracz złowił przynajmniej raz KAŻDY znany gatunek (patrz gatunki) - user 2026-08-30:
+     * "informacja na czacie, z takim wyróżnieniem". Ten sam "świąteczny"
+     * pogrubiony/kolorowy styl co ogloszRekordGatunku, ale odrębne hasło/emoji, żeby
+     * odróżnić od zwykłego rekordu gatunku - to rzadsze i większe osiągnięcie. Wywoływane
+     * WYŁĄCZNIE raz (patrz nagrodaZaPolow: dokładnie w momencie złowienia ostatniego
+     * brakującego gatunku), nie przy każdym kolejnym połowie po skompletowaniu.
+     */
+    private void ogloszUkonczenieIndeksu(Player player) {
+        Bukkit.broadcast(Component.text("🌊🏆🌊 ", NamedTextColor.AQUA, TextDecoration.BOLD)
+                .append(Component.text(player.getName(), NamedTextColor.YELLOW, TextDecoration.BOLD))
+                .append(Component.text(" SKOMPLETOWAŁ CAŁY INDEKS RYBACKI! ", NamedTextColor.GOLD, TextDecoration.BOLD))
+                .append(Component.text("Wszystkie " + gatunki.size() + " gatunków złowione!", NamedTextColor.AQUA))
+                .append(Component.text(" 🌊🏆🌊", NamedTextColor.AQUA, TextDecoration.BOLD)));
+        player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+    }
+
+    /**
+     * Ranking wędkarski na czat - przeniesiony tu z MainpluginsFishing (user 2026-08-30:
+     * chciał ten sam ranking dostępny też jako przycisk w Dzienniku Rybaka, patrz
+     * SLOT_MENU_RYBTOP). Top 10 to NAJCIĘŻSZE POJEDYNCZE połowy na serwerze, dowolny
+     * gracz/gatunek (patrz FishingStatsManager.getTopPolowy) - user 2026-08-30 świadomie
+     * NIE chciał tu sumy złowionych kg (ta funkcja - getTop/TopRybak - zostaje w
+     * FishingStatsManager nieużywana, ale zachowana). Rekord serwera to ten sam
+     * najcięższy pojedynczy połów, tylko wyróżniony osobną linią na górze. Stopka -
+     * osobisty najcięższy połów wywołującego, jeśli to gracz (konsola dostaje samą topkę).
+     */
+    public void wyslijRanking(CommandSender sender) {
+        sender.sendMessage(Component.text("=== Ranking wędkarski ===", NamedTextColor.AQUA, TextDecoration.BOLD));
+
+        FishingStatsManager.RekordSerwera rekord = statystyki.getRekordSerwera();
+        if (rekord != null) {
+            sender.sendMessage(Component.text("Rekord serwera: ", NamedTextColor.GOLD)
+                    .append(Component.text(rekord.nick(), NamedTextColor.YELLOW))
+                    .append(Component.text(" - " + String.format(Locale.ROOT, "%.1f", rekord.wagaKg()) + " kg (" + rekord.gatunek() + ")", NamedTextColor.GRAY)));
+        }
+
+        List<FishingStatsManager.TopPolow> top = statystyki.getTopPolowy(10);
+        if (top.isEmpty()) {
+            sender.sendMessage(Component.text("Nikt jeszcze nic nie złowił w łowisku.", NamedTextColor.GRAY));
+        } else {
+            int miejsce = 1;
+            for (FishingStatsManager.TopPolow polow : top) {
+                sender.sendMessage(Component.text(miejsce + ". ", NamedTextColor.GRAY)
+                        .append(Component.text(polow.nick(), NamedTextColor.WHITE))
+                        .append(Component.text(" - " + polow.gatunek() + " (" + String.format(Locale.ROOT, "%.1f", polow.kg()) + " kg)", NamedTextColor.GREEN)));
+                miejsce++;
+            }
+        }
+
+        if (sender instanceof Player player) {
+            FishingStatsManager.OsobistyRekord osobisty = statystyki.getOsobistyRekord(player.getUniqueId());
+            if (osobisty.kg() > 0) {
+                sender.sendMessage(Component.text("Twój najcięższy połów: ", NamedTextColor.YELLOW)
+                        .append(Component.text(String.format(Locale.ROOT, "%.1f", osobisty.kg()) + " kg (" + osobisty.gatunek() + ")", NamedTextColor.GRAY)));
+            }
+        }
+    }
+
+    // ==================================================================== GUI: Dziennik Rybaka (menu glowne) ====
+
+    // Rozpoznawcza fraza w tytule GUI - ten sam wzorzec co TYTUL_INDEKSU nizej.
+    private static final String TYTUL_MENU_GLOWNEGO = "Dziennik Rybaka";
+    private static final int SLOT_MENU_DZIENNIK = 20; // dwa w lewo od Indeksu - user 2026-08-30
+    private static final int SLOT_MENU_INDEKS = 22; // srodek planszy 6x9 (patrz otworzMenuGlowne) - user 2026-08-30: opcje maja byc "centralnie na srodku"
+    private static final int SLOT_MENU_RYBTOP = 24; // dwa w prawo od Indeksu - user 2026-08-30 chcial tu tez /rybtop
+    private static final int SLOT_MENU_USTAWIENIA = 31; // pod Indeksem - user 2026-08-30
+    private static final int SLOT_MENU_ZAMKNIJ = 49; // pufferfish na dole - tu NIE ma dokad wracac, wiec calkiem zamyka
+
+    /**
+     * Otwiera "Dziennik Rybaka" - glowny hub /rybiemenu (patrz MainpluginsFishing).
+     * Centralny "krzyz" opcji: Dziennik Polowow (patrz otworzDziennik), Indeks Rybacki
+     * (patrz otworzIndeks), Ranking Wedkarski (patrz wyslijRanking) w srodkowym rzedzie,
+     * Ustawienia (patrz otworzUstawienia) pod Indeksem - user 2026-08-30. Tlo "morskie" -
+     * naprzemienne odcienie niebiesko-turkusowej szyby (patrz morskaSzyba) plus
+     * rozrzucone NIE symetrycznie wodorosty/koralowce (patrz dekoracjeMenuGlownego) jako
+     * czysto ozdobne itemy bez zadnej funkcji.
+     */
+    public void otworzMenuGlowne(Player player) {
+        Inventory gui = Bukkit.createInventory(null, 54, Component.text(TYTUL_MENU_GLOWNEGO, NamedTextColor.AQUA, TextDecoration.BOLD));
+
+        for (int i = 0; i < 54; i++) gui.setItem(i, morskaSzyba(i));
+        dekoracjeMenuGlownego().forEach((slot, material) -> gui.setItem(slot, ozdobaMorska(material)));
+
+        ItemStack dziennik = new ItemStack(Material.WRITABLE_BOOK);
+        ItemMeta mDziennik = dziennik.getItemMeta();
+        mDziennik.displayName(Component.text("Dziennik Połowów", NamedTextColor.AQUA, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+        mDziennik.lore(List.of(
+                Component.text("Chronologiczna lista Twoich ostatnich połowów.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("Kliknij, aby otworzyć.", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        dziennik.setItemMeta(mDziennik);
+        gui.setItem(SLOT_MENU_DZIENNIK, dziennik);
+
+        ItemStack indeks = new ItemStack(Material.NAUTILUS_SHELL);
+        ItemMeta mIndeks = indeks.getItemMeta();
+        mIndeks.displayName(Component.text("Indeks Rybacki", NamedTextColor.AQUA, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+        mIndeks.lore(List.of(
+                Component.text("Wszystkie gatunki ryb, które już odkryłeś.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("Kliknij, aby otworzyć.", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        indeks.setItemMeta(mIndeks);
+        gui.setItem(SLOT_MENU_INDEKS, indeks);
+
+        ItemStack rybtop = new ItemStack(Material.GOLD_INGOT);
+        ItemMeta mRybtop = rybtop.getItemMeta();
+        mRybtop.displayName(Component.text("🏆 Ranking Wędkarski", NamedTextColor.GOLD, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+        mRybtop.lore(List.of(
+                Component.text("Top 10 najcięższych pojedynczych połowów.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("Kliknij, aby zobaczyć na czacie.", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        rybtop.setItemMeta(mRybtop);
+        gui.setItem(SLOT_MENU_RYBTOP, rybtop);
+
+        ItemStack ustawienia = new ItemStack(Material.COMPASS);
+        ItemMeta mUstawienia = ustawienia.getItemMeta();
+        mUstawienia.displayName(Component.text("Ustawienia", NamedTextColor.YELLOW, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+        mUstawienia.lore(List.of(
+                Component.text("Preferencje łowienia.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("Kliknij, aby otworzyć.", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        ustawienia.setItemMeta(mUstawienia);
+        gui.setItem(SLOT_MENU_USTAWIENIA, ustawienia);
+
+        gui.setItem(SLOT_MENU_ZAMKNIJ, przyciskPufferfish("Zamknij"));
+
+        player.openInventory(gui);
+    }
+
+    // ==================================================================== GUI: Dziennik Połowów ====
+
+    private static final String TYTUL_DZIENNIK = "Dziennik Połowów";
+    private static final int SLOT_DZIENNIK_ODZNAKA = 4;
+    private static final int SLOT_WROC_Z_DZIENNIKA = 49;
+    private static final int DZIENNIK_WPIS_START = 9; // 4 pelne rzedy (9-44) na wpisy, patrz otworzDziennik
+    private static final int DZIENNIK_WPIS_KONIEC = 44;
+
+    /**
+     * Otwiera "Dziennik Połowów" - chronologiczna lista OSTATNICH połowów gracza (patrz
+     * FishingStatsManager.getHistoria), NAJNOWSZY pierwszy - w odróżnieniu od Indeksu to
+     * NIE kolekcja gatunków (jeden wpis na gatunek na zawsze), tylko log pojedynczych
+     * połowów z wagą i czasem (user 2026-08-30). Do 36 najnowszych na ekranie (tyle ile
+     * mieści środkowa część planszy) - jeśli historia jest krótsza, reszta zostaje tłem.
+     */
+    public void otworzDziennik(Player player) {
+        Inventory gui = Bukkit.createInventory(null, 54, Component.text(TYTUL_DZIENNIK, NamedTextColor.AQUA, TextDecoration.BOLD));
+
+        for (int i = 0; i < 54; i++) gui.setItem(i, morskaSzyba(i));
+        dekoracjeMenuGlownego().forEach((slot, material) -> {
+            if (slot < DZIENNIK_WPIS_START || slot > DZIENNIK_WPIS_KONIEC) gui.setItem(slot, ozdobaMorska(material));
+        });
+
+        List<FishingStatsManager.WpisHistorii> historia = statystyki.getHistoria(player.getUniqueId(), DZIENNIK_WPIS_KONIEC - DZIENNIK_WPIS_START + 1);
+
+        ItemStack odznaka = new ItemStack(Material.WRITABLE_BOOK);
+        ItemMeta mOdznaka = odznaka.getItemMeta();
+        mOdznaka.displayName(Component.text("Dziennik Połowów", NamedTextColor.AQUA, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+        mOdznaka.lore(List.of(Component.text("Ostatnie " + historia.size() + " połowów, najnowszy pierwszy.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+        odznaka.setItemMeta(mOdznaka);
+        gui.setItem(SLOT_DZIENNIK_ODZNAKA, odznaka);
+
+        if (historia.isEmpty()) {
+            ItemStack pusto = new ItemStack(Material.BARRIER);
+            ItemMeta mPusto = pusto.getItemMeta();
+            mPusto.displayName(Component.text("Jeszcze nic tu nie ma", NamedTextColor.RED, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+            mPusto.lore(List.of(Component.text("Złów pierwszą rybę w łowisku!", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+            pusto.setItemMeta(mPusto);
+            gui.setItem(27, pusto);
+        } else {
+            int slot = DZIENNIK_WPIS_START;
+            for (FishingStatsManager.WpisHistorii wpis : historia) {
+                if (slot > DZIENNIK_WPIS_KONIEC) break;
+                gui.setItem(slot, ikonaHistorii(wpis));
+                slot++;
+            }
+        }
+
+        gui.setItem(SLOT_WROC_Z_DZIENNIKA, przyciskPufferfish("« Wróć do menu"));
+        player.openInventory(gui);
+    }
+
+    /**
+     * Ikona jednego wpisu w Dzienniku Połowów - PRAWDZIWY wygląd gatunku (patrz
+     * bazowyItemRyby), jeśli ten gatunek dalej istnieje w ryby.yml (dopasowanie po
+     * customId, patrz WpisHistorii) - w przeciwnym razie (gatunek usunięty/zmieniony od
+     * czasu połowu) prosty szary placeholder z samą zapisaną nazwą, żeby nic nie rzuciło
+     * wyjątkiem. Osobna linia lore z wagą TEGO konkretnego połowu i datą/godziną.
+     */
+    private ItemStack ikonaHistorii(FishingStatsManager.WpisHistorii wpis) {
+        RybaGatunek gatunek = gatunki.stream().filter(g -> g.customId().equals(wpis.customId())).findFirst().orElse(null);
+
+        ItemStack item;
+        if (gatunek != null) {
+            item = bazowyItemRyby(gatunek);
+        } else {
+            item = new ItemStack(Material.COD);
+            ItemMeta mBrak = item.getItemMeta();
+            mBrak.displayName(Component.text(wpis.nazwaGatunku(), NamedTextColor.GRAY, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+            item.setItemMeta(mBrak);
+        }
+
+        ItemMeta meta = item.getItemMeta();
+        List<Component> lore = meta.hasLore() ? new ArrayList<>(meta.lore()) : new ArrayList<>();
+        lore.add(Component.text("Waga: " + String.format(Locale.ROOT, "%.1f", wpis.kg()) + " kg", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.text("Złowiono: " + wpis.czas(), NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
+        meta.lore(lore);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    // ==================================================================== GUI: Ustawienia ====
+
+    private static final String TYTUL_USTAWIENIA = "Ustawienia Rybackie";
+    private static final int SLOT_USTAWIENIA_PASEK = 22; // srodek - jedyne ustawienie na razie, patrz otworzUstawienia
+    private static final int SLOT_WROC_Z_USTAWIEN = 49;
+
+    /**
+     * Otwiera "Ustawienia Rybackie" - na razie WYŁĄCZNIE pozycja paska minigry (patrz
+     * PozycjaPaska, dotychczasowa komenda /rybpasek) jako klikalny przełącznik zamiast
+     * komendy czatowej. User 2026-08-30: na pewno dojdzie więcej ustawień w przyszłości -
+     * stąd osobna, dedykowana strona (nie wciśnięte na siłę do Dziennika Rybaka), łatwa
+     * do rozbudowy o kolejne przełączniki bez przebudowy layoutu.
+     */
+    public void otworzUstawienia(Player player) {
+        Inventory gui = Bukkit.createInventory(null, 54, Component.text(TYTUL_USTAWIENIA, NamedTextColor.AQUA, TextDecoration.BOLD));
+
+        for (int i = 0; i < 54; i++) gui.setItem(i, morskaSzyba(i));
+        dekoracjeMenuGlownego().forEach((slot, material) -> gui.setItem(slot, ozdobaMorska(material)));
+
+        PozycjaPaska aktualna = pozycjaPaska(player);
+        ItemStack pasek = new ItemStack(Material.COMPASS);
+        ItemMeta mPasek = pasek.getItemMeta();
+        mPasek.displayName(Component.text("Pozycja paska minigry", NamedTextColor.YELLOW, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+        mPasek.lore(List.of(
+                Component.text("Aktualnie: " + aktualna.opis(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("Kliknij, aby przełączyć.", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        pasek.setItemMeta(mPasek);
+        gui.setItem(SLOT_USTAWIENIA_PASEK, pasek);
+
+        gui.setItem(SLOT_WROC_Z_USTAWIEN, przyciskPufferfish("« Wróć do menu"));
+        player.openInventory(gui);
+    }
+
+    /** "Morska" szyba tła - naprzemienne odcienie niebieskiego/turkusowego wg slotu, BEZ losowości (ten sam układ za każdym otwarciem, patrz otworzMenuGlowne). */
+    private ItemStack morskaSzyba(int slot) {
+        Material[] paleta = { Material.LIGHT_BLUE_STAINED_GLASS_PANE, Material.CYAN_STAINED_GLASS_PANE, Material.BLUE_STAINED_GLASS_PANE };
+        Material szklo = paleta[(slot + slot / 9) % paleta.length];
+        ItemStack item = new ItemStack(szklo);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.empty());
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    /** Czysto ozdobny item (wodorosty/koralowce) w tle menu głównego - bez nazwy, kliknięcie nic nie robi (patrz onInventoryClick). */
+    private ItemStack ozdobaMorska(Material material) {
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.empty());
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    /**
+     * Ręcznie dobrane sloty ozdób na tle Dziennika Rybaka - CELOWO NIE symetrycznie (user
+     * 2026-08-30: "nie musi być symetrycznie"), mieszanka wodorostów/koralowców w kilku
+     * kolorach żeby przypominało dno morskie. Sloty spoza tej mapy zostają zwykłą
+     * "morską" szybą (patrz morskaSzyba).
+     */
+    private Map<Integer, Material> dekoracjeMenuGlownego() {
+        Map<Integer, Material> ozdoby = new HashMap<>();
+        ozdoby.put(0, Material.KELP);
+        ozdoby.put(2, Material.SEAGRASS);
+        ozdoby.put(4, Material.TUBE_CORAL_FAN);
+        ozdoby.put(5, Material.KELP);
+        ozdoby.put(6, Material.BRAIN_CORAL_FAN);
+        ozdoby.put(8, Material.SEAGRASS);
+        ozdoby.put(9, Material.SEAGRASS);
+        ozdoby.put(17, Material.FIRE_CORAL_FAN);
+        ozdoby.put(26, Material.HORN_CORAL_FAN);
+        ozdoby.put(36, Material.KELP);
+        ozdoby.put(44, Material.BUBBLE_CORAL_FAN);
+        ozdoby.put(45, Material.SEAGRASS);
+        ozdoby.put(46, Material.TUBE_CORAL_FAN);
+        ozdoby.put(48, Material.KELP);
+        ozdoby.put(50, Material.BRAIN_CORAL_FAN);
+        ozdoby.put(52, Material.SEAGRASS);
+        ozdoby.put(53, Material.HORN_CORAL_FAN);
+        return ozdoby;
+    }
+
+    /** Wspólny przycisk wyjścia/cofnięcia obu rybackich GUI (user 2026-08-30: "na dole przyciskiem wyjścia i cofnięcia niech będzie pufferfish") - znaczenie (zamknij vs. wróć) zależy od GUI, patrz onInventoryClick. */
+    private ItemStack przyciskPufferfish(String nazwa) {
+        ItemStack item = new ItemStack(Material.PUFFERFISH);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.text(nazwa, NamedTextColor.RED, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+        item.setItemMeta(meta);
+        return item;
+    }
+
     // ==================================================================== GUI: Indeks Rybacki ====
 
     // Rozpoznawcza fraza w tytule GUI (patrz onInventoryClick) - ten sam wzorzec co
@@ -638,13 +1003,14 @@ public class FishingManager implements Listener {
     private static final String TYTUL_INDEKSU = "Indeks Rybacki";
     private static final int SLOT_ODZNAKA_RZADKOSCI = 4;
     private static final int SLOT_POSTEP_OGOLNY = 47;
-    private static final int SLOT_ZAMKNIJ_INDEKSU = 49;
+    private static final int SLOT_SUMA_KG = 51; // "naprzeciwko" SLOT_POSTEP_OGOLNY (symetrycznie wzgledem SLOT_WROC_Z_INDEKSU=49) - user 2026-08-30
+    private static final int SLOT_WROC_Z_INDEKSU = 49; // pufferfish - wraca do Dziennika Rybaka (patrz onInventoryClick), NIE zamyka calkiem
     private static final int SLOT_POPRZEDNIA_RZADKOSC = 45;
     private static final int SLOT_NASTEPNA_RZADKOSC = 53;
     private static final int RZAD_RYB_START = 19; // srodkowy rzad (patrz otworzIndeks), 7 slotow: 19-25
     private static final int RZAD_RYB_KONIEC = 25;
 
-    // Ktora rzadkosc dany gracz ogląda w GUI /rybindeks TERAZ - patrz otworzIndeks(player,
+    // Ktora rzadkosc dany gracz ogląda w GUI /rybiemenu TERAZ - patrz otworzIndeks(player,
     // tier) i przyciski poprzednia/nastepna w onInventoryClick. Pamietane per-gracz (nie
     // globalnie), zeby ponowne otwarcie komenda wracalo tam gdzie gracz skonczyl.
     private final Map<UUID, RybaGatunek.Rzadkosc> tierIndeksuGracza = new HashMap<>();
@@ -663,7 +1029,7 @@ public class FishingManager implements Listener {
         return wynik;
     }
 
-    /** Otwiera GUI "Indeks Rybacki" na rzadkości, na której gracz ostatnio skończył (albo pierwszej dostępnej) - patrz /rybindeks w MainpluginsFishing. */
+    /** Otwiera GUI "Indeks Rybacki" na rzadkości, na której gracz ostatnio skończył (albo pierwszej dostępnej) - patrz /rybiemenu w MainpluginsFishing. */
     public void otworzIndeks(Player player) {
         List<RybaGatunek.Rzadkosc> tiery = rzadkosciZGatunkami();
         if (tiery.isEmpty()) {
@@ -680,8 +1046,9 @@ public class FishingManager implements Listener {
      * przełączania między rzadkościami (patrz onInventoryClick) zamiast wszystkich
      * naraz w oddzielnych rzędach - user 2026-08-29 wolał to od poprzedniej wersji.
      * Gatunek JUŻ złowiony (patrz FishingStatsManager.getIndeks) pokazuje prawdziwą ikonę
-     * z lore (ile sztuk + osobisty rekord wagi), a JESZCZE nieodkryty pokazuje WYŁĄCZNIE
-     * czerwoną szybę - zero nazwy/lore zdradzającej co to za ryba.
+     * z lore (ile sztuk + rekordy, patrz iconaIndeksu), a JESZCZE nieodkryty pokazuje
+     * czerwoną szybę z napisem "Nie odkryto" (patrz nieodkrytaIkona) - zero nazwy/lore
+     * samej ryby, więc niczego nie zdradza.
      */
     private void otworzIndeks(Player player, RybaGatunek.Rzadkosc tier) {
         tierIndeksuGracza.put(player.getUniqueId(), tier);
@@ -695,11 +1062,12 @@ public class FishingManager implements Listener {
 
         Inventory gui = Bukkit.createInventory(null, 54, Component.text(TYTUL_INDEKSU + " — " + nazwaTieru(tier), NamedTextColor.AQUA, TextDecoration.BOLD));
 
-        ItemStack tlo = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta mTlo = tlo.getItemMeta();
-        mTlo.displayName(Component.empty());
-        tlo.setItemMeta(mTlo);
-        for (int i = 0; i < 54; i++) gui.setItem(i, tlo);
+        // Tło "morskie" i ozdoby - ten sam wzorzec co Dziennik Rybaka (patrz morskaSzyba/
+        // ozdobaMorska), ale user 2026-08-30 chciał INNY układ ozdób na KAŻDEJ stronie
+        // (rzadkości) - patrz dekoracjeIndeksu, gęstość/kolorystyka koralowców rośnie
+        // razem z rzadkością (subtelne wzmocnienie "im rzadziej, tym bardziej żywa rafa").
+        for (int i = 0; i < 54; i++) gui.setItem(i, morskaSzyba(i));
+        dekoracjeIndeksu(tier).forEach((slot, material) -> gui.setItem(slot, ozdobaMorska(material)));
 
         List<RybaGatunek> gatunkiTieru = new ArrayList<>();
         for (RybaGatunek g : gatunki) if (g.rzadkosc() == tier) gatunkiTieru.add(g);
@@ -724,32 +1092,165 @@ public class FishingManager implements Listener {
         odznaka.setItemMeta(mOdznaka);
         gui.setItem(SLOT_ODZNAKA_RZADKOSCI, odznaka);
 
-        ItemStack postep = new ItemStack(Material.NAUTILUS_SHELL);
-        ItemMeta mPostep = postep.getItemMeta();
-        mPostep.displayName(Component.text("Odkryto łącznie: " + odkryte.size() + " / " + gatunki.size() + " gatunków", NamedTextColor.YELLOW, TextDecoration.BOLD));
-        postep.setItemMeta(mPostep);
-        gui.setItem(SLOT_POSTEP_OGOLNY, postep);
+        gui.setItem(SLOT_POSTEP_OGOLNY, itemPostepuOgolnego(odkryte.size(), gatunki.size()));
+        gui.setItem(SLOT_SUMA_KG, itemSumyKg(player));
 
         if (indeksTieru > 0) gui.setItem(SLOT_POPRZEDNIA_RZADKOSC, strzalkaTieru(tiery.get(indeksTieru - 1), true));
         if (indeksTieru < tiery.size() - 1) gui.setItem(SLOT_NASTEPNA_RZADKOSC, strzalkaTieru(tiery.get(indeksTieru + 1), false));
 
-        ItemStack zamknij = new ItemStack(Material.BARRIER);
-        ItemMeta mZamknij = zamknij.getItemMeta();
-        mZamknij.displayName(Component.text("Zamknij", NamedTextColor.RED, TextDecoration.BOLD));
-        zamknij.setItemMeta(mZamknij);
-        gui.setItem(SLOT_ZAMKNIJ_INDEKSU, zamknij);
+        gui.setItem(SLOT_WROC_Z_INDEKSU, przyciskPufferfish("« Wróć do menu"));
 
         player.openInventory(gui);
     }
 
-    /** Przycisk przełączający na sąsiednią rzadkość - patrz otworzIndeks/onInventoryClick. */
+    /**
+     * Przycisk przełączający na sąsiednią rzadkość - patrz otworzIndeks/onInventoryClick.
+     * Kryształ Pryzmarynu (poprzednia) / Odłamek Pryzmarynu (następna) zamiast strzały
+     * widmowej (user 2026-08-30: "żeby wyglądało to ładniej") - oba pasują do morskiego
+     * klimatu Dziennika Rybaka, a przy okazji same w sobie ładnie się odróżniają.
+     */
     private ItemStack strzalkaTieru(RybaGatunek.Rzadkosc docelowa, boolean poprzednia) {
-        ItemStack item = new ItemStack(Material.SPECTRAL_ARROW);
+        ItemStack item = new ItemStack(poprzednia ? Material.PRISMARINE_CRYSTALS : Material.PRISMARINE_SHARD);
         ItemMeta meta = item.getItemMeta();
         String nazwa = poprzednia ? "« " + nazwaTieru(docelowa) : nazwaTieru(docelowa) + " »";
         meta.displayName(Component.text(nazwa, NamedTextColor.YELLOW, TextDecoration.BOLD));
         item.setItemMeta(meta);
         return item;
+    }
+
+    /**
+     * Odznaka ogólnego postępu w SLOT_POSTEP_OGOLNY (user 2026-08-30) - normalnie Serce
+     * Oceanu, a gdy gracz odkrył WSZYSTKIE gatunki (patrz FishingManager.gatunki) zamienia
+     * się na Konduit - naturalny "upgrade" tematyczny (w Minecrafcie Konduit craftuje się
+     * właśnie z Serca Oceanu + muszli), z blaskiem i osobnym, świątecznym lore.
+     */
+    private ItemStack itemPostepuOgolnego(int odkryte, int wszystkie) {
+        boolean skompletowany = wszystkie > 0 && odkryte >= wszystkie;
+        ItemStack item = new ItemStack(skompletowany ? Material.CONDUIT : Material.HEART_OF_THE_SEA);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.text("Odkryto łącznie: " + odkryte + " / " + wszystkie + " gatunków", NamedTextColor.YELLOW, TextDecoration.BOLD));
+        if (skompletowany) {
+            meta.lore(List.of(Component.text("Skompletowałeś CAŁY indeks rybacki!", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false)));
+            meta.setEnchantmentGlintOverride(true);
+        }
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    /**
+     * Odznaka sumy złowionych kg gracza (na zawsze, patrz FishingStatsManager.sumaKg) w
+     * SLOT_SUMA_KG - user 2026-08-30 chciał ją "naprzeciwko" SLOT_POSTEP_OGOLNY, czyli
+     * symetrycznie po drugiej stronie SLOT_WROC_Z_INDEKSU. Ta sama liczba, która dawniej
+     * napędzała stary ranking po sumie (patrz FishingStatsManager.getTop, dziś nieużywany
+     * w /rybtop) - tutaj dostaje wreszcie miejsce w GUI.
+     */
+    private ItemStack itemSumyKg(Player player) {
+        ItemStack item = new ItemStack(Material.BUNDLE);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.text("Suma złowionych kg: " + String.format(Locale.ROOT, "%.1f", statystyki.sumaKg(player.getUniqueId())) + " kg", NamedTextColor.YELLOW, TextDecoration.BOLD));
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    /**
+     * Ręcznie dobrane sloty ozdób w GUI indeksu (patrz otworzIndeks), INNE na KAŻDEJ
+     * stronie/rzadkości (user 2026-08-30: "na każdej stronie inaczej poukładał wodorosty
+     * koralowce itp." - ten sam ogólny wzorzec/tło co Dziennik Rybaka, patrz
+     * dekoracjeMenuGlownego, ale osobny układ tutaj) - im wyższa rzadkość, tym więcej
+     * ozdób i tym bardziej kolorowe koralowce zamiast samych wodorostów, subtelnie
+     * wzmacniając wrażenie "rzadsza sekcja = żywsza rafa". Świadomie omija sloty
+     * zajęte przez rybki/odznakę/przyciski (patrz stałe SLOT_ i RZAD_RYB_ powyżej).
+     */
+    private Map<Integer, Material> dekoracjeIndeksu(RybaGatunek.Rzadkosc tier) {
+        Map<Integer, Material> ozdoby = new HashMap<>();
+        switch (tier) {
+            case ZWYKLA -> {
+                ozdoby.put(0, Material.KELP);
+                ozdoby.put(2, Material.SEAGRASS);
+                ozdoby.put(6, Material.KELP);
+                ozdoby.put(8, Material.SEAGRASS);
+                ozdoby.put(17, Material.KELP);
+                ozdoby.put(36, Material.SEAGRASS);
+                ozdoby.put(44, Material.KELP);
+                ozdoby.put(46, Material.SEAGRASS);
+            }
+            case NIEZWYKLA -> {
+                ozdoby.put(1, Material.SEAGRASS);
+                ozdoby.put(3, Material.KELP);
+                ozdoby.put(7, Material.TUBE_CORAL_FAN);
+                ozdoby.put(9, Material.SEAGRASS);
+                ozdoby.put(16, Material.KELP);
+                ozdoby.put(18, Material.TUBE_CORAL_FAN);
+                ozdoby.put(35, Material.SEAGRASS);
+                ozdoby.put(37, Material.KELP);
+                ozdoby.put(43, Material.TUBE_CORAL_FAN);
+                ozdoby.put(52, Material.SEAGRASS);
+            }
+            case RZADKA -> {
+                ozdoby.put(0, Material.BRAIN_CORAL_FAN);
+                ozdoby.put(5, Material.KELP);
+                ozdoby.put(8, Material.HORN_CORAL_FAN);
+                ozdoby.put(10, Material.SEAGRASS);
+                ozdoby.put(15, Material.BRAIN_CORAL_FAN);
+                ozdoby.put(17, Material.KELP);
+                ozdoby.put(26, Material.HORN_CORAL_FAN);
+                ozdoby.put(28, Material.SEAGRASS);
+                ozdoby.put(34, Material.BRAIN_CORAL_FAN);
+                ozdoby.put(36, Material.KELP);
+                ozdoby.put(46, Material.HORN_CORAL_FAN);
+                ozdoby.put(51, Material.SEAGRASS);
+            }
+            case EPICKA -> {
+                ozdoby.put(1, Material.FIRE_CORAL_FAN);
+                ozdoby.put(3, Material.BRAIN_CORAL_FAN);
+                ozdoby.put(6, Material.SEAGRASS);
+                ozdoby.put(9, Material.KELP);
+                ozdoby.put(11, Material.FIRE_CORAL_FAN);
+                ozdoby.put(16, Material.BRAIN_CORAL_FAN);
+                ozdoby.put(18, Material.SEAGRASS);
+                ozdoby.put(25, Material.FIRE_CORAL_FAN);
+                ozdoby.put(27, Material.KELP);
+                ozdoby.put(33, Material.BRAIN_CORAL_FAN);
+                ozdoby.put(38, Material.FIRE_CORAL_FAN);
+                ozdoby.put(42, Material.SEAGRASS);
+                ozdoby.put(50, Material.FIRE_CORAL_FAN);
+            }
+            case LEGENDARNA -> {
+                ozdoby.put(0, Material.BUBBLE_CORAL_FAN);
+                ozdoby.put(2, Material.FIRE_CORAL_FAN);
+                ozdoby.put(5, Material.HORN_CORAL_FAN);
+                ozdoby.put(8, Material.BUBBLE_CORAL_FAN);
+                ozdoby.put(13, Material.FIRE_CORAL_FAN);
+                ozdoby.put(17, Material.BUBBLE_CORAL_FAN);
+                ozdoby.put(24, Material.HORN_CORAL_FAN);
+                ozdoby.put(26, Material.BUBBLE_CORAL_FAN);
+                ozdoby.put(30, Material.FIRE_CORAL_FAN);
+                ozdoby.put(36, Material.HORN_CORAL_FAN);
+                ozdoby.put(39, Material.BUBBLE_CORAL_FAN);
+                ozdoby.put(44, Material.FIRE_CORAL_FAN);
+                ozdoby.put(46, Material.BUBBLE_CORAL_FAN);
+                ozdoby.put(51, Material.HORN_CORAL_FAN);
+            }
+            case MITYCZNA -> {
+                ozdoby.put(0, Material.BUBBLE_CORAL_FAN);
+                ozdoby.put(1, Material.FIRE_CORAL_FAN);
+                ozdoby.put(3, Material.HORN_CORAL_FAN);
+                ozdoby.put(6, Material.TUBE_CORAL_FAN);
+                ozdoby.put(8, Material.BRAIN_CORAL_FAN);
+                ozdoby.put(10, Material.BUBBLE_CORAL_FAN);
+                ozdoby.put(14, Material.FIRE_CORAL_FAN);
+                ozdoby.put(16, Material.HORN_CORAL_FAN);
+                ozdoby.put(18, Material.TUBE_CORAL_FAN);
+                ozdoby.put(24, Material.BRAIN_CORAL_FAN);
+                ozdoby.put(26, Material.BUBBLE_CORAL_FAN);
+                ozdoby.put(32, Material.FIRE_CORAL_FAN);
+                ozdoby.put(37, Material.HORN_CORAL_FAN);
+                ozdoby.put(40, Material.TUBE_CORAL_FAN);
+                ozdoby.put(44, Material.BRAIN_CORAL_FAN);
+                ozdoby.put(51, Material.BUBBLE_CORAL_FAN);
+            }
+        }
+        return ozdoby;
     }
 
     private String nazwaTieru(RybaGatunek.Rzadkosc tier) {
@@ -763,75 +1264,147 @@ public class FishingManager implements Listener {
         };
     }
 
-    /** Odznaka aktualnie oglądanej rzadkości (patrz SLOT_ODZNAKA_RZADKOSCI) - lore z licznikiem dorzuca otworzIndeks. */
+    /**
+     * Odznaka aktualnie oglądanej rzadkości (patrz SLOT_ODZNAKA_RZADKOSCI) - lore z
+     * licznikiem dorzuca otworzIndeks. Klasyczna RPG "drabinka" surowców zamiast
+     * kolorowych szyb (user 2026-08-30: chciał czegoś innego niż szkła) - żelazo→
+     * złoto→szmaragd→diament→netheryt→gwiazda otchłani, coś co każdy gracz od razu
+     * czyta jako rosnący "poziom", niezależnie od tematyki rybackiej.
+     */
     private ItemStack etykietaTieru(RybaGatunek.Rzadkosc tier) {
-        Material szklo = switch (tier) {
-            case ZWYKLA -> Material.WHITE_STAINED_GLASS_PANE;
-            case NIEZWYKLA -> Material.LIME_STAINED_GLASS_PANE;
-            case RZADKA -> Material.MAGENTA_STAINED_GLASS_PANE;
-            case EPICKA -> Material.PURPLE_STAINED_GLASS_PANE;
-            case LEGENDARNA -> Material.ORANGE_STAINED_GLASS_PANE;
-            case MITYCZNA -> Material.CYAN_STAINED_GLASS_PANE;
+        Material material = switch (tier) {
+            case ZWYKLA -> Material.IRON_INGOT;
+            case NIEZWYKLA -> Material.GOLD_INGOT;
+            case RZADKA -> Material.EMERALD;
+            case EPICKA -> Material.DIAMOND;
+            case LEGENDARNA -> Material.NETHERITE_INGOT;
+            case MITYCZNA -> Material.NETHER_STAR;
         };
-        ItemStack item = new ItemStack(szklo);
+        NamedTextColor kolor = switch (tier) {
+            case ZWYKLA -> NamedTextColor.WHITE;
+            case NIEZWYKLA -> NamedTextColor.YELLOW;
+            case RZADKA -> NamedTextColor.GREEN;
+            case EPICKA -> NamedTextColor.AQUA;
+            case LEGENDARNA -> NamedTextColor.DARK_PURPLE;
+            case MITYCZNA -> NamedTextColor.LIGHT_PURPLE;
+        };
+        ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text(nazwaTieru(tier), NamedTextColor.GRAY, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+        meta.displayName(Component.text(nazwaTieru(tier), kolor, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+        if (tier.ordinal() >= RybaGatunek.Rzadkosc.EPICKA.ordinal()) meta.setEnchantmentGlintOverride(true);
         item.setItemMeta(meta);
         return item;
     }
 
-    /** Placeholder nieodkrytego gatunku - CELOWO tylko czerwona szyba, bez nazwy/lore, żeby niczego nie zdradzić (user 2026-08-29). */
+    /**
+     * Placeholder nieodkrytego gatunku - czerwona szyba, ale w odróżnieniu od pierwszej
+     * wersji (user 2026-08-29: zero nazwy) teraz ma jawny napis "Nie odkryto" na hover
+     * (user 2026-08-30: "gdy się najedzie na czerwone tło niech pisze nie odkryto") -
+     * CELOWO dalej bez nazwy/koloru/rzadkości samej ryby, żeby niczego nie zdradzić.
+     */
     private ItemStack nieodkrytaIkona() {
         ItemStack item = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.empty());
+        meta.displayName(Component.text("Nie odkryto", NamedTextColor.RED, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
+        meta.lore(List.of(Component.text("Złów rybę tej rzadkości, aby ją odkryć.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
         item.setItemMeta(meta);
         return item;
     }
 
-    /** Ikona jednego odkrytego gatunku w GUI indeksu - bazowy item (patrz bazowyItemRyby) plus lore z liczbą sztuk i osobistym rekordem wagi TEGO gracza (nie mylić z wagą pojedynczej złowionej ryby w stworzRybe). */
+    /**
+     * Ikona jednego odkrytego gatunku w GUI indeksu - bazowy item (patrz bazowyItemRyby)
+     * plus lore ze statystykami (user 2026-08-30): liczba sztuk, najwięcej/najmniej
+     * złowione PRZEZ TEGO GRACZA (patrz WpisIndeksu), rekord SERWERA na ten gatunek -
+     * dowolny gracz (patrz FishingStatsManager.getRekordGatunku) - jeśli już ktoś go
+     * ustanowił (zawsze powinien, skoro ten gatunek jest już odkryty w indeksie).
+     */
     private ItemStack iconaIndeksu(RybaGatunek gatunek, FishingStatsManager.WpisIndeksu wpis) {
         ItemStack item = bazowyItemRyby(gatunek);
 
         ItemMeta meta = item.getItemMeta();
         List<Component> lore = meta.hasLore() ? new ArrayList<>(meta.lore()) : new ArrayList<>();
         lore.add(Component.text("Złowionych: " + wpis.zlowionychSztuk() + " szt.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text("Twój rekord: " + String.format(Locale.ROOT, "%.1f", wpis.rekordKg()) + " kg", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.text("Twój rekord: " + String.format(Locale.ROOT, "%.1f", wpis.rekordKg()) + " kg", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.text("Najmniejsza złowiona: " + String.format(Locale.ROOT, "%.1f", wpis.minKg()) + " kg", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+
+        FishingStatsManager.RekordGatunku rekordSerwera = statystyki.getRekordGatunku(gatunek.customId());
+        if (rekordSerwera != null) {
+            lore.add(Component.text("Rekord serwera: " + String.format(Locale.ROOT, "%.1f", rekordSerwera.wagaKg()) + " kg (" + rekordSerwera.nick() + ")", NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false));
+        }
+
         meta.lore(lore);
         item.setItemMeta(meta);
         return item;
     }
 
     /**
-     * Obsługa GUI /rybindeks: "Zamknij" zamyka, strzałki poprzednia/następna przełączają
-     * na sąsiednią rzadkość (patrz otworzIndeks(player, tier)) - ponowne otwarcie
-     * inventory wewnątrz handlera klika, ten sam wzorzec co paginacja w
-     * MarketManager.onInventoryClick. Klikanie samych rybek/odznaki nic nie robi, to
-     * czysto podgląd.
+     * Obsługa WSZYSTKICH rybackich GUI (rozpoznanych po tytule) w jednym handlerze - ten
+     * sam wzorzec co paginacja w MarketManager.onInventoryClick (ponowne otwarcie
+     * inventory wewnątrz handlera klika). W Dzienniku Rybaka: przyciski otwierają
+     * odpowiednie podstrony, pufferfish zamyka całkiem. Na KAŻDEJ podstronie
+     * (Indeks/Dziennik Połowów/Ustawienia) pufferfish WRACA do Dziennika Rybaka (nie
+     * zamyka). Klikanie samych rybek/odznak/ozdób nic nie robi.
      */
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         String tytul = event.getView().title().toString();
-        if (!tytul.contains(TYTUL_INDEKSU)) return;
+        boolean menuGlowne = tytul.contains(TYTUL_MENU_GLOWNEGO);
+        boolean indeks = tytul.contains(TYTUL_INDEKSU);
+        boolean dziennik = tytul.contains(TYTUL_DZIENNIK);
+        boolean ustawienia = tytul.contains(TYTUL_USTAWIENIA);
+        if (!menuGlowne && !indeks && !dziennik && !ustawienia) return;
 
         event.setCancelled(true);
         if (!(event.getWhoClicked() instanceof Player player)) return;
 
         int slot = event.getRawSlot();
-        if (slot == SLOT_ZAMKNIJ_INDEKSU) {
-            player.closeInventory();
+
+        if (menuGlowne) {
+            if (slot == SLOT_MENU_DZIENNIK) {
+                otworzDziennik(player);
+            } else if (slot == SLOT_MENU_INDEKS) {
+                otworzIndeks(player);
+            } else if (slot == SLOT_MENU_RYBTOP) {
+                player.closeInventory(); // zamykamy, zeby ranking na czacie bylo widac bez GUI na wierzchu
+                wyslijRanking(player);
+            } else if (slot == SLOT_MENU_USTAWIENIA) {
+                otworzUstawienia(player);
+            } else if (slot == SLOT_MENU_ZAMKNIJ) {
+                player.closeInventory();
+            }
+            return;
+        }
+
+        if (dziennik) {
+            if (slot == SLOT_WROC_Z_DZIENNIKA) otworzMenuGlowne(player);
+            return;
+        }
+
+        if (ustawienia) {
+            if (slot == SLOT_USTAWIENIA_PASEK) {
+                PozycjaPaska nowa = pozycjaPaska(player) == PozycjaPaska.GORA ? PozycjaPaska.DOL : PozycjaPaska.GORA;
+                ustawPozycjePaska(player, nowa);
+                otworzUstawienia(player); // ponowne otwarcie zeby lore od razu pokazalo nowa wartosc
+            } else if (slot == SLOT_WROC_Z_USTAWIEN) {
+                otworzMenuGlowne(player);
+            }
+            return;
+        }
+
+        if (slot == SLOT_WROC_Z_INDEKSU) {
+            otworzMenuGlowne(player);
             return;
         }
 
         List<RybaGatunek.Rzadkosc> tiery = rzadkosciZGatunkami();
         RybaGatunek.Rzadkosc aktualny = tierIndeksuGracza.get(player.getUniqueId());
-        int indeks = tiery.indexOf(aktualny);
-        if (indeks < 0) return;
+        int indeksTieru = tiery.indexOf(aktualny);
+        if (indeksTieru < 0) return;
 
-        if (slot == SLOT_POPRZEDNIA_RZADKOSC && indeks > 0) {
-            otworzIndeks(player, tiery.get(indeks - 1));
-        } else if (slot == SLOT_NASTEPNA_RZADKOSC && indeks < tiery.size() - 1) {
-            otworzIndeks(player, tiery.get(indeks + 1));
+        if (slot == SLOT_POPRZEDNIA_RZADKOSC && indeksTieru > 0) {
+            otworzIndeks(player, tiery.get(indeksTieru - 1));
+        } else if (slot == SLOT_NASTEPNA_RZADKOSC && indeksTieru < tiery.size() - 1) {
+            otworzIndeks(player, tiery.get(indeksTieru + 1));
         }
     }
 

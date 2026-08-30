@@ -9,8 +9,13 @@ import org.bukkit.plugin.Plugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -89,13 +94,115 @@ public class FishingStatsManager {
             config.set(kluczGatunku + ".rekord-kg", wagaDziesieteKg / 10.0);
         }
 
+        // Najlzejszy okaz TEGO gatunku zlowiony przez TEGO gracza (patrz WpisIndeksu.minKg /
+        // GUI indeksu 2026-08-30) - "brak wpisu" (pierwszy polow tego gatunku) traktujemy
+        // jako nieskonczonosc, zeby ta pierwsza waga zawsze wygrala jako nowe minimum.
+        long minGatunkuDziesiete = config.contains(kluczGatunku + ".rekord-min-kg")
+                ? naDziesiete(config.getDouble(kluczGatunku + ".rekord-min-kg"))
+                : Long.MAX_VALUE;
+        if (wagaDziesieteKg < minGatunkuDziesiete) {
+            config.set(kluczGatunku + ".rekord-min-kg", wagaDziesieteKg / 10.0);
+        }
+
+        // Historia polowow (patrz getHistoria/WpisHistorii, Dziennik Polowow w GUI
+        // 2026-08-30) - NAJNOWSZY na poczatku listy, obcinana do LIMIT_HISTORII zeby plik
+        // nie rosl bez konca przy aktywnych rybakach (Dziennik i tak pokazuje tylko
+        // "ostatnie" polowy, nie pelna historie na zawsze - w odroznieniu od sumy-kg/
+        // rekordow wyzej, ktore ZAWSZE trzymamy w calosci).
+        List<Map<?, ?>> historia = new ArrayList<>(config.getMapList(klucz + ".historia"));
+        Map<String, Object> wpisHistorii = new LinkedHashMap<>();
+        wpisHistorii.put("custom-id", customId);
+        wpisHistorii.put("gatunek", nazwaGatunku);
+        wpisHistorii.put("kg", wagaDziesieteKg / 10.0);
+        wpisHistorii.put("czas", FORMAT_CZASU.format(LocalDateTime.now()));
+        historia.add(0, wpisHistorii);
+        if (historia.size() > LIMIT_HISTORII) historia = historia.subList(0, LIMIT_HISTORII);
+        config.set(klucz + ".historia", historia);
+
+        // Top 10 NAJCIEZSZYCH POJEDYNCZYCH POLOWOW na serwerze, dowolny gracz/gatunek
+        // (patrz getTopPolowy, /rybtop w FishingManager.wyslijRanking) - user 2026-08-30
+        // NIE chcial rankingu po sumie zlowionych kg (patrz TopRybak/getTop nizej, zostaje
+        // jako martwa-ale-zachowana funkcja), tylko 10 najciezszych POJEDYNCZYCH ryb w
+        // historii serwera, bez wzgledu na to jaki to gatunek. Ta sama zasada remisu co
+        // rekord gatunku/serwera: SCISLE ">" gdy lista jest juz pelna (10) - dokladny
+        // remis z aktualnym 10. miejscem NIE wypycha go z topki.
+        List<Map<?, ?>> topPolowy = new ArrayList<>(config.getMapList("top-polowy"));
+        boolean dodajDoTopki = topPolowy.size() < LIMIT_TOP_POLOWOW;
+        if (!dodajDoTopki) {
+            double najmniejszaWTopce = topPolowy.stream().mapToDouble(w -> ((Number) w.get("kg")).doubleValue()).min().orElse(0.0);
+            dodajDoTopki = wagaDziesieteKg > naDziesiete(najmniejszaWTopce);
+        }
+        if (dodajDoTopki) {
+            Map<String, Object> wpisTopki = new LinkedHashMap<>();
+            wpisTopki.put("nick", nick);
+            wpisTopki.put("gatunek", nazwaGatunku);
+            wpisTopki.put("kg", wagaDziesieteKg / 10.0);
+            topPolowy.add(wpisTopki);
+            topPolowy.sort((a, b) -> Double.compare(((Number) b.get("kg")).doubleValue(), ((Number) a.get("kg")).doubleValue()));
+            if (topPolowy.size() > LIMIT_TOP_POLOWOW) topPolowy = topPolowy.subList(0, LIMIT_TOP_POLOWOW);
+            config.set("top-polowy", topPolowy);
+        }
+
         saver.oznaczZmiane();
     }
 
-    public record WpisIndeksu(String customId, String nazwaGatunku, int zlowionychSztuk, double rekordKg) {}
+    private static final int LIMIT_HISTORII = 50; // patrz zanotujPolow/getHistoria
+    private static final int LIMIT_TOP_POLOWOW = 10; // patrz zanotujPolow/getTopPolowy
+    private static final DateTimeFormatter FORMAT_CZASU = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm", Locale.forLanguageTag("pl"));
+
+    /** Jeden wpis w Dzienniku Połowów (patrz getHistoria) - customId, żeby GUI mogło pokazać PRAWDZIWĄ ikonę gatunku (patrz FishingManager), nie tylko samą nazwę. */
+    public record WpisHistorii(String customId, String nazwaGatunku, double kg, String czas) {}
+
+    /** Jeden wpis w top 10 najcięższych POJEDYNCZYCH połowów serwera (patrz getTopPolowy) - w odróżnieniu od TopRybak nizej to NIE suma, tylko jedna konkretna ryba. */
+    public record TopPolow(String nick, String gatunek, double kg) {}
 
     /**
-     * Wpisy indeksu rybackiego DANEGO GRACZA - patrz /rybindeks w MainpluginsFishing.
+     * Top 10 (albo mniej, jeśli serwer nie ma jeszcze tylu połowów) najcięższych
+     * POJEDYNCZYCH ryb złowionych KIEDYKOLWIEK, przez dowolnego gracza, dowolny gatunek -
+     * patrz /rybtop w FishingManager.wyslijRanking (user 2026-08-30: chciał to zamiast
+     * rankingu po sumie kg). Lista jest trzymana już posortowana malejąco (patrz
+     * zanotujPolow), więc tu tylko odczyt, bez ponownego sortowania.
+     */
+    public List<TopPolow> getTopPolowy(int limit) {
+        List<TopPolow> wynik = new ArrayList<>();
+        for (Map<?, ?> wpis : config.getMapList("top-polowy")) {
+            if (wynik.size() >= limit) break;
+            wynik.add(new TopPolow(
+                    String.valueOf(wpis.get("nick")),
+                    String.valueOf(wpis.get("gatunek")),
+                    wpis.get("kg") instanceof Number liczba ? liczba.doubleValue() : 0.0));
+        }
+        return wynik;
+    }
+
+    /**
+     * Ostatnie połowy DANEGO GRACZA, NAJNOWSZE pierwsze - patrz Dziennik Połowów w GUI
+     * (FishingManager.otworzDziennik). W odróżnieniu od getIndeks (jeden wpis na gatunek,
+     * na zawsze) to chronologiczny log POJEDYNCZYCH połowów, obcięty do LIMIT_HISTORII
+     * najnowszych (patrz zanotujPolow) - nie pełna historia życia gracza.
+     */
+    public List<WpisHistorii> getHistoria(UUID uuid, int limit) {
+        List<WpisHistorii> wynik = new ArrayList<>();
+        for (Map<?, ?> wpis : config.getMapList(uuid.toString() + ".historia")) {
+            if (wynik.size() >= limit) break;
+            wynik.add(new WpisHistorii(
+                    String.valueOf(wpis.get("custom-id")),
+                    String.valueOf(wpis.get("gatunek")),
+                    wpis.get("kg") instanceof Number liczba ? liczba.doubleValue() : 0.0,
+                    String.valueOf(wpis.get("czas"))));
+        }
+        return wynik;
+    }
+
+    /**
+     * minKg - najlzejszy okaz TEGO gatunku, jaki ten gracz kiedykolwiek zlowil (patrz
+     * zanotujPolow) - dla wpisow sprzed wprowadzenia tego pola (2026-08-30) domyslnie
+     * rowny rekordKg, dopoki gracz nie zlowi czegos lzejszego.
+     */
+    public record WpisIndeksu(String customId, String nazwaGatunku, int zlowionychSztuk, double rekordKg, double minKg) {}
+
+    /**
+     * Wpisy indeksu rybackiego DANEGO GRACZA - patrz /rybiemenu w MainpluginsFishing.
      * Zwraca WYLACZNIE gatunki, ktore ten gracz juz KIEDYKOLWIEK zlowil (kolejnosc
      * dowolna - to wolajacy/komenda decyduje w jakiej kolejnosci je pokazac, zazwyczaj
      * wg kanonicznej kolejnosci z ryby.yml, patrz FishingManager.gatunki). Pusta lista,
@@ -108,11 +215,13 @@ public class FishingStatsManager {
 
         for (String customId : sekcja.getKeys(false)) {
             String baza = uuid.toString() + ".gatunki." + customId;
+            double rekordKg = config.getDouble(baza + ".rekord-kg", 0.0);
             wynik.add(new WpisIndeksu(
                     customId,
                     config.getString(baza + ".nazwa", customId),
                     config.getInt(baza + ".zlowionych", 0),
-                    config.getDouble(baza + ".rekord-kg", 0.0)));
+                    rekordKg,
+                    config.getDouble(baza + ".rekord-min-kg", rekordKg)));
         }
         return wynik;
     }
@@ -122,9 +231,23 @@ public class FishingStatsManager {
         return config.getDouble(uuid.toString() + ".suma-kg", 0.0);
     }
 
+    public record OsobistyRekord(double kg, String gatunek) {}
+
+    /** Najciezszy POJEDYNCZY polow TEGO gracza (dowolny gatunek) - kg=0.0 jesli jeszcze nic nie zlowil. Patrz "Twój najcięższy połów" w FishingManager.wyslijRanking. */
+    public OsobistyRekord getOsobistyRekord(UUID uuid) {
+        String klucz = uuid.toString();
+        return new OsobistyRekord(config.getDouble(klucz + ".rekord-kg", 0.0), config.getString(klucz + ".rekord-gatunek", "?"));
+    }
+
     public record TopRybak(UUID uuid, String nick, double sumaKg) {}
 
-    /** Top graczy po sumie zlowionych kg, malejaco - patrz /rybtop w MainpluginsFishing. */
+    /**
+     * Top graczy po sumie zlowionych kg, malejaco. NIEUZYWANE w /rybtop od 2026-08-30 -
+     * user chcial ranking po najciezszych POJEDYNCZYCH polowach zamiast sumy (patrz
+     * getTopPolowy/TopPolow), ale suma-kg dalej jest zbierana (patrz zanotujPolow), wiec
+     * zostawione jako gotowa funkcja - moze przydac sie np. w przyszlej karcie
+     * "Statystyki gracza" w Dzienniku Rybaka.
+     */
     public List<TopRybak> getTop(int limit) {
         List<TopRybak> wynik = new ArrayList<>();
         for (String klucz : config.getKeys(false)) {
@@ -185,26 +308,84 @@ public class FishingStatsManager {
         return new NowyRekordGatunku(pierwszy, obecnyRekord / 10.0, poprzedniNick);
     }
 
+    public record RekordGatunku(String nick, double wagaKg) {}
+
+    /**
+     * Aktualny rekord SERWERA (dowolny gracz, patrz zanotujRekordGatunkuJesliNowy) DANEGO
+     * gatunku - patrz GUI indeksu (iconaIndeksu) 2026-08-30, do odroznienia od osobistego
+     * rekordu gracza (WpisIndeksu.rekordKg). Null jesli NIKT jeszcze nigdy nie zlowil
+     * tego gatunku (nie powinno sie zdarzyc dla gatunku, ktory JUZ jest w indeksie gracza -
+     * skoro on go zlowil, rekord serwera na ten gatunek musi istniec).
+     */
+    public RekordGatunku getRekordGatunku(String customId) {
+        String klucz = "rekordy-gatunkow." + customId;
+        if (!config.contains(klucz + ".rekord-kg")) return null;
+        return new RekordGatunku(config.getString(klucz + ".nick", "?"), config.getDouble(klucz + ".rekord-kg", 0.0));
+    }
+
     public record RekordSerwera(UUID uuid, String nick, double wagaKg, String gatunek) {}
 
-    /** Najciezsza pojedyncza ryba zlowiona kiedykolwiek na serwerze (dowolny gatunek) - null jesli nikt jeszcze nic nie zlowil. */
-    public RekordSerwera getRekordSerwera() {
-        String najlepszyKlucz = null;
-        double najlepszaWagaKg = 0.0;
+    /**
+     * Wywolywane po KAZDYM polowie (patrz FishingManager.nagrodaZaPolow, obok
+     * zanotujRekordGatunkuJesliNowy) - jesli TA zlowiona ryba jest ciezsza niz DOTYCHCZASOWY
+     * rekord SERWERA (dowolny gatunek, patrz getRekordSerwera), zapisuje nowy rekord.
+     * SCISLE ">" (nie ">="), NIE ROWNOSC - user 2026-08-30: przy DOKLADNYM remisie
+     * dotychczasowy rekordzista ZATRZYMUJE rekord (kto pierwszy zlowil te wage, ten
+     * trzyma, remis go nie przebija) - dokladnie ta sama zasada co juz mial rekord
+     * gatunku wyzej.
+     */
+    public void zanotujRekordSerweraJesliNowy(UUID uuid, String nick, String gatunek, int wagaDziesieteKg) {
+        long obecnyRekord = naDziesiete(config.getDouble("rekord-serwera-global.rekord-kg", 0.0));
+        if (wagaDziesieteKg <= obecnyRekord) return;
 
-        for (String klucz : config.getKeys(false)) {
-            if (!czyUUID(klucz)) continue;
-            double rekord = config.getDouble(klucz + ".rekord-kg", 0.0);
-            if (rekord > najlepszaWagaKg) {
-                najlepszaWagaKg = rekord;
-                najlepszyKlucz = klucz;
+        config.set("rekord-serwera-global.rekord-kg", wagaDziesieteKg / 10.0);
+        config.set("rekord-serwera-global.uuid", uuid.toString());
+        config.set("rekord-serwera-global.nick", nick);
+        config.set("rekord-serwera-global.gatunek", gatunek);
+        saver.oznaczZmiane();
+    }
+
+    /**
+     * Najciezsza pojedyncza ryba zlowiona kiedykolwiek na serwerze (dowolny gatunek) - null
+     * jesli nikt jeszcze nic nie zlowil. Jawnie zapisany (patrz zanotujRekordSerweraJesliNowy)
+     * zamiast przeliczany za kazdym razem ze wszystkich graczy - przy DOKLADNYM remisie
+     * dwoch roznych graczy stare przeliczanie-na-biezaco wygrywalo losowo (kolejnosc w
+     * pliku), to jest deterministyczne: kto pierwszy zlowil te wage, ten trzyma rekord.
+     *
+     * Wsteczna zgodnosc: jesli ten klucz jeszcze nie istnieje (dane sprzed tej zmiany,
+     * 2026-08-30) - JEDNORAZOWO przelicza go starym sposobem (skan wszystkich graczy) i
+     * zapisuje jawnie na przyszlosc, zamiast zwracac null mimo istniejacych polowow.
+     */
+    public RekordSerwera getRekordSerwera() {
+        if (!config.contains("rekord-serwera-global.rekord-kg")) {
+            String najlepszyKlucz = null;
+            double najlepszaWagaKg = 0.0;
+            for (String klucz : config.getKeys(false)) {
+                if (!czyUUID(klucz)) continue;
+                double rekord = config.getDouble(klucz + ".rekord-kg", 0.0);
+                if (rekord > najlepszaWagaKg) {
+                    najlepszaWagaKg = rekord;
+                    najlepszyKlucz = klucz;
+                }
             }
+            if (najlepszyKlucz == null) return null;
+
+            UUID uuid = UUID.fromString(najlepszyKlucz);
+            String gatunek = config.getString(najlepszyKlucz + ".rekord-gatunek", "?");
+            String nick = nickGracza(uuid, najlepszyKlucz);
+            config.set("rekord-serwera-global.rekord-kg", najlepszaWagaKg);
+            config.set("rekord-serwera-global.uuid", uuid.toString());
+            config.set("rekord-serwera-global.nick", nick);
+            config.set("rekord-serwera-global.gatunek", gatunek);
+            saver.oznaczZmiane();
+            return new RekordSerwera(uuid, nick, najlepszaWagaKg, gatunek);
         }
 
-        if (najlepszyKlucz == null) return null;
-        UUID uuid = UUID.fromString(najlepszyKlucz);
-        String gatunek = config.getString(najlepszyKlucz + ".rekord-gatunek", "?");
-        return new RekordSerwera(uuid, nickGracza(uuid, najlepszyKlucz), najlepszaWagaKg, gatunek);
+        return new RekordSerwera(
+                UUID.fromString(config.getString("rekord-serwera-global.uuid")),
+                config.getString("rekord-serwera-global.nick", "?"),
+                config.getDouble("rekord-serwera-global.rekord-kg", 0.0),
+                config.getString("rekord-serwera-global.gatunek", "?"));
     }
 
     /** Najpierw nick zapisany w pliku (patrz zanotujPolow) - dopiero jak go brakuje (stare dane / recznie skasowany), OfflinePlayer jako zapasowe zrodlo, a na sam koniec skrocone UUID zamiast "null". */

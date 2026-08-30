@@ -12,8 +12,8 @@ package elo.mainplugins.fishing;
  * FishingMinigame.zbudujPasekActionBar).
  */
 enum PozycjaPaska {
-    GORA("na górze ekranu (bossbar)"),
-    DOL("nad paskiem doświadczenia (action bar)");
+    GORA("na górze ekranu"),
+    DOL("na dole ekranu");
 
     private final String opis;
 

@@ -11,9 +11,14 @@ commands:
     description: Ustaw gdzie ma się wyświetlać pasek minigry łowienia (gora ekranu / dol nad paskiem XP)
     usage: "/<command> <gora|dol>"
   rybtop:
-    description: Ranking sumy zlowionych kg (na zawsze) + rekord serwera na najciezsza rybe
-  rybindeks:
-    description: Twoj indeks rybacki - gatunki ktore juz zlowiles, ile sztuk i twoj rekord wagi na kazdy
+    description: Top 10 najciezszych pojedynczych polowow na serwerze + rekord serwera
+  rybiemenu:
+    description: Dziennik Rybaka - glowne menu, w srodku m.in. indeks gatunkow ktore juz zlowiles
+    aliases: [rmenu]
+  wiaderko:
+    description: "[TYMCZASOWE] Daj sobie Bezdenne Wiaderko - zbiera zlowione ryby zamiast ekwipunku"
+    permission: mainplugins.fishing.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
   "@reloadfishing":
     description: Wczytaj fishing-config.yml i ryby.yml na nowo, bez restartu serwera
     permission: mainplugins.fishing.admin
@@ -22,16 +27,28 @@ commands:
     description: Wyczysc CALKOWICIE statystyki rybackie (suma kg, rekordy gatunkow) - nieodwracalne
     permission: mainplugins.fishing.admin
     permission-message: "&cNie masz permisji do tej komendy!"
-  wedka1:
-    description: "[TEST] Wędka wymuszająca 1. gatunek z ryby.yml (Karp), branie prawie natychmiastowe"
+  wedkazwykla:
+    description: "[TEST] Wędka wymuszająca losowy gatunek rzadkości ZWYKLA, branie prawie natychmiastowe"
     permission: mainplugins.fishing.admin
     permission-message: "&cNie masz permisji do tej komendy!"
-  wedka2:
-    description: "[TEST] Wędka wymuszająca 2. gatunek z ryby.yml (Dorsz Atlantycki), branie prawie natychmiastowe"
+  wedkaniezwykla:
+    description: "[TEST] Wędka wymuszająca losowy gatunek rzadkości NIEZWYKLA, branie prawie natychmiastowe"
     permission: mainplugins.fishing.admin
     permission-message: "&cNie masz permisji do tej komendy!"
-  wedka3:
-    description: "[TEST] Wędka wymuszająca 3. gatunek z ryby.yml (Sum), branie prawie natychmiastowe"
+  wedkarzadka:
+    description: "[TEST] Wędka wymuszająca losowy gatunek rzadkości RZADKA, branie prawie natychmiastowe"
+    permission: mainplugins.fishing.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+  wedkaepicka:
+    description: "[TEST] Wędka wymuszająca losowy gatunek rzadkości EPICKA, branie prawie natychmiastowe"
+    permission: mainplugins.fishing.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+  wedkalegendarna:
+    description: "[TEST] Wędka wymuszająca losowy gatunek rzadkości LEGENDARNA, branie prawie natychmiastowe"
+    permission: mainplugins.fishing.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+  wedkamityczna:
+    description: "[TEST] Wędka wymuszająca losowy gatunek rzadkości MITYCZNA, branie prawie natychmiastowe"
     permission: mainplugins.fishing.admin
     permission-message: "&cNie masz permisji do tej komendy!"
   wedkazrownowazona:

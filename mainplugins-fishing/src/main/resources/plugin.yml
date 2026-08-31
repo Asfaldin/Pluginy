@@ -32,6 +32,11 @@ commands:
     description: Wyczysc CALKOWICIE statystyki rybackie (suma kg, rekordy gatunkow) - nieodwracalne
     permission: mainplugins.fishing.admin
     permission-message: "&cNie masz permisji do tej komendy!"
+  "@lowisko":
+    description: "Zarzadzaj strefami lowisk (wlasny system, zastapil dawne /@obszar ryby z mainplugins-spawn)"
+    usage: "/<command> <wand|usun|lista|info|border> ..."
+    permission: mainplugins.fishing.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
   wedkazwykla:
     description: "[TEST] Wędka wymuszająca losowy gatunek rzadkości ZWYKLA, branie prawie natychmiastowe"
     permission: mainplugins.fishing.admin
@@ -56,16 +61,16 @@ commands:
     description: "[TEST] Wędka wymuszająca losowy gatunek rzadkości MITYCZNA, branie prawie natychmiastowe"
     permission: mainplugins.fishing.admin
     permission-message: "&cNie masz permisji do tej komendy!"
-  wedkazrownowazona:
-    description: "[TEST] Wędka profilu Zrównoważona (baseline, bez zmian) - normalne losowanie gatunku"
+  wedka1:
+    description: "[TEST] Wędka profilu Zrównoważona (baseline, bez zmian), prawie natychmiastowe branie"
     permission: mainplugins.fishing.admin
     permission-message: "&cNie masz permisji do tej komendy!"
-  wedkacierpliwa:
-    description: "[TEST] Wędka profilu Cierpliwego - szerszy suwak/wolniejsza ryba, wolniejszy połów, szanse w stronę pospolitszych ryb"
+  wedka2:
+    description: "[TEST] Wędka profilu Cierpliwego (niebieska) - szerszy suwak/wolniejsza ryba, wolniejszy połów, prawie natychmiastowe branie"
     permission: mainplugins.fishing.admin
     permission-message: "&cNie masz permisji do tej komendy!"
-  wedkaszarpana:
-    description: "[TEST] Wędka profilu Szarpana - wąski suwak/szybka ryba, szybki połów przy trafieniu, szanse w stronę rzadszych ryb"
+  wedka3:
+    description: "[TEST] Wędka profilu Szarpana (czerwona) - wąski suwak/szybka ryba, szybki połów przy trafieniu, prawie natychmiastowe branie"
     permission: mainplugins.fishing.admin
     permission-message: "&cNie masz permisji do tej komendy!"
 

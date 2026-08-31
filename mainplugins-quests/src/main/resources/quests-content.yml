@@ -590,18 +590,18 @@ categories:
       - id: 1
         title: "Pierwszy Połów"
         description: ["Złów i przynieś swoje pierwsze ryby zwykłą wędką."]
-        requirement: {type: ITEM, materials: [{material: COD, amount: 5, custom-id: FISH_KARP, display-name: "Karp"}]}
+        requirement: {type: ITEM, materials: [{material: COD, amount: 5}]}
         rewards: [{type: ITEM, material: EMERALD, amount: 5}]
         reward-label: "5x Szmaragd"
       - id: 2
         title: "W Głąb Wody"
         description: ["Łów dalej - tym razem coś lepszego."]
-        requirement: {type: ITEM, materials: [{material: SALMON, amount: 8, custom-id: FISH_SUM, display-name: "Sum"}]}
+        requirement: {type: ITEM, materials: [{material: SALMON, amount: 8}]}
         rewards: [{type: MONEY, amount: 500}]
       - id: 3
         title: "Kolekcjoner Łusek"
         description: ["Złów coś rzadszego niż zwykłe ryby."]
-        requirement: {type: ITEM, materials: [{material: TROPICAL_FISH, amount: 1, custom-id: FISH_WIOSLOZAB, display-name: "Wiosłozab"}]}
+        requirement: {type: ITEM, materials: [{material: TROPICAL_FISH, amount: 1}]}
         rewards: [{type: MONEY, amount: 350}]
       - id: 4
         title: "Sekret Kowala"
@@ -612,13 +612,13 @@ categories:
       - id: 5
         title: "Rybak Niebios"
         description: ["Wykuj Niebiańską Wędkę i złów nią coś,", "czego nie da się złowić w wodzie."]
-        requirement: {type: ITEM, materials: [{material: SALMON, amount: 3, custom-id: FISH_OBLOCZNY_LATAWIEC, display-name: "Obłoczny Latawiec"}]}
+        requirement: {type: ITEM, materials: [{material: SALMON, amount: 3}]}
         rewards: [{type: ITEM, material: EXPERIENCE_BOTTLE, amount: 32}]
         reward-label: "32x Butelka Doświadczenia"
       - id: 6
         title: "Więcej niż Ryby"
         description: ["Łów dalej w powietrzu - trafiają się coraz ciekawsze gatunki."]
-        requirement: {type: ITEM, materials: [{material: TROPICAL_FISH, amount: 2, custom-id: FISH_GWIEZDNY_PROMYK, display-name: "Gwiezdny Promyk"}]}
+        requirement: {type: ITEM, materials: [{material: TROPICAL_FISH, amount: 2}]}
         rewards: [{type: MONEY, amount: 1200}]
       - id: 7
         title: "Szept Kosmosu"
@@ -629,7 +629,7 @@ categories:
       - id: 8
         title: "Mistrz Wędki"
         description: ["Złów legendarną Iskrę Ciemnej Gwiazdy Wędką Kosmiczną DARKSTAR.", "Ostatni krok ścieżki wędkarskiej!"]
-        requirement: {type: ITEM, materials: [{material: COD, amount: 1, custom-id: FISH_DARKSTAR_ISKRA, display-name: "Iskra Ciemnej Gwiazdy"}]}
+        requirement: {type: ITEM, materials: [{material: COD, amount: 1}]}
         rewards: [{type: CUSTOM_ITEM, id: TROFEUM_GLOWA_RYBAKA_OTCHLANI, amount: 1}]
         reward-label: "Trofeum: Głowa Rybaka Otchłani"
 

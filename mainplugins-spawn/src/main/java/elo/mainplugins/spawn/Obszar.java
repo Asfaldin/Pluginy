@@ -14,9 +14,6 @@ class Obszar {
     Location rog2;
     boolean mobyPasywneDozwolone = true;
     boolean mobyAgresywneDozwolone = false;
-    // Patrz ObszarManager#jestLowiskiem / ObszarService - łowienie specjalnych ryb
-    // (mainplugins-fishing) działa WYŁĄCZNIE wewnątrz obszarów z tą flagą włączoną.
-    boolean rybyDozwolone = false;
 
     boolean maObaRogi() {
         return rog1 != null && rog2 != null;

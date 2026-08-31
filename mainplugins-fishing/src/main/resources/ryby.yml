@@ -1,10 +1,10 @@
 # Gatunki ryb do lowienia w obszarach lowisk (patrz ObszarService, flaga ryby-dozwolone
-# ustawiana /@obszar ryby w mainplugins-spawn). customId musi zgadzac sie 1:1 z
-# mainplugins-shop (kategoria "ryby_wedkarskie") i z customId-ami wymogow questow kategorii
-# "Rybak" w mainplugins-quests - to jedyny "kontrakt" laczacy te trzy niezalezne moduly
-# (patrz CustomItemKeys w mainplugins-core). Jesli custom-id ma wpis w rejestrze custom itemow
-# (mainplugins-core, custom-items.yml) to on wygrywa (wlasny model z resourcepacka), a
-# material/name/color ponizej sluzy tylko jako fallback.
+# ustawiana /@obszar ryby w mainplugins-spawn - TYMCZASOWO, patrz TODO nizej w tym akapicie).
+# Sklep/questy NIE odwoluja sie juz do customId ryb (user 2026-08-31c - patrz RybaGatunek.java).
+# Jesli custom-id ma wpis w rejestrze custom itemow (mainplugins-core, custom-items.yml) to on
+# wygrywa (wlasny model z resourcepacka), a material/name/color ponizej sluzy tylko jako
+# fallback - TODO 2026-08-31c: przeniesc caly system lowisk (obecnie w mainplugins-spawn,
+# ktory idzie na sprzedaz) do wlasnej, niezaleznej strefy/rozdzki w mainplugins-fishing.
 #
 # 2026-08-29: rozszerzone z 6 do 30 gatunkow (po 5 na kazda z 6 rzadkosci, patrz
 # RybaGatunek.Rzadkosc - drabinka "Wariant A": Zwykla/Niezwykla/Rzadka/Epicka/Legendarna/

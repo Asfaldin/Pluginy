@@ -3,9 +3,10 @@ package elo.mainplugins.fishing;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.CrateService;
 import elo.mainplugins.core.api.CustomItemService;
-import elo.mainplugins.core.api.ObszarService;
 import elo.mainplugins.core.util.CustomItemKeys;
 import elo.mainplugins.fishing.config.FishingConfig;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -47,8 +48,9 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * Łowienie - wersja 1 (celowo uproszczona, patrz niżej). Jedna zwykła wędka (/wedka,
  * bez tierów, bez upgrade'u w kowadle) - wanilijski hak działa normalnie wszędzie,
- * ale gdy przychodzi BITE (branie) W OBRĘBIE obszaru oznaczonego jako łowisko (patrz
- * ObszarService, flaga ryby-dozwolone ustawiana /@obszar ryby w mainplugins-spawn),
+ * ale gdy przychodzi BITE (branie) W OBRĘBIE łowiska (patrz LowiskoManager - WŁASNY,
+ * niezależny system stref w tym module, /@lowisko - zastąpił dawną flagę ryby-dozwolone
+ * z mainplugins-spawn, patrz jego javadoc),
  * przejmujemy go: usuwamy hak i odpalamy własną minigrę "pasek" w stylu Stardew Valley
  * (FishingMinigame), a nagrodą jest jeden z własnych gatunków ryb zamiast wanilijskiego
  * looty. POZA łowiskiem plugin się w ogóle nie wtrąca - zwykłe wanilijskie łowienie.
@@ -89,6 +91,12 @@ public class FishingManager implements Listener {
     // jako osobny Listener (wlasna obsluga GUI/PPM), FishingManager tylko z niego korzysta.
     private final WiaderkoManager wiaderko;
 
+    // Strefy łowisk (patrz LowiskoManager, /@lowisko) - WŁASNY system tego modułu, zastąpił
+    // 2026-08-31c dawną flagę ryby-dozwolone z mainplugins-spawn (ObszarService, usunięty).
+    // Wstrzykiwany jak wiaderko/statystyki wyzej - MainpluginsFishing rejestruje go jako
+    // osobny Listener (własna obsługa różdżki), FishingManager tylko z niego korzysta (patrz onFish).
+    private final LowiskoManager lowiska;
+
     // Tuning minigry i bonusowej skrzynki - fishing-config.yml, przeladowywalny bez
     // restartu (patrz aktualizujKonfiguracje / @reloadfishing). Gatunki ryb NIE sa tutaj -
     // patrz gatunki nizej.
@@ -128,7 +136,7 @@ public class FishingManager implements Listener {
     // permisji mainplugins.fishing.admin - normalna /wedka tego tagu nie ma.
     private final NamespacedKey tagWedkiTestowej;
 
-    // Tag na wędkach TESTOWYCH PROFILU (patrz stworzWedkeProfilTestowa/@wedkacierpliwa itd.
+    // Tag na wędkach TESTOWYCH PROFILU (patrz stworzWedkeProfilTestowa/@wedka1 @wedka2 @wedka3
     // w MainpluginsFishing) - trzyma nazwę stałej WedkaProfil. W odróżnieniu od tagu wyżej
     // NIE wymusza gatunku - normalne losowanie (patrz losujRybe) dalej działa, tylko z
     // biasem tego profilu, żeby dało się realnie przetestować wpływ wędki na szanse na
@@ -146,11 +154,12 @@ public class FishingManager implements Listener {
     private final NamespacedKey tagStylPaska;
     private final NamespacedKey tagStronaPaska;
 
-    public FishingManager(Plugin plugin, FishingConfig config, FishingStatsManager statystyki, WiaderkoManager wiaderko) {
+    public FishingManager(Plugin plugin, FishingConfig config, FishingStatsManager statystyki, WiaderkoManager wiaderko, LowiskoManager lowiska) {
         this.plugin = plugin;
         this.config = config;
         this.statystyki = statystyki;
         this.wiaderko = wiaderko;
+        this.lowiska = lowiska;
         this.tagWedkiTestowej = new NamespacedKey(plugin, "wedka_test_indeks");
         this.tagProfiluTestowego = new NamespacedKey(plugin, "wedka_test_profil");
         this.tagPozycjaPaska = new NamespacedKey(plugin, "fishing_pozycja_paska");
@@ -177,15 +186,18 @@ public class FishingManager implements Listener {
         player.getPersistentDataContainer().set(tagPozycjaPaska, PersistentDataType.STRING, pozycja.name());
     }
 
-    /** Patrz tagStylPaska - StylPaska.TEKSTOWY (dotychczasowe, jedyne zachowanie sprzed 2026-08-30) jeśli gracz nigdy nic nie ustawiał. */
+    /**
+     * Patrz tagStylPaska - StylPaska.TEKSTOWY (dotychczasowe, jedyne zachowanie sprzed 2026-08-30)
+     * jeśli gracz nigdy nic nie ustawiał.
+     *
+     * TYMCZASOWO ZAWSZE TEKSTOWY (user 2026-08-31b) - przełącznik w Ustawieniach schowany
+     * (patrz otworzUstawienia), bo suwak tekstowy obok ładnego tła graficznego wygląda
+     * niespójnie ("hujnia"), do ogarnięcia w przyszłości lepszą grafiką. Zapisany tag
+     * gracza (jeśli ktoś zdążył ustawić GRAFICZNY zanim schowaliśmy przełącznik) jest
+     * celowo ignorowany, żeby nikt nie utknął na wyłączonej opcji.
+     */
     public StylPaska stylPaska(Player player) {
-        String nazwa = player.getPersistentDataContainer().get(tagStylPaska, PersistentDataType.STRING);
-        if (nazwa == null) return StylPaska.TEKSTOWY;
-        try {
-            return StylPaska.valueOf(nazwa);
-        } catch (IllegalArgumentException e) {
-            return StylPaska.TEKSTOWY;
-        }
+        return StylPaska.TEKSTOWY;
     }
 
     /** Patrz tagStylPaska - przełącznik w Ustawieniach (patrz otworzUstawienia). */
@@ -322,19 +334,36 @@ public class FishingManager implements Listener {
     }
 
     /**
-     * WYŁĄCZNIE do testów (patrz /wedkazrownowazona, /wedkacierpliwa, /wedkaszarpana w
-     * MainpluginsFishing, za permisją mainplugins.fishing.admin) - wędka otagowana danym
-     * WedkaProfil. W odróżnieniu od stworzWedkeTestowa wyżej NIE wymusza gatunku - onFish
-     * dalej losuje normalnie (patrz losujRybe), tylko z biasem tego profilu, i minigra
-     * (patrz FishingMinigame) dostaje jego mnożniki fizyki suwaka.
+     * WYŁĄCZNIE do testów (patrz /wedka1 /wedka2 /wedka3 w MainpluginsFishing, za
+     * permisją mainplugins.fishing.admin) - wędka otagowana danym WedkaProfil. W
+     * odróżnieniu od stworzWedkeTestowa wyżej NIE wymusza gatunku - onFish dalej losuje
+     * normalnie (patrz losujRybe), tylko z biasem tego profilu, i minigra (patrz
+     * FishingMinigame) dostaje jego mnożniki fizyki suwaka. Branie w łowisku i tak jest
+     * prawie natychmiastowe (patrz onFish/trzymaWedkeTestowa) - user 2026-08-31b: "niech
+     * do każdej od razu płynie ryba obojętnie jaka", żeby dało się szybko testować różnice
+     * fizyki bez czekania na wanilijski timer.
+     *
+     * Każdy z 3 numerowanych profili dostaje własny przefarbowany wygląd z resourcepacka
+     * (patrz assets/mainplugins/items/wedka1.json, wedka2.json, wedka3.json - zielona/
+     * niebieska/czerwona) - user chciał "żeby był inny kolor", głównie żeby łatwiej
+     * rozróżniać/budować docelowe custom wędki później.
      */
     public ItemStack stworzWedkeProfilTestowa(WedkaProfil profil) {
         ItemStack item = new ItemStack(Material.FISHING_ROD);
+        Key model = switch (profil) {
+            case ZROWNOWAZONA -> Key.key("mainplugins", "wedka1");
+            case CIERPLIWA -> Key.key("mainplugins", "wedka2");
+            case SZARPANA -> Key.key("mainplugins", "wedka3");
+            default -> null; // TESTOWA_OP - tu nigdy nie trafia, nie ma wlasnej komendy/koloru
+        };
+        if (model != null) item.setData(DataComponentTypes.ITEM_MODEL, model);
+
         ItemMeta meta = item.getItemMeta();
         meta.displayName(Component.text("Wędka " + profil.nazwa() + " [TEST]", profil.kolor(), TextDecoration.BOLD));
         meta.lore(List.of(
                 Component.text("Profil testowy: " + profil.nazwa() + ".", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                Component.text("Normalne losowanie gatunku, z biasem tego profilu.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+                Component.text("Normalne losowanie gatunku, z biasem tego profilu,", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                Component.text("i prawie natychmiastowe branie w łowisku.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
         ));
         meta.getPersistentDataContainer().set(tagProfiluTestowego, PersistentDataType.STRING, profil.name());
         item.setItemMeta(meta);
@@ -405,28 +434,50 @@ public class FishingManager implements Listener {
     // ==================================================================== Losowanie ====
 
     /**
-     * Waga z ryby.yml, przemnożona przez profil.mnoznikRzadkosci() do potęgi rzadkości
-     * gatunku (patrz WedkaProfil) - ZWYKLA (ordinal 0) zawsze wychodzi bez zmian, każdy
-     * kolejny stopień rzadkości mnoży się profilem o kolejną potęgę. Stąd double zamiast
-     * int (mnożenie wag przestaje dawać liczby całkowite).
+     * Waga bazowa - jeśli łowisko ma WŁASNĄ, niepustą listę gatunków (patrz Lowisko,
+     * LowiskoManager), to ONA wygrywa (a gatunek spoza tej listy dostaje 0, patrz
+     * losujRybe - filtrowany zanim tu w ogóle trafi, ale 0 jako bezpiecznik), w przeciwnym
+     * razie (łowisko bez własnej listy, albo losowanie poza jakimkolwiek łowiskiem - patrz
+     * wymuszonyGatunekZWedkiTestowej) leci zwykła waga z ryby.yml - user 2026-08-31c: "pula
+     * domyślna", zeby nowe/nieskonfigurowane łowisko nie blokowało łowienia.
+     *
+     * Przemnożona przez profil.mnoznikRzadkosci() do potęgi rzadkości gatunku (patrz
+     * WedkaProfil) - ZWYKLA (ordinal 0) zawsze wychodzi bez zmian, każdy kolejny stopień
+     * rzadkości mnoży się profilem o kolejną potęgę. Stąd double zamiast int (mnożenie wag
+     * przestaje dawać liczby całkowite).
      */
-    private double wagaEfektywna(RybaGatunek g, WedkaProfil profil) {
-        return g.waga() * Math.pow(profil.mnoznikRzadkosci(), g.rzadkosc().ordinal());
+    private double wagaEfektywna(RybaGatunek g, WedkaProfil profil, Lowisko lowisko) {
+        boolean maWlasnaListe = lowisko != null && !lowisko.gatunki.isEmpty();
+        int bazowa = maWlasnaListe ? lowisko.gatunki.getOrDefault(g.customId(), 0) : g.waga();
+        return bazowa * Math.pow(profil.mnoznikRzadkosci(), g.rzadkosc().ordinal());
     }
 
-    private RybaGatunek losujRybe(WedkaProfil profil) {
+    /**
+     * `lowisko` - patrz LowiskoManager.znajdzLowiskoPod (null jeśli losujemy poza
+     * jakimkolwiek łowiskiem, np. wędka testowa rzadkości używana gdziekolwiek - wtedy
+     * zawsze pełna pula, tak jak wcześniej).
+     */
+    private RybaGatunek losujRybe(WedkaProfil profil, Lowisko lowisko) {
         if (gatunki.isEmpty()) return null;
+        boolean maWlasnaListe = lowisko != null && !lowisko.gatunki.isEmpty();
 
         double suma = 0;
-        for (RybaGatunek g : gatunki) suma += wagaEfektywna(g, profil);
+        for (RybaGatunek g : gatunki) {
+            if (maWlasnaListe && !lowisko.gatunki.containsKey(g.customId())) continue;
+            suma += wagaEfektywna(g, profil, lowisko);
+        }
+        if (suma <= 0) return null; // lowisko ma liste, ale zaden wpis nie pasuje do zadnego gatunku w ryby.yml (literowka custom-id) - bezpiecznik
 
         double los = ThreadLocalRandom.current().nextDouble(suma);
         double akumulator = 0;
+        RybaGatunek ostatniPasujacy = null;
         for (RybaGatunek g : gatunki) {
-            akumulator += wagaEfektywna(g, profil);
+            if (maWlasnaListe && !lowisko.gatunki.containsKey(g.customId())) continue;
+            ostatniPasujacy = g;
+            akumulator += wagaEfektywna(g, profil, lowisko);
             if (los < akumulator) return g;
         }
-        return gatunki.getLast();
+        return ostatniPasujacy; // zabezpieczenie na blad zaokraglenia (patrz gatunki.getLast() sprzed filtra po lowiskach)
     }
 
     // Ile prob odrzucenia-i-ponownego-losowania (patrz losujWageDziesieteKg) zanim
@@ -470,6 +521,16 @@ public class FishingManager implements Listener {
         waga = Math.max(gatunek.kgMin(), Math.min(gatunek.kgMax(), waga)); // bezpiecznik, patrz MAX_PROB_LOSOWANIA_WAGI
 
         return (int) Math.round(waga * 10);
+    }
+
+    /**
+     * Czy gracz trzyma JAKĄKOLWIEK wędkę testową (rzadkości LUB profilu - obie niosą tag
+     * tagProfiluTestowego, patrz stworzWedkeTestowa/stworzWedkeProfilTestowa) - patrz
+     * onFish, przyspieszone branie dla wszystkich wędek testowych, nie tylko rzadkości.
+     */
+    private boolean trzymaWedkeTestowa(Player player) {
+        ItemStack wRece = player.getInventory().getItemInMainHand();
+        return wRece.hasItemMeta() && wRece.getItemMeta().getPersistentDataContainer().has(tagProfiluTestowego, PersistentDataType.STRING);
     }
 
     /** Patrz stworzWedkeProfilTestowa - WedkaProfil.ZROWNOWAZONA (bez zmian) jeśli gracz nie trzyma otagowanej wędki testowej. */
@@ -528,15 +589,15 @@ public class FishingManager implements Listener {
             return;
         }
 
-        ObszarService obszarService = CoreAPI.getObszarService();
-        if (obszarService == null || !obszarService.jestLowiskiem(event.getHook().getLocation())) return;
+        Lowisko lowisko = lowiska.znajdzLowiskoPod(event.getHook().getLocation());
+        if (lowisko == null) return;
         if (gatunki.isEmpty()) return; // ryby.yml bez gatunkow - zostaw wanilijskie lowienie
 
         if (event.getState() == PlayerFishEvent.State.FISHING) {
             WedkaProfil profil = profilZWedki(event.getPlayer());
             RybaGatunek wymuszony = wymuszonyGatunekZWedkiTestowej(event.getPlayer());
-            RybaGatunek gatunek = wymuszony != null ? wymuszony : losujRybe(profil);
-            if (gatunek == null) return; // ryby.yml pusty/uszkodzony - patrz wczytajGatunki, zostawiamy wanilijskie łowienie
+            RybaGatunek gatunek = wymuszony != null ? wymuszony : losujRybe(profil, lowisko);
+            if (gatunek == null) return; // ryby.yml pusty/uszkodzony, albo lista gatunkow lowiska nie pasuje do zadnego - zostawiamy wanilijskie łowienie
 
             // Zapis PRZED próbą przyspieszenia brania - jeśli setWaitTime akurat rzuci
             // wyjątek (nieudokumentowane ograniczenie tej wersji MC), wymuszony gatunek
@@ -545,6 +606,11 @@ public class FishingManager implements Listener {
 
             if (wymuszony != null) {
                 event.getPlayer().sendMessage(Component.text("[TEST] Wymuszono: " + gatunek.nazwa(), NamedTextColor.YELLOW));
+            }
+            // Przyspieszone branie dla KAŻDEJ wędki testowej (rzadkości LUB profilu, patrz
+            // trzymaWedkeTestowa) - user 2026-08-31b chciał tego też dla /wedka1 /wedka2
+            // /wedka3 (profile), nie tylko dla wędek testowych rzadkości jak dotychczas.
+            if (wymuszony != null || trzymaWedkeTestowa(event.getPlayer())) {
                 try {
                     event.getHook().setWaitTime(1, 5); // patrz stworzWedkeTestowa - branie prawie natychmiastowe
                 } catch (Exception e) {
@@ -564,7 +630,7 @@ public class FishingManager implements Listener {
             // gatunku dzialalo niezaleznie od tego kiedy dokladnie hak wpadl w granice.
             WedkaProfil profil = profilZWedki(event.getPlayer());
             RybaGatunek wymuszony = wymuszonyGatunekZWedkiTestowej(event.getPlayer());
-            RybaGatunek gatunek = wymuszony != null ? wymuszony : losujRybe(profil);
+            RybaGatunek gatunek = wymuszony != null ? wymuszony : losujRybe(profil, lowisko);
             oczekujacy = gatunek != null ? new OczekujacyPolow(gatunek, profil) : null;
         }
         if (oczekujacy == null) return;
@@ -1020,17 +1086,9 @@ public class FishingManager implements Listener {
         for (int i = 0; i < 54; i++) gui.setItem(i, morskaSzyba(i));
         dekoracjeMenuGlownego().forEach((slot, material) -> gui.setItem(slot, ozdobaMorska(material)));
 
-        StylPaska stylAktualny = stylPaska(player);
-        ItemStack styl = new ItemStack(Material.PAINTING);
-        ItemMeta mStyl = styl.getItemMeta();
-        mStyl.displayName(Component.text("Styl paska minigry", NamedTextColor.YELLOW, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
-        mStyl.lore(List.of(
-                Component.text("Aktualnie: " + stylAktualny.opis(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                Component.text("Graficzny = ładniejsze tło z resourcepacka.", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false),
-                Component.text("Kliknij, aby przełączyć.", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
-        ));
-        styl.setItemMeta(mStyl);
-        gui.setItem(SLOT_USTAWIENIA_STYL, styl);
+        // Przełącznik "Styl paska" (Tekstowy/Graficzny) SCHOWANY (user 2026-08-31b) - patrz
+        // javadoc stylPaska() - zostaje wyłączony do czasu lepszej grafiki, slot pozostaje
+        // pod dekoracyjną szybą zamiast itemu.
 
         PozycjaPaska pozycjaAktualna = pozycjaPaska(player);
         ItemStack pozycja = new ItemStack(Material.COMPASS);
@@ -1492,11 +1550,8 @@ public class FishingManager implements Listener {
         }
 
         if (ustawienia) {
-            if (slot == SLOT_USTAWIENIA_STYL) {
-                StylPaska nowy = stylPaska(player) == StylPaska.TEKSTOWY ? StylPaska.GRAFICZNY : StylPaska.TEKSTOWY;
-                ustawStylPaska(player, nowy);
-                otworzUstawienia(player);
-            } else if (slot == SLOT_USTAWIENIA_POZYCJA) {
+            // SLOT_USTAWIENIA_STYL: przełącznik Tekstowy/Graficzny schowany, patrz otworzUstawienia.
+            if (slot == SLOT_USTAWIENIA_POZYCJA) {
                 // OBA style (patrz otworzUstawienia) dziela ta sama pozycje od 2026-08-31 -
                 // zaden warunek na styl tutaj juz nie potrzebny.
                 PozycjaPaska nowa = pozycjaPaska(player) == PozycjaPaska.GORA ? PozycjaPaska.DOL : PozycjaPaska.GORA;

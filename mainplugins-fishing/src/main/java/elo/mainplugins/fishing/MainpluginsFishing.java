@@ -14,14 +14,17 @@ public final class MainpluginsFishing extends JavaPlugin {
     private FishingManager fishingManager;
     private FishingStatsManager statsManager;
     private WiaderkoManager wiaderkoManager;
+    private LowiskoManager lowiskoManager;
 
     @Override
     public void onEnable() {
         statsManager = new FishingStatsManager(this);
         wiaderkoManager = new WiaderkoManager(this);
-        fishingManager = new FishingManager(this, FishingConfigLoader.load(this), statsManager, wiaderkoManager);
+        lowiskoManager = new LowiskoManager(this);
+        fishingManager = new FishingManager(this, FishingConfigLoader.load(this), statsManager, wiaderkoManager, lowiskoManager);
         getServer().getPluginManager().registerEvents(fishingManager, this);
         getServer().getPluginManager().registerEvents(wiaderkoManager, this);
+        getServer().getPluginManager().registerEvents(lowiskoManager, this);
 
         // /wiaderko - Bezdenne Wiaderko (patrz WiaderkoManager) - TYMCZASOWA komenda,
         // dopoki nie ustalimy docelowego sposobu zdobycia (sklep? quest? - user
@@ -119,10 +122,19 @@ public final class MainpluginsFishing extends JavaPlugin {
             });
         }
 
+        // /@lowisko - strefy łowisk (patrz LowiskoManager, LowiskoCommands) - zastąpiło
+        // dawne /@obszar ryby z mainplugins-spawn (usunięte 2026-08-31c).
+        if (getCommand("@lowisko") != null) {
+            LowiskoCommands lowiskoExecutor = new LowiskoCommands(lowiskoManager);
+            getCommand("@lowisko").setExecutor(lowiskoExecutor);
+            getCommand("@lowisko").setTabCompleter(lowiskoExecutor);
+        }
+
         if (getCommand("@reloadfishing") != null) {
             getCommand("@reloadfishing").setExecutor((sender, command, label, args) -> {
                 fishingManager.aktualizujKonfiguracje(FishingConfigLoader.load(this));
-                sender.sendMessage("§aKonfiguracja lowienia (fishing-config.yml + ryby.yml) zostala przeladowana.");
+                lowiskoManager.przeladuj();
+                sender.sendMessage("§aKonfiguracja lowienia (fishing-config.yml + ryby.yml + lowiska.yml) zostala przeladowana.");
                 return true;
             });
         }
@@ -173,13 +185,19 @@ public final class MainpluginsFishing extends JavaPlugin {
             }
         }
 
-        // Wędki testowe profilu /wedkazrownowazona, /wedkacierpliwa, /wedkaszarpana -
-        // patrz FishingManager.stworzWedkeProfilTestowa i WedkaProfil. W odróżnieniu od
-        // wędek rzadkości wyżej NIE wymuszają gatunku, tylko przechylają normalne losowanie
-        // i fizykę suwaka pod dany profil - do testowania różnic MIĘDZY wędkami, nie
-        // konkretnych gatunków/rzadkości. Też za permisją mainplugins.fishing.admin.
-        for (WedkaProfil profil : WedkaProfil.values()) {
-            String komenda = "wedka" + profil.name().toLowerCase();
+        // Wędki testowe profilu /wedka1 /wedka2 /wedka3 (user 2026-08-31b: numerowane
+        // komendy "tak jak było kiedyś", zamiast nazwanych po profilu jak dotąd) - patrz
+        // FishingManager.stworzWedkeProfilTestowa i WedkaProfil. W odróżnieniu od wędek
+        // rzadkości wyżej NIE wymuszają gatunku, tylko przechylają normalne losowanie i
+        // fizykę suwaka pod dany profil - do testowania różnic MIĘDZY wędkami. Kolejność
+        // 1/2/3 = ZROWNOWAZONA/CIERPLIWA/SZARPANA (kolejność deklaracji w WedkaProfil),
+        // każda z osobnym kolorem tekstury w resourcepacku (patrz stworzWedkeProfilTestowa)
+        // - Zrównoważona zostaje przy dotychczasowym domyślnym wyglądzie wędki. Też za
+        // permisją mainplugins.fishing.admin.
+        WedkaProfil[] profileNumerowane = { WedkaProfil.ZROWNOWAZONA, WedkaProfil.CIERPLIWA, WedkaProfil.SZARPANA };
+        for (int i = 0; i < profileNumerowane.length; i++) {
+            WedkaProfil profil = profileNumerowane[i];
+            String komenda = "wedka" + (i + 1);
             if (getCommand(komenda) != null) {
                 getCommand(komenda).setExecutor((sender, command, label, args) -> {
                     if (!(sender instanceof Player player)) {

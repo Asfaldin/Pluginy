@@ -2,7 +2,7 @@
   "providers": [
     {
       "type": "bitmap",
-      "file": "mainplugins:font/lowienie_pasek",
+      "file": "mainplugins:font/lowienie_pasek.png",
       "ascent": 52,
       "height": 64,
       "chars": ["\uF000"]

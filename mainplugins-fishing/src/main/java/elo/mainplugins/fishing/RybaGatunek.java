@@ -4,10 +4,12 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
 
 /**
- * Jeden gatunek ryby - patrz FishingManager.wczytajGatunki. customId musi zgadzać się 1:1 z
- * mainplugins-shop (kategoria "ryby_wedkarskie", patrz categories/ryby_wedkarskie.yml) i z
- * customId-ami wymogów questów kategorii "Rybak" w mainplugins-quests - to jedyny "kontrakt"
- * łączący te trzy niezależne moduły (patrz CustomItemKeys w mainplugins-core).
+ * Jeden gatunek ryby - patrz FishingManager.wczytajGatunki. Sklep i questy NIE odwołują się
+ * już do konkretnych customId ryb (user 2026-08-31c: usunięta kategoria sklepu
+ * "ryby_wedkarskie" - referowała nieaktualne, dawno porzucone gatunki z systemu łowienia w
+ * powietrzu; questy kategorii "Rybak" w mainplugins-quests przełączone na zwykłe wanilijskie
+ * ryby zamiast custom-id) - jedyny konsument customId poza samym mainplugins-fishing to
+ * na razie Bezdenne Wiaderko (patrz WiaderkoManager).
  *
  * kgTypowyMin/kgTypowyMax - typowy zakres wagi tego gatunku w kg (patrz
  * FishingManager.losujWageDziesieteKg: rozkład normalny wyśrodkowany na środku tego

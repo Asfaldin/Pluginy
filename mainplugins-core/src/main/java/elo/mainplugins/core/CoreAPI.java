@@ -5,7 +5,6 @@ import elo.mainplugins.core.api.CustomItemService;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.IslandService;
 import elo.mainplugins.core.api.MarketService;
-import elo.mainplugins.core.api.ObszarService;
 import elo.mainplugins.core.api.QuestService;
 import elo.mainplugins.core.api.RankService;
 import elo.mainplugins.core.api.SpawnService;
@@ -84,12 +83,6 @@ public final class CoreAPI {
     /** Opcjonalny jak {@link #getIslandService()} - zwraca null, jeśli mainplugins-market nie jest wgrany/włączony. */
     public static MarketService getMarketService() {
         RegisteredServiceProvider<MarketService> rsp = Bukkit.getServicesManager().getRegistration(MarketService.class);
-        return rsp != null ? rsp.getProvider() : null;
-    }
-
-    /** Opcjonalny jak {@link #getIslandService()} - zwraca null, jeśli mainplugins-spawn nie jest wgrany/włączony. */
-    public static ObszarService getObszarService() {
-        RegisteredServiceProvider<ObszarService> rsp = Bukkit.getServicesManager().getRegistration(ObszarService.class);
         return rsp != null ? rsp.getProvider() : null;
     }
 

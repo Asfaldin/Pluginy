@@ -11,9 +11,11 @@ import elo.mainplugins.core.command.MoneyUndoCommand;
 import elo.mainplugins.core.command.PayCommand;
 import elo.mainplugins.core.command.PomocCommand;
 import elo.mainplugins.core.command.PortfelCommand;
+import elo.mainplugins.core.api.LangService;
 import elo.mainplugins.core.api.LicenseService;
 import elo.mainplugins.core.customitem.CustomItemManager;
 import elo.mainplugins.core.economy.EconomyManager;
+import elo.mainplugins.core.lang.LangManager;
 import elo.mainplugins.core.license.LicenseManager;
 import elo.mainplugins.core.util.TabCompleteUtils;
 import org.bukkit.plugin.ServicePriority;
@@ -28,10 +30,16 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class MainpluginsCore extends JavaPlugin {
 
     private EconomyManager economyManager;
+    private LangManager langManager;
 
     @Override
     public void onEnable() {
         getLogger().info("Uruchamianie MainpluginsCore...");
+
+        saveDefaultConfig();
+        langManager = new LangManager(this);
+        getServer().getServicesManager().register(LangService.class, langManager, this, ServicePriority.Normal);
+        langManager.registerDefaults(this);
 
         economyManager = new EconomyManager(this);
         getServer().getServicesManager().register(EconomyService.class, economyManager, this, ServicePriority.Normal);
@@ -115,6 +123,14 @@ public final class MainpluginsCore extends JavaPlugin {
                 return true;
             });
             getCommand("@reloadcustomitems").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
+        }
+        if (getCommand("@reloadlang") != null) {
+            getCommand("@reloadlang").setExecutor((sender, command, label, args) -> {
+                langManager.reload();
+                langManager.send(sender, this, "lang.reloaded", java.util.Map.of("language", langManager.language()));
+                return true;
+            });
+            getCommand("@reloadlang").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
 
         getLogger().info("MainpluginsCore włączony - EconomyService dostępny dla innych pluginów.");

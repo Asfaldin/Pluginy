@@ -4,6 +4,7 @@ import elo.mainplugins.core.api.CrateService;
 import elo.mainplugins.core.api.CustomItemService;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.IslandService;
+import elo.mainplugins.core.api.LangService;
 import elo.mainplugins.core.api.LicenseService;
 import elo.mainplugins.core.api.MarketService;
 import elo.mainplugins.core.api.QuestService;
@@ -109,6 +110,15 @@ public final class CoreAPI {
         RegisteredServiceProvider<LicenseService> rsp = Bukkit.getServicesManager().getRegistration(LicenseService.class);
         if (rsp == null) {
             throw new IllegalStateException("MainpluginsCore nie jest włączony lub nie zarejestrował jeszcze LicenseService - sprawdź plugin.yml (depend: [MainpluginsCore]).");
+        }
+        return rsp.getProvider();
+    }
+
+    /** Tłumaczenia (patrz {@link LangService}) - rejestruje go samo core, rzuca jak {@link #getEconomyService()}. */
+    public static LangService getLangService() {
+        RegisteredServiceProvider<LangService> rsp = Bukkit.getServicesManager().getRegistration(LangService.class);
+        if (rsp == null) {
+            throw new IllegalStateException("MainpluginsCore nie jest włączony lub nie zarejestrował jeszcze LangService - sprawdź plugin.yml (depend: [MainpluginsCore]).");
         }
         return rsp.getProvider();
     }

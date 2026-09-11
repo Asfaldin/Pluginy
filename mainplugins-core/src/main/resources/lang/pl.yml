@@ -1,0 +1,14 @@
+# Mainplugins Core - komunikaty po polsku. Kolory: &a &e ...  Placeholdery: {nazwa}
+reward:
+  money: "&aOtrzymujesz &e{amount}$&a."
+  item: "&aOtrzymujesz &e{amount}x {item}&a."
+  custom: "&aOtrzymujesz &e{amount}x {item}&a."
+items:
+  reloaded: "&aKatalog itemów przeładowany."
+lang:
+  reloaded: "&aPliki językowe przeładowane (język: {language})."
+admin:
+  player-not-found: "&cNie znaleziono gracza: {player}"
+  rewardtest:
+    usage: "&cUżycie: /@rewardtest <gracz>"
+    done: "&aWydano test-rewards graczowi {player}."

@@ -1,0 +1,10 @@
+# Server language for every Mainplugins plugin: "en" or "pl".
+# You can add your own language: copy plugins/<Plugin>/lang/en.yml to lang/<code>.yml,
+# translate it and put the code here. Missing texts fall back to English.
+language: en
+
+# Admin helper: /@rewardtest <player> gives this list (handy for checking reward setups).
+test-rewards:
+  - money: 100
+  - item: DIAMOND
+    amount: 2

@@ -1,0 +1,14 @@
+# Mainplugins Core - English messages. Colors: &a &e ...  Placeholders: {name}
+reward:
+  money: "&aYou received &e{amount}$&a."
+  item: "&aYou received &e{amount}x {item}&a."
+  custom: "&aYou received &e{amount}x {item}&a."
+items:
+  reloaded: "&aItem catalog reloaded."
+lang:
+  reloaded: "&aLanguage files reloaded (language: {language})."
+admin:
+  player-not-found: "&cPlayer not found: {player}"
+  rewardtest:
+    usage: "&cUsage: /@rewardtest <player>"
+    done: "&aGave test-rewards to {player}."

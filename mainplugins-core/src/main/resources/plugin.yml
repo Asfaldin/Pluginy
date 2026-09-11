@@ -57,6 +57,10 @@ commands:
     description: Wczytaj custom-items.yml na nowo, bez restartu serwera
     permission: mainplugins.core.reloadcustomitems
     permission-message: "&cNie masz permisji do tej komendy!"
+  "@reloadlang":
+    description: (Admin) Reload language files of every Mainplugins plugin
+    permission: mainplugins.core.reloadlang
+    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.core.admin:
@@ -70,4 +74,7 @@ permissions:
     default: op
   mainplugins.core.reloadcustomitems:
     description: Dostęp do przeładowania custom-items.yml
+    default: op
+  mainplugins.core.reloadlang:
+    description: Access to /@reloadlang
     default: op

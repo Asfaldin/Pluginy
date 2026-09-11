@@ -17,6 +17,8 @@ import elo.mainplugins.core.api.PlaceholderService;
 import elo.mainplugins.core.api.RewardService;
 import elo.mainplugins.core.customitem.CustomItemManager;
 import elo.mainplugins.core.economy.EconomyManager;
+import elo.mainplugins.core.economy.VaultBackedEconomy;
+import elo.mainplugins.core.economy.VaultHook;
 import elo.mainplugins.core.lang.LangManager;
 import elo.mainplugins.core.placeholder.PlaceholderManager;
 import elo.mainplugins.core.reward.RewardManager;
@@ -52,9 +54,20 @@ public final class MainpluginsCore extends JavaPlugin {
         getServer().getServicesManager().register(LangService.class, langManager, this, ServicePriority.Normal);
         langManager.registerDefaults(this);
 
-        economyManager = new EconomyManager(this);
-        economyService = economyManager;
-        getServer().getServicesManager().register(EconomyService.class, economyManager, this, ServicePriority.Normal);
+        boolean vault = getServer().getPluginManager().isPluginEnabled("Vault");
+        String mode = getConfig().getString("economy", "own");
+        if ("vault".equalsIgnoreCase(mode) && vault) {
+            economyService = new VaultBackedEconomy(VaultHook.backend(this));
+            getLogger().info("Economy mode: vault (money of another plugin).");
+        } else {
+            if ("vault".equalsIgnoreCase(mode)) {
+                getLogger().severe("economy: vault is set, but Vault is not installed - using our own economy instead.");
+            }
+            economyManager = new EconomyManager(this);
+            economyService = economyManager;
+            if (vault) VaultHook.registerProvider(this, economyManager);
+        }
+        getServer().getServicesManager().register(EconomyService.class, economyService, this, ServicePriority.Normal);
 
         CustomItemManager customItemManager = new CustomItemManager(this);
         getServer().getServicesManager().register(CustomItemService.class, customItemManager, this, ServicePriority.Normal);
@@ -63,7 +76,7 @@ public final class MainpluginsCore extends JavaPlugin {
         LicenseManager licenseManager = new LicenseManager(this);
         getServer().getServicesManager().register(LicenseService.class, licenseManager, this, ServicePriority.Normal);
 
-        RewardManager rewardManager = new RewardManager(this, economyManager, customItemManager, langManager);
+        RewardManager rewardManager = new RewardManager(this, economyService, customItemManager, langManager);
         getServer().getServicesManager().register(RewardService.class, rewardManager, this, ServicePriority.Normal);
         getServer().getPluginManager().registerEvents(rewardManager, this);
 
@@ -104,22 +117,22 @@ public final class MainpluginsCore extends JavaPlugin {
             getCommand("@komendy3").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
         if (getCommand("@moneyadd") != null) {
-            MoneyAddCommand moneyAddCommand = new MoneyAddCommand(economyManager);
+            MoneyAddCommand moneyAddCommand = new MoneyAddCommand(economyService);
             getCommand("@moneyadd").setExecutor(moneyAddCommand);
             getCommand("@moneyadd").setTabCompleter(moneyAddCommand);
         }
         if (getCommand("@moneyundo") != null) {
-            MoneyUndoCommand moneyUndoCommand = new MoneyUndoCommand(economyManager);
+            MoneyUndoCommand moneyUndoCommand = new MoneyUndoCommand(economyService);
             getCommand("@moneyundo").setExecutor(moneyUndoCommand);
             getCommand("@moneyundo").setTabCompleter(moneyUndoCommand);
         }
         if (getCommand("przelej") != null) {
-            PayCommand payCommand = new PayCommand(economyManager);
+            PayCommand payCommand = new PayCommand(economyService);
             getCommand("przelej").setExecutor(payCommand);
             getCommand("przelej").setTabCompleter(payCommand);
         }
         if (getCommand("portfel") != null) {
-            getCommand("portfel").setExecutor(new PortfelCommand(economyManager));
+            getCommand("portfel").setExecutor(new PortfelCommand(economyService));
             getCommand("portfel").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
         if (getCommand("discord") != null) {

@@ -2,6 +2,7 @@ name: MainpluginsCore
 version: ${project.version}
 main: elo.mainplugins.core.MainpluginsCore
 api-version: '1.20'
+softdepend: [PlaceholderAPI, Vault]
 
 commands:
   wszystkiekomendy:

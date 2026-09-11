@@ -14,6 +14,14 @@
     <packaging>jar</packaging>
     <name>Mainplugins - Core</name>
 
+    <repositories>
+        <!-- VaultAPI jest publikowane tylko przez JitPack -->
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <!-- Testy jednostkowe czystej logiki (parsery configów) - nie trafiają do jara -->
         <dependency>
@@ -21,6 +29,25 @@
             <artifactId>junit-jupiter</artifactId>
             <version>5.11.4</version>
             <scope>test</scope>
+        </dependency>
+        <!-- Opcjonalne pluginy zewnętrzne - tylko do kompilacji, NIE pakowane do jara -->
+        <dependency>
+            <groupId>me.clip</groupId>
+            <artifactId>placeholderapi</artifactId>
+            <version>2.11.6</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.MilkBowl</groupId>
+            <artifactId>VaultAPI</artifactId>
+            <version>1.7.1</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 

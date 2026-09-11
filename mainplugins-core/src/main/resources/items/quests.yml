@@ -17,7 +17,7 @@ items:
       - "&7Odblokowuje tytuł \"Początkujący\" na czacie!"
 
   TROFEUM_GLOWA_GORNIKA:
-    material: PLAYER_HEAD
+    material: ZOMBIE_HEAD
     name: "&d&lGłowa Górnika"
     lore:
       - "&7Za setki wykopanych bloków."
@@ -36,7 +36,7 @@ items:
       - "&7Otrzymujesz też Beacon!"
 
   TROFEUM_GLOWA_RYBAKA_OTCHLANI:
-    material: PLAYER_HEAD
+    material: SKELETON_SKULL
     name: "&d&lGłowa Rybaka Otchłani"
     lore:
       - "&7Za złowienie tego, czego nie da się złowić."

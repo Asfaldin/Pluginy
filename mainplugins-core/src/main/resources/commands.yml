@@ -1,0 +1,70 @@
+# Rename or turn off any Mainplugins command.
+# Key = the command's original name. For each one you can set:
+#   name     - the main name players type
+#   aliases  - extra names that also work
+#   enabled  - false = the command is removed from the server
+# If another plugin already uses a name, that plugin keeps it and ours stays
+# available as /<plugin>:<name> (the server log says which ones - rename them here).
+# Every command also gets a permission (mainplugins.<plugin>.command.<name>) for LuckPerms.
+# Changes need a server restart.
+commands:
+  przelej:
+    name: pay
+    aliases: [przelej]
+  portfel:
+    name: balance
+    aliases: [portfel, money, bal, p]
+  sklep:
+    name: shop
+    aliases: [sklep, buy]
+  sprzedaj:
+    name: sell
+    aliases: [sprzedaj]
+  sprzedajwszystko:
+    name: sellall
+    aliases: [sprzedajwszystko]
+  targ:
+    name: market
+    aliases: [targ]
+  zadania:
+    name: quests
+    aliases: [zadania, quest]
+  osiagniecia:
+    name: achievements
+    aliases: [osiagniecia, ach, osiag]
+  teleportuj:
+    name: tpa
+    aliases: [teleportuj]
+  tpakceptuj:
+    name: tpaccept
+    aliases: [tpakceptuj]
+  tpodrzuc:
+    name: tpdeny
+    aliases: [tpodrzuc]
+  dom:
+    name: home
+    aliases: [dom]
+  komendy:
+    name: commands
+    aliases: [komendy, pomoc, help]
+  wycisz:
+    name: mute
+    aliases: [wycisz]
+  wedka:
+    name: rod
+    aliases: [wedka]
+  rybtop:
+    name: fishtop
+    aliases: [rybtop]
+  rybiemenu:
+    name: fishmenu
+    aliases: [rybiemenu, rmenu]
+  rybpasek:
+    name: fishbar
+    aliases: [rybpasek]
+  tpboss:
+    name: boss
+    aliases: [tpboss]
+  tpdun:
+    name: dungeon
+    aliases: [tpdun]

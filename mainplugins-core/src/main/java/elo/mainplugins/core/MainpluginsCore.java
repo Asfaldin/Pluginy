@@ -4,6 +4,7 @@ import elo.mainplugins.core.api.CustomItemService;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.command.AdminHelpCommand;
 import elo.mainplugins.core.command.AdminPomocCommand;
+import elo.mainplugins.core.command.CommandRemapper;
 import elo.mainplugins.core.command.DajCustomCommand;
 import elo.mainplugins.core.command.DiscordCommand;
 import elo.mainplugins.core.command.MoneyAddCommand;
@@ -179,6 +180,8 @@ public final class MainpluginsCore extends JavaPlugin {
             });
             getCommand("@reloadlang").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
+
+        getServer().getPluginManager().registerEvents(new CommandRemapper(this), this);
 
         getLogger().info("MainpluginsCore włączony - EconomyService dostępny dla innych pluginów.");
     }

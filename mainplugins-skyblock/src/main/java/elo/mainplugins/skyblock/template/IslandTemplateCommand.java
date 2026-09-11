@@ -19,9 +19,9 @@ import java.util.UUID;
 import java.util.logging.Level;
 
 /**
- * /@islandtemplate pos1 | pos2 | save - admin buduje wyspę w grze, zaznacza dwa narożniki
- * (blok pod stopami) i zapisuje; miejsce, w którym stoi przy "save", to punkt, na który
- * trafia gracz na nowej wyspie.
+ * /@islandtemplate pos1 | pos2 | save - admin buduje wyspę w grze, zaznacza dwa przeciwległe
+ * narożniki (miejsce, w którym lata) i zapisuje; blok, na którym stoi przy "save", to punkt,
+ * na który trafia gracz na nowej wyspie.
  */
 public final class IslandTemplateCommand implements CommandExecutor, TabCompleter {
 
@@ -43,13 +43,16 @@ public final class IslandTemplateCommand implements CommandExecutor, TabComplete
             return true;
         }
         Location[] sel = corners.computeIfAbsent(player.getUniqueId(), k -> new Location[2]);
-        Location here = player.getLocation().getBlock().getLocation().subtract(0, 1, 0);
+        // Narożniki = blok, w którym admin jest (lata w kreatywnym, bez pomocniczych bloków);
+        // origin przy "save" = blok pod stopami (stoi na wyspie tam, gdzie ma lądować gracz).
+        Location feet = player.getLocation().getBlock().getLocation();
+        Location here = feet.clone().subtract(0, 1, 0);
         switch (args[0].toLowerCase()) {
             case "pos1", "pos2" -> {
                 int n = args[0].endsWith("1") ? 1 : 2;
-                sel[n - 1] = here;
+                sel[n - 1] = feet;
                 lang.send(player, plugin, "template.pos-set", Map.of("n", String.valueOf(n),
-                        "x", String.valueOf(here.getBlockX()), "y", String.valueOf(here.getBlockY()), "z", String.valueOf(here.getBlockZ())));
+                        "x", String.valueOf(feet.getBlockX()), "y", String.valueOf(feet.getBlockY()), "z", String.valueOf(feet.getBlockZ())));
             }
             case "save" -> {
                 if (sel[0] == null || sel[1] == null) {

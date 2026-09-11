@@ -1,5 +1,6 @@
 package elo.mainplugins.redstone;
 
+import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.redstone.block.DeviceListeners;
 import elo.mainplugins.redstone.block.DeviceStore;
 import elo.mainplugins.redstone.chestlink.ChestLinkerListener;
@@ -23,6 +24,14 @@ public final class MainpluginsRedstone extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        // Plugin płatny - patrz javadoc LicenseService oraz license-server/README.md.
+        if (!CoreAPI.getLicenseService().isLicensed("redstone")) {
+            getLogger().severe("Brak ważnej licencji dla mainplugins-redstone - plugin zostanie wyłączony.");
+            getLogger().severe("Skonfiguruj klucz w license.yml (folder danych MainpluginsCore, sekcja 'keys: redstone: ...') i zrestartuj serwer.");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+
         RedstoneItemManager items = new RedstoneItemManager(this);
         store = new DeviceStore(this);
 

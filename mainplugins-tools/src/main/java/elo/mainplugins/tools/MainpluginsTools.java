@@ -18,6 +18,17 @@ public final class MainpluginsTools extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        // Plugin płatny - patrz javadoc LicenseService oraz license-server/README.md.
+        // Musi być pierwszą rzeczą w onEnable, przed rejestracją jakichkolwiek
+        // serwisów/eventów/komend, żeby bez ważnej licencji plugin nie zdążył
+        // nic udostępnić reszcie ekosystemu.
+        if (!CoreAPI.getLicenseService().isLicensed("tools")) {
+            getLogger().severe("Brak ważnej licencji dla mainplugins-tools - plugin zostanie wyłączony.");
+            getLogger().severe("Skonfiguruj klucz w license.yml (folder danych MainpluginsCore, sekcja 'keys: tools: ...') i zrestartuj serwer.");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+
         LevelableToolsManager levelableToolsManager = new LevelableToolsManager(this);
         getServer().getPluginManager().registerEvents(levelableToolsManager, this);
 

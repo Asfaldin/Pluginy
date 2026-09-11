@@ -1,7 +1,6 @@
 package elo.mainplugins.spawn;
 
 import elo.mainplugins.core.CoreAPI;
-import elo.mainplugins.core.api.ObszarService;
 import elo.mainplugins.core.api.SpawnService;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;

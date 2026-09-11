@@ -54,7 +54,7 @@ commands:
     permission-message: "&cNie masz permisji do tej komendy!"
     usage: /<command> <id> [gracz] [ilość]
   "@reloadcustomitems":
-    description: Wczytaj custom-items.yml na nowo, bez restartu serwera
+    description: Reload the item catalog (items/ folder) without a restart
     permission: mainplugins.core.reloadcustomitems
     permission-message: "&cNie masz permisji do tej komendy!"
   "@reloadlang":

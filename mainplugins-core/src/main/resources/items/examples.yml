@@ -1,0 +1,40 @@
+# ==========================================================================
+# Item catalog - every *.yml file in this folder is read (alphabetically).
+# Each entry under "items:" is one item; its id (the key) is how every plugin
+# refers to it: "custom: <id>" in rewards, shops, crates, quests...
+#
+# Give/test: /@dajcustom <id> [player] [amount]
+# Reload without restart: /@reloadcustomitems
+#
+# Fields:
+#   material     REQUIRED. Paper material name, e.g. DIAMOND_SWORD.
+#   name         optional. Display name, "&" color codes.
+#   lore         optional. List of description lines, "&" color codes.
+#   model        optional. Resource-pack item model "<namespace>:<path>" (no .json),
+#                pointing at assets/<namespace>/items/<path>.json.
+#   glint        optional, default false. Enchantment shine without enchants.
+#   enchants     optional. Map enchant -> level, e.g. { sharpness: 5, unbreaking: 3 }.
+#   unbreakable  optional, default false.
+#
+# Ids are not case-sensitive. The same id in two files = the first file wins
+# (a warning is written to the server log).
+# ==========================================================================
+
+items:
+  PRZYKLADOWY_AMULET:
+    material: NETHER_STAR
+    name: "&d&lAmulet Przykladowy"
+    lore:
+      - "&7To jest przykladowy wpis rejestru -"
+      - "&7podmien go albo usun i dodaj wlasne ponizej."
+    glint: true
+
+  # Przyklad z wlasnym modelem z resourcepacka - odkomentuj i uzupelnij oba pliki
+  # resourcepacka opisane w komentarzu pola "model" wyzej (items/moj_miecz.json +
+  # models/item/moj_miecz.json + textures/item/moj_miecz.png):
+  # MOJ_CUSTOM_MIECZ:
+  #   material: DIAMOND_SWORD
+  #   name: "&b&lMiecz Przykladowy"
+  #   lore:
+  #     - "&7Opis przykladowego miecza."
+  #   model: "mainplugins:moj_miecz"

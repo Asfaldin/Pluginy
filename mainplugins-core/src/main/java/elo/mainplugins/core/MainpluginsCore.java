@@ -46,6 +46,7 @@ public final class MainpluginsCore extends JavaPlugin {
 
         CustomItemManager customItemManager = new CustomItemManager(this);
         getServer().getServicesManager().register(CustomItemService.class, customItemManager, this, ServicePriority.Normal);
+        getServer().getPluginManager().registerEvents(customItemManager, this);
 
         LicenseManager licenseManager = new LicenseManager(this);
         getServer().getServicesManager().register(LicenseService.class, licenseManager, this, ServicePriority.Normal);
@@ -119,7 +120,7 @@ public final class MainpluginsCore extends JavaPlugin {
         if (getCommand("@reloadcustomitems") != null) {
             getCommand("@reloadcustomitems").setExecutor((sender, command, label, args) -> {
                 customItemManager.reload();
-                sender.sendMessage("§aCustom-items.yml został przeładowany.");
+                langManager.send(sender, this, "items.reloaded");
                 return true;
             });
             getCommand("@reloadcustomitems").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);

@@ -1,140 +1,244 @@
 package elo.mainplugins.core.customitem;
 
+import elo.mainplugins.core.api.CustomItemProvider;
 import elo.mainplugins.core.api.CustomItemService;
 import elo.mainplugins.core.util.CustomItemKeys;
 import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.ItemEnchantments;
 import io.papermc.paper.datacomponent.item.ItemLore;
+import io.papermc.paper.registry.RegistryAccess;
+import io.papermc.paper.registry.RegistryKey;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.Registry;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /**
- * Rejestr custom itemów wczytywany z custom-items.yml (patrz javadoc {@link CustomItemService}) -
- * w odróżnieniu od reszty ekosystemu (gdzie wygląd custom itemu to hardkodowana logika Javy w
- * module, który go tworzy, np. PickaxeSkillManager#stworzKilof) każdy wpis tutaj to CZYSTA dana
- * konfiguracyjna: material, nazwa, lore i opcjonalny własny model z resourcepacka. Wygląd budujemy
- * WYŁĄCZNIE aktualnym, nie-deprecated API komponentów (ItemStack#setData(DataComponentTypes...)) -
- * bez ItemMeta#setCustomModelData(int), które Paper oznaczył jako deprecated.
- *
- * Model z resourcepacka to komponent "minecraft:item_model" (patrz DataComponentTypes#ITEM_MODEL) -
- * WARTOŚĆ TA CAŁKOWICIE ZASTĘPUJE domyślny wygląd Materiału. Od 1.21.4 (24w45a) item_model
- * wskazuje na plik DEFINICJI itemu pod assets/<namespace>/items/<ścieżka>.json (DOKŁADNIE ten
- * sam format co assets/minecraft/items/diamond_pickaxe.json w tym resourcepacku, patrz komentarz
- * w kilof_niflheim.json) - NIE bezpośrednio na sam model/mesh. Ten plik definicji z kolei
- * odwołuje się do prawdziwego modelu (parent + textures) pod assets/<namespace>/models/item/.
- * "model" w custom-items.yml to Key "<namespace>:<ścieżka>" (bez ".json") pliku DEFINICJI, np.
- * dla assets/mainplugins/items/przyklad.json wpisz "mainplugins:przyklad" - patrz komentarz
- * w custom-items.yml po pełny przykład obu plików.
+ * Katalog itemów z folderu items/ (każdy plik *.yml, alfabetycznie) + dostawcy pluginów.
+ * Wygląd budujemy API komponentów (setData), tag custom-id przez ItemMeta na końcu -
+ * żeby setItemMeta nie nadpisał komponentów starszym stanem.
  */
-public class CustomItemManager implements CustomItemService {
+public class CustomItemManager implements CustomItemService, Listener {
 
     private static final LegacyComponentSerializer SERIALIZER = LegacyComponentSerializer.legacyAmpersand();
+    private static final String FOLDER = "items";
+    private static final List<String> BUNDLED = List.of("examples.yml", "quests.yml", "fishing.yml");
 
     private final Plugin plugin;
-    private final Map<String, CustomItemDefinition> definicje = new HashMap<>();
+    private final Map<String, CustomItemDefinition> definitions = new HashMap<>();
+    private final Map<Plugin, CustomItemProvider> providers = new LinkedHashMap<>();
+    private ItemCatalog catalog = ItemCatalog.build(List.of(), w -> {});
 
     public CustomItemManager(Plugin plugin) {
         this.plugin = plugin;
         reload();
     }
 
-    /** {@inheritDoc} Wczytuje custom-items.yml na nowo z dysku - kopiuje domyślny zasób TYLKO przy pierwszym uruchomieniu (plik jeszcze nie istnieje), tak jak sklep.yml w ShopManager. */
     @Override
     public void reload() {
-        File plik = new File(plugin.getDataFolder(), "custom-items.yml");
-        if (!plik.exists()) {
-            plugin.saveResource("custom-items.yml", false);
+        File folder = new File(plugin.getDataFolder(), FOLDER);
+        if (!folder.exists()) {
+            for (String name : BUNDLED) plugin.saveResource(FOLDER + "/" + name, false);
         }
-        FileConfiguration cfg = YamlConfiguration.loadConfiguration(plik);
+        if (new File(plugin.getDataFolder(), "custom-items.yml").exists()) {
+            plugin.getLogger().warning("custom-items.yml is no longer read - move its entries into the items/ folder and delete it.");
+        }
 
-        Map<String, CustomItemDefinition> nowe = new HashMap<>();
-        ConfigurationSection sekcja = cfg.getConfigurationSection("items");
-        if (sekcja != null) {
-            for (String id : sekcja.getKeys(false)) {
-                CustomItemDefinition def = wczytajWpis(cfg, id);
-                if (def != null) nowe.put(id, def);
+        Consumer<String> warn = plugin.getLogger()::warning;
+        List<ItemSpec> specs = new ArrayList<>();
+        File[] files = folder.listFiles((dir, name) -> name.toLowerCase(Locale.ROOT).endsWith(".yml"));
+        if (files != null) {
+            Arrays.sort(files, Comparator.comparing(File::getName));
+            for (File file : files) {
+                specs.addAll(ItemSpecParser.parseFile(YamlConfiguration.loadConfiguration(file), file.getName(), warn));
             }
         }
 
-        definicje.clear();
-        definicje.putAll(nowe);
-        plugin.getLogger().info("Wczytano " + definicje.size() + " custom itemów z custom-items.yml.");
+        ItemCatalog newCatalog = ItemCatalog.build(specs, warn);
+        Map<String, CustomItemDefinition> newDefinitions = new HashMap<>();
+        for (String id : newCatalog.ids()) {
+            CustomItemDefinition def = toDefinition(newCatalog.get(id));
+            if (def != null) newDefinitions.put(id.toLowerCase(Locale.ROOT), def);
+        }
+        catalog = newCatalog;
+        definitions.clear();
+        definitions.putAll(newDefinitions);
+        plugin.getLogger().info("Loaded " + definitions.size() + " custom items from " + FOLDER + "/.");
     }
 
-    private CustomItemDefinition wczytajWpis(FileConfiguration cfg, String id) {
-        String path = "items." + id + ".";
-        String matName = cfg.getString(path + "material");
-        Material material = matName != null ? Material.matchMaterial(matName) : null;
+    private CustomItemDefinition toDefinition(ItemSpec spec) {
+        String where = spec.sourceFile() + ": '" + spec.id() + "'";
+        Material material = Material.matchMaterial(spec.material());
         if (material == null) {
-            plugin.getLogger().warning("custom-items.yml: pomijam '" + id + "' - brak/zły material ('" + matName + "').");
+            plugin.getLogger().warning(where + " has unknown material '" + spec.material() + "' - skipping.");
             return null;
         }
-
-        String nameRaw = cfg.getString(path + "name");
-        Component name = nameRaw != null ? SERIALIZER.deserialize(nameRaw).decoration(TextDecoration.ITALIC, false) : null;
-
-        List<Component> lore = cfg.getStringList(path + "lore").stream()
-                .map(linia -> (Component) SERIALIZER.deserialize(linia).decoration(TextDecoration.ITALIC, false))
+        Component name = spec.name() != null
+                ? SERIALIZER.deserialize(spec.name()).decoration(TextDecoration.ITALIC, false) : null;
+        List<Component> lore = spec.lore().stream()
+                .map(line -> (Component) SERIALIZER.deserialize(line).decoration(TextDecoration.ITALIC, false))
                 .toList();
 
-        String modelRaw = cfg.getString(path + "model");
         Key model = null;
-        if (modelRaw != null) {
+        if (spec.model() != null) {
             try {
-                model = Key.key(modelRaw);
+                model = Key.key(spec.model());
             } catch (IllegalArgumentException e) {
-                plugin.getLogger().warning("custom-items.yml: '" + id + "' ma niepoprawny model ('" + modelRaw + "') - pomijam to pole.");
+                plugin.getLogger().warning(where + " has invalid model '" + spec.model() + "' - ignoring model.");
             }
         }
 
-        boolean glint = cfg.getBoolean(path + "glint", false);
+        Map<Enchantment, Integer> enchants = new LinkedHashMap<>();
+        Registry<Enchantment> registry = RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT);
+        for (Map.Entry<String, Integer> e : spec.enchants().entrySet()) {
+            Enchantment enchantment = null;
+            try {
+                enchantment = registry.get(Key.key(e.getKey()));
+            } catch (IllegalArgumentException ignored) {
+                // zła składnia klucza - potraktuj jak nieznany enchant
+            }
+            if (enchantment == null) {
+                plugin.getLogger().warning(where + " has unknown enchant '" + e.getKey() + "' - skipping enchant.");
+                continue;
+            }
+            enchants.put(enchantment, e.getValue());
+        }
 
-        return new CustomItemDefinition(id, material, name, lore, model, glint);
+        return new CustomItemDefinition(spec.id(), material, name, lore, model, spec.glint(), enchants, spec.unbreakable());
     }
 
     @Override
     public boolean exists(String id) {
-        return id != null && definicje.containsKey(id);
+        if (id == null) return false;
+        if (definitions.containsKey(id.toLowerCase(Locale.ROOT))) return true;
+        for (CustomItemProvider provider : providers.values()) {
+            if (findIgnoreCase(provider.ids(), id) != null) return true;
+        }
+        return false;
     }
 
     @Override
     public Set<String> ids() {
-        return Set.copyOf(definicje.keySet());
+        Set<String> out = new LinkedHashSet<>();
+        for (CustomItemDefinition def : definitions.values()) out.add(def.id());
+        for (CustomItemProvider provider : providers.values()) out.addAll(provider.ids());
+        return Set.copyOf(out);
     }
 
     @Override
     public ItemStack create(String id, int amount) {
-        CustomItemDefinition def = definicje.get(id);
-        if (def == null) return null;
+        return create(id, amount, null);
+    }
 
+    @Override
+    public ItemStack create(String id, int amount, Player player) {
+        if (id == null) return null;
+        CustomItemDefinition def = definitions.get(id.toLowerCase(Locale.ROOT));
+        if (def != null) return build(def, amount);
+        for (CustomItemProvider provider : providers.values()) {
+            String own = findIgnoreCase(provider.ids(), id);
+            if (own != null) return provider.create(own, amount, player);
+        }
+        return null;
+    }
+
+    private ItemStack build(CustomItemDefinition def, int amount) {
         ItemStack item = new ItemStack(def.material(), amount);
         if (def.name() != null) item.setData(DataComponentTypes.CUSTOM_NAME, def.name());
         if (!def.lore().isEmpty()) item.setData(DataComponentTypes.LORE, ItemLore.lore(def.lore()));
         if (def.model() != null) item.setData(DataComponentTypes.ITEM_MODEL, def.model());
         if (def.glint()) item.setData(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, true);
+        if (!def.enchants().isEmpty()) item.setData(DataComponentTypes.ENCHANTMENTS, ItemEnchantments.itemEnchantments(def.enchants()));
+        if (def.unbreakable()) item.setData(DataComponentTypes.UNBREAKABLE);
 
-        // Tag custom-id w PDC idzie PRZEZ ItemMeta (setData powyżej działa na komponentach
-        // bezpośrednio) - musi być ostatni, żeby późniejszy setItemMeta nie nadpisał komponentów
-        // ustawionych wyżej starszym stanem meta.
         ItemMeta meta = item.getItemMeta();
         meta.getPersistentDataContainer().set(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING, def.id());
         item.setItemMeta(meta);
-
         return item;
+    }
+
+    @Override
+    public String idOf(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return null;
+        return item.getItemMeta().getPersistentDataContainer().get(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING);
+    }
+
+    @Override
+    public void registerProvider(Plugin owner, CustomItemProvider provider) {
+        providers.put(owner, provider);
+    }
+
+    @EventHandler
+    public void onPluginDisable(PluginDisableEvent event) {
+        providers.remove(event.getPlugin());
+    }
+
+    @Override
+    public void registerDefaults(Plugin owner, String resourcePath) {
+        InputStream in = owner.getResource(resourcePath);
+        if (in == null) {
+            plugin.getLogger().warning(owner.getName() + ": default items resource '" + resourcePath + "' not found in its jar.");
+            return;
+        }
+        YamlConfiguration defaults;
+        try (Reader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
+            defaults = YamlConfiguration.loadConfiguration(reader);
+        } catch (IOException e) {
+            plugin.getLogger().warning(owner.getName() + ": could not read '" + resourcePath + "': " + e.getMessage());
+            return;
+        }
+
+        List<String> missing = DefaultItemMerger.missingIds(defaults, catalog);
+        if (missing.isEmpty()) return;
+
+        File target = new File(new File(plugin.getDataFolder(), FOLDER), owner.getName().toLowerCase(Locale.ROOT) + ".yml");
+        YamlConfiguration out = target.exists() ? YamlConfiguration.loadConfiguration(target) : new YamlConfiguration();
+        DefaultItemMerger.copyEntries(defaults, out, missing);
+        try {
+            out.save(target);
+        } catch (IOException e) {
+            plugin.getLogger().warning("Could not save " + target.getName() + ": " + e.getMessage());
+            return;
+        }
+        plugin.getLogger().info("Added " + missing.size() + " default item(s) for " + owner.getName()
+                + " to " + FOLDER + "/" + target.getName() + ".");
+        reload();
+    }
+
+    private static String findIgnoreCase(Set<String> ids, String id) {
+        for (String candidate : ids) {
+            if (candidate.equalsIgnoreCase(id)) return candidate;
+        }
+        return null;
     }
 }

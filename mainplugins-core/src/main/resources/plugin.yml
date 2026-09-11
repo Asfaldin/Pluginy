@@ -57,6 +57,11 @@ commands:
     description: Reload the item catalog (items/ folder) without a restart
     permission: mainplugins.core.reloadcustomitems
     permission-message: "&cNie masz permisji do tej komendy!"
+  "@rewardtest":
+    description: (Admin) Give the test-rewards list from config.yml to a player
+    permission: mainplugins.core.rewardtest
+    permission-message: "&cNie masz permisji do tej komendy!"
+    usage: /<command> <player>
   "@reloadlang":
     description: (Admin) Reload language files of every Mainplugins plugin
     permission: mainplugins.core.reloadlang
@@ -77,4 +82,7 @@ permissions:
     default: op
   mainplugins.core.reloadlang:
     description: Access to /@reloadlang
+    default: op
+  mainplugins.core.rewardtest:
+    description: Access to /@rewardtest
     default: op

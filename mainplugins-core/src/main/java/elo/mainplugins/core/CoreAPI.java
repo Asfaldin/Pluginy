@@ -9,6 +9,7 @@ import elo.mainplugins.core.api.LicenseService;
 import elo.mainplugins.core.api.MarketService;
 import elo.mainplugins.core.api.QuestService;
 import elo.mainplugins.core.api.RankService;
+import elo.mainplugins.core.api.RewardService;
 import elo.mainplugins.core.api.SpawnService;
 import elo.mainplugins.core.api.ToolsService;
 import elo.mainplugins.core.api.TytulService;
@@ -119,6 +120,15 @@ public final class CoreAPI {
         RegisteredServiceProvider<LangService> rsp = Bukkit.getServicesManager().getRegistration(LangService.class);
         if (rsp == null) {
             throw new IllegalStateException("MainpluginsCore nie jest włączony lub nie zarejestrował jeszcze LangService - sprawdź plugin.yml (depend: [MainpluginsCore]).");
+        }
+        return rsp.getProvider();
+    }
+
+    /** Wspólne nagrody (patrz {@link RewardService}) - rejestruje go samo core, rzuca jak {@link #getEconomyService()}. */
+    public static RewardService getRewardService() {
+        RegisteredServiceProvider<RewardService> rsp = Bukkit.getServicesManager().getRegistration(RewardService.class);
+        if (rsp == null) {
+            throw new IllegalStateException("MainpluginsCore nie jest włączony lub nie zarejestrował jeszcze RewardService - sprawdź plugin.yml (depend: [MainpluginsCore]).");
         }
         return rsp.getProvider();
     }

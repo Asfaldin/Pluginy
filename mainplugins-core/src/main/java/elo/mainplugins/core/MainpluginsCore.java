@@ -13,9 +13,13 @@ import elo.mainplugins.core.command.PomocCommand;
 import elo.mainplugins.core.command.PortfelCommand;
 import elo.mainplugins.core.api.LangService;
 import elo.mainplugins.core.api.LicenseService;
+import elo.mainplugins.core.api.RewardService;
 import elo.mainplugins.core.customitem.CustomItemManager;
 import elo.mainplugins.core.economy.EconomyManager;
 import elo.mainplugins.core.lang.LangManager;
+import elo.mainplugins.core.reward.RewardManager;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import elo.mainplugins.core.license.LicenseManager;
 import elo.mainplugins.core.util.TabCompleteUtils;
 import org.bukkit.plugin.ServicePriority;
@@ -50,6 +54,10 @@ public final class MainpluginsCore extends JavaPlugin {
 
         LicenseManager licenseManager = new LicenseManager(this);
         getServer().getServicesManager().register(LicenseService.class, licenseManager, this, ServicePriority.Normal);
+
+        RewardManager rewardManager = new RewardManager(this, economyManager, customItemManager, langManager);
+        getServer().getServicesManager().register(RewardService.class, rewardManager, this, ServicePriority.Normal);
+        getServer().getPluginManager().registerEvents(rewardManager, this);
 
         getServer().getPluginManager().registerEvents(new ResourcePackManager(this), this);
 
@@ -124,6 +132,23 @@ public final class MainpluginsCore extends JavaPlugin {
                 return true;
             });
             getCommand("@reloadcustomitems").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
+        }
+        if (getCommand("@rewardtest") != null) {
+            getCommand("@rewardtest").setExecutor((sender, command, label, args) -> {
+                if (args.length < 1) {
+                    langManager.send(sender, this, "admin.rewardtest.usage");
+                    return true;
+                }
+                Player target = Bukkit.getPlayerExact(args[0]);
+                if (target == null) {
+                    langManager.send(sender, this, "admin.player-not-found", java.util.Map.of("player", args[0]));
+                    return true;
+                }
+                reloadConfig();
+                rewardManager.give(target, rewardManager.parse(getConfig().getList("test-rewards"), "config.yml test-rewards"));
+                langManager.send(sender, this, "admin.rewardtest.done", java.util.Map.of("player", target.getName()));
+                return true;
+            });
         }
         if (getCommand("@reloadlang") != null) {
             getCommand("@reloadlang").setExecutor((sender, command, label, args) -> {

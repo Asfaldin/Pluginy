@@ -17,14 +17,6 @@ public final class MainpluginsMarket extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        // Plugin płatny - patrz javadoc LicenseService oraz license-server/README.md.
-        if (!CoreAPI.getLicenseService().isLicensed("market")) {
-            getLogger().severe("Brak ważnej licencji dla mainplugins-market - plugin zostanie wyłączony.");
-            getLogger().severe("Skonfiguruj klucz w license.yml (folder danych MainpluginsCore, sekcja 'keys: market: ...') i zrestartuj serwer.");
-            getServer().getPluginManager().disablePlugin(this);
-            return;
-        }
-
         EconomyService economyService = CoreAPI.getEconomyService();
         marketManager = new MarketManager(this, economyService);
         getServer().getPluginManager().registerEvents(marketManager, this);

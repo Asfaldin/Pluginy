@@ -341,9 +341,15 @@ public class CrateManager implements Listener, CrateService {
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
 
         if (wygrana.broadcast()) {
-            Bukkit.broadcast(Component.text(player.getName() + " wylosował ", NamedTextColor.GOLD)
-                    .append(nazwaNagrody)
-                    .append(Component.text(" ze Skrzynki! ✦", NamedTextColor.GOLD)));
+            // Most do mainplugins-announcer (events.crate-legendary) - treść/kanały sterowane
+            // z ogloszenia.yml. Gdy announcera nie ma, zostaje wbudowany broadcast poniżej.
+            Bukkit.getPluginManager().callEvent(new elo.mainplugins.core.api.ServerAnnounceEvent(
+                    "crate-legendary", player, Map.of("reward", wygrana.nazwa())));
+            if (Bukkit.getPluginManager().getPlugin("MainpluginsAnnouncer") == null) {
+                Bukkit.broadcast(Component.text(player.getName() + " wylosował ", NamedTextColor.GOLD)
+                        .append(nazwaNagrody)
+                        .append(Component.text(" ze Skrzynki! ✦", NamedTextColor.GOLD)));
+            }
         }
     }
 

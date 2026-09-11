@@ -20,14 +20,6 @@ public final class MainpluginsShop extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        // Plugin płatny - patrz javadoc LicenseService oraz license-server/README.md.
-        if (!CoreAPI.getLicenseService().isLicensed("shop")) {
-            getLogger().severe("Brak ważnej licencji dla mainplugins-shop - plugin zostanie wyłączony.");
-            getLogger().severe("Skonfiguruj klucz w license.yml (folder danych MainpluginsCore, sekcja 'keys: shop: ...') i zrestartuj serwer.");
-            getServer().getPluginManager().disablePlugin(this);
-            return;
-        }
-
         EconomyService economyService = CoreAPI.getEconomyService();
         shopManager = new ShopManager(this, economyService);
         getServer().getPluginManager().registerEvents(shopManager, this);

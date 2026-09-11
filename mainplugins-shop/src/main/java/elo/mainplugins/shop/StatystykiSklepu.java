@@ -139,7 +139,16 @@ public class StatystykiSklepu {
 
         File plik = new File(folderArchiwum, "statystyki-" + data + ".csv");
         final String tresc = String.join("\n", linie) + "\n";
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> zapiszPlik(plik.toPath(), tresc));
+        wTle(() -> zapiszPlik(plik.toPath(), tresc));
+    }
+
+    /**
+     * Zapis na dysk poza głównym wątkiem - ale przy wyłączaniu serwera (onDisable) scheduler
+     * nie przyjmuje już zadań (IllegalPluginAccessException), więc wtedy zapisujemy od razu.
+     */
+    private void wTle(Runnable zadanie) {
+        if (plugin.isEnabled()) Bukkit.getScheduler().runTaskAsynchronously(plugin, zadanie);
+        else zadanie.run();
     }
 
     private void wczytaj() {
@@ -223,7 +232,7 @@ public class StatystykiSklepu {
         // Serializacja na głównym wątku (config nie jest thread-safe),
         // zapis na dysk asynchronicznie — ten sam wzorzec co AsyncConfigSaver.
         final String tresc = config.saveToString();
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+        wTle(() -> {
             zapiszPlik(plikYml.toPath(), tresc);
             zapiszPlik(plikCsv.toPath(), zbudujCsv());
         });

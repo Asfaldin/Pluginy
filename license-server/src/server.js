@@ -3,9 +3,9 @@ import express from "express";
 import { bindServer, createLicense, findByCustomer, findByKey, licenseGrants, listLicenses, revokeLicense } from "./db.js";
 import { generateLicenseKey } from "./keys.js";
 import { handleLemonSqueezyWebhook, verifyLemonSqueezySignature } from "./lemonsqueezy.js";
-import { authenticateCustomer, findCustomerById, registerCustomer } from "./customers.js";
+import { authenticateCustomer, changePassword, findCustomerById, registerCustomer } from "./customers.js";
 import { createSession, deleteSession, resolveSession } from "./sessions.js";
-import { INDIVIDUAL_PLUGINS, PACKAGES } from "./catalog.js";
+import { CATEGORIES, INDIVIDUAL_PLUGINS, PACKAGES } from "./catalog.js";
 
 const app = express();
 
@@ -152,11 +152,24 @@ app.get("/api/me/licenses", requireCustomer, (req, res) => {
     res.json(findByCustomer(req.customerId));
 });
 
+app.patch("/api/me/password", requireCustomer, (req, res) => {
+    const { currentPassword, newPassword } = req.body ?? {};
+    if (!currentPassword || !newPassword || newPassword.length < 8) {
+        return res.status(400).json({ error: "currentPassword i newPassword (min. 8 znaków) są wymagane" });
+    }
+    const ok = changePassword(req.customerId, currentPassword, newPassword);
+    if (!ok) {
+        return res.status(401).json({ error: "aktualne hasło jest nieprawidłowe" });
+    }
+    res.json({ ok: true });
+});
+
 // Publiczny - katalog tego, co można kupić (patrz src/catalog.js). storeUrl + variantId
 // wystarczą appce do zbudowania linku checkout LemonSqueezy bez dodatkowego zapytania.
 app.get("/api/catalog", (_req, res) => {
     res.json({
         storeUrl: process.env.LEMONSQUEEZY_STORE_URL ?? null,
+        categories: CATEGORIES,
         individualPlugins: INDIVIDUAL_PLUGINS,
         packages: PACKAGES,
     });

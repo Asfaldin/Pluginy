@@ -77,3 +77,14 @@ function toPublic(customer) {
     void passwordHash;
     return rest;
 }
+
+/** @returns true jeśli zmiana się powiodła, false jeśli aktualne hasło się nie zgadza albo konto nie istnieje. */
+export function changePassword(customerId, currentPassword, newPassword) {
+    const list = loadAll();
+    const customer = list.find((c) => c.id === customerId);
+    if (!customer) return false;
+    if (!verifyPassword(currentPassword, customer.passwordHash)) return false;
+    customer.passwordHash = hashPassword(newPassword);
+    saveAll(list);
+    return true;
+}

@@ -1,6 +1,7 @@
 package elo.mainplugins.core.command;
 
 import elo.mainplugins.core.api.EconomyService;
+import elo.mainplugins.core.util.MoneyFormat;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
@@ -8,8 +9,6 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.Locale;
 
 /** /portfel (alias /p) - pokazuje graczowi ile ma kasy na koncie. */
 public class PortfelCommand implements CommandExecutor {
@@ -28,7 +27,7 @@ public class PortfelCommand implements CommandExecutor {
         }
 
         double kasa = economyService.getKasa(player.getUniqueId());
-        player.sendMessage(Component.text("Masz " + String.format(Locale.US, "%.2f", kasa) + " $ w portfelu.", NamedTextColor.GOLD));
+        player.sendMessage(Component.text("Masz " + MoneyFormat.pelna(kasa) + "$ w portfelu.", NamedTextColor.GOLD));
         return true;
     }
 }

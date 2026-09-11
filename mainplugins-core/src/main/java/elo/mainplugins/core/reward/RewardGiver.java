@@ -2,9 +2,8 @@ package elo.mainplugins.core.reward;
 
 import elo.mainplugins.core.api.Reward;
 import elo.mainplugins.core.api.RewardService;
+import elo.mainplugins.core.util.MoneyFormat;
 
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -65,6 +64,6 @@ public final class RewardGiver {
     }
 
     public static String formatMoney(double amount) {
-        return new DecimalFormat("#,##0.##", DecimalFormatSymbols.getInstance(Locale.US)).format(amount);
+        return MoneyFormat.pelna(amount);
     }
 }

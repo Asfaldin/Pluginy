@@ -69,7 +69,7 @@ class RewardGiverTest {
 
     @Test
     void formatsMoney() {
-        assertEquals("1,234.5", RewardGiver.formatMoney(1234.5));
+        assertEquals("1,234.50", RewardGiver.formatMoney(1234.5));
         assertEquals("500", RewardGiver.formatMoney(500));
         assertEquals("0.25", RewardGiver.formatMoney(0.25));
     }

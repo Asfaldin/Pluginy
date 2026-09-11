@@ -22,6 +22,14 @@ public final class MoneyFormat {
         return String.format(Locale.US, "%,.0f", kwota);
     }
 
+    /** Pełna kwota do czatu: bez groszy, gdy ich nie ma ("100"), inaczej dwa miejsca ("100.50"). */
+    public static String pelna(double kwota) {
+        long grosze = Math.round(kwota * 100);
+        return grosze % 100 == 0
+                ? String.format(Locale.US, "%,d", grosze / 100)
+                : String.format(Locale.US, "%,.2f", grosze / 100.0);
+    }
+
     private static String jednoMiejsce(double wartosc) {
         return String.format(Locale.US, "%.1f", wartosc);
     }

@@ -1,10 +1,12 @@
 package elo.mainplugins.core.lang;
 
 import elo.mainplugins.core.api.LangService;
+import elo.mainplugins.core.api.PlaceholderService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -29,12 +31,14 @@ public final class LangManager implements LangService {
     private static final List<String> BUNDLED = List.of("en", "pl");
 
     private final JavaPlugin core;
+    private final PlaceholderService placeholders;
     private final Map<String, Plugin> owners = new LinkedHashMap<>();
     private final Map<String, MessageCatalog> catalogs = new HashMap<>();
     private String language;
 
-    public LangManager(JavaPlugin core) {
+    public LangManager(JavaPlugin core, PlaceholderService placeholders) {
         this.core = core;
+        this.placeholders = placeholders;
         this.language = readLanguage();
     }
 
@@ -87,20 +91,26 @@ public final class LangManager implements LangService {
         }
     }
 
-    @Override
-    public Component msg(Plugin owner, String key, Map<String, String> placeholders) {
+    private String text(Plugin owner, String key, Map<String, String> placeholdersMap) {
         MessageCatalog catalog = catalogs.get(owner.getName());
         if (catalog == null) {
             core.getLogger().warning(owner.getName() + " asked for message '" + key
                     + "' without calling LangService.registerDefaults first.");
-            return Component.text(key);
+            return key;
         }
-        return SERIALIZER.deserialize(catalog.resolve(key, placeholders));
+        return catalog.resolve(key, placeholdersMap);
     }
 
     @Override
-    public void send(CommandSender to, Plugin owner, String key, Map<String, String> placeholders) {
-        to.sendMessage(msg(owner, key, placeholders));
+    public Component msg(Plugin owner, String key, Map<String, String> placeholdersMap) {
+        return SERIALIZER.deserialize(text(owner, key, placeholdersMap));
+    }
+
+    @Override
+    public void send(CommandSender to, Plugin owner, String key, Map<String, String> placeholdersMap) {
+        String text = text(owner, key, placeholdersMap);
+        if (to instanceof Player player) text = placeholders.apply(player, text);
+        to.sendMessage(SERIALIZER.deserialize(text));
     }
 
     @Override

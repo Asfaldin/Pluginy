@@ -9,7 +9,6 @@ import elo.mainplugins.core.api.RankService;
 import elo.mainplugins.core.api.TopGracz;
 import elo.mainplugins.core.util.MoneyFormat;
 import elo.mainplugins.hud.config.HudConfig;
-import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Statistic;
@@ -19,7 +18,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Ekspansja PlaceholderAPI - zastepuje stary, recznie renderowany Tab
+ * Placeholdery HUD-a (rejestrowane w PlaceholderService core) - zastepuje stary, recznie renderowany Tab
  * (TablistManager/PixelSpacer/wlasny resourcepack) tym, czego uzywaja profesjonalne
  * serwery: dane wystawione jako placeholdery, uklad/wyrownanie zostawione pluginowi
  * TAB (ma wlasny, sprawdzony resourcepack i silnik wyrownania - patrz README modulu).
@@ -31,7 +30,7 @@ import java.util.Locale;
  * tekst dopelniony spacjami do stalej szerokosci (do sklejania z top_wyspa_linia_N w jednej
  * linii naglowka/stopki TAB - patrz SZEROKOSC_PAD_GRACZA).
  */
-public class MainpluginsPlaceholders extends PlaceholderExpansion {
+public class MainpluginsPlaceholders {
 
     private final EconomyService economyManager;
     private volatile HudConfig config;
@@ -46,28 +45,6 @@ public class MainpluginsPlaceholders extends PlaceholderExpansion {
         this.config = nowy;
     }
 
-    @Override
-    public String getIdentifier() {
-        return "mainplugins";
-    }
-
-    @Override
-    public String getAuthor() {
-        return "Mainplugins";
-    }
-
-    @Override
-    public String getVersion() {
-        return "1.0.0";
-    }
-
-    /** Placeholdery maja przetrwac /papi reload - nie trzymamy zadnego stanu, wiec bezpieczne. */
-    @Override
-    public boolean persist() {
-        return true;
-    }
-
-    @Override
     public String onRequest(OfflinePlayer player, String params) {
         params = params.toLowerCase(Locale.ROOT);
         switch (params) {

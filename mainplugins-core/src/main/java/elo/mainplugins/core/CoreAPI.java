@@ -7,6 +7,7 @@ import elo.mainplugins.core.api.IslandService;
 import elo.mainplugins.core.api.LangService;
 import elo.mainplugins.core.api.LicenseService;
 import elo.mainplugins.core.api.MarketService;
+import elo.mainplugins.core.api.PlaceholderService;
 import elo.mainplugins.core.api.QuestService;
 import elo.mainplugins.core.api.RankService;
 import elo.mainplugins.core.api.RewardService;
@@ -129,6 +130,15 @@ public final class CoreAPI {
         RegisteredServiceProvider<RewardService> rsp = Bukkit.getServicesManager().getRegistration(RewardService.class);
         if (rsp == null) {
             throw new IllegalStateException("MainpluginsCore nie jest włączony lub nie zarejestrował jeszcze RewardService - sprawdź plugin.yml (depend: [MainpluginsCore]).");
+        }
+        return rsp.getProvider();
+    }
+
+    /** Placeholdery PlaceholderAPI (patrz {@link PlaceholderService}) - rejestruje go samo core, rzuca jak {@link #getEconomyService()}. */
+    public static PlaceholderService getPlaceholderService() {
+        RegisteredServiceProvider<PlaceholderService> rsp = Bukkit.getServicesManager().getRegistration(PlaceholderService.class);
+        if (rsp == null) {
+            throw new IllegalStateException("MainpluginsCore nie jest włączony lub nie zarejestrował jeszcze PlaceholderService - sprawdź plugin.yml (depend: [MainpluginsCore]).");
         }
         return rsp.getProvider();
     }

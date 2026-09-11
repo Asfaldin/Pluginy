@@ -16,10 +16,9 @@ public final class MainpluginsHUD extends JavaPlugin {
         EconomyService economyService = CoreAPI.getEconomyService();
         HudConfig config = HudConfigLoader.load(this);
 
-        if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-            placeholders = new MainpluginsPlaceholders(economyService, config);
-            placeholders.register();
-        } else {
+        placeholders = new MainpluginsPlaceholders(economyService, config);
+        CoreAPI.getPlaceholderService().register(this, placeholders::onRequest);
+        if (!Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             getLogger().warning("PlaceholderAPI nie jest wgrany - placeholdery %mainplugins_...% "
                     + "(top gracze/wyspy, Twoja kasa/wyspa) nie beda dzialac. Zainstaluj "
                     + "PlaceholderAPI i plugin TAB, zeby dzialal Tab graczy.");
@@ -27,13 +26,8 @@ public final class MainpluginsHUD extends JavaPlugin {
 
         if (getCommand("@reloadhud") != null) {
             getCommand("@reloadhud").setExecutor((sender, command, label, args) -> {
-                HudConfig nowy = HudConfigLoader.load(this);
-                if (placeholders != null) {
-                    placeholders.aktualizujKonfiguracje(nowy);
-                    sender.sendMessage("§aHud-config.yml zostało przeładowane.");
-                } else {
-                    sender.sendMessage("§chud-config.yml wczytany, ale PlaceholderAPI nie jest wgrany - nic nie uzywa tej konfiguracji.");
-                }
+                placeholders.aktualizujKonfiguracje(HudConfigLoader.load(this));
+                sender.sendMessage("§aHud-config.yml zostało przeładowane.");
                 return true;
             });
         }

@@ -13,10 +13,12 @@ import elo.mainplugins.core.command.PomocCommand;
 import elo.mainplugins.core.command.PortfelCommand;
 import elo.mainplugins.core.api.LangService;
 import elo.mainplugins.core.api.LicenseService;
+import elo.mainplugins.core.api.PlaceholderService;
 import elo.mainplugins.core.api.RewardService;
 import elo.mainplugins.core.customitem.CustomItemManager;
 import elo.mainplugins.core.economy.EconomyManager;
 import elo.mainplugins.core.lang.LangManager;
+import elo.mainplugins.core.placeholder.PlaceholderManager;
 import elo.mainplugins.core.reward.RewardManager;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -34,6 +36,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class MainpluginsCore extends JavaPlugin {
 
     private EconomyManager economyManager;
+    private EconomyService economyService;
     private LangManager langManager;
 
     @Override
@@ -41,11 +44,16 @@ public final class MainpluginsCore extends JavaPlugin {
         getLogger().info("Uruchamianie MainpluginsCore...");
 
         saveDefaultConfig();
-        langManager = new LangManager(this);
+        PlaceholderManager placeholderManager = new PlaceholderManager(this, () -> economyService);
+        getServer().getServicesManager().register(PlaceholderService.class, placeholderManager, this, ServicePriority.Normal);
+        getServer().getPluginManager().registerEvents(placeholderManager, this);
+
+        langManager = new LangManager(this, placeholderManager);
         getServer().getServicesManager().register(LangService.class, langManager, this, ServicePriority.Normal);
         langManager.registerDefaults(this);
 
         economyManager = new EconomyManager(this);
+        economyService = economyManager;
         getServer().getServicesManager().register(EconomyService.class, economyManager, this, ServicePriority.Normal);
 
         CustomItemManager customItemManager = new CustomItemManager(this);

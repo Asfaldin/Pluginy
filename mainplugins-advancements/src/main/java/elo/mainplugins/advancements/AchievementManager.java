@@ -160,6 +160,10 @@ public final class AchievementManager {
 
         if (powiadamiaj) {
             notifier.powiadom(player, def, def.maNagrody() && !def.auto(), natywnyToast);
+            // Most do mainplugins-announcer (events.achievement) - broadcast serwerowy zależy
+            // wyłącznie od ogloszenia.yml; bez announcera event po prostu przelatuje.
+            Bukkit.getPluginManager().callEvent(new elo.mainplugins.core.api.ServerAnnounceEvent(
+                    "achievement", player, Map.of("achievement", nazwaOsiagniecia(def))));
         }
 
         if (def.auto() && def.maNagrody()) {

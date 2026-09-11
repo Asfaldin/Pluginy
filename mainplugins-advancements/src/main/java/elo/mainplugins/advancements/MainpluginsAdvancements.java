@@ -11,7 +11,6 @@ import elo.mainplugins.advancements.gui.AchievementsGui;
 import elo.mainplugins.advancements.gui.AchievementsGuiListener;
 import elo.mainplugins.advancements.listener.AdvancementListeners;
 import elo.mainplugins.advancements.notify.AchievementNotifier;
-import elo.mainplugins.core.CoreAPI;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -43,14 +42,6 @@ public final class MainpluginsAdvancements extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        // Plugin płatny - patrz javadoc LicenseService oraz license-server/README.md.
-        if (!CoreAPI.getLicenseService().isLicensed("advancements")) {
-            getLogger().severe("Brak ważnej licencji dla mainplugins-advancements - plugin zostanie wyłączony.");
-            getLogger().severe("Skonfiguruj klucz w license.yml (folder danych MainpluginsCore, sekcja 'keys: advancements: ...') i zrestartuj serwer.");
-            getServer().getPluginManager().disablePlugin(this);
-            return;
-        }
-
         AchievementsConfig cfg = AchievementsConfigLoader.load(this);
 
         notifier = new AchievementNotifier(this, cfg.powiadomienia());

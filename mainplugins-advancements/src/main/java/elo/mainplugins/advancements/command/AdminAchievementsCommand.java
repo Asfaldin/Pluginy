@@ -148,6 +148,9 @@ public final class AdminAchievementsCommand implements CommandExecutor, TabCompl
             String kat = manager.config().kategorie().get(0).id().toLowerCase().replaceAll("[^a-z0-9_.-]", "_");
             wypiszPlik(sender, new File(base, "data/" + dp.namespace() + "/advancement/" + kat + "/root.json"));
         }
+        if (manager.config().vanillaPrzejecie().wlaczone()) {
+            wypiszPlik(sender, new File(base, "data/minecraft/advancement/story/root.json"));
+        }
 
         DatapackGenerator.Wynik w = datapackGenerator.wygeneruj(manager.config());
         sender.sendMessage(SER.deserialize("&7regeneracja: &f" + w.info()));

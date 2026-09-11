@@ -9,7 +9,6 @@ import org.bukkit.advancement.AdvancementProgress;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
-import java.util.Locale;
 
 /**
  * Łącznik między stanem pluginu a natywnym ekranem ESC → Postępy. Gdy datapack
@@ -38,15 +37,17 @@ public final class NativeAdvancementBridge {
         return config.datapack().wlaczony();
     }
 
-    /** Czy serwer FAKTYCZNIE wczytał datapack (po /reload) - sprawdzamy root pierwszej kategorii. */
+    /**
+     * Czy serwer FAKTYCZNIE wczytał datapack (po /reload) - sprawdzamy klucz pierwszego
+     * osiągnięcia. {@link DatapackGenerator#klucz} sam wybiera właściwą przestrzeń
+     * ({@code mpa:...} albo {@code minecraft:<tab>/mpa_...} przy przejęciu zakładek).
+     */
     @SuppressWarnings("deprecation")
     public boolean datapackWczytany() {
-        if (!aktywny() || config.kategorie().isEmpty()) {
+        if (!aktywny() || config.osiagniecia().isEmpty()) {
             return false;
         }
-        NamespacedKey root = new NamespacedKey(config.datapack().namespace(),
-                sanitize(config.kategorie().get(0).id()) + "/root");
-        return pobierz(root) != null;
+        return pobierz(DatapackGenerator.klucz(config.datapack().namespace(), config.osiagniecia().get(0))) != null;
     }
 
     public void przyznaj(Player player, AchievementDef def) {
@@ -73,9 +74,5 @@ public final class NativeAdvancementBridge {
     @SuppressWarnings("deprecation")
     private static Advancement pobierz(NamespacedKey key) {
         return Bukkit.getAdvancement(key);
-    }
-
-    private static String sanitize(String s) {
-        return s.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_.-]", "_");
     }
 }

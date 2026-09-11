@@ -43,22 +43,34 @@ public final class AchievementsConfig {
      */
     public record Nagrody(boolean autoWszystkie) {}
 
+    /**
+     * Ukrycie wbudowanych advancementów Minecrafta w natywnym ekranie ESC → Postępy.
+     * Gdy {@code wlaczone}, datapack nadpisuje KAŻDY waniliowy advancement 5 zakładek
+     * ({@code story/nether/end/adventure/husbandry}) - łącznie z ich rootami - wersją
+     * bez sekcji {@code display}, więc całe te zakładki znikają z ekranu. Zostają tylko
+     * nasze drzewka {@code mpa:*}. {@code minecraft:recipes/*} pozostają nietknięte.
+     */
+    public record VanillaPrzejecie(boolean wlaczone) {}
+
     private final Gui gui;
     private final Powiadomienia powiadomienia;
     private final Datapack datapack;
     private final Nagrody nagrody;
+    private final VanillaPrzejecie vanillaPrzejecie;
     private final int sprawdzanieCoSekund;
     private final List<AchievementCategory> kategorie;
     private final List<AchievementDef> osiagniecia;
     private final Map<String, AchievementDef> wgId;
     private final Map<String, List<AchievementDef>> wgKategorii;
 
-    AchievementsConfig(Gui gui, Powiadomienia powiadomienia, Datapack datapack, Nagrody nagrody, int sprawdzanieCoSekund,
+    AchievementsConfig(Gui gui, Powiadomienia powiadomienia, Datapack datapack, Nagrody nagrody,
+                       VanillaPrzejecie vanillaPrzejecie, int sprawdzanieCoSekund,
                        List<AchievementCategory> kategorie, List<AchievementDef> osiagniecia) {
         this.gui = gui;
         this.powiadomienia = powiadomienia;
         this.datapack = datapack;
         this.nagrody = nagrody;
+        this.vanillaPrzejecie = vanillaPrzejecie;
         this.sprawdzanieCoSekund = sprawdzanieCoSekund;
         this.kategorie = List.copyOf(kategorie);
         this.osiagniecia = List.copyOf(osiagniecia);
@@ -85,6 +97,8 @@ public final class AchievementsConfig {
     public Datapack datapack() { return datapack; }
 
     public Nagrody nagrody() { return nagrody; }
+
+    public VanillaPrzejecie vanillaPrzejecie() { return vanillaPrzejecie; }
 
     public int sprawdzanieCoSekund() { return sprawdzanieCoSekund; }
 

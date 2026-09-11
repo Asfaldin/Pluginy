@@ -2,14 +2,29 @@ name: MainpluginsAnnouncer
 version: ${project.version}
 main: elo.mainplugins.announcer.MainpluginsAnnouncer
 api-version: '1.20'
+depend: [MainpluginsCore]
+softdepend: [PlaceholderAPI]
 
 commands:
   "@reloadannouncer":
     description: Wczytaj ogloszenia.yml na nowo, bez restartu serwera
     permission: mainplugins.announcer.reload
     permission-message: "&cNie masz permisji do tej komendy!"
+  announce:
+    description: Jednorazowy broadcast na żywo - /announce <tekst>, /announce preview <tekst>, /announce as <grupa>
+    usage: "/<command> <tekst> | preview <tekst> | as <grupa>"
+    permission: mainplugins.announcer.announce
+    permission-message: "&cNie masz permisji do tej komendy!"
+    aliases: [ogloszenie, broadcastnow]
+  odbierzogloszenie:
+    description: (Wewnętrzne) Odbiór nagrody z ogłoszenia typu "kliknij aby odebrać" - wołane przez kliknięcie w czacie
+    usage: /<command> <token>
+    aliases: [annclaim]
 
 permissions:
   mainplugins.announcer.reload:
     description: Pozwala przeładować konfigurację ogłoszeń
+    default: op
+  mainplugins.announcer.announce:
+    description: Pozwala wysłać jednorazowe ogłoszenie na żywo
     default: op

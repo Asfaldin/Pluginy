@@ -8,14 +8,17 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.advancement.Advancement;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.Locale;
 import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
 import java.util.stream.Stream;
 
 /**
@@ -54,6 +57,9 @@ public final class DatapackGenerator {
     public static NamespacedKey klucz(String namespace, AchievementDef def) {
         return new NamespacedKey(namespace, sanitize(def.kategoriaId()) + "/" + sanitize(def.id()));
     }
+
+    /** 5 natywnych zakładek ESC → Postępy ukrywanych przez {@code vanilla-przejecie}. */
+    private static final List<String> NATYWNE_ZAKLADKI = List.of("story", "nether", "end", "adventure", "husbandry");
 
     /**
      * Folder, z którego MC czyta datapacki tego świata: {@code <korzeń poziomu>/datapacks}.
@@ -123,10 +129,14 @@ public final class DatapackGenerator {
                 zapisz(new File(baseDir, "data/" + ns + "/" + advDir + "/" + sanitize(kat.id()) + "/root.json"), rootJson);
 
                 for (AchievementDef def : cfg.wgKategorii(kat.id())) {
-                    String json = advJson(def, ns, kat.id(), ikonaKluczId);
+                    String json = advJson(def, ns + ":" + sanitize(kat.id()) + "/root", ikonaKluczId);
                     wszystko.append(json);
                     zapisz(new File(baseDir, "data/" + ns + "/" + advDir + "/" + sanitize(kat.id()) + "/" + sanitize(def.id()) + ".json"), json);
                 }
+            }
+
+            if (cfg.vanillaPrzejecie().wlaczone()) {
+                ukryjWaniliowe(baseDir, advDir, wszystko);
             }
         } catch (IOException e) {
             plugin.getLogger().warning("Nie udało się zapisać datapacka osiągnięć: " + e.getMessage());
@@ -147,11 +157,28 @@ public final class DatapackGenerator {
 
     private static String packMcmeta(int packFormat) {
         // Szeroki zakres - nie chcemy zgadywać dokładnego formatu przy każdej nowej wersji MC.
-        // MC przyjmuje pack, jeśli jego bieżący format mieści się w [min_inclusive, max_inclusive].
+        String opis = "\"description\": \"Mainplugins - osiagniecia (auto-generowane; nie edytuj recznie)\"";
+        // MC 1.21.9+ (format datapacka >= 82, m.in. schemat "rokowy" 26.x): pole
+        // "supported_formats" zostało USUNIĘTE, a pack MUSI podać "min_format"/"max_format"
+        // (int = [major, dowolny minor]). UWAGA: min_format musi zostać w nowej erze
+        // (>= 82) - deklaracja "min_format: 1" wpycha pack w stary zakres 17-81, który
+        // z kolei wymaga "supported_formats" (catch-22). Zostajemy więc czysto nowocześni.
+        if (packFormat >= 82) {
+            return "{\n"
+                    + "  \"pack\": {\n"
+                    + "    " + opis + ",\n"
+                    + "    \"pack_format\": " + packFormat + ",\n"
+                    + "    \"min_format\": 82,\n"
+                    + "    \"max_format\": 9999\n"
+                    + "  }\n"
+                    + "}\n";
+        }
+        // Starsze MC nie zna "min_format"/"max_format" - dla nich zostaje klasyka:
+        // pack przyjęty, jeśli bieżący format mieści się w [min_inclusive, max_inclusive].
         return "{\n"
                 + "  \"pack\": {\n"
                 + "    \"pack_format\": " + packFormat + ",\n"
-                + "    \"description\": \"Mainplugins - osiagniecia (auto-generowane; nie edytuj recznie)\",\n"
+                + "    " + opis + ",\n"
                 + "    \"supported_formats\": { \"min_inclusive\": 1, \"max_inclusive\": 9999 }\n"
                 + "  }\n"
                 + "}\n";
@@ -173,7 +200,8 @@ public final class DatapackGenerator {
                 + "}\n";
     }
 
-    private static String advJson(AchievementDef def, String ns, String kategoriaId, boolean ikonaKluczId) {
+    /** @param parentKey pełny klucz roota-rodzica, np. {@code mpa:eksploracja/root} lub {@code minecraft:story/root} */
+    private static String advJson(AchievementDef def, String parentKey, boolean ikonaKluczId) {
         String tytul = PLAIN.serialize(def.nazwa());
         StringBuilder opis = new StringBuilder();
         for (Component c : def.opis()) {
@@ -192,7 +220,53 @@ public final class DatapackGenerator {
                 + "    \"announce_to_chat\": false,\n"
                 + "    \"hidden\": " + def.ukryte() + "\n"
                 + "  },\n"
-                + "  \"parent\": " + q(ns + ":" + sanitize(kategoriaId) + "/root") + ",\n"
+                + "  \"parent\": " + q(parentKey) + ",\n"
+                + "  \"criteria\": { \"trigger\": { \"trigger\": \"minecraft:impossible\" } },\n"
+                + "  \"requirements\": [ [\"trigger\"] ]\n"
+                + "}\n";
+    }
+
+    // ---------- ukrycie wbudowanych advancementów (data/minecraft/advancement/**) ----------
+
+    /**
+     * Nadpisuje KAŻDY waniliowy advancement 5 natywnych zakładek ({@code story/nether/
+     * end/adventure/husbandry}) - łącznie z ich rootami - wersją BEZ sekcji {@code display}.
+     * Advancement bez {@code display} istnieje logicznie, ale nie rysuje się w ekranie
+     * ESC → Postępy, więc te zakładki znikają w całości. Zostają tylko nasze drzewka
+     * {@code mpa:*}. {@code minecraft:recipes/*} nie są ruszane.
+     *
+     * Lista kluczy jest brana na żywo z {@link Bukkit#advancementIterator()}, więc
+     * dopasowuje się do dokładnego zestawu advancementów danej wersji serwera.
+     */
+    @SuppressWarnings("deprecation")
+    private void ukryjWaniliowe(File baseDir, String advDir, StringBuilder wszystko) throws IOException {
+        int ukrytych = 0;
+        Iterator<Advancement> it = Bukkit.advancementIterator();
+        while (it.hasNext()) {
+            NamespacedKey k = it.next().getKey();
+            if (!k.getNamespace().equals("minecraft")) continue;
+            String path = k.getKey();
+            if (path.startsWith("recipes/")) continue;
+            int slash = path.indexOf('/');
+            String tab = slash < 0 ? path : path.substring(0, slash);
+            if (!NATYWNE_ZAKLADKI.contains(tab)) continue;
+
+            // Root zakładki: bez "parent" i bez "display" -> zakładka nie pojawia się wcale.
+            // Dziecko: "parent" na (ukryty) root, też bez "display".
+            boolean root = path.equals(tab + "/root");
+            String json = ukrytyJson(root ? null : "minecraft:" + tab + "/root");
+            wszystko.append(json);
+            zapisz(new File(baseDir, "data/minecraft/" + advDir + "/" + path + ".json"), json);
+            ukrytych++;
+        }
+        plugin.getLogger().info("vanilla-przejecie: ukryto " + ukrytych
+                + " waniliowych advancementow (zakladki " + NATYWNE_ZAKLADKI + " znikaja z ESC -> Postepy).");
+    }
+
+    /** Nadpisanie advancementu BEZ sekcji "display" - istnieje logicznie, ale nie rysuje się w GUI. */
+    private static String ukrytyJson(String parentKey) {
+        return "{\n"
+                + (parentKey != null ? "  \"parent\": " + q(parentKey) + ",\n" : "")
                 + "  \"criteria\": { \"trigger\": { \"trigger\": \"minecraft:impossible\" } },\n"
                 + "  \"requirements\": [ [\"trigger\"] ]\n"
                 + "}\n";

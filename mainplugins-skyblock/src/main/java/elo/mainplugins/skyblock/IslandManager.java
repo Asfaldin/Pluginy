@@ -959,6 +959,10 @@ public class IslandManager implements Listener, IslandService {
         teleportDoWyspy(player);
         player.sendMessage(Component.text("Twoja wyspa została utworzona!", NamedTextColor.GREEN));
         Bukkit.getPluginManager().callEvent(new IslandCreatedEvent(player, data));
+        // Most do mainplugins-announcer (events.island-created) - broadcast serwerowy
+        // sterowany z ogloszenia.yml; bez announcera event przelatuje bez efektu.
+        Bukkit.getPluginManager().callEvent(new elo.mainplugins.core.api.ServerAnnounceEvent(
+                "island-created", player, java.util.Map.of()));
         otworzMenuWyspy(player, zMenu);
     }
 

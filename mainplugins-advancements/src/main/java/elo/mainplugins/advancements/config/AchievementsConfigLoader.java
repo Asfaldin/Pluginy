@@ -58,11 +58,13 @@ public final class AchievementsConfigLoader {
             coSekund = 10;
         }
 
+        boolean przejecie = cfg.getBoolean("vanilla-przejecie.wlaczone", false);
         List<AchievementCategory> kategorie = wczytajKategorie(cfg.getConfigurationSection("kategorie"), log);
         List<AchievementDef> osiagniecia = wczytajOsiagniecia(cfg.getConfigurationSection("osiagniecia"), kategorie, autoWszystkie, log);
 
-        log.info("osiagniecia.yml: wczytano " + kategorie.size() + " kategorii i " + osiagniecia.size() + " osiagniec.");
-        return new AchievementsConfig(gui, pow, datapack, nagrody, coSekund, kategorie, osiagniecia);
+        log.info("osiagniecia.yml: wczytano " + kategorie.size() + " kategorii i " + osiagniecia.size() + " osiagniec"
+                + (przejecie ? " (vanilla-przejecie: WLACZONE - waniliowe advancementy zostana ukryte)" : "") + ".");
+        return new AchievementsConfig(gui, pow, datapack, nagrody, new AchievementsConfig.VanillaPrzejecie(przejecie), coSekund, kategorie, osiagniecia);
     }
 
     private static AchievementsConfig.Datapack wczytajDatapack(ConfigurationSection s) {

@@ -410,6 +410,11 @@ public class DungeonManager implements Listener {
             var nieZmieszczonaLopata = player.getInventory().addItem(new ItemStack(Material.WOODEN_SHOVEL));
             nieZmieszczonaLopata.values().forEach(i -> player.getWorld().dropItemNaturally(player.getLocation(), i));
             player.sendMessage(Component.text("Nagroda: 1x Zwykła Łopata", NamedTextColor.GREEN));
+
+            // Most do mainplugins-announcer (events.dungeon-boss) - broadcast serwerowy sterowany
+            // z ogloszenia.yml; bez announcera event po prostu przelatuje bez efektu.
+            Bukkit.getPluginManager().callEvent(new elo.mainplugins.core.api.ServerAnnounceEvent(
+                    "dungeon-boss", player, java.util.Map.of()));
         }
         zakonczBossa(player, true);
         aktywneLochy.remove(ownerId); // jeśli to był finał /tpdun, kończymy też sesję lochu

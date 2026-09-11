@@ -1,6 +1,5 @@
 package elo.mainplugins.crates;
 
-import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.CrateService;
 import elo.mainplugins.core.util.TabCompleteUtils;
 import org.bukkit.command.TabCompleter;
@@ -14,14 +13,6 @@ public final class MainpluginsCrates extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        // Plugin płatny - patrz javadoc LicenseService oraz license-server/README.md.
-        if (!CoreAPI.getLicenseService().isLicensed("crates")) {
-            getLogger().severe("Brak ważnej licencji dla mainplugins-crates - plugin zostanie wyłączony.");
-            getLogger().severe("Skonfiguruj klucz w license.yml (folder danych MainpluginsCore, sekcja 'keys: crates: ...') i zrestartuj serwer.");
-            getServer().getPluginManager().disablePlugin(this);
-            return;
-        }
-
         crateManager = new CrateManager(this);
         getServer().getPluginManager().registerEvents(crateManager, this);
         getServer().getServicesManager().register(CrateService.class, crateManager, this, ServicePriority.Normal);

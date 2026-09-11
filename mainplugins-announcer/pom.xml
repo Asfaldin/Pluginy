@@ -14,5 +14,27 @@
     <packaging>jar</packaging>
     <name>Mainplugins - Announcer</name>
 
-    <!-- Cykliczne ogłoszenia na czacie - czysta logika Bukkit/Adventure, zero zależności od Core. -->
+    <!--
+        Ogłoszenia: cykliczne (grupy z własną kadencją), sterowane zdarzeniami
+        (ServerAnnounceEvent z innych modułów), onboarding nowych graczy, ogłoszenia
+        z nagrodą "kliknij aby odebrać" i mirror na Discord. Wszystko z ogloszenia.yml,
+        bez restartu (/@reloadannouncer).
+
+        Zależność od mainplugins-core (provided) - TYLKO po to, by słuchać
+        elo.mainplugins.core.api.ServerAnnounceEvent. PlaceholderAPI (provided,
+        softdepend) - opcjonalne podstawianie %placeholderów% w tekstach.
+        Obie NIE są shade'owane (są osobnymi jarami na serwerze).
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>elo</groupId>
+            <artifactId>mainplugins-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>me.clip</groupId>
+            <artifactId>placeholderapi</artifactId>
+            <version>2.11.6</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
 </project>

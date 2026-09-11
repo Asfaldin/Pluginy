@@ -7,7 +7,7 @@ commands:
   teleportuj:
     description: Wyślij prośbę o teleportację do gracza
     usage: /<command> <gracz>
-    aliases: [tp]
+    aliases: [tpa]
   tpakceptuj:
     description: Zaakceptuj prośbę o teleportację
     aliases: [tpaccept]

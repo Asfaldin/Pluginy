@@ -10,7 +10,7 @@ items:
   # ==========================================================================
 
   TROFEUM_GLOWA_POCZATKUJACEGO:
-    material: PLAYER_HEAD
+    material: ZOMBIE_HEAD
     name: "&d&lGłowa Początkującego"
     lore:
       - "&7Za pierwsze pokonane zombie."
@@ -29,7 +29,7 @@ items:
       - "&7Za przetrwanie Netheru."
 
   TROFEUM_GLOWA_SMOKA:
-    material: PLAYER_HEAD
+    material: DRAGON_HEAD
     name: "&d&lGłowa Smoka"
     lore:
       - "&7Za pokonanie Enderdragona."

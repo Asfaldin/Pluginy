@@ -16,8 +16,16 @@ commands:
     description: Wczytaj wyspy-config.yml i wyspy-gui.yml na nowo, bez restartu serwera
     permission: mainplugins.skyblock.reload
     permission-message: "&cNie masz permisji do tej komendy!"
+  "@islandtemplate":
+    description: (Admin) Save the starter island template - pos1, pos2, then save where players should appear
+    usage: /<command> pos1 | pos2 | save
+    permission: mainplugins.skyblock.template
+    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
+  mainplugins.skyblock.template:
+    description: Access to /@islandtemplate
+    default: op
   mainplugins.skyblock.bypass:
     description: Pozwala przechodzić przez granice wysp bez ograniczeń ruchu
     default: op

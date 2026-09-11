@@ -1,16 +1,5 @@
 package elo.mainplugins.skyblock;
 
-import com.sk89q.worldedit.EditSession;
-import com.sk89q.worldedit.WorldEdit;
-import com.sk89q.worldedit.bukkit.BukkitAdapter;
-import com.sk89q.worldedit.extent.clipboard.Clipboard;
-import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormat;
-import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats;
-import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
-import com.sk89q.worldedit.function.operation.Operation;
-import com.sk89q.worldedit.function.operation.Operations;
-import com.sk89q.worldedit.math.BlockVector3;
-import com.sk89q.worldedit.session.ClipboardHolder;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.util.AsyncConfigSaver;
@@ -29,6 +18,7 @@ import elo.mainplugins.skyblock.gui.IslandGuiButton;
 import elo.mainplugins.skyblock.gui.IslandGuiContent;
 import elo.mainplugins.skyblock.gui.IslandGuiLoader;
 import elo.mainplugins.skyblock.gui.IslandScreen;
+import elo.mainplugins.skyblock.template.IslandTemplate;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.TooltipDisplay;
 import net.kyori.adventure.text.Component;
@@ -51,7 +41,6 @@ import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,7 +49,7 @@ public class IslandManager implements Listener, IslandService {
 
     private final Plugin plugin;
     private final World skyblockWorld;
-    private final File schemFile;
+    private final IslandTemplate template;
     private final EconomyService economyManager;
 
     // Cala liczbowa/danych konfiguracja (koszty, promienie, timeouty, typy spawnerow...) i
@@ -293,8 +282,7 @@ public class IslandManager implements Listener, IslandService {
         wc.generator(new VoidGenerator());
         this.skyblockWorld = Bukkit.createWorld(wc);
 
-        File faweFolder = new File(plugin.getDataFolder().getParentFile(), "FastAsyncWorldEdit/schematics");
-        this.schemFile = new File(faweFolder, "wyspa_startowa.schem");
+        this.template = new IslandTemplate(plugin);
 
         this.plikWysp = new File(plugin.getDataFolder(), "wyspy.yml");
         if (!plikWysp.exists()) {
@@ -311,6 +299,11 @@ public class IslandManager implements Listener, IslandService {
     public void przeladujKonfiguracje() {
         this.tuning = IslandConfigLoader.load(plugin);
         this.gui = IslandGuiLoader.load(plugin);
+    }
+
+    /** Szablon wyspy startowej - dla /@islandtemplate. */
+    public IslandTemplate getTemplate() {
+        return template;
     }
 
     /** Używane przez IslandProtectionManager - żeby nie duplikować wczytywania configu w każdej klasie. */
@@ -925,8 +918,9 @@ public class IslandManager implements Listener, IslandService {
     }
 
     private void stworzWyspe(Player player, boolean zMenu) {
-        if (!schemFile.exists()) {
-            player.sendMessage(Component.text("Błąd: Brak pliku wyspa_startowa.schem w FastAsyncWorldEdit/schematics!", NamedTextColor.RED));
+        if (!template.exists()) {
+            CoreAPI.getLangService().send(player, plugin, "template.missing");
+            plugin.getLogger().warning(player.getName() + " tried to create an island, but there is no island template yet - save one with /@islandtemplate.");
             return;
         }
 
@@ -953,36 +947,19 @@ public class IslandManager implements Listener, IslandService {
         playerIslandMap.put(player.getUniqueId(), player.getUniqueId());
         zapiszWyspy();
 
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            try {
-                ClipboardFormat format = ClipboardFormats.findByFile(schemFile);
-                if (format == null) return;
-
-                try (ClipboardReader reader = format.getReader(new FileInputStream(schemFile))) {
-                    Clipboard clipboard = reader.read();
-
-                    try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(skyblockWorld))) {
-                        Operation operation = new ClipboardHolder(clipboard)
-                                .createPaste(editSession)
-                                .to(BlockVector3.at(x, y, z))
-                                .ignoreAirBlocks(true)
-                                .build();
-                        Operations.complete(operation);
-                    }
-                }
-
-                Bukkit.getScheduler().runTask(plugin, () -> {
-                    teleportDoWyspy(player);
-                    player.sendMessage(Component.text("Twoja wyspa została utworzona!", NamedTextColor.GREEN));
-                    Bukkit.getPluginManager().callEvent(new IslandCreatedEvent(player, data));
-                    otworzMenuWyspy(player, zMenu);
-                });
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                player.sendMessage(Component.text("Wystąpił błąd podczas generowania wyspy!", NamedTextColor.RED));
-            }
-        });
+        // Wbudowane struktury Minecrafta wklejamy na wątku głównym (API serwera nie jest
+        // bezpieczne wątkowo) - wyspa startowa jest mała, więc to chwila.
+        try {
+            template.paste(skyblockWorld, x, y, z);
+        } catch (IOException | RuntimeException e) {
+            plugin.getLogger().log(java.util.logging.Level.WARNING, "Could not paste the island template.", e);
+            player.sendMessage(Component.text("Wystąpił błąd podczas generowania wyspy!", NamedTextColor.RED));
+            return;
+        }
+        teleportDoWyspy(player);
+        player.sendMessage(Component.text("Twoja wyspa została utworzona!", NamedTextColor.GREEN));
+        Bukkit.getPluginManager().callEvent(new IslandCreatedEvent(player, data));
+        otworzMenuWyspy(player, zMenu);
     }
 
     /** Cel /is dom (i /dom, /home) - punkt ustawiony przez /is ustawdom, fallback = środek wyspy. */

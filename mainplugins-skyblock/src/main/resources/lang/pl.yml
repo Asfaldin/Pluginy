@@ -1,0 +1,9 @@
+# Mainplugins Skyblock - komunikaty po polsku. Kolory: &a &e ...  Placeholdery: {nazwa}
+template:
+  missing: "&cWyspy nie są jeszcze gotowe - admin musi najpierw zapisać szablon wyspy (/@islandtemplate)."
+  usage: "&eUżycie: /@islandtemplate pos1 | pos2 | save &7- przy pos1/pos2 stań na narożnych blokach, przy save tam, gdzie mają pojawiać się gracze."
+  pos-set: "&aNarożnik {n} ustawiony na {x} {y} {z}."
+  need-corners: "&cNajpierw ustaw oba narożniki: /@islandtemplate pos1 i /@islandtemplate pos2."
+  other-world: "&cOba narożniki i Ty musicie być w tym samym świecie."
+  saved: "&aSzablon wyspy zapisany ({sx}x{sy}x{sz} bloków). Nowe wyspy będą go używać."
+  save-failed: "&cNie udało się zapisać szablonu wyspy - szczegóły w logu serwera."

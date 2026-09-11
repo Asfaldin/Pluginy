@@ -1,0 +1,9 @@
+# Mainplugins Skyblock - English messages. Colors: &a &e ...  Placeholders: {name}
+template:
+  missing: "&cIslands are not set up yet - an admin has to save an island template first (/@islandtemplate)."
+  usage: "&eUsage: /@islandtemplate pos1 | pos2 | save &7- stand on the corner blocks for pos1/pos2, and where players should appear for save."
+  pos-set: "&aCorner {n} set to {x} {y} {z}."
+  need-corners: "&cSet both corners first: /@islandtemplate pos1 and /@islandtemplate pos2."
+  other-world: "&cBoth corners and you must be in the same world."
+  saved: "&aIsland template saved ({sx}x{sy}x{sz} blocks). New islands will use it."
+  save-failed: "&cCould not save the island template - see the server log."

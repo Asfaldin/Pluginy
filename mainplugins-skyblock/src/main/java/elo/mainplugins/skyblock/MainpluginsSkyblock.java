@@ -5,6 +5,7 @@ import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.IslandService;
 import elo.mainplugins.core.util.TabCompleteUtils;
 import elo.mainplugins.core.world.VoidGenerator;
+import elo.mainplugins.skyblock.template.IslandTemplateCommand;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -35,6 +36,7 @@ public final class MainpluginsSkyblock extends JavaPlugin {
         }
 
         EconomyService economyService = CoreAPI.getEconomyService();
+        CoreAPI.getLangService().registerDefaults(this);
 
         islandManager = new IslandManager(this, economyService);
         borderManager = new BorderManager(this, islandManager);
@@ -61,6 +63,12 @@ public final class MainpluginsSkyblock extends JavaPlugin {
         if (getCommand("dom") != null) {
             getCommand("dom").setExecutor(executor);
             getCommand("dom").setTabCompleter(executor);
+        }
+
+        if (getCommand("@islandtemplate") != null) {
+            var templateCommand = new IslandTemplateCommand(this, islandManager.getTemplate(), CoreAPI.getLangService());
+            getCommand("@islandtemplate").setExecutor(templateCommand);
+            getCommand("@islandtemplate").setTabCompleter(templateCommand);
         }
 
         // Osobny executor: /@reloadwyspy ma sens tez z konsoli, nie tylko od gracza.

@@ -70,7 +70,7 @@ public final class AdminAchievementsCommand implements CommandExecutor, TabCompl
                 for (AchievementDef def : manager.config().osiagniecia()) {
                     boolean u = manager.ukonczone(cel.getUniqueId(), def.id());
                     boolean o = manager.odebrane(cel.getUniqueId(), def.id());
-                    String stan = !u ? "&8—" : (o ? "&a✔ (odebrane)" : "&e✔ (nagroda czeka)");
+                    String stan = !u ? "&8-" : (o ? "&a✔ (odebrane)" : "&e✔ (nagroda czeka)");
                     sender.sendMessage(SER.deserialize("  &7" + def.id() + ": " + stan));
                 }
             }

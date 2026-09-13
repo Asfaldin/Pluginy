@@ -520,7 +520,7 @@ public abstract class ToolSkillManager implements Listener {
      * obrazek tła zamiast zwykłego napisu.
      */
     protected Component hubTitleFor(PersistentDataContainer pdc, String nazwa) {
-        return Component.text(nazwa + " — Umiejętności", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD);
+        return Component.text(nazwa + " - Umiejętności", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD);
     }
 
     /**

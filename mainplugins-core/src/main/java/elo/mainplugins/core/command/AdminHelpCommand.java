@@ -27,7 +27,7 @@ public class AdminHelpCommand implements CommandExecutor {
                 .append(Component.text("  TPS: ", NamedTextColor.GRAY))
                 .append(Component.text(String.format(java.util.Locale.US, "%.1f", Math.min(Bukkit.getTPS()[0], 20.0)), NamedTextColor.GREEN)));
 
-        sender.sendMessage(Component.text("— Moduły —", NamedTextColor.AQUA, TextDecoration.BOLD));
+        sender.sendMessage(Component.text("- Moduły -", NamedTextColor.AQUA, TextDecoration.BOLD));
         for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
             if (!plugin.getName().startsWith("Mainplugins")) continue;
             NamedTextColor kolor = plugin.isEnabled() ? NamedTextColor.GREEN : NamedTextColor.RED;
@@ -36,7 +36,7 @@ public class AdminHelpCommand implements CommandExecutor {
                     .append(Component.text("[" + status + "]", kolor)));
         }
 
-        sender.sendMessage(Component.text("— Komendy —", NamedTextColor.AQUA, TextDecoration.BOLD));
+        sender.sendMessage(Component.text("- Komendy -", NamedTextColor.AQUA, TextDecoration.BOLD));
         CommandCatalog.wypisz(sender);
         return true;
     }

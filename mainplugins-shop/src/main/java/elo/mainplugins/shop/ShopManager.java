@@ -71,17 +71,17 @@ public class ShopManager implements Listener {
 
     /** Gracze, którzy kliknęli lupę i mają wpisać frazę na czacie. */
     private final Set<UUID> czekaNaFraze = new HashSet<>();
-    /** Ostatnie wyniki wyszukiwania per gracz — "katKey:itemKey" w kolejności GUI. */
+    /** Ostatnie wyniki wyszukiwania per gracz - "katKey:itemKey" w kolejności GUI. */
     private final Map<UUID, List<String>> wynikiSzukania = new HashMap<>();
 
     private static final String TYTUL_WYNIKOW = "Wyniki: ";
 
     /**
-     * Znacznik widoku kategorii — tytuł tego okna to teraz SAMA nazwa kategorii
+     * Znacznik widoku kategorii - tytuł tego okna to teraz SAMA nazwa kategorii
      * (bez prefiksu "Sklep: "), więc dopasowanie po tekście tytułu w onInventoryClick()
      * kolidowałoby z dowolnym innym ekwipunkiem nazwanym tak samo jak któraś z
      * kategorii (np. skrzynia czy kowadło). Próba obejścia tego niewidocznym
-     * znakiem Unicode w tytule zawiodła — Minecraft renderuje go jako widoczne
+     * znakiem Unicode w tytule zawiodła - Minecraft renderuje go jako widoczne
      * kropki. Zamiast kolejnej sztuczki z tekstem: identyfikacja przez
      * InventoryHolder, który w ogóle nie jest częścią tego, co widzi gracz.
      */
@@ -135,7 +135,7 @@ public class ShopManager implements Listener {
     /** Żeby plugin mógł zamknąć manager cen dynamicznych przy wyłączaniu (patrz MainpluginsShop.onDisable()). */
     public DynamicPriceManager getCeny() { return ceny; }
 
-    /** Sklejona konfiguracja sklepu (sklep.yml + wszystkie categories/*.yml) — do odczytu przez /@sklep. */
+    /** Sklejona konfiguracja sklepu (sklep.yml + wszystkie categories/*.yml) - do odczytu przez /@sklep. */
     public FileConfiguration getSklepConfig() { return sklepConfig; }
 
     /**
@@ -165,7 +165,7 @@ public class ShopManager implements Listener {
     /**
      * Szuka itemu po nazwie materiału ALBO po custom-id.
      *
-     * Custom-id sprawdzamy pierwsze, bo jest jednoznaczne — kilka pozycji dzieli
+     * Custom-id sprawdzamy pierwsze, bo jest jednoznaczne - kilka pozycji dzieli
      * ten sam Material (9 spawnerów = SPAWNER, 10 ryb = COD/SALMON/TROPICAL_FISH),
      * więc szukanie po materiale trafiłoby w przypadkową z nich.
      */
@@ -188,7 +188,7 @@ public class ShopManager implements Listener {
                 if (szukane.equalsIgnoreCase(customId)) {
                     return new LokalizacjaItemu(catKey, itemKey, path);   // dokładne trafienie
                 }
-                // Zapamiętujemy, ale szukamy dalej — może gdzieś jest custom-id
+                // Zapamiętujemy, ale szukamy dalej - może gdzieś jest custom-id
                 if (poMateriale == null && szukane.equalsIgnoreCase(material) && customId == null) {
                     poMateriale = new LokalizacjaItemu(catKey, itemKey, path);
                 }
@@ -233,7 +233,7 @@ public class ShopManager implements Listener {
         }
 
         YamlConfiguration kat = YamlConfiguration.loadConfiguration(plikKategorii);
-        // W pliku kategorii nie ma przedrostka "categories.<nazwa>." — nazwa pliku
+        // W pliku kategorii nie ma przedrostka "categories.<nazwa>." - nazwa pliku
         // JEST nazwą kategorii, więc ścieżka jest krótsza niż w sklejonym configu.
         String pathWPliku = "items." + lok.itemKey() + "." + pole;
 
@@ -266,7 +266,7 @@ public class ShopManager implements Listener {
     /**
      * Wczytuje sklep.yml (ustawienia globalne, jeśli jakieś zostały) i dokleja
      * do niego zawartość każdego pliku z categories/ pod "categories.<nazwa>".
-     * Brakujący folder categories/ nie jest błędem — po prostu nie ma kategorii.
+     * Brakujący folder categories/ nie jest błędem - po prostu nie ma kategorii.
      */
     private YamlConfiguration wczytajSklepZFolderow() {
         File plikGlowny = new File(plugin.getDataFolder(), "sklep.yml");
@@ -275,7 +275,7 @@ public class ShopManager implements Listener {
         File folderKategorii = new File(plugin.getDataFolder(), "categories");
         File[] pliki = folderKategorii.listFiles((dir, name) -> name.endsWith(".yml"));
         if (pliki == null) {
-            plugin.getLogger().warning("Brak folderu categories/ — sklep będzie pusty.");
+            plugin.getLogger().warning("Brak folderu categories/ - sklep będzie pusty.");
             return cfg;
         }
 
@@ -297,7 +297,7 @@ public class ShopManager implements Listener {
             String klucz = plik.getName().substring(0, plik.getName().length() - 4); // bez ".yml"
             YamlConfiguration kat = YamlConfiguration.loadConfiguration(plik);
 
-            // getValues(true) daje płaską mapę ze wszystkimi zagnieżdżeniami —
+            // getValues(true) daje płaską mapę ze wszystkimi zagnieżdżeniami -
             // createSection ją odtwarza jako pełną strukturę sekcji.
             cfg.createSection("categories." + klucz, kat.getValues(true));
         }
@@ -518,7 +518,7 @@ public class ShopManager implements Listener {
             String path = "categories." + catKey + ".items." + itemKeys.get(i) + ".";
             String matName = sklepConfig.getString(path + "material", "STONE");
             int amount = sklepConfig.getInt(path + "amount", 1);
-            // Lot sprzedaży bywa inny niż lot kupna — patrz sell-amount w sklep.yml.
+            // Lot sprzedaży bywa inny niż lot kupna - patrz sell-amount w sklep.yml.
             int sellAmount = sklepConfig.getInt(path + "sell-amount", amount);
             int buyPrice = sklepConfig.getInt(path + "buy-price", -1);
             int sellPrice = sklepConfig.getInt(path + "sell-price", -1);
@@ -579,7 +579,7 @@ public class ShopManager implements Listener {
             if (buyPrice >= 0) {
                 // Bez konkretnej ilości - LPM teraz otwiera wybór ilości (patrz otworzWyborIlosci),
                 // nie kupuje od razu całego lota, więc "kup 64 szt." tutaj byłoby mylące.
-                lore.add(Component.text("LPM — kupno",
+                lore.add(Component.text("LPM - kupno",
                         NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
             } else {
                 lore.add(Component.text("Tego nie da się kupić",
@@ -587,11 +587,11 @@ public class ShopManager implements Listener {
             }
             if (sellPrice >= 0) {
                 String opisPpm = KATEGORIA_POJEDYNCZE.equals(catKey)
-                        ? "PPM — sprzedaj dowolną ilość"
-                        : "PPM — sprzedaj cały stack (po " + sellAmount + " szt.)";
+                        ? "PPM - sprzedaj dowolną ilość"
+                        : "PPM - sprzedaj cały stack (po " + sellAmount + " szt.)";
                 lore.add(Component.text(opisPpm,
                         NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
-                lore.add(Component.text("Shift+PPM — sprzedaj cały ekwipunek",
+                lore.add(Component.text("Shift+PPM - sprzedaj cały ekwipunek",
                         NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
             } else {
                 lore.add(Component.text("Tego nie da się sprzedać",
@@ -637,10 +637,10 @@ public class ShopManager implements Listener {
                     poSkupie ? "Teraz: od najwyższego skupu" : "Teraz: od najtańszego kupna",
                     NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false));
             loreSort.add(Component.empty());
-            loreSort.add(Component.text("LPM — od najtańszego kupna",
+            loreSort.add(Component.text("LPM - od najtańszego kupna",
                     poSkupie ? NamedTextColor.GRAY : NamedTextColor.YELLOW)
                     .decoration(TextDecoration.ITALIC, false));
-            loreSort.add(Component.text("PPM — od najwyższego skupu",
+            loreSort.add(Component.text("PPM - od najwyższego skupu",
                     poSkupie ? NamedTextColor.YELLOW : NamedTextColor.GRAY)
                     .decoration(TextDecoration.ITALIC, false));
             metaSort.lore(loreSort);
@@ -672,7 +672,7 @@ public class ShopManager implements Listener {
     }
 
     /**
-     * Ustawia kolejność itemKeys wg wybranego trybu. Zwraca nową listę —
+     * Ustawia kolejność itemKeys wg wybranego trybu. Zwraca nową listę -
      * oryginalna kolejność z pliku YAML zostaje nietknięta.
      *
      * Pozycje bez ceny w danym trybie (np. brak sell-price przy sortowaniu
@@ -710,7 +710,7 @@ public class ShopManager implements Listener {
     }
 
     /** Ile kosztuje dokładnie {@code ilosc} sztuk, gdy lot {@code lot} kosztuje {@code cenaLotu}. Zaokrąglenie
-     *  W GÓRĘ gwarantuje, że nigdy nie wyjdzie ułamek ani zero — nawet przy kupnie jednej sztuki taniego bloku. */
+     *  W GÓRĘ gwarantuje, że nigdy nie wyjdzie ułamek ani zero - nawet przy kupnie jednej sztuki taniego bloku. */
     private long policzCene(int ilosc, int cenaLotu, int lot) {
         if (lot <= 0) lot = 1;
         return Math.max(1L, (long) Math.ceil((double) ilosc * cenaLotu / lot));
@@ -765,9 +765,9 @@ public class ShopManager implements Listener {
                         NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
             }
             lore.add(Component.empty());
-            lore.add(Component.text(stac ? "LPM — kliknij, aby kupić" : "Za mało pieniędzy",
+            lore.add(Component.text(stac ? "LPM - kliknij, aby kupić" : "Za mało pieniędzy",
                     stac ? NamedTextColor.YELLOW : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("Shift+LPM — kup maksimum (kasa + miejsce w ekwipunku)",
+            lore.add(Component.text("Shift+LPM - kup maksimum (kasa + miejsce w ekwipunku)",
                     NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
             meta.lore(lore);
             opcja.setItemMeta(meta);
@@ -812,7 +812,7 @@ public class ShopManager implements Listener {
             return false;
         }
 
-        // Miejsce sprawdzamy PRZED pobraniem kasy — inaczej gracz płaci za towar,
+        // Miejsce sprawdzamy PRZED pobraniem kasy - inaczej gracz płaci za towar,
         // który wypadnie na ziemię albo zniknie.
         int wolneMiejsce = wolneMiejsceNa(player, material);
         if (wolneMiejsce < ilosc) {
@@ -996,7 +996,7 @@ public class ShopManager implements Listener {
      * cena z cennika, przed korektą DynamicPriceManager) i z jakiej jest kategorii.
      *
      * cenaKupnaZaLot: cena kupna PRZELICZONA na ten sam lot co skup (nie zawsze
-     * lot kupna i lot skupu to ta sama ilość — patrz sell-amount) - potrzebna
+     * lot kupna i lot skupu to ta sama ilość - patrz sell-amount) - potrzebna
      * DynamicPriceManager do pilnowania, żeby skup nigdy nie przebił kupna.
      * -1, jeśli itemu nie da się kupić.
      */
@@ -1088,7 +1088,7 @@ public class ShopManager implements Listener {
 
     /**
      * Skupuje przedmiot wyłącznie pełnymi lotami. Reszta poniżej jednego lotu
-     * zostaje graczowi w ekwipunku — nic nie przepada, ale też nic się nie zaokrągla.
+     * zostaje graczowi w ekwipunku - nic nie przepada, ale też nic się nie zaokrągla.
      *
      * @param tryb REKA = tylko stack z ręki (/sell), JEDEN_STOS = pierwszy napotkany
      *             stos w ekwipunku (PPM w GUI), CALY_EKWIPUNEK = wszystkie sztuki
@@ -1135,7 +1135,7 @@ public class ShopManager implements Listener {
             int loty = posiadane / oferta.lot();
             if (loty == 0) {
                 player.sendMessage(Component.text(
-                        "Sklep skupuje ten przedmiot po " + oferta.lot() + " szt. — masz " + posiadane + ".",
+                        "Sklep skupuje ten przedmiot po " + oferta.lot() + " szt. - masz " + posiadane + ".",
                         NamedTextColor.RED));
                 return;
             }
@@ -1145,7 +1145,7 @@ public class ShopManager implements Listener {
 
         if (zarobek <= 0) {
             player.sendMessage(Component.text(
-                    "Za tak małą ilość sklep nic by Ci nie zapłacił — sprzedaj więcej naraz.",
+                    "Za tak małą ilość sklep nic by Ci nie zapłacił - sprzedaj więcej naraz.",
                     NamedTextColor.RED));
             return;
         }
@@ -1171,7 +1171,7 @@ public class ShopManager implements Listener {
         Component msg = Component.text("Sprzedano " + doZabrania + "x " + material.name()
                 + " za " + zarobek + " $!", NamedTextColor.AQUA);
         if (reszta > 0) {
-            msg = msg.append(Component.text(" (zostało " + reszta + " szt. — za mało na kolejny lot)",
+            msg = msg.append(Component.text(" (zostało " + reszta + " szt. - za mało na kolejny lot)",
                     NamedTextColor.GRAY));
         }
         player.sendMessage(msg);
@@ -1194,7 +1194,7 @@ public class ShopManager implements Listener {
     }
 
     /**
-     * Zabiera dokładnie tyle sztuk, ile trzeba — nie używamy inv.remove(Material),
+     * Zabiera dokładnie tyle sztuk, ile trzeba - nie używamy inv.remove(Material),
      * bo ono czyści cały ekwipunek z danego materiału, także resztę poniżej lotu
      * i itemy o innym custom-id (albo bez niego), które akurat dzielą ten sam materiał.
      */
@@ -1329,7 +1329,7 @@ public class ShopManager implements Listener {
             Integer slotNext = pierwszySlot(ekranKategorii, ShopSlotRole.NAV_NEXT);
 
             if (slotSort != null && slotKlikniecia == slotSort) {
-                // Zmiana sortowania wraca na stronę 1 — przy innej kolejności
+                // Zmiana sortowania wraca na stronę 1 - przy innej kolejności
                 // numer strony i tak przestaje cokolwiek znaczyć.
                 sortowaniePoSkupie.put(player.getUniqueId(), event.isRightClick());
                 otworzKategorieStrona(player, catKey, 0);
@@ -1404,7 +1404,7 @@ public class ShopManager implements Listener {
                     player.sendMessage(Component.text("Tego przedmiotu nie można sprzedać!", NamedTextColor.RED));
                     return;
                 }
-                // Jedna ścieżka sprzedaży dla GUI i komend — inaczej reguła lotów
+                // Jedna ścieżka sprzedaży dla GUI i komend - inaczej reguła lotów
                 // rozjedzie się między /sell a klikaniem w sklepie. PPM = jeden stos,
                 // Shift+PPM = cały ekwipunek (jak /sellall). custom-id (jeśli wpis go ma,
                 // np. gatunek ryby) musi iść razem z materiałem - patrz znajdzOferteSkupu.
@@ -1446,7 +1446,7 @@ public class ShopManager implements Listener {
                     return;
                 }
                 // Itemy z custom-id (spawnery, itemy specjalne) mają własną ścieżkę
-                // kupna — tu ich nie obsługujemy, odsyłamy do kategorii.
+                // kupna - tu ich nie obsługujemy, odsyłamy do kategorii.
                 if (sklepConfig.getString(path + "custom-id", null) != null) {
                     player.sendMessage(Component.text("Ten przedmiot kup w jego kategorii.", NamedTextColor.YELLOW));
                     otworzKategorieStrona(player, catKey, 0);
@@ -1482,7 +1482,7 @@ public class ShopManager implements Listener {
         }
 
         // Czat leci w wątku asynchronicznym, a GUI wolno otwierać TYLKO z głównego
-        // wątku serwera — bez tego skoku Bukkit rzuci wyjątkiem.
+        // wątku serwera - bez tego skoku Bukkit rzuci wyjątkiem.
         Bukkit.getScheduler().runTask(plugin, () -> otworzWyniki(player, fraza));
     }
 
@@ -1549,8 +1549,8 @@ public class ShopManager implements Listener {
     }
 
     /**
-     * Item do okna wyników — te same reguły renderu co w otworzKategorieStrona()
-     * (pojedyncza sztuka w ikonie, cena kupna ZA SZTUKĘ, nie za lot — patrz komentarz
+     * Item do okna wyników - te same reguły renderu co w otworzKategorieStrona()
+     * (pojedyncza sztuka w ikonie, cena kupna ZA SZTUKĘ, nie za lot - patrz komentarz
      * tam), tylko z dopiskiem, z jakiej kategorii pochodzi. Patch pierwotnie budował
      * to inaczej (cały lot w ikonie + cena za cały lot w lore) - niespójne z resztą
      * sklepu, więc dociągnięte do tego samego wzoru.
@@ -1606,7 +1606,7 @@ public class ShopManager implements Listener {
         lore.add(Component.empty());
 
         if (buyPrice >= 0) {
-            lore.add(Component.text("LPM — kupno",
+            lore.add(Component.text("LPM - kupno",
                     NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
         } else {
             lore.add(Component.text("Tego nie da się kupić",
@@ -1614,11 +1614,11 @@ public class ShopManager implements Listener {
         }
         if (sellPrice >= 0) {
             String opisPpm = KATEGORIA_POJEDYNCZE.equals(catKey)
-                    ? "PPM — sprzedaj dowolną ilość"
-                    : "PPM — sprzedaj cały stack (po " + sellAmount + " szt.)";
+                    ? "PPM - sprzedaj dowolną ilość"
+                    : "PPM - sprzedaj cały stack (po " + sellAmount + " szt.)";
             lore.add(Component.text(opisPpm,
                     NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("Shift+PPM — sprzedaj cały ekwipunek",
+            lore.add(Component.text("Shift+PPM - sprzedaj cały ekwipunek",
                     NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
         } else {
             lore.add(Component.text("Tego nie da się sprzedać",
@@ -1636,7 +1636,7 @@ public class ShopManager implements Listener {
             otwartyWyborIlosci.remove(player.getUniqueId());
             wynikiSzukania.remove(player.getUniqueId());
         }
-        // czekaNaFraze NIE czyścimy przy zamknięciu okna — gracz właśnie po to zamknął
+        // czekaNaFraze NIE czyścimy przy zamknięciu okna - gracz właśnie po to zamknął
         // GUI, żeby móc coś wpisać na czacie.
     }
 

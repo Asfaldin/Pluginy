@@ -33,7 +33,7 @@ public class StatystykiSklepu {
 
     /**
      * Ile procent czasu na dnie/szczycie wystarczy, żeby zasugerować zmianę
-     * ceny bazowej. 60% to sporo — nie chcemy sugerować zmiany przy chwilowych
+     * ceny bazowej. 60% to sporo - nie chcemy sugerować zmiany przy chwilowych
      * wahnięciach, tylko przy trwałym trendzie.
      */
     private static final double PROG_SUGESTII = 0.60;
@@ -79,7 +79,7 @@ public class StatystykiSklepu {
         this.folderArchiwum = new File(plugin.getDataFolder(), "archiwum-statystyk");
         if (!folderArchiwum.exists()) folderArchiwum.mkdirs();
 
-        // Data zapisana w pliku, a nie bieżąca — jeśli serwer stał wyłączony
+        // Data zapisana w pliku, a nie bieżąca - jeśli serwer stał wyłączony
         // przez dobę, chcemy to wykryć i zamknąć poprzedni dzień, a nie
         // po cichu doliczyć wczorajszy ruch do dzisiejszego.
         this.dzisiejszaData = config.getString("_meta.data", dzisiejszaDataSystemowa());
@@ -90,10 +90,10 @@ public class StatystykiSklepu {
     }
 
     /**
-     * Sprawdza, czy zmienił się dzień. Jeśli tak — zapisuje snapshot minionej
+     * Sprawdza, czy zmienił się dzień. Jeśli tak - zapisuje snapshot minionej
      * doby do archiwum i zeruje liczniki dobowe.
      *
-     * Woła się raz na cykl, więc rozdzielczość to jedna godzina — wystarczająco
+     * Woła się raz na cykl, więc rozdzielczość to jedna godzina - wystarczająco
      * dokładnie, żeby snapshot powstał w ciągu godziny po północy.
      */
     private void sprawdzZmianeDoby() {
@@ -112,7 +112,7 @@ public class StatystykiSklepu {
     }
 
     /**
-     * Zapisuje CSV z ruchem z jednej doby. Itemy bez żadnego ruchu pomijamy —
+     * Zapisuje CSV z ruchem z jednej doby. Itemy bez żadnego ruchu pomijamy -
      * inaczej plik miałby 330 wierszy, z czego 300 pustych.
      */
     private void zapiszSnapshotDobowy(String data) {
@@ -195,7 +195,7 @@ public class StatystykiSklepu {
     }
 
     /**
-     * Woła się raz na cykl dla każdego itemu — to stąd bierze się wiedza
+     * Woła się raz na cykl dla każdego itemu - to stąd bierze się wiedza
      * o tym, ile czasu item spędza na dnie i na szczycie.
      */
     public void zapiszCykl(String klucz, double mnoznik) {
@@ -230,7 +230,7 @@ public class StatystykiSklepu {
             config.set(k + ".transakcji-dzis", w.transakcjiDzis);
         }
         // Serializacja na głównym wątku (config nie jest thread-safe),
-        // zapis na dysk asynchronicznie — ten sam wzorzec co AsyncConfigSaver.
+        // zapis na dysk asynchronicznie - ten sam wzorzec co AsyncConfigSaver.
         final String tresc = config.saveToString();
         wTle(() -> {
             zapiszPlik(plikYml.toPath(), tresc);
@@ -255,7 +255,7 @@ public class StatystykiSklepu {
     /**
      * Buduje raport gotowy do otwarcia w Excelu.
      *
-     * Separator średnikiem, nie przecinkiem — polski Excel domyślnie tak czyta
+     * Separator średnikiem, nie przecinkiem - polski Excel domyślnie tak czyta
      * i nie trzeba nic importować ręcznie. Liczby dziesiętne z przecinkiem
      * z tego samego powodu.
      */
@@ -268,7 +268,7 @@ public class StatystykiSklepu {
                 "cykli", "proc_na_dnie", "proc_na_szczycie",
                 "sredni_mnoznik", "SUGESTIA"));
 
-        // Sortowanie po wolumenie malejąco — najczęściej sprzedawane na górze,
+        // Sortowanie po wolumenie malejąco - najczęściej sprzedawane na górze,
         // bo to one najmocniej ważą na ekonomii serwera.
         List<Map.Entry<String, Wpis>> posortowane = new ArrayList<>(dane.entrySet());
         posortowane.sort((a, b) -> Long.compare(b.getValue().sztukLacznie, a.getValue().sztukLacznie));
@@ -299,7 +299,7 @@ public class StatystykiSklepu {
         return String.join("\n", linie) + "\n";
     }
 
-    /** Przecinek zamiast kropki — polski Excel inaczej nie rozpozna liczby. */
+    /** Przecinek zamiast kropki - polski Excel inaczej nie rozpozna liczby. */
     private static String fmt(double x) {
         return String.format("%.2f", x).replace('.', ',');
     }
@@ -307,7 +307,7 @@ public class StatystykiSklepu {
     /**
      * Gotowa podpowiedź, co zrobić z ceną bazową.
      *
-     * To jest sedno całego pliku — reszta kolumn to dane surowe, a ta jedna
+     * To jest sedno całego pliku - reszta kolumn to dane surowe, a ta jedna
      * mówi wprost, gdzie zajrzeć.
      */
     private static String sugestia(Wpis w, double procDna, double procSzczytu) {
@@ -350,14 +350,14 @@ public class StatystykiSklepu {
         return wynik;
     }
 
-    /** Podsumowanie całej doby — ile w sumie wypłacono graczom. */
+    /** Podsumowanie całej doby - ile w sumie wypłacono graczom. */
     public long getWyplaconoDzis() {
         long suma = 0;
         for (Wpis w : dane.values()) suma += w.wyplaconoDzis;
         return suma;
     }
 
-    /** Wymuszony snapshot — do komendy administracyjnej. */
+    /** Wymuszony snapshot - do komendy administracyjnej. */
     public void wymusSnapshot() {
         zapiszSnapshotDobowy(dzisiejszaData + "-reczny-" + System.currentTimeMillis());
     }

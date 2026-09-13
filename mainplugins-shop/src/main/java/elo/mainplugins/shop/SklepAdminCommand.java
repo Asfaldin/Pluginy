@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * /@sklep — administracyjna edycja cen i mnożników.
+ * /@sklep - administracyjna edycja cen i mnożników.
  *
  * Ceny zapisywane są wprost do plików w categories/, więc zmiana przeżywa
  * restart serwera. Po każdej zmianie sklep przeładowuje się automatycznie.
@@ -275,7 +275,7 @@ public class SklepAdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(zielony("Zmieniono " + typ + " dla " + item + " na " + kwota + " $."));
         sender.sendMessage(szary("Zapisano w categories/" + lok.kategoria() + ".yml, sklep przeladowany."));
 
-        // Mnożnik zostaje nietknięty — admin może chcieć zmienić cenę bazową
+        // Mnożnik zostaje nietknięty - admin może chcieć zmienić cenę bazową
         // bez kasowania historii rynkowej. Ale warto o tym przypomnieć.
         double m = shopManager.getCeny().getMnoznik(item.toUpperCase());
         if (Math.abs(m - 1.0) > 0.02) {

@@ -1,6 +1,6 @@
 # Pula itemów do sklepu rotacyjnego (kategoria "Kolekcja").
 # RotacjaManager losuje stąd 5 pozycji co 14 dni i wpisuje je do
-# categories/kolekcja.yml (sloty 0-4). Cała kategoria jest rotacyjna —
+# categories/kolekcja.yml (sloty 0-4). Cała kategoria jest rotacyjna -
 # Generator Bruku ma teraz stałe miejsce w kategorii "Rudy i Minerały".
 #
 # Każdy wpis: material + display-name + buy-price (za 1 sztukę).

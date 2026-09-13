@@ -39,7 +39,7 @@ public class RotacjaManager {
 
     /**
      * Pierwszy slot-klucz w kolekcja.yml, od którego zaczyna się zapis rotacji.
-     * Generator Bruku przeniesiony do stałej oferty w "Rudy i Minerały" — cała
+     * Generator Bruku przeniesiony do stałej oferty w "Rudy i Minerały" - cała
      * kategoria "Kolekcja" jest teraz w 100% rotacyjna, więc zaczynamy od 0.
      */
     private static final int PIERWSZY_SLOT_ROTACYJNY = 0;
@@ -180,7 +180,7 @@ public class RotacjaManager {
 
     /**
      * Przepisuje sloty rotacyjne w categories/kolekcja.yml (cała kategoria jest
-     * rotacyjna — Generator Bruku ma teraz stałe miejsce w "Rudy i Minerały").
+     * rotacyjna - Generator Bruku ma teraz stałe miejsce w "Rudy i Minerały").
      *
      * @return komunikat błędu albo null przy powodzeniu
      */

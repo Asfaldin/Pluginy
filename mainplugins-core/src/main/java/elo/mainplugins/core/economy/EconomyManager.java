@@ -22,7 +22,7 @@ import java.util.UUID;
  * więc przy dużej liczbie operacji salda dryfują (1234.9999999998 zamiast 1235)
  * i gracza "nie stać" na przedmiot, na który go stać. long jest dokładny zawsze.
  *
- * Publiczne metody double zostają dla zgodności z resztą pluginów — konwersja
+ * Publiczne metody double zostają dla zgodności z resztą pluginów - konwersja
  * odbywa się na wejściu i wyjściu, a wewnątrz liczone jest wyłącznie na long.
  */
 public class EconomyManager implements EconomyService {
@@ -57,7 +57,7 @@ public class EconomyManager implements EconomyService {
     // ==================================================== migracja ====
 
     /**
-     * Przepisuje stary plik (kwoty jako double) na grosze. Odpala się raz —
+     * Przepisuje stary plik (kwoty jako double) na grosze. Odpala się raz -
      * po migracji plik dostaje znacznik wersji i kolejne starty go pomijają.
      *
      * Bez tego po wgraniu patcha każde saldo zostałoby odczytane jako grosze,
@@ -122,7 +122,7 @@ public class EconomyManager implements EconomyService {
 
     // ==================================================== API double (zgodność) ====
 
-    /** Zaokrąglenie do najbliższego grosza — jedyne miejsce, gdzie double dotyka pieniędzy. */
+    /** Zaokrąglenie do najbliższego grosza - jedyne miejsce, gdzie double dotyka pieniędzy. */
     private static long naGrosze(double kwota) {
         return Math.round(kwota * GROSZE_W_JEDNOSTCE);
     }
@@ -155,7 +155,7 @@ public class EconomyManager implements EconomyService {
 
     @Override
     public boolean maWystarczajaco(UUID uuid, double ilosc) {
-        // Porównanie w groszach, nie w double — tu właśnie wcześniej gracz
+        // Porównanie w groszach, nie w double - tu właśnie wcześniej gracz
         // z dokładnie 1000 $ dostawał "nie stać cię" przy cenie 1000 $.
         return getGrosze(uuid) >= naGrosze(ilosc);
     }
@@ -203,11 +203,11 @@ public class EconomyManager implements EconomyService {
         return wiecejMajacych + 1;
     }
 
-    // Nie zapisuje od razu — tylko oznacza zmianę. Faktyczny zrzut na dysk
+    // Nie zapisuje od razu - tylko oznacza zmianę. Faktyczny zrzut na dysk
     // leci asynchronicznie co 30 sekund oraz przy wyłączaniu serwera.
     //
     // Wcześniej ta metoda zapisywała cały plik przy KAŻDEJ zmianie salda,
-    // synchronicznie na głównym wątku — przy aktywnym sklepie to były setki
+    // synchronicznie na głównym wątku - przy aktywnym sklepie to były setki
     // zapisów na minutę.
     //
     // Sprawdzenie na null jest mimo to potrzebne: konstruktor może wywołać
@@ -216,7 +216,7 @@ public class EconomyManager implements EconomyService {
         if (saver != null) saver.oznaczZmiane();
     }
 
-    /** Wywołaj w onDisable() — zapisuje natychmiast i zatrzymuje cykl. */
+    /** Wywołaj w onDisable() - zapisuje natychmiast i zatrzymuje cykl. */
     public void zamknij() {
         if (saver != null) saver.zamknij();
     }

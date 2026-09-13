@@ -742,7 +742,7 @@ public class EvolvingToolManager implements Listener {
         int level = poziomZ(tool);
 
         HubHolder holder = new HubHolder(this);
-        Component tytul = def.nazwa().append(Component.text(" — Ulepszenia", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD));
+        Component tytul = def.nazwa().append(Component.text(" - Ulepszenia", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD));
         Inventory gui = Bukkit.createInventory(holder, 45, tytul);
         holder.inventory = gui;
         GuiUtils.fillBackground(gui, Material.PURPLE_STAINED_GLASS_PANE);

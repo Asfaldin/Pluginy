@@ -1,30 +1,30 @@
 # ─────────────────────────────────────────────────────────────────────────────
-#  osiagniecia.yml — system osiągnięć zbudowany NA wbudowanych advancementach.
+#  osiagniecia.yml - system osiągnięć zbudowany NA wbudowanych advancementach.
 #
-#  Ten zestaw jest w 100% SERWEROWY — żadne osiągnięcie nie jest spięte z
+#  Ten zestaw jest w 100% SERWEROWY - żadne osiągnięcie nie jest spięte z
 #  waniliowym triggerem MC. Wszystkie warunki liczą realną grę na tym serwerze
 #  (kopanie z generatora, minigra łowienia, ekonomia, rangi, czas gry, bossowie).
 #
 #  Źródła zdobycia (pole "zrodlo"):
 #
-#   • vanilla:<klucz>          — [nadal wspierane] powiązanie z wbudowanym
+#   • vanilla:<klucz>          - [nadal wspierane] powiązanie z wbudowanym
 #                                 advancementem MC; w tym pliku NIEUŻYWANE.
-#   • custom:kasa              — miej na koncie ≥ "prog" złotówek
-#   • custom:ranga             — miej rangę ≥ "ranga" (GRACZ < VIP < ADMIN)
-#   • custom:czas-gry          — przegraj łącznie ≥ "godziny" godzin
-#   • custom:advancementy      — ukończ łącznie ≥ "prog" DOWOLNYCH advancementów
-#   • custom:statystyka        — wbudowana statystyka ≥ "prog"; dla statystyk
+#   • custom:kasa              - miej na koncie ≥ "prog" złotówek
+#   • custom:ranga             - miej rangę ≥ "ranga" (GRACZ < VIP < ADMIN)
+#   • custom:czas-gry          - przegraj łącznie ≥ "godziny" godzin
+#   • custom:advancementy      - ukończ łącznie ≥ "prog" DOWOLNYCH advancementów
+#   • custom:statystyka        - wbudowana statystyka ≥ "prog"; dla statystyk
 #                                 blokowych/itemowych podaj "material", dla
 #                                 mobowych "istota" (EntityType)
 #
-#  Nagrody ("nagrody:", lista) — typy: MONEY, ITEM, CUSTOM_ITEM, CRATE, COMMAND.
-#  Nagroda NIE jest wręczana automatycznie — gracz odbiera ją klikając w GUI
+#  Nagrody ("nagrody:", lista) - typy: MONEY, ITEM, CUSTOM_ITEM, CRATE, COMMAND.
+#  Nagroda NIE jest wręczana automatycznie - gracz odbiera ją klikając w GUI
 #  (chyba że ustawisz "auto: true" na osiągnięciu).
 #
-#  DATAPACK (sekcja "datapack:") — gdy włączony, plugin generuje datapack w
+#  DATAPACK (sekcja "datapack:") - gdy włączony, plugin generuje datapack w
 #  <świat>/datapacks/mainplugins-osiagniecia/, dzięki czemu osiągnięcia
 #  pojawiają się w natywnym ekranie ESC → Postępy jako własne zakładki + toast.
-#  To nie NMS — zwykłe pliki JSON czytane przez waniliowe MC. Zmiany widoczne
+#  To nie NMS - zwykłe pliki JSON czytane przez waniliowe MC. Zmiany widoczne
 #  dopiero po /reload lub restarcie serwera (plugin przypomni w konsoli).
 #
 #  Przeładowanie na żywo: /@reloadosiagniecia
@@ -59,16 +59,16 @@ datapack:
 
 # ─────────────── UKRYCIE WBUDOWANYCH ADVANCEMENTÓW MC ───────────────
 # Gdy wlaczone: datapack nadpisuje KAŻDY waniliowy advancement 5 natywnych
-# zakładek (story / nether / end / adventure / husbandry) — łącznie z ich rootami —
+# zakładek (story / nether / end / adventure / husbandry) - łącznie z ich rootami -
 # wersją bez "display", więc te zakładki znikają z ekranu ESC → Postępy w całości.
 # Zostają tylko nasze zakładki mpa (poniższe kategorie). minecraft:recipes/* nietknięte.
 # UWAGA: po włączeniu natywne advancementy (Getting Wood, Diamonds!, zabicie Smoka...)
-# nie odpalają się — jeśli coś (mapa, inny plugin) na tym polega, przestanie działać.
+# nie odpalają się - jeśli coś (mapa, inny plugin) na tym polega, przestanie działać.
 vanilla-przejecie:
   wlaczone: true
 
 # ─────────────── ZAKŁADKI (drzewka w ESC → Postępy) ───────────────
-# tlo-zakladki (opcjonalne) — tekstura tła drzewka w natywnym ekranie.
+# tlo-zakladki (opcjonalne) - tekstura tła drzewka w natywnym ekranie.
 kategorie:
   eksploracja:
     nazwa: "&bEksploracja i górnictwo"
@@ -102,7 +102,7 @@ kategorie:
     tlo-zakladki: "minecraft:textures/block/target_side.png"
 
 # ─────────────── OSIĄGNIĘCIA ───────────────
-# ramka (opcjonalne, datapack): task (domyślnie) | goal | challenge — kształt
+# ramka (opcjonalne, datapack): task (domyślnie) | goal | challenge - kształt
 #   ramki ikony w natywnym ekranie. "spektakularne: true" domyślnie daje challenge.
 osiagniecia:
 
@@ -559,7 +559,7 @@ osiagniecia:
       - typ: CRATE
         tier: 2
 
-  # ═══════════ TEST — łatwe do wyzwolenia, do sprawdzania systemu ═══════════
+  # ═══════════ TEST - łatwe do wyzwolenia, do sprawdzania systemu ═══════════
   test-kasa:
     kategoria: test
     zrodlo: "custom:kasa"

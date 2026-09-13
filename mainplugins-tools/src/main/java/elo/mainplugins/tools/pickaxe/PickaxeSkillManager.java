@@ -1125,7 +1125,7 @@ public class PickaxeSkillManager extends ToolSkillManager {
         for (SurowiecDrop drop : pula) {
             boolean dropEnabled = !wylaczone.contains(drop.id());
             double udzial = brukSurowceManager.udzialSurowca(tier, drop, 0, wylaczone);
-            String linia = "• " + drop.nazwa() + " — " + (dropEnabled ? formatPercent(szansa * udzial) + "%" : "wyłączony");
+            String linia = "• " + drop.nazwa() + " - " + (dropEnabled ? formatPercent(szansa * udzial) + "%" : "wyłączony");
             lore.add(Component.text(linia, dropEnabled ? (drop.cenny() ? NamedTextColor.LIGHT_PURPLE : NamedTextColor.YELLOW) : NamedTextColor.DARK_GRAY)
                     .decoration(TextDecoration.ITALIC, false));
         }
@@ -1153,7 +1153,7 @@ public class PickaxeSkillManager extends ToolSkillManager {
         List<SurowiecDrop> pula = BrukSurowce.pulaDlaTieru(tier);
 
         BrukConfigHolder holder = new BrukConfigHolder(this);
-        Inventory gui = Bukkit.createInventory(holder, BRUK_CONFIG_SIZE, Component.text("Bonus z Bruku — Surowce", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD));
+        Inventory gui = Bukkit.createInventory(holder, BRUK_CONFIG_SIZE, Component.text("Bonus z Bruku - Surowce", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD));
         holder.inventory = gui;
         GuiUtils.fillBackground(gui, Material.BLACK_STAINED_GLASS_PANE);
 

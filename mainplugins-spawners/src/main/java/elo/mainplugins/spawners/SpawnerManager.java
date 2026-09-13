@@ -490,7 +490,7 @@ public class SpawnerManager implements Listener {
 
     /**
      * UUID właściciela wyspy, na której gracz jest członkiem. Gdy modułu wysp
-     * nie ma albo gracz nie ma wyspy — zwraca jego własne UUID, tak samo jak
+     * nie ma albo gracz nie ma wyspy - zwraca jego własne UUID, tak samo jak
      * robi to onSadzenie() przy przypisywaniu właściciela.
      */
     private UUID wyspaGracza(UUID playerUUID) {

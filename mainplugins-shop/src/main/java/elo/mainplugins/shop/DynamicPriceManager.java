@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DynamicPriceManager implements CenyService {
 
     // =========================================================================
-    //  PARAMETRY MODELU — jedyne miejsce do strojenia
+    //  PARAMETRY MODELU - jedyne miejsce do strojenia
     // =========================================================================
 
     /** Długość cyklu w minutach. Na czas testów warto ustawić 1, żeby nie czekać godziny. */
@@ -44,7 +44,7 @@ public class DynamicPriceManager implements CenyService {
      *
      * Uzasadnienie: cena wysoka wzięła się TYLKO stąd, że nikt tego nie sprzedawał.
      * To nie jest realna wartość, tylko zaległość. Gdy pojawia się realna podaż,
-     * cena powinna szybko wrócić na ziemię — bo okazuje się, że towar jednak jest.
+     * cena powinna szybko wrócić na ziemię - bo okazuje się, że towar jednak jest.
      */
     private static final double MNOZNIK_SPADKU_NA_SZCZYCIE = 4.2;
 
@@ -89,7 +89,7 @@ public class DynamicPriceManager implements CenyService {
 
     /**
      * Próg suszy zamrożony w chwili jej rozpoczęcia. Bez tego próg liczony
-     * na bieżąco z normy KURCZYŁBY SIĘ razem z nią podczas ciszy — im dłużej
+     * na bieżąco z normy KURCZYŁBY SIĘ razem z nią podczas ciszy - im dłużej
      * trwa susza, tym łatwiej byłoby ją przypadkiem przerwać. Zamrożenie
      * sprawia, że próg jest stały przez całą suszę.
      */
@@ -100,7 +100,7 @@ public class DynamicPriceManager implements CenyService {
 
     /**
      * Itemy z ręcznie zablokowanym mnożnikiem (eventy, korekty awaryjne).
-     * Cykl korekty je pomija — cena stoi, dopóki admin nie odblokuje.
+     * Cykl korekty je pomija - cena stoi, dopóki admin nie odblokuje.
      */
     private final Set<String> zablokowane = ConcurrentHashMap.newKeySet();
 
@@ -137,7 +137,7 @@ public class DynamicPriceManager implements CenyService {
     /** Żeby ShopManager mógł zapisać wypłaconą kwotę po każdej sprzedaży. */
     public StatystykiSklepu getStatystyki() { return statystyki; }
 
-    /** Kopia mapy mnożników — do wyświetlania, nie do modyfikacji. */
+    /** Kopia mapy mnożników - do wyświetlania, nie do modyfikacji. */
     public Map<String, Double> getWszystkieMnozniki() {
         return new HashMap<>(mnozniki);
     }
@@ -186,7 +186,7 @@ public class DynamicPriceManager implements CenyService {
     /**
      * Rejestruje sprzedaż do sklepu. Woła ShopManager po każdej udanej transakcji.
      *
-     * @param klucz identyfikator itemu — custom-id, a gdy go nie ma, nazwa materiału
+     * @param klucz identyfikator itemu - custom-id, a gdy go nie ma, nazwa materiału
      * @param sztuk ile sztuk gracz sprzedał
      */
     public void zarejestrujSprzedaz(String klucz, int sztuk) {
@@ -225,7 +225,7 @@ public class DynamicPriceManager implements CenyService {
     }
 
     // =========================================================================
-    //  CYKL — serce mechanizmu
+    //  CYKL - serce mechanizmu
     // =========================================================================
 
     private void wykonajCykl() {
@@ -298,28 +298,28 @@ public class DynamicPriceManager implements CenyService {
 
             if (m < 1.0) {
                 // Powrót do normy z dołu. Szybki, bo przy realnym ruchu graczy
-                // ciągła drobna sprzedaż i tak stale ściąga cenę — powrót musi
+                // ciągła drobna sprzedaż i tak stale ściąga cenę - powrót musi
                 // nadążać, inaczej nic nigdy nie wróciłoby do 1.0.
                 m += (1.0 - m) * TEMPO_POWROTU_Z_DOLU;
                 if (m > 0.995) m = 1.0;   // domknięcie, żeby nie pełzać w nieskończoność
 
             } else if (zamrozenie > 0) {
-                // Zamrożenie po zejściu z góry — mnożnik stoi na 1.0.
+                // Zamrożenie po zejściu z góry - mnożnik stoi na 1.0.
                 // Licznik suszy tyka RÓWNOLEGLE (ustalone: ma tykać od razu),
                 // więc po zakończeniu zamrożenia wzrost może ruszyć bez zwłoki.
                 zamrozenie--;
 
             } else if (susza >= CYKLI_DO_WZROSTU) {
-                // Susza dojrzała — cena rośnie ponad bazę, żeby skusić kogoś
+                // Susza dojrzała - cena rośnie ponad bazę, żeby skusić kogoś
                 // do sprzedania zaległego towaru.
                 m += TEMPO_WZROSTU;
             }
-            // else: mnożnik == 1.0, susza jeszcze za krótka — stoimy
+            // else: mnożnik == 1.0, susza jeszcze za krótka - stoimy
 
         } else {
             // ================= GAŁĄŹ SPRZEDAŻY =================
 
-            // Susza przerwana. Licznik cofa się o 1, nie zeruje całkiem —
+            // Susza przerwana. Licznik cofa się o 1, nie zeruje całkiem -
             // inaczej jedna przypadkowa transakcja tuż przed końcem progu
             // kasowałaby cały postęp i susza prawie nigdy by nie ruszyła.
             susza = Math.max(0, susza - 1);
@@ -332,7 +332,7 @@ public class DynamicPriceManager implements CenyService {
             m -= policzSpadek(m, sprzedano, norma);
         }
 
-        // Aktualizacja normy — żyje cały czas, także podczas ciszy.
+        // Aktualizacja normy - żyje cały czas, także podczas ciszy.
         // Zamrożony jest tylko PRÓG, nie sama norma.
         normy.put(klucz, norma + (sprzedano - norma) * TEMPO_UCZENIA_NORMY);
 
@@ -351,7 +351,7 @@ public class DynamicPriceManager implements CenyService {
      * nałożyłyby się na siebie.
      */
     private double policzSpadek(double mnoznik, int sprzedano, double norma) {
-        // Efekt 1 — ILOŚĆ. Ile razy więcej niż zwykle sprzedano.
+        // Efekt 1 - ILOŚĆ. Ile razy więcej niż zwykle sprzedano.
         // log2 daje symetrię i wygaszanie: 2x norma to nie dwa razy większy
         // spadek niż 1x, tylko jeden "krok". Bez logarytmu sprzedaż 50x normy
         // dawałaby absurdalny wynik.
@@ -362,7 +362,7 @@ public class DynamicPriceManager implements CenyService {
             efektIlosci = Math.min(efektIlosci, MAX_SPADEK);
         }
 
-        // Efekt 2 — WYSOKOŚĆ. Im wyżej mnożnik ponad 1.0, tym mocniej boli
+        // Efekt 2 - WYSOKOŚĆ. Im wyżej mnożnik ponad 1.0, tym mocniej boli
         // sprzedaż. Na szczycie (1.50) spadek jest MNOZNIK_SPADKU_NA_SZCZYCIE
         // razy silniejszy niż standardowy.
         double efektWysokosci = 0.0;
@@ -376,7 +376,7 @@ public class DynamicPriceManager implements CenyService {
 
     private void resetujWszystko() {
         cykliOdResetu = 0;
-        // Zablokowane (eventowe) itemy reset pomija — event trzyma się mocno,
+        // Zablokowane (eventowe) itemy reset pomija - event trzyma się mocno,
         // dopóki ktoś go świadomie nie zdejmie przez "/@sklep event <item> off".
         for (String klucz : mnozniki.keySet()) {
             if (zablokowane.contains(klucz)) continue;
@@ -385,7 +385,7 @@ public class DynamicPriceManager implements CenyService {
             zamrozonyProg.remove(klucz);
             zamrozenieNaBazie.remove(klucz);
         }
-        // Normy NIE są kasowane — to wiedza o tym, ile się czego zwykle sprzedaje,
+        // Normy NIE są kasowane - to wiedza o tym, ile się czego zwykle sprzedaje,
         // i nie ma powodu jej tracić. Resetujemy tylko ceny.
         zapiszStan();
         plugin.getLogger().info("Ceny dynamiczne: globalny reset do cen bazowych.");
@@ -402,7 +402,7 @@ public class DynamicPriceManager implements CenyService {
         Bukkit.getServicesManager().unregister(CenyService.class, this);
     }
 
-    /** Ręczny reset — do komendy administracyjnej. */
+    /** Ręczny reset - do komendy administracyjnej. */
     public void wymusReset() {
         resetujWszystko();
     }
@@ -410,7 +410,7 @@ public class DynamicPriceManager implements CenyService {
     /** Ustawia mnożnik ręcznie. Przycinany do dozwolonych granic. */
     public void ustawMnoznik(String klucz, double wartosc) {
         mnozniki.put(klucz, Math.max(M_MIN, Math.min(M_MAX, wartosc)));
-        // Czyścimy stan pomocniczy, żeby item startował "od zera" —
+        // Czyścimy stan pomocniczy, żeby item startował "od zera" -
         // inaczej zaraz po ustawieniu mógłby wskoczyć w niedokończoną suszę.
         licznikSuszy.remove(klucz);
         zamrozonyProg.remove(klucz);
@@ -428,7 +428,7 @@ public class DynamicPriceManager implements CenyService {
         return CYKLI_DO_RESETU - cykliOdResetu;
     }
 
-    /** Norma sprzedaży itemu — do wyświetlenia w /@sklep info. */
+    /** Norma sprzedaży itemu - do wyświetlenia w /@sklep info. */
     public double getNorma(String klucz) {
         return normy.getOrDefault(klucz, 0.0);
     }
@@ -439,7 +439,7 @@ public class DynamicPriceManager implements CenyService {
     }
 
     /**
-     * Ustawia mnożnik i BLOKUJE go — cykl korekty przestaje go ruszać.
+     * Ustawia mnożnik i BLOKUJE go - cykl korekty przestaje go ruszać.
      * Do eventów i awaryjnych korekt.
      */
     public void zablokujMnoznik(String klucz, double wartosc) {
@@ -483,7 +483,7 @@ public class DynamicPriceManager implements CenyService {
     }
 
     // =========================================================================
-    //  CenyService — cienki interfejs dla innych modułów (patrz HUD)
+    //  CenyService - cienki interfejs dla innych modułów (patrz HUD)
     // =========================================================================
 
     @Override

@@ -10,7 +10,7 @@ import org.bukkit.command.CommandSender;
 import java.util.List;
 
 /**
- * /@statsklep — podgląd bieżących statystyk sprzedaży bez wychodzenia z gry.
+ * /@statsklep - podgląd bieżących statystyk sprzedaży bez wychodzenia z gry.
  * Pokazuje ruch z bieżącej doby, więc odpowiada na pytanie "co się dzieje teraz",
  * a nie "jak było przez ostatni miesiąc".
  */
@@ -50,7 +50,7 @@ public class StatSklepCommand implements CommandExecutor {
         int nr = 1;
         for (StatystykiSklepu.PozycjaTopki p : top) {
             // Strzałka pokazuje, czy cena tego itemu jest teraz wyższa czy niższa
-            // od bazowej — czyli od razu widać, co gracze przehandlowali w dół.
+            // od bazowej - czyli od razu widać, co gracze przehandlowali w dół.
             String strzalka = p.mnoznik() > 1.02 ? " ▲"
                             : p.mnoznik() < 0.98 ? " ▼" : "";
             NamedTextColor kolorStrzalki = p.mnoznik() > 1.02 ? NamedTextColor.GREEN

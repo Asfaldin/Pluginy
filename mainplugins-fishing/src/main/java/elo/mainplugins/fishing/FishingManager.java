@@ -807,7 +807,7 @@ public class FishingManager implements Listener {
                     .append(Component.text(player.getName(), NamedTextColor.YELLOW, TextDecoration.BOLD))
                     .append(Component.text(" złowił ", NamedTextColor.GOLD))
                     .append(polow)
-                    .append(Component.text(" — rekord serwera na ten gatunek!", NamedTextColor.GOLD)));
+                    .append(Component.text(" - rekord serwera na ten gatunek!", NamedTextColor.GOLD)));
         } else {
             Component poprzedni = rekord.poprzedniNick() != null
                     ? Component.text(" (poprzedni rekord: " + String.format(Locale.ROOT, "%.1f", rekord.poprzedniaWagaKg()) + " kg, " + rekord.poprzedniNick() + ")", NamedTextColor.GRAY)
@@ -838,7 +838,7 @@ public class FishingManager implements Listener {
                     .append(Component.text(player.getName(), NamedTextColor.YELLOW, TextDecoration.BOLD))
                     .append(Component.text(" złowił ", NamedTextColor.GOLD))
                     .append(polow)
-                    .append(Component.text(" — NAJWIĘKSZA ryba w historii serwera!", NamedTextColor.GOLD, TextDecoration.BOLD)));
+                    .append(Component.text(" - NAJWIĘKSZA ryba w historii serwera!", NamedTextColor.GOLD, TextDecoration.BOLD)));
         } else {
             Component poprzedni = Component.text(" (poprzedni rekord: " + rekord.poprzedniGatunek() + ", "
                     + String.format(Locale.ROOT, "%.1f", rekord.poprzedniaWagaKg()) + " kg"
@@ -1229,7 +1229,7 @@ public class FishingManager implements Listener {
             odkryte.put(wpis.customId(), wpis);
         }
 
-        Inventory gui = Bukkit.createInventory(null, 54, Component.text(TYTUL_INDEKSU + " — " + nazwaTieru(tier), NamedTextColor.AQUA, TextDecoration.BOLD));
+        Inventory gui = Bukkit.createInventory(null, 54, Component.text(TYTUL_INDEKSU + " - " + nazwaTieru(tier), NamedTextColor.AQUA, TextDecoration.BOLD));
 
         // Tło "morskie" i ozdoby - ten sam wzorzec co Dziennik Rybaka (patrz morskaSzyba/
         // ozdobaMorska), ale user 2026-08-30 chciał INNY układ ozdób na KAŻDEJ stronie

@@ -50,7 +50,7 @@ public interface EconomyService {
      * Pobiera grosze tylko jeśli gracza na to stać.
      * @return true gdy pobrano, false gdy zabrakło (saldo nietknięte)
      *
-     * Tego używaj przy transakcjach zamiast pary maWystarczajaco()+odejmijKase() —
+     * Tego używaj przy transakcjach zamiast pary maWystarczajaco()+odejmijKase() -
      * sprawdzenie i pobranie w jednym kroku, więc nie da się między nimi wcisnąć
      * drugiej transakcji tego samego gracza.
      */

@@ -44,7 +44,7 @@ public class AsyncConfigSaver {
         this.zadanie = Bukkit.getScheduler().runTaskTimer(plugin, this::zrzucJesliBrudny, ticki, ticki);
     }
 
-    /** Woła manager po każdej zmianie danych. Tanie — ustawia tylko flagę. */
+    /** Woła manager po każdej zmianie danych. Tanie - ustawia tylko flagę. */
     public void oznaczZmiane() {
         brudny.set(true);
     }
@@ -66,7 +66,7 @@ public class AsyncConfigSaver {
 
     /**
      * Zapis przez plik tymczasowy i podmianę. Gdyby serwer padł w trakcie
-     * zwykłego zapisu, plik zostałby uszkodzony w połowie — a to plik z kasą
+     * zwykłego zapisu, plik zostałby uszkodzony w połowie - a to plik z kasą
      * wszystkich graczy. Przy podmianie albo mamy stary, albo nowy, nigdy połowę.
      */
     private void zapiszNaDysk(String tresc) {
@@ -83,7 +83,7 @@ public class AsyncConfigSaver {
     /**
      * Zatrzymuje cykl i zapisuje NATYCHMIAST, synchronicznie.
      *
-     * Synchronicznie, bo przy wyłączaniu serwera scheduler już nie działa —
+     * Synchronicznie, bo przy wyłączaniu serwera scheduler już nie działa -
      * zadanie asynchroniczne nigdy by się nie wykonało i ostatnie transakcje
      * przepadłyby. To jedyne miejsce, gdzie blokowanie wątku jest w porządku,
      * bo serwer i tak się właśnie zamyka.
@@ -95,7 +95,7 @@ public class AsyncConfigSaver {
         }
     }
 
-    /** Wymuszony zapis poza cyklem — np. po operacji administracyjnej. */
+    /** Wymuszony zapis poza cyklem - np. po operacji administracyjnej. */
     public void zapiszTeraz() {
         brudny.set(false);
         zapiszAsynchronicznie();

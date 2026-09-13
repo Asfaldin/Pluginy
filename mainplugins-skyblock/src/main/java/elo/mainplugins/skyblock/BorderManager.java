@@ -76,7 +76,7 @@ public class BorderManager implements Listener {
     }
 
     /**
-     * Respawn nie jest teleportacją — bez tego handlera gracz po śmierci
+     * Respawn nie jest teleportacją - bez tego handlera gracz po śmierci
      * zostawał bez bordera do następnej zmiany świata albo reloga.
      *
      * Priorytet MONITOR: inne pluginy (np. SpawnManager z mainplugins-spawn) mogą

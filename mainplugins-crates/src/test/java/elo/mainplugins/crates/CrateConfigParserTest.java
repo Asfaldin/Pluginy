@@ -46,6 +46,7 @@ class CrateConfigParserTest {
                 item: { item: ENDER_CHEST }
                 keys: [basic_key, universal_key]
                 hologram: ["&6Mystery", "&7Click me"]
+                hologram-enabled: false
                 prizes:
                   - name: "&bDiamonds"
                     icon: { item: DIAMOND, amount: 4 }
@@ -78,6 +79,7 @@ class CrateConfigParserTest {
         assertEquals(21, basic.totalWeight());
         assertEquals(List.of("basic"), c.crateIdsInOrder());
         assertEquals(List.of("&6Mystery", "&7Click me"), basic.hologram());
+        assertFalse(basic.hologramEnabled());
         assertEquals(1.2, c.hologramHeight(), 1e-9);
         assertFalse(c.placedBlockFromItem());
         assertTrue(warnings.isEmpty(), warnings.toString());

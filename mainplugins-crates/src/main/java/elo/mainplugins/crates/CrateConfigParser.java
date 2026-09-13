@@ -71,7 +71,8 @@ public final class CrateConfigParser {
                     continue;
                 }
                 crates.put(id, new CrateDef(id, s.getString("name", id), List.copyOf(s.getStringList("lore")),
-                        item, List.copyOf(crateKeys), List.copyOf(prizes), List.copyOf(s.getStringList("hologram"))));
+                        item, List.copyOf(crateKeys), List.copyOf(prizes), List.copyOf(s.getStringList("hologram")),
+                        s.getBoolean("hologram-enabled", true)));
             }
         }
         double height = root.getDouble("settings.hologram-height", CrateConfig.DEFAULT_HOLOGRAM_HEIGHT);

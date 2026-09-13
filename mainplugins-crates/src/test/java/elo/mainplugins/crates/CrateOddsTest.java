@@ -16,7 +16,7 @@ class CrateOddsTest {
     }
 
     private final CrateDef crate = new CrateDef("c", "C", List.of(), new ItemRef("CHEST", null, 1),
-            List.of("k"), List.of(p("a", 20), p("b", 1)), List.of());
+            List.of("k"), List.of(p("a", 20), p("b", 1)), List.of(), true);
 
     @Test
     void chanceIsWeightOverTotal() {

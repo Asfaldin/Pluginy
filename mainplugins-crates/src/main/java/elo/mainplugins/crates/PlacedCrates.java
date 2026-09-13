@@ -126,6 +126,7 @@ final class PlacedCrates implements Listener {
         World world = Bukkit.getWorld(p.world());
         if (crate == null || world == null || !world.isChunkLoaded(p.x() >> 4, p.z() >> 4)) return;
         matchBlockToItem(world.getBlockAt(p.x(), p.y(), p.z()), crate);
+        if (!crate.hologramEnabled()) return;
 
         List<Component> lines = new ArrayList<>();
         if (crate.hologram().isEmpty()) {

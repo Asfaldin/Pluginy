@@ -6,6 +6,7 @@
 #           (money, item, custom, command, crate, key ... - same format as everywhere)
 #   hologram: (optional) lines above a crate placed in the world with /@crate place;
 #             without it: crate name + hint from lang/<language>.yml (placed.hint)
+#   hologram-enabled: false  -> no text above this crate
 settings:
   hologram-height: 0.6   # blocks above the top of a placed crate
   placed-block-from-item: true   # placed crate block turns into the crate's item (if that item is a block)

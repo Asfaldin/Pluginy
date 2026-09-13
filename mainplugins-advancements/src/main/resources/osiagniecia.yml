@@ -32,7 +32,7 @@
 
 gui:
   tytul: "&8» &6Osiągnięcia"
-  rozmiar: 54            # wielokrotność 9, 18–54; ostatni rząd to nawigacja
+  rozmiar: 54            # wielokrotność 9, 18-54; ostatni rząd to nawigacja
   tlo: GRAY_STAINED_GLASS_PANE
 
 powiadomienia:

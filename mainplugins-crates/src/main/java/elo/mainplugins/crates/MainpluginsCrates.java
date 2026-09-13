@@ -2,11 +2,15 @@ package elo.mainplugins.crates;
 
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.CrateService;
-import elo.mainplugins.core.util.TabCompleteUtils;
-import org.bukkit.command.TabCompleter;
+import elo.mainplugins.core.api.LangService;
+import elo.mainplugins.core.api.Reward;
+import elo.mainplugins.core.api.RewardService;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.Map;
 
 public final class MainpluginsCrates extends JavaPlugin {
 
@@ -22,66 +26,41 @@ public final class MainpluginsCrates extends JavaPlugin {
             return;
         }
 
-        crateManager = new CrateManager(this);
+        LangService lang = CoreAPI.getLangService();
+        lang.registerDefaults(this);
+        RewardService rewards = CoreAPI.getRewardService();
+
+        crateManager = new CrateManager(this, lang, rewards, CoreAPI.getCustomItemService());
         getServer().getPluginManager().registerEvents(crateManager, this);
         getServer().getServicesManager().register(CrateService.class, crateManager, this, ServicePriority.Normal);
 
-        // Żadna komenda w tym pluginie nie bierze argumentów - jeden wspólny pusty
-        // completer, żeby Bukkit nie podpowiadał domyślnie listy graczy online.
-        TabCompleter pustyCompleter = (sender, command, alias, args) -> TabCompleteUtils.PUSTA;
+        // Nagrody "crate: id" i "key: id" działają teraz w nagrodach WSZYSTKICH pluginów.
+        rewards.registerType(this, "crate", (player, r) -> daj(player, r, true));
+        rewards.registerType(this, "key", (player, r) -> daj(player, r, false));
 
-        if (getCommand("@dajklucz") != null) {
-            getCommand("@dajklucz").setExecutor((sender, command, label, args) -> {
-                if (!(sender instanceof Player player)) {
-                    sender.sendMessage("Tylko gracz moze uzyc tej komendy.");
-                    return true;
-                }
-                player.getInventory().addItem(crateManager.stworzKlucz());
-                player.sendMessage("§aOtrzymałeś klucz do skrzynki.");
-                return true;
-            });
-            getCommand("@dajklucz").setTabCompleter(pustyCompleter);
+        if (getCommand("@crate") != null) {
+            CrateCommand cmd = new CrateCommand(this, crateManager, lang);
+            getCommand("@crate").setExecutor(cmd);
+            getCommand("@crate").setTabCompleter(cmd);
         }
+    }
 
-        if (getCommand("@dajskrzynia") != null) {
-            getCommand("@dajskrzynia").setExecutor((sender, command, label, args) -> dajSkrzynke(sender, 1));
-            getCommand("@dajskrzynia").setTabCompleter(pustyCompleter);
+    /** false = nieznane id -> RewardService użyje nagrody zastępczej (fallback). */
+    private boolean daj(Player player, Reward r, boolean crate) {
+        String id = String.valueOf(r.value());
+        ItemStack item = crate ? crateManager.createCrate(id, r.amount()) : crateManager.createKey(id, r.amount());
+        if (item == null) return false;
+        player.getInventory().addItem(item).values().forEach(l -> player.getWorld().dropItemNaturally(player.getLocation(), l));
+        if (!r.silent()) {
+            String nazwa = crate ? crateManager.config().crates().get(id).name() : crateManager.config().keys().get(id).name();
+            CoreAPI.getLangService().send(player, this, crate ? "reward.crate" : "reward.key",
+                    Map.of("amount", String.valueOf(r.amount()), crate ? "crate" : "key", nazwa));
         }
-        if (getCommand("@dajskrzynie1") != null) {
-            getCommand("@dajskrzynie1").setExecutor((sender, command, label, args) -> dajSkrzynke(sender, 1));
-            getCommand("@dajskrzynie1").setTabCompleter(pustyCompleter);
-        }
-        if (getCommand("@dajskrzynie2") != null) {
-            getCommand("@dajskrzynie2").setExecutor((sender, command, label, args) -> dajSkrzynke(sender, 2));
-            getCommand("@dajskrzynie2").setTabCompleter(pustyCompleter);
-        }
-        if (getCommand("@dajskrzynie3") != null) {
-            getCommand("@dajskrzynie3").setExecutor((sender, command, label, args) -> dajSkrzynke(sender, 3));
-            getCommand("@dajskrzynie3").setTabCompleter(pustyCompleter);
-        }
-
-        if (getCommand("@reloadcrates") != null) {
-            getCommand("@reloadcrates").setExecutor((sender, command, label, args) -> {
-                crateManager.przeladujNagrody();
-                sender.sendMessage("§aPule nagród wszystkich tierów zostały przeładowane.");
-                return true;
-            });
-            getCommand("@reloadcrates").setTabCompleter(pustyCompleter);
-        }
+        return true;
     }
 
     @Override
     public void onDisable() {
         getServer().getServicesManager().unregisterAll(this);
-    }
-
-    private boolean dajSkrzynke(org.bukkit.command.CommandSender sender, int tier) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage("Tylko gracz moze uzyc tej komendy.");
-            return true;
-        }
-        player.getInventory().addItem(crateManager.stworzSkrzynke(tier));
-        player.sendMessage("§aOtrzymałeś skrzynkę (tier " + tier + ").");
-        return true;
     }
 }

@@ -58,13 +58,11 @@ public class AdminPomocCommand implements CommandExecutor {
     );
 
     private static final List<Sekcja> STRONA_2 = List.of(
-            new Sekcja("Skrzynki (testowe)", List.of(
-                    new Wpis("/@dajklucz", "Daj sobie klucz do skrzynki"),
-                    new Wpis("/@dajskrzynia", "Daj sobie Tajemniczą Skrzynkę (tier 1)"),
-                    new Wpis("/@dajskrzynie1", "Daj sobie Tajemniczą Skrzynkę (tier 1)"),
-                    new Wpis("/@dajskrzynie2", "Daj sobie Otchłanną Skrzynkę (tier 2)"),
-                    new Wpis("/@dajskrzynie3", "Daj sobie Skrzynkę DARKSTAR (tier 3)"),
-                    new Wpis("/@reloadcrates", "Wczytaj pule nagród wszystkich tierów na nowo")
+            new Sekcja("Skrzynki", List.of(
+                    new Wpis("/@crate give <gracz> <skrzynka> [ile]", "Daj graczowi skrzynkę"),
+                    new Wpis("/@crate key <gracz> <klucz> [ile]", "Daj graczowi klucz"),
+                    new Wpis("/@crate list", "Lista skrzynek i kluczy"),
+                    new Wpis("/@crate reload", "Wczytaj crates.yml na nowo")
             ))
     );
 

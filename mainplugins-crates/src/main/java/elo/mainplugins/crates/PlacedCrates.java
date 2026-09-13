@@ -8,6 +8,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -124,6 +125,7 @@ final class PlacedCrates implements Listener {
         CrateDef crate = config.get().crates().get(p.crate());
         World world = Bukkit.getWorld(p.world());
         if (crate == null || world == null || !world.isChunkLoaded(p.x() >> 4, p.z() >> 4)) return;
+        matchBlockToItem(world.getBlockAt(p.x(), p.y(), p.z()), crate);
 
         List<Component> lines = new ArrayList<>();
         if (crate.hologram().isEmpty()) {
@@ -140,6 +142,18 @@ final class PlacedCrates implements Listener {
             e.text(Component.join(JoinConfiguration.newlines(), lines));
         });
         holograms.put(p, td);
+    }
+
+    /**
+     * settings.placed-block-from-item: blok przyjmuje wygląd przedmiotu skrzynki (np. ENDER_CHEST),
+     * więc zmiana w aplikacji zmienia też skrzynkę na spawnie. Custom item albo przedmiot, który nie jest
+     * blokiem (np. DIAMOND) - blok zostaje taki, jaki postawił admin.
+     */
+    private void matchBlockToItem(Block block, CrateDef crate) {
+        if (!config.get().placedBlockFromItem() || crate.item().isCustom()) return;
+        Material m = Material.matchMaterial(crate.item().material());
+        if (m == null || !m.isBlock() || block.getType() == m) return;
+        block.setType(m, false);
     }
 
     // Napisy nie są zapisywane do świata - po wczytaniu chunka stawiamy je od nowa.

@@ -79,7 +79,8 @@ public final class CrateConfigParser {
             warn.accept("crates.yml settings.hologram-height must be between 0 and 5 - using " + CrateConfig.DEFAULT_HOLOGRAM_HEIGHT + ".");
             height = CrateConfig.DEFAULT_HOLOGRAM_HEIGHT;
         }
-        return new CrateConfig(Collections.unmodifiableMap(keys), Collections.unmodifiableMap(crates), height);
+        boolean blockFromItem = root.getBoolean("settings.placed-block-from-item", true);
+        return new CrateConfig(Collections.unmodifiableMap(keys), Collections.unmodifiableMap(crates), height, blockFromItem);
     }
 
     private static List<Prize> parsePrizes(List<?> raw, String where,

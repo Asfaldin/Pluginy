@@ -8,6 +8,7 @@
 #             without it: crate name + hint from lang/<language>.yml (placed.hint)
 settings:
   hologram-height: 0.6   # blocks above the top of a placed crate
+  placed-block-from-item: true   # placed crate block turns into the crate's item (if that item is a block)
 keys:
   basic_key:
     name: "&e&lMystery Crate Key"

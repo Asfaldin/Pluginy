@@ -59,7 +59,7 @@ public class CrateManager implements Listener, CrateService {
     private final CrateItems crateItems;
     private final PlacedCrates placed;
     private final Set<UUID> otwierajacy = new HashSet<>();
-    private CrateConfig config = new CrateConfig(Map.of(), Map.of(), CrateConfig.DEFAULT_HOLOGRAM_HEIGHT);
+    private CrateConfig config = CrateConfig.empty();
 
     public CrateManager(Plugin plugin, LangService lang, RewardService rewards, CustomItemService items) {
         this.plugin = plugin;

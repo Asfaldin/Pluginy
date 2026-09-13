@@ -31,6 +31,7 @@ class CrateConfigParserTest {
     private static final String FULL = """
             settings:
               hologram-height: 1.2
+              placed-block-from-item: false
             keys:
               basic_key:
                 name: "&eBasic Key"
@@ -78,6 +79,7 @@ class CrateConfigParserTest {
         assertEquals(List.of("basic"), c.crateIdsInOrder());
         assertEquals(List.of("&6Mystery", "&7Click me"), basic.hologram());
         assertEquals(1.2, c.hologramHeight(), 1e-9);
+        assertFalse(c.placedBlockFromItem());
         assertTrue(warnings.isEmpty(), warnings.toString());
     }
 
@@ -87,6 +89,7 @@ class CrateConfigParserTest {
         assertEquals(CrateConfig.DEFAULT_HOLOGRAM_HEIGHT, c.hologramHeight(), 1e-9);
         assertEquals(1, warnings.size());
         assertEquals(CrateConfig.DEFAULT_HOLOGRAM_HEIGHT, parse("").hologramHeight(), 1e-9);
+        assertTrue(parse("").placedBlockFromItem());
     }
 
     @Test

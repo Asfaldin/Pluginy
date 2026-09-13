@@ -61,7 +61,9 @@ public class AdminPomocCommand implements CommandExecutor {
             new Sekcja("Skrzynki", List.of(
                     new Wpis("/@crate give <gracz> <skrzynka> [ile]", "Daj graczowi skrzynkę"),
                     new Wpis("/@crate key <gracz> <klucz> [ile]", "Daj graczowi klucz"),
-                    new Wpis("/@crate list", "Lista skrzynek i kluczy"),
+                    new Wpis("/@crate place <skrzynka>", "Blok, na który patrzysz, staje się skrzynką"),
+                    new Wpis("/@crate remove", "Usuń skrzynkę z bloku, na który patrzysz"),
+                    new Wpis("/@crate list", "Lista skrzynek, kluczy i postawionych skrzynek"),
                     new Wpis("/@crate reload", "Wczytaj crates.yml na nowo")
             ))
     );

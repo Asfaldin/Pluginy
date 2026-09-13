@@ -29,6 +29,8 @@ class CrateConfigParserTest {
     }
 
     private static final String FULL = """
+            settings:
+              hologram-height: 1.2
             keys:
               basic_key:
                 name: "&eBasic Key"
@@ -42,6 +44,7 @@ class CrateConfigParserTest {
                 name: "&6Mystery"
                 item: { item: ENDER_CHEST }
                 keys: [basic_key, universal_key]
+                hologram: ["&6Mystery", "&7Click me"]
                 prizes:
                   - name: "&bDiamonds"
                     icon: { item: DIAMOND, amount: 4 }
@@ -73,7 +76,17 @@ class CrateConfigParserTest {
         assertEquals(2, basic.prizes().get(1).rewards().size());
         assertEquals(21, basic.totalWeight());
         assertEquals(List.of("basic"), c.crateIdsInOrder());
+        assertEquals(List.of("&6Mystery", "&7Click me"), basic.hologram());
+        assertEquals(1.2, c.hologramHeight(), 1e-9);
         assertTrue(warnings.isEmpty(), warnings.toString());
+    }
+
+    @Test
+    void hologramDefaultsWhenMissingOrInvalid() throws Exception {
+        CrateConfig c = parse("settings:\n  hologram-height: 99\n");
+        assertEquals(CrateConfig.DEFAULT_HOLOGRAM_HEIGHT, c.hologramHeight(), 1e-9);
+        assertEquals(1, warnings.size());
+        assertEquals(CrateConfig.DEFAULT_HOLOGRAM_HEIGHT, parse("").hologramHeight(), 1e-9);
     }
 
     @Test

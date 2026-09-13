@@ -8,6 +8,7 @@ import elo.mainplugins.core.api.ServerAnnounceEvent;
 import elo.mainplugins.crates.model.CrateConfig;
 import elo.mainplugins.crates.model.CrateDef;
 import elo.mainplugins.crates.model.KeyDef;
+import elo.mainplugins.crates.model.PlacedCrate;
 import elo.mainplugins.crates.model.Prize;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
@@ -56,15 +57,21 @@ public class CrateManager implements Listener, CrateService {
     private final LangService lang;
     private final RewardService rewards;
     private final CrateItems crateItems;
+    private final PlacedCrates placed;
     private final Set<UUID> otwierajacy = new HashSet<>();
-    private CrateConfig config = new CrateConfig(Map.of(), Map.of());
+    private CrateConfig config = new CrateConfig(Map.of(), Map.of(), CrateConfig.DEFAULT_HOLOGRAM_HEIGHT);
 
     public CrateManager(Plugin plugin, LangService lang, RewardService rewards, CustomItemService items) {
         this.plugin = plugin;
         this.lang = lang;
         this.rewards = rewards;
         this.crateItems = new CrateItems(plugin, items);
+        this.placed = new PlacedCrates(plugin, lang, this::config);
         reload();
+    }
+
+    PlacedCrates placed() {
+        return placed;
     }
 
     public void reload() {
@@ -78,6 +85,7 @@ public class CrateManager implements Listener, CrateService {
         config = CrateConfigParser.parse(YamlConfiguration.loadConfiguration(file), rewards::parse,
                 name -> Material.matchMaterial(name) != null, plugin.getLogger()::warning);
         plugin.getLogger().info("Loaded " + config.crates().size() + " crates and " + config.keys().size() + " keys.");
+        placed.load();
     }
 
     public CrateConfig config() {
@@ -128,13 +136,29 @@ public class CrateManager implements Listener, CrateService {
 
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
-        if (event.getHand() != EquipmentSlot.HAND) return;
         Action a = event.getAction();
         boolean prawy = a == Action.RIGHT_CLICK_AIR || a == Action.RIGHT_CLICK_BLOCK;
         boolean lewy = a == Action.LEFT_CLICK_AIR || a == Action.LEFT_CLICK_BLOCK;
         if (!prawy && !lewy) return;
-
         Player player = event.getPlayer();
+
+        // Skrzynka postawiona w świecie - blok nigdy nie działa jak zwykły (np. enderchest się nie otwiera).
+        PlacedCrate postawiona = event.getClickedBlock() != null ? placed.at(event.getClickedBlock()) : null;
+        if (postawiona != null) {
+            event.setCancelled(true);
+            if (event.getHand() != EquipmentSlot.HAND) return;
+            CrateDef crate = config.crates().get(postawiona.crate());
+            if (crate == null) {
+                lang.send(player, plugin, "placed.unknown-crate", Map.of("crate", postawiona.crate()));
+            } else if (lewy) {
+                otworzPodglad(player, crate);
+            } else {
+                otworz(player, crate, -1);
+            }
+            return;
+        }
+
+        if (event.getHand() != EquipmentSlot.HAND) return;
         ItemStack wRece = player.getInventory().getItemInMainHand();
         String crateId = crateItems.crateIdOf(wRece, config);
         CrateDef crate = crateId != null ? config.crates().get(crateId) : null;
@@ -142,10 +166,12 @@ public class CrateManager implements Listener, CrateService {
         // Zawsze anulujemy - skrzynka-blok w ręku nie może się postawić ani niszczyć bloków.
         event.setCancelled(true);
 
-        if (lewy) {
-            otworzPodglad(player, crate);
-            return;
-        }
+        if (lewy) otworzPodglad(player, crate);
+        else otworz(player, crate, player.getInventory().getHeldItemSlot());
+    }
+
+    /** slotSkrzynki = slot przedmiotu-skrzynki do zużycia; -1 = skrzynka postawiona (zużywa się tylko klucz). */
+    private void otworz(Player player, CrateDef crate, int slotSkrzynki) {
         if (otwierajacy.contains(player.getUniqueId())) {
             lang.send(player, plugin, "crate.already-opening");
             return;
@@ -156,7 +182,7 @@ public class CrateManager implements Listener, CrateService {
             lang.send(player, plugin, "crate.need-key", Map.of("keys", klucze));
             return;
         }
-        zmniejsz(player, player.getInventory().getHeldItemSlot());
+        if (slotSkrzynki >= 0) zmniejsz(player, slotSkrzynki);
         zmniejsz(player, slotKlucza);
         rozpocznijAnimacje(player, crate);
     }

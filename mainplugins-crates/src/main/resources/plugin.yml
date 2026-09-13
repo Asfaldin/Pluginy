@@ -6,8 +6,8 @@ depend: [MainpluginsCore]
 
 commands:
   "@crate":
-    description: (Admin) Crates - give crates/keys, list, reload
-    usage: /<command> give <player> <crate> [amount] | key <player> <key> [amount] | list | reload
+    description: (Admin) Crates - give crates/keys, place crates in the world, list, reload
+    usage: /<command> give <player> <crate> [amount] | key <player> <key> [amount] | place <crate> | remove | list | reload
     permission: mainplugins.crates.admin
     permission-message: "&cNie masz permisji do tej komendy!"
 

@@ -32,6 +32,7 @@ public final class MainpluginsCrates extends JavaPlugin {
 
         crateManager = new CrateManager(this, lang, rewards, CoreAPI.getCustomItemService());
         getServer().getPluginManager().registerEvents(crateManager, this);
+        getServer().getPluginManager().registerEvents(crateManager.placed(), this);
         getServer().getServicesManager().register(CrateService.class, crateManager, this, ServicePriority.Normal);
 
         // Nagrody "crate: id" i "key: id" działają teraz w nagrodach WSZYSTKICH pluginów.
@@ -61,6 +62,7 @@ public final class MainpluginsCrates extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (crateManager != null) crateManager.placed().removeHolograms();
         getServer().getServicesManager().unregisterAll(this);
     }
 }

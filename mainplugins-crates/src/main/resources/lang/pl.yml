@@ -7,11 +7,22 @@ crate:
   announce: "&6{player} wylosował {prize} &6ze skrzynki {crate}&6! ✦"
   preview-title: "&8Nagrody: {crate}"
   preview-chance: "&7Szansa: &e{chance}%"
+placed:
+  hint: "&7Prawy klik z kluczem &8• &7Lewy klik: nagrody"
+  protected: "&cTo jest skrzynka. Admin usuwa ją komendą /@crate remove."
+  unknown-crate: "&cTa skrzynka ({crate}) już nie istnieje."
 reward:
   crate: "&aOtrzymujesz &e{amount}x {crate}&a."
   key: "&aOtrzymujesz &e{amount}x {key}&a."
 admin:
-  usage: "&eUżycie: /@crate give <gracz> <skrzynka> [ile] | key <gracz> <klucz> [ile] | list | reload"
+  usage: "&eUżycie: /@crate give <gracz> <skrzynka> [ile] | key <gracz> <klucz> [ile] | place <skrzynka> | remove | list | reload"
+  players-only: "&cTylko gracz może tego użyć."
+  no-block: "&cPopatrz na blok (maks. 6 kratek)."
+  already-placed: "&cNa tym bloku już jest skrzynka."
+  not-placed: "&cNa tym bloku nie ma skrzynki."
+  placed: "&aTen blok jest teraz skrzynką {crate}."
+  removed: "&aUsunięto skrzynkę {crate} - blok jest znowu zwykły."
+  list-placed: "&ePostawione: &f{list}"
   player-not-found: "&cNie znaleziono gracza: {player}"
   unknown-crate: "&cNieznana skrzynka: {id}. Dostępne: {list}"
   unknown-key: "&cNieznany klucz: {id}. Dostępne: {list}"

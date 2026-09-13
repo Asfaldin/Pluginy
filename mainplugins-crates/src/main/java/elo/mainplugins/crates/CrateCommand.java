@@ -1,7 +1,9 @@
 package elo.mainplugins.crates;
 
 import elo.mainplugins.core.api.LangService;
+import elo.mainplugins.crates.model.PlacedCrate;
 import org.bukkit.Bukkit;
+import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -15,8 +17,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Collectors;
 
-/** /@crate give <gracz> <skrzynka> [ile] | key <gracz> <klucz> [ile] | list | reload */
+/** /@crate give <gracz> <skrzynka> [ile] | key <gracz> <klucz> [ile] | place <skrzynka> | remove | list | reload */
 final class CrateCommand implements CommandExecutor, TabCompleter {
 
     private final Plugin plugin;
@@ -38,12 +41,61 @@ final class CrateCommand implements CommandExecutor, TabCompleter {
                 lang.send(sender, plugin, "admin.reloaded", Map.of(
                         "crates", String.valueOf(crates.crateIds().size()), "keys", String.valueOf(crates.keyIds().size())));
             }
-            case "list" -> lang.send(sender, plugin, "admin.list", Map.of(
-                    "crates", String.join(", ", crates.crateIds()), "keys", String.join(", ", crates.keyIds())));
+            case "list" -> {
+                lang.send(sender, plugin, "admin.list", Map.of(
+                        "crates", String.join(", ", crates.crateIds()), "keys", String.join(", ", crates.keyIds())));
+                String gdzie = crates.placed().all().stream()
+                        .map(p -> p.crate() + " (" + p.world() + " " + p.x() + " " + p.y() + " " + p.z() + ")")
+                        .collect(Collectors.joining(", "));
+                lang.send(sender, plugin, "admin.list-placed", Map.of("list", gdzie.isEmpty() ? "-" : gdzie));
+            }
             case "give", "key" -> give(sender, args, sub.equals("give"));
+            case "place" -> place(sender, args);
+            case "remove" -> remove(sender);
             default -> lang.send(sender, plugin, "admin.usage");
         }
         return true;
+    }
+
+    /** Blok, na który patrzy admin (do 6 kratek); null + komunikat, gdy nie da się. */
+    private Block targetBlock(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            lang.send(sender, plugin, "admin.players-only");
+            return null;
+        }
+        Block b = player.getTargetBlockExact(6);
+        if (b == null || b.getType().isAir()) {
+            lang.send(sender, plugin, "admin.no-block");
+            return null;
+        }
+        return b;
+    }
+
+    private void place(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            lang.send(sender, plugin, "admin.usage");
+            return;
+        }
+        String id = args[1];
+        if (!crates.crateIds().contains(id)) {
+            lang.send(sender, plugin, "admin.unknown-crate", Map.of("id", id, "list", String.join(", ", crates.crateIds())));
+            return;
+        }
+        Block b = targetBlock(sender);
+        if (b == null) return;
+        if (!crates.placed().place(b, id)) {
+            lang.send(sender, plugin, "admin.already-placed");
+            return;
+        }
+        lang.send(sender, plugin, "admin.placed", Map.of("crate", id));
+    }
+
+    private void remove(CommandSender sender) {
+        Block b = targetBlock(sender);
+        if (b == null) return;
+        PlacedCrate p = crates.placed().remove(b);
+        if (p == null) lang.send(sender, plugin, "admin.not-placed");
+        else lang.send(sender, plugin, "admin.removed", Map.of("crate", p.crate()));
     }
 
     private void give(CommandSender sender, String[] args, boolean crate) {
@@ -79,7 +131,8 @@ final class CrateCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String[] args) {
-        if (args.length == 1) return filter(List.of("give", "key", "list", "reload"), args[0]);
+        if (args.length == 1) return filter(List.of("give", "key", "place", "remove", "list", "reload"), args[0]);
+        if (args.length == 2 && args[0].equalsIgnoreCase("place")) return filter(new ArrayList<>(crates.crateIds()), args[1]);
         if (args.length == 2 && (args[0].equalsIgnoreCase("give") || args[0].equalsIgnoreCase("key"))) return null;
         if (args.length == 3 && args[0].equalsIgnoreCase("give")) return filter(new ArrayList<>(crates.crateIds()), args[2]);
         if (args.length == 3 && args[0].equalsIgnoreCase("key")) return filter(new ArrayList<>(crates.keyIds()), args[2]);

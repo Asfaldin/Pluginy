@@ -4,6 +4,10 @@
 #   keys: which keys open the crate (one key may open several crates)
 #   prizes: weight = chance (weight / sum of weights), rewards = what the player gets
 #           (money, item, custom, command, crate, key ... - same format as everywhere)
+#   hologram: (optional) lines above a crate placed in the world with /@crate place;
+#             without it: crate name + hint from lang/<language>.yml (placed.hint)
+settings:
+  hologram-height: 0.6   # blocks above the top of a placed crate
 keys:
   basic_key:
     name: "&e&lMystery Crate Key"

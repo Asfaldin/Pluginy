@@ -71,10 +71,15 @@ public final class CrateConfigParser {
                     continue;
                 }
                 crates.put(id, new CrateDef(id, s.getString("name", id), List.copyOf(s.getStringList("lore")),
-                        item, List.copyOf(crateKeys), List.copyOf(prizes)));
+                        item, List.copyOf(crateKeys), List.copyOf(prizes), List.copyOf(s.getStringList("hologram"))));
             }
         }
-        return new CrateConfig(Collections.unmodifiableMap(keys), Collections.unmodifiableMap(crates));
+        double height = root.getDouble("settings.hologram-height", CrateConfig.DEFAULT_HOLOGRAM_HEIGHT);
+        if (height < 0 || height > 5) {
+            warn.accept("crates.yml settings.hologram-height must be between 0 and 5 - using " + CrateConfig.DEFAULT_HOLOGRAM_HEIGHT + ".");
+            height = CrateConfig.DEFAULT_HOLOGRAM_HEIGHT;
+        }
+        return new CrateConfig(Collections.unmodifiableMap(keys), Collections.unmodifiableMap(crates), height);
     }
 
     private static List<Prize> parsePrizes(List<?> raw, String where,

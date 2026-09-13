@@ -1,0 +1,21 @@
+# Mainplugins Crates - English messages. Colors: &a &e ...  Placeholders: {name}
+crate:
+  need-key: "&cYou need a key to open this crate: {keys}&c."
+  already-opening: "&cYou are already opening a crate!"
+  opening-title: "&6&lOpening: {crate}"
+  won: "&aYou won: {prize}&a!"
+  announce: "&6{player} won {prize} &6from {crate}&6! ✦"
+  preview-title: "&8Rewards: {crate}"
+  preview-chance: "&7Chance: &e{chance}%"
+reward:
+  crate: "&aYou received &e{amount}x {crate}&a."
+  key: "&aYou received &e{amount}x {key}&a."
+admin:
+  usage: "&eUsage: /@crate give <player> <crate> [amount] | key <player> <key> [amount] | list | reload"
+  player-not-found: "&cPlayer not found: {player}"
+  unknown-crate: "&cUnknown crate: {id}. Available: {list}"
+  unknown-key: "&cUnknown key: {id}. Available: {list}"
+  given-crate: "&aGave {amount}x crate {id} to {player}."
+  given-key: "&aGave {amount}x key {id} to {player}."
+  list: "&eCrates: &f{crates}\n&eKeys: &f{keys}"
+  reloaded: "&aCrates reloaded: {crates} crates, {keys} keys."

@@ -8,6 +8,8 @@ import elo.mainplugins.crates.model.ItemRef;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -121,6 +123,22 @@ class CrateConfigParserTest {
         CrateConfig c = parse("keys:\n  k: { name: K, item: { item: NOT_A_BLOCK } }\ncrates: {}\n");
         assertTrue(c.keys().isEmpty());
         assertEquals(1, warnings.size());
+    }
+
+    @Test
+    void defaultFileParsesWithoutWarnings() throws Exception {
+        YamlConfiguration y = new YamlConfiguration();
+        try (var in = getClass().getClassLoader().getResourceAsStream("crates.yml")) {
+            y.load(new InputStreamReader(in, StandardCharsets.UTF_8));
+        }
+        Set<String> all = Set.of("ENDER_CHEST", "SHULKER_BOX", "BEACON", "TRIPWIRE_HOOK", "DIRT", "IRON_INGOT",
+                "DIAMOND", "NETHERITE_INGOT", "NETHER_STAR", "IRON_BLOCK", "EXPERIENCE_BOTTLE", "NETHERITE_SCRAP",
+                "ELYTRA", "ENCHANTED_GOLDEN_APPLE", "TOTEM_OF_UNDYING");
+        RewardParser rp = new RewardParser(m -> all.contains(m.toUpperCase()), warnings::add);
+        CrateConfig c = CrateConfigParser.parse(y, rp::parse, m -> all.contains(m.toUpperCase()), warnings::add);
+        assertEquals(List.of("basic", "abyss", "darkstar"), c.crateIdsInOrder());
+        assertEquals(4, c.keys().size());
+        assertTrue(warnings.isEmpty(), warnings.toString());
     }
 
     @Test

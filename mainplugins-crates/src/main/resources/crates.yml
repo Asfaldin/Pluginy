@@ -1,0 +1,60 @@
+# Crates - every crate, its look, which keys open it and what you can win.
+# Edit in the app (tab "Skrzynki") or here, then /@crate reload.
+#   item / icon: { item: MATERIAL } or { custom: ID_FROM_ITEM_CATALOG }, optional amount
+#   keys: which keys open the crate (one key may open several crates)
+#   prizes: weight = chance (weight / sum of weights), rewards = what the player gets
+#           (money, item, custom, command, crate, key ... - same format as everywhere)
+keys:
+  basic_key:
+    name: "&e&lMystery Crate Key"
+    item: { item: TRIPWIRE_HOOK }
+    lore: ["&7Opens the Mystery Crate."]
+  abyss_key:
+    name: "&d&lAbyss Crate Key"
+    item: { item: TRIPWIRE_HOOK }
+    lore: ["&7Opens the Abyss Crate."]
+  darkstar_key:
+    name: "&b&lDARKSTAR Crate Key"
+    item: { item: TRIPWIRE_HOOK }
+    lore: ["&7Opens the DARKSTAR Crate."]
+  universal_key:
+    name: "&6&lUniversal Crate Key"
+    item: { item: TRIPWIRE_HOOK }
+    lore: ["&7Opens every crate."]
+
+crates:
+  basic:
+    name: "&6&lMystery Crate"
+    item: { item: ENDER_CHEST }
+    lore: ["&7Right-click with a key to open.", "&7Left-click to see the rewards."]
+    keys: [basic_key, universal_key]
+    prizes:
+      - { name: "&7Common Reward", icon: { item: DIRT, amount: 16 }, weight: 40, rewards: [ { item: DIRT, amount: 16 } ] }
+      - { name: "&fIron Reward", icon: { item: IRON_INGOT, amount: 8 }, weight: 30, rewards: [ { item: IRON_INGOT, amount: 8 } ] }
+      - { name: "&bDiamond Reward", icon: { item: DIAMOND, amount: 4 }, weight: 20, rewards: [ { item: DIAMOND, amount: 4 } ] }
+      - { name: "&dNetherite Reward", icon: { item: NETHERITE_INGOT }, weight: 9, rewards: [ { item: NETHERITE_INGOT } ] }
+      - { name: "&6&l★ LEGENDARY REWARD ★", icon: { item: NETHER_STAR }, weight: 1, announce: true, rewards: [ { item: NETHER_STAR } ] }
+  abyss:
+    name: "&d&lAbyss Crate"
+    item: { item: SHULKER_BOX }
+    lore: ["&7Right-click with a key to open.", "&7Left-click to see the rewards."]
+    keys: [abyss_key, universal_key]
+    prizes:
+      - { name: "&fIron Reward", icon: { item: IRON_BLOCK, amount: 2 }, weight: 30, rewards: [ { item: IRON_BLOCK, amount: 2 } ] }
+      - { name: "&bDiamond Reward", icon: { item: DIAMOND, amount: 4 }, weight: 25, rewards: [ { item: DIAMOND, amount: 4 } ] }
+      - { name: "&aExperience Bottles", icon: { item: EXPERIENCE_BOTTLE, amount: 32 }, weight: 20, rewards: [ { item: EXPERIENCE_BOTTLE, amount: 32 } ] }
+      - { name: "&dNetherite Scrap", icon: { item: NETHERITE_SCRAP, amount: 2 }, weight: 15, rewards: [ { item: NETHERITE_SCRAP, amount: 2 } ] }
+      - { name: "&6&l★ ELYTRA ★", icon: { item: ELYTRA }, weight: 6, announce: true, rewards: [ { item: ELYTRA } ] }
+      - { name: "&6&l★ NETHER STAR ★", icon: { item: NETHER_STAR }, weight: 4, announce: true, rewards: [ { item: NETHER_STAR } ] }
+  darkstar:
+    name: "&b&lDARKSTAR Crate"
+    item: { item: BEACON }
+    lore: ["&7Right-click with a key to open.", "&7Left-click to see the rewards."]
+    keys: [darkstar_key, universal_key]
+    prizes:
+      - { name: "&dNetherite Ingots", icon: { item: NETHERITE_INGOT, amount: 2 }, weight: 30, rewards: [ { item: NETHERITE_INGOT, amount: 2 } ] }
+      - { name: "&6Enchanted Golden Apples", icon: { item: ENCHANTED_GOLDEN_APPLE, amount: 2 }, weight: 20, rewards: [ { item: ENCHANTED_GOLDEN_APPLE, amount: 2 } ] }
+      - { name: "&d&l★ TOTEM OF UNDYING ★", icon: { item: TOTEM_OF_UNDYING }, weight: 20, announce: true, rewards: [ { item: TOTEM_OF_UNDYING } ] }
+      - { name: "&6&l★ ELYTRA ★", icon: { item: ELYTRA }, weight: 15, announce: true, rewards: [ { item: ELYTRA } ] }
+      - { name: "&6&l★ NETHER STARS ★", icon: { item: NETHER_STAR, amount: 2 }, weight: 10, announce: true, rewards: [ { item: NETHER_STAR, amount: 2 } ] }
+      - { name: "&b&l★★ BEACON ★★", icon: { item: BEACON }, weight: 5, announce: true, rewards: [ { item: BEACON } ] }

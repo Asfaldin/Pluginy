@@ -1,0 +1,21 @@
+# Mainplugins Crates - komunikaty po polsku. Kolory: &a &e ...  Placeholdery: {nazwa}
+crate:
+  need-key: "&cDo otwarcia tej skrzynki potrzebujesz klucza: {keys}&c."
+  already-opening: "&cJuż otwierasz skrzynkę!"
+  opening-title: "&6&lOtwieranie: {crate}"
+  won: "&aWylosowałeś: {prize}&a!"
+  announce: "&6{player} wylosował {prize} &6ze skrzynki {crate}&6! ✦"
+  preview-title: "&8Nagrody: {crate}"
+  preview-chance: "&7Szansa: &e{chance}%"
+reward:
+  crate: "&aOtrzymujesz &e{amount}x {crate}&a."
+  key: "&aOtrzymujesz &e{amount}x {key}&a."
+admin:
+  usage: "&eUżycie: /@crate give <gracz> <skrzynka> [ile] | key <gracz> <klucz> [ile] | list | reload"
+  player-not-found: "&cNie znaleziono gracza: {player}"
+  unknown-crate: "&cNieznana skrzynka: {id}. Dostępne: {list}"
+  unknown-key: "&cNieznany klucz: {id}. Dostępne: {list}"
+  given-crate: "&aWydano {amount}x skrzynkę {id} graczowi {player}."
+  given-key: "&aWydano {amount}x klucz {id} graczowi {player}."
+  list: "&eSkrzynki: &f{crates}\n&eKlucze: &f{keys}"
+  reloaded: "&aSkrzynki przeładowane: {crates} skrzynek, {keys} kluczy."

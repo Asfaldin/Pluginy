@@ -23,6 +23,7 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -30,7 +31,7 @@ import org.bukkit.plugin.Plugin;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -58,7 +59,10 @@ public class CrateManager implements Listener, CrateService {
     private final RewardService rewards;
     private final CrateItems crateItems;
     private final PlacedCrates placed;
-    private final Set<UUID> otwierajacy = new HashSet<>();
+    /** Kto teraz otwiera skrzynkę i co już wylosował. */
+    private record Otwieranie(CrateDef crate, Prize wygrana) {}
+
+    private final Map<UUID, Otwieranie> otwierajacy = new HashMap<>();
     private CrateConfig config = CrateConfig.empty();
 
     public CrateManager(Plugin plugin, LangService lang, RewardService rewards, CustomItemService items) {
@@ -172,7 +176,7 @@ public class CrateManager implements Listener, CrateService {
 
     /** slotSkrzynki = slot przedmiotu-skrzynki do zużycia; -1 = skrzynka postawiona (zużywa się tylko klucz). */
     private void otworz(Player player, CrateDef crate, int slotSkrzynki) {
-        if (otwierajacy.contains(player.getUniqueId())) {
+        if (otwierajacy.containsKey(player.getUniqueId())) {
             lang.send(player, plugin, "crate.already-opening");
             return;
         }
@@ -217,8 +221,10 @@ public class CrateManager implements Listener, CrateService {
     }
 
     private void rozpocznijAnimacje(Player player, CrateDef crate) {
-        otwierajacy.add(player.getUniqueId());
+        // Wygrana losowana od razu (animacja musi wiedzieć, gdzie się zatrzymać) i zapamiętana,
+        // żeby gracz dostał ją też wtedy, gdy wyjdzie/wyleci albo serwer się wyłączy w trakcie.
         Prize wygrana = CrateOdds.pick(crate, n -> ThreadLocalRandom.current().nextInt(n));
+        otwierajacy.put(player.getUniqueId(), new Otwieranie(crate, wygrana));
 
         // Pasek przewijanych ikon; wygrana ląduje na środkowym slocie w ostatniej klatce.
         int liczbaKlatek = OPOZNIENIA_TICK.length;
@@ -239,10 +245,8 @@ public class CrateManager implements Listener, CrateService {
     }
 
     private void animujKlatke(Player player, Inventory gui, List<ItemStack> pasek, int krok, CrateDef crate, Prize wygrana) {
-        if (!player.isOnline()) {
-            otwierajacy.remove(player.getUniqueId());
-            return;
-        }
+        // Gracz wyszedł - nagrodę dostał już w onQuit, animacja się kończy.
+        if (!player.isOnline() || !otwierajacy.containsKey(player.getUniqueId())) return;
         for (int i = 0; i < SZEROKOSC_OKNA; i++) gui.setItem(WIERSZ_ANIMACJI + i, pasek.get(krok + i));
         player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.6f, 1.0f);
         if (krok < OPOZNIENIA_TICK.length - 1) {
@@ -253,12 +257,32 @@ public class CrateManager implements Listener, CrateService {
     }
 
     private void zakoncz(Player player, CrateDef crate, Prize wygrana) {
-        otwierajacy.remove(player.getUniqueId());
-        if (!player.isOnline()) return;
+        // null = już wypłacone (gracz wyszedł albo serwer się wyłączał).
+        if (otwierajacy.remove(player.getUniqueId()) == null || !player.isOnline()) return;
         player.closeInventory();
+        wyplac(player, crate, wygrana);
+        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+    }
+
+    /** Gracz wychodzi/wylatuje w trakcie ruletki - dostaje wylosowaną nagrodę od razu. */
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        Otwieranie o = otwierajacy.remove(event.getPlayer().getUniqueId());
+        if (o != null) wyplac(event.getPlayer(), o.crate(), o.wygrana());
+    }
+
+    /** Wyłączanie serwera/pluginu w trakcie ruletki - wszyscy otwierający dostają nagrody. */
+    public void wyplacOczekujace() {
+        for (Map.Entry<UUID, Otwieranie> e : Map.copyOf(otwierajacy).entrySet()) {
+            otwierajacy.remove(e.getKey());
+            Player p = Bukkit.getPlayer(e.getKey());
+            if (p != null) wyplac(p, e.getValue().crate(), e.getValue().wygrana());
+        }
+    }
+
+    private void wyplac(Player player, CrateDef crate, Prize wygrana) {
         rewards.give(player, wygrana.rewards());
         lang.send(player, plugin, "crate.won", Map.of("prize", wygrana.name()));
-        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
 
         if (wygrana.announce()) {
             String plainPrize = PlainTextComponentSerializer.plainText().serialize(CrateItems.text(wygrana.name()));

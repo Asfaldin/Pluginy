@@ -62,7 +62,10 @@ public final class MainpluginsCrates extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (crateManager != null) crateManager.placed().removeHolograms();
+        if (crateManager != null) {
+            crateManager.wyplacOczekujace();
+            crateManager.placed().removeHolograms();
+        }
         getServer().getServicesManager().unregisterAll(this);
     }
 }

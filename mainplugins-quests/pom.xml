@@ -14,15 +14,28 @@
     <packaging>jar</packaging>
     <name>Mainplugins - Quests</name>
 
-    <!-- Zależność od core jest potrzebna tylko po to, żeby nagroda za "Witaj na Wyspie"
-         (Główna Ścieżka) mogła wręczyć PRAWDZIWY, działający ewoluujący kilof z
-         mainplugins-tools przez ToolsService (patrz CoreAPI) - reszta modułu nadal jest
-         czystą logiką Bukkit (menu gwiazdy + zadania "przynieś przedmiot, oddaj"). -->
+    <!-- Questy: zależą tylko od core (nagrody, itemy, języki, ekonomia, odblokowania). -->
     <dependencies>
-        <!-- scope=provided - patrz komentarz w mainplugins-skyblock/pom.xml -->
         <dependency>
             <groupId>elo</groupId>
             <artifactId>mainplugins-core</artifactId>
         </dependency>
+        <!-- Testy jednostkowe czystej logiki - nie trafiają do jara -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.11.4</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
+            </plugin>
+        </plugins>
+    </build>
 </project>

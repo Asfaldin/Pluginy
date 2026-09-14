@@ -41,9 +41,6 @@ label:
   key: "klucz {id}"
   title: "tytuł na czacie"
   unlock: "odblokowanie"
-welcome:
-  title: "&6&lWitaj"
-  subtitle: "&eTwoja opowieść zaczyna się teraz."
 reward:
   title: "&aNowy tytuł na czacie: {title}"
 admin:

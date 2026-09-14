@@ -41,9 +41,6 @@ label:
   key: "key {id}"
   title: "a chat title"
   unlock: "an unlock"
-welcome:
-  title: "&6&lWelcome"
-  subtitle: "&eYour story starts now."
 reward:
   title: "&aNew chat title: {title}"
 admin:

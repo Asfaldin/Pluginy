@@ -25,7 +25,6 @@ import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.TextReplacementConfig;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -387,10 +386,6 @@ final class QuestManager implements Listener, TytulService {
         saveProgress();
         lang.send(player, plugin, "quest.completed", Map.of("quest", q.title()));
         rewards.give(player, q.rewards());
-        if (c.mainPath() && index == 0) {
-            welcome(player);
-            return;
-        }
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
         openCategory(player, categoryId, page);
     }
@@ -438,11 +433,6 @@ final class QuestManager implements Listener, TytulService {
             case Requirement.HaveItem h -> "quest.missing.have-item";
             default -> "quest.missing.items";
         };
-    }
-
-    private void welcome(Player player) {
-        player.closeInventory();
-        player.showTitle(Title.title(lang.msg(plugin, "welcome.title"), lang.msg(plugin, "welcome.subtitle")));
     }
 
     // ---- Tytuły ----

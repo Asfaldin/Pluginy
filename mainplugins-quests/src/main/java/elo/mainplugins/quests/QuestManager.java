@@ -47,10 +47,13 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** Menu questów, sprawdzanie wymogów, nagrody (RewardService), postęp graczy i tytuły na czacie. */
 final class QuestManager implements Listener, TytulService {
@@ -65,6 +68,9 @@ final class QuestManager implements Listener, TytulService {
     private final YamlConfiguration progressYaml;
     private final AsyncConfigSaver saver;
     private final Map<UUID, ProgressStore.PlayerProgress> progress;
+    /** Tytuł gotowy do odczytu z INNEGO wątku (mainplugins-ranks czyta go w AsyncChatEvent) -
+     * ConcurrentHashMap, bo `progress` jest zwykłą HashMap i wolno ją ruszać tylko z głównego wątku. */
+    private final Map<UUID, Component> titleCache = new ConcurrentHashMap<>();
     private QuestConfig config;
 
     QuestManager(JavaPlugin plugin, LangService lang, RewardService rewards, EconomyService economy, CustomItemService customItems) {
@@ -102,15 +108,28 @@ final class QuestManager implements Listener, TytulService {
                 }, plugin.getLogger()::warning);
         int quests = config.categories().values().stream().mapToInt(c -> c.quests().size()).sum();
         plugin.getLogger().info("quests.yml: " + config.categories().size() + " categories, " + quests + " quests.");
+        refreshAllTitleCaches();
     }
 
-    /** Stary plugin trzymał POSTĘP w quests.yml - taki plik odkładamy na bok, żeby nie udawał treści. */
+    /**
+     * Stary plugin trzymał POSTĘP w quests.yml (sekcja "gracze") - taki plik odkładamy na bok, żeby
+     * nie udawał treści. Stary plugin zapisywał też CAŁKIEM PUSTY plik, gdy nikt jeszcze nie miał
+     * postępu - bez "categories" i bez "gracze" - taki plik też nie jest treścią, więc traktujemy go
+     * tak samo (inaczej /quests otwiera się z zerem kategorii, a domyślna treść nigdy się nie kopiuje,
+     * bo plik przecież "istnieje").
+     */
     private void moveOldProgressFile(File file) {
         if (!file.exists()) return;
         YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
-        if (y.contains("categories") || !y.contains("gracze")) return;
+        if (y.contains("categories")) return;
+        if (!y.getKeys(false).isEmpty() && !y.contains("gracze")) return;
         File old = new File(plugin.getDataFolder(), "quests-old-progress.yml");
-        if (file.renameTo(old)) plugin.getLogger().warning("quests.yml held old player progress - moved it to quests-old-progress.yml.");
+        if (old.exists()) old = new File(plugin.getDataFolder(), "quests-old-progress-" + System.currentTimeMillis() + ".yml");
+        if (file.renameTo(old)) {
+            plugin.getLogger().warning("quests.yml did not look like quest content (empty or old player progress) - moved it to " + old.getName() + ".");
+        } else {
+            plugin.getLogger().warning("quests.yml did not look like quest content but could not be moved aside to " + old.getName() + " - check file permissions.");
+        }
     }
 
     QuestConfig config() {
@@ -384,12 +403,35 @@ final class QuestManager implements Listener, TytulService {
             case Requirement.Free f -> true;
             case Requirement.Money m -> economy.pobierzGrosze(player.getUniqueId(), Math.round(m.amount() * 100));
             case Requirement.HaveItem h -> items.count(player, h.item()) >= h.item().amount();
-            case Requirement.Items i -> {
-                if (!i.items().stream().allMatch(ref -> items.count(player, ref) >= ref.amount())) yield false;
-                i.items().forEach(ref -> items.take(player, ref, ref.amount()));
-                yield true;
-            }
+            case Requirement.Items i -> takeItems(player, i.items());
         };
+    }
+
+    /**
+     * Ten sam przedmiot może wystąpić w wymogu dwa razy (np. dwa osobne wpisy OAK_LOG) - sumujemy
+     * żądaną ilość na przedmiot, ZANIM cokolwiek sprawdzimy albo zabierzemy. Bez tego każdy wpis
+     * liczony byłby osobno - gracz z 16 kłodami przeszedłby wymóg "16x + 8x", mimo że łącznie
+     * potrzeba 24.
+     */
+    private boolean takeItems(Player player, List<ItemRef> refs) {
+        Map<String, ItemRef> byKey = new LinkedHashMap<>();
+        Map<String, Integer> needed = new LinkedHashMap<>();
+        for (ItemRef ref : refs) {
+            String key = itemKey(ref);
+            byKey.putIfAbsent(key, ref);
+            needed.merge(key, ref.amount(), Integer::sum);
+        }
+        for (Map.Entry<String, Integer> e : needed.entrySet()) {
+            if (items.count(player, byKey.get(e.getKey())) < e.getValue()) return false;
+        }
+        for (Map.Entry<String, Integer> e : needed.entrySet()) {
+            items.take(player, byKey.get(e.getKey()), e.getValue());
+        }
+        return true;
+    }
+
+    private static String itemKey(ItemRef ref) {
+        return ref.isCustom() ? "custom:" + ref.customId().toLowerCase(Locale.ROOT) : "material:" + ref.material();
     }
 
     private static String missingKey(Requirement r) {
@@ -429,21 +471,49 @@ final class QuestManager implements Listener, TytulService {
     boolean giveTitle(Player player, String id, boolean silent) {
         String text = config.titles().get(id);
         if (text == null) return false;
-        if (of(player.getUniqueId()).titles().add(id)) saveProgress();
+        if (of(player.getUniqueId()).titles().add(id)) {
+            saveProgress();
+            refreshTitleCache(player.getUniqueId());
+        }
         if (!silent) lang.send(player, plugin, "reward.title", Map.of("title", text));
         return true;
     }
 
-    /** {@inheritDoc} Pierwszy zdobyty tytuł, który nadal jest w quests.yml. */
+    /**
+     * {@inheritDoc} Pierwszy zdobyty tytuł, który nadal jest w quests.yml.
+     *
+     * Czyta WYŁĄCZNIE {@link #titleCache} - mainplugins-ranks woła to z AsyncChatEvent (nie z
+     * głównego wątku), a `progress` to zwykła HashMap, którą główny wątek stale mutuje (nowe
+     * wpisy, zbiory tytułów) - równoległy odczyt/zapis tej samej HashMap groziłby
+     * ConcurrentModificationException albo gorzej. titleCache jest ConcurrentHashMap i jest
+     * przeliczany na głównym wątku (reload, giveTitle, reset) - ten odczyt jest więc bezpieczny
+     * z dowolnego wątku bez żadnej synchronizacji.
+     */
     @Override
     public Component tytulGracza(UUID uuid) {
+        return titleCache.get(uuid);
+    }
+
+    /** Przelicza cache tytułu jednego gracza - wołać tylko z głównego wątku, po zmianie jego postępu albo treści. */
+    private void refreshTitleCache(UUID uuid) {
         ProgressStore.PlayerProgress p = progress.get(uuid);
-        if (p == null) return null;
-        for (String id : p.titles()) {
-            String text = config.titles().get(id);
-            if (text != null) return SER.deserialize(text).decoration(TextDecoration.ITALIC, false);
+        Component title = null;
+        if (p != null) {
+            for (String id : p.titles()) {
+                String text = config.titles().get(id);
+                if (text != null) {
+                    title = SER.deserialize(text).decoration(TextDecoration.ITALIC, false);
+                    break;
+                }
+            }
         }
-        return null;
+        if (title != null) titleCache.put(uuid, title);
+        else titleCache.remove(uuid);
+    }
+
+    /** Wołać po każdym reload() - lista tytułów w quests.yml mogła się zmienić. */
+    private void refreshAllTitleCaches() {
+        for (UUID uuid : progress.keySet()) refreshTitleCache(uuid);
     }
 
     // ---- Admin ----
@@ -455,6 +525,7 @@ final class QuestManager implements Listener, TytulService {
         if (categoryId == null) progress.remove(uuid);
         else p.done().remove(categoryId);
         saveProgress();
+        refreshTitleCache(uuid);
     }
 
     /** Zalicza zadanie bez wymogu i daje nagrody; false = już było zrobione. */

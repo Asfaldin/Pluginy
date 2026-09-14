@@ -46,7 +46,6 @@ rozmowy, ale nie jest już aktualną decyzją poza wierszem announcer.
 | `mainplugins-shop` | 3645 | ekonomia/sklep |
 | `mainplugins-skyblock` | 3639 | cały tryb gry |
 | `mainplugins-quests` | 2460 | system questów |
-| `mainplugins-advancements` | 2449 | rozbudowany system osiągnięć |
 | `mainplugins-redstone` | 1724 | custom redstone-itemy |
 | `mainplugins-spawn` | 1345 | zarządzanie spawnem |
 | `mainplugins-fishing` | 863 | rozbudowane wędkarstwo |
@@ -92,8 +91,8 @@ przez `curl` po zebraniu zapłaty poza systemem (Discord/przelew).
   jawna odpowiedź "invalid" z serwera (revoked/zły serwer) NIE korzysta z
   karencji. Okresowe odświeżanie w tle co 6h (żeby cofnięcie licencji
   zadziałało bez restartu serwera klienta).
-- **Wszystkie 12 płatnych pluginów** (tools, shop, skyblock, quests,
-  advancements, redstone, spawn, fishing, spawners, market, dungeons, crates)
+- **Wszystkie 11 płatnych pluginów** (tools, shop, skyblock, quests,
+  redstone, spawn, fishing, spawners, market, dungeons, crates)
   mają na samej górze `onEnable()` sprawdzenie `CoreAPI.getLicenseService().isLicensed("<id>")`
   - bez ważnej licencji plugin wyłącza się sam z czytelnym komunikatem w
   logu. `announcer` (darmowy) nie ma żadnego sprawdzenia.

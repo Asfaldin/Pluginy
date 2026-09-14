@@ -58,14 +58,6 @@ export const INDIVIDUAL_PLUGINS = [
         variantId: null,
     },
     {
-        id: "advancements",
-        label: "Osiągnięcia",
-        description: "System osiągnięć na bazie natywnych advancementów Minecrafta, z własnymi nagrodami.",
-        category: "progression",
-        price: 39,
-        variantId: null,
-    },
-    {
         id: "redstone",
         label: "Redstone-urządzenia",
         description: "Drony sadzące/zbierające, golemy przenoszące itemy - automatyzacja farm zasilana redstonem.",
@@ -140,8 +132,8 @@ export const PACKAGES = [
     {
         id: "pro",
         label: "Pro Pack",
-        description: "Starter + questy, osiągnięcia, redstone-urządzenia, spawn/warpy, wędkarstwo - pełna progresja gracza.",
-        plugins: ["crates", "market", "spawners", "dungeons", "quests", "advancements", "redstone", "spawn", "fishing"],
+        description: "Starter + questy, redstone-urządzenia, spawn/warpy, wędkarstwo - pełna progresja gracza.",
+        plugins: ["crates", "market", "spawners", "dungeons", "quests", "redstone", "spawn", "fishing"],
         price: 149,
         subscriptionPrice: null,
         variantId: null,

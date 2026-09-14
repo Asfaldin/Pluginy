@@ -20,7 +20,6 @@
         <module name="mainplugins-crates" />
         <module name="mainplugins-fishing" />
         <module name="mainplugins-spawn" />
-        <module name="mainplugins-advancements" />
         <module name="mainplugins-ranks" />
         <module name="mainplugins-dungeons" />
         <module name="mainplugins-core" />

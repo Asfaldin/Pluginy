@@ -203,7 +203,7 @@ public final class AnnouncerConfig {
         tips.put("channels", List.of("CHAT"));
         tips.put("messages", List.of(
                 msg("Sprzedasz lup w &e/targ&7, a szybkie zakupy zrobisz w &e/sklep&7."),
-                msg("Postepy i nagrody znajdziesz w &e/osiagniecia&7."),
+                msg("Zadania i nagrody znajdziesz w &e/quests&7."),
                 msg("Wbij na Discorda: &e/discord&7.", "click", "RUN_COMMAND", "click-value", "/discord")
         ));
 
@@ -244,7 +244,6 @@ public final class AnnouncerConfig {
         events.put("rare-fish", ev(true, "&b%player% zlowil &3%fish%&b (%rarity%)!", List.of("CHAT")));
         events.put("crate-legendary", ev(true, "&6%player% wylosowal &e%reward%&6 ze skrzynki!", List.of("CHAT", "ACTIONBAR"),
                 "discord", true));
-        events.put("achievement", ev(false, "&d%player% zdobyl osiagniecie &f%achievement%&d!", List.of("CHAT")));
         events.put("island-created", ev(true, "&a%player% zalozyl swoja wyspe!", List.of("CHAT")));
         events.put("first-join", ev(true, "&e&l+&r &7Przywitajcie &f%player%&7 - pierwszy raz na serwerze!", List.of("CHAT"),
                 "sound", "entity.player.levelup"));

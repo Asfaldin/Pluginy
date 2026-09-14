@@ -47,7 +47,6 @@
         <module>mainplugins-fishing</module>
         <module>mainplugins-dungeons</module>
         <module>mainplugins-chatfilter</module>
-        <module>mainplugins-advancements</module>
     </modules>
 
     <properties>

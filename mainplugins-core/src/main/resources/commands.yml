@@ -29,9 +29,6 @@ commands:
   zadania:
     name: quests
     aliases: [zadania, quest]
-  osiagniecia:
-    name: achievements
-    aliases: [osiagniecia, ach, osiag]
   teleportuj:
     name: tpa
     aliases: [teleportuj]

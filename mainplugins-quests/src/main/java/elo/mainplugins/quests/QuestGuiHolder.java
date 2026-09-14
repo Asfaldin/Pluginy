@@ -19,6 +19,7 @@ final class QuestGuiHolder implements InventoryHolder {
     private final String categoryId;
     private final int page;
     private final Map<Integer, String> categorySlots = new HashMap<>();
+    /** slot -> id zadania (nie pozycja na liście - po /@quests reload kolejność może się zmienić). */
     private final Map<Integer, Integer> questSlots = new HashMap<>();
     private final Map<Integer, SlotRole> navSlots = new HashMap<>();
     private Inventory inventory;

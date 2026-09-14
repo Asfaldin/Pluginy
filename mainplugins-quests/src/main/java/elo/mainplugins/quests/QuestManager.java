@@ -228,7 +228,7 @@ final class QuestManager implements Listener, TytulService {
         Set<Integer> done = of(player.getUniqueId()).doneView(categoryId);
         Map<Integer, Integer> questSlots = QuestRules.questSlots(c.pageLayout(), shown, c.quests().size());
         questSlots.forEach((slot, index) -> gui.setItem(slot, questIcon(c, index, QuestRules.state(c, index, done))));
-        holder.questSlots().putAll(questSlots);
+        questSlots.forEach((slot, index) -> holder.questSlots().put(slot, c.quests().get(index).id()));
         QuestSettings s = c.look();
         for (SlotEntry e : c.pageLayout()) {
             switch (e.role()) {
@@ -326,8 +326,19 @@ final class QuestManager implements Listener, TytulService {
             }
             return;
         }
-        Integer index = holder.questSlots().get(slot);
-        if (index != null) complete(player, holder.categoryId(), index, holder.page());
+        Integer questId = holder.questSlots().get(slot);
+        if (questId == null) return;
+        // Szukamy po id: jeśli admin w międzyczasie przeładował questy, klik trafia w zadanie,
+        // które gracz widzi; gdy tego zadania już nie ma - odświeżamy menu.
+        CategoryDef c = config.categories().get(holder.categoryId());
+        int index = c == null ? -1 : indexOfQuest(c, questId);
+        if (index < 0) openCategory(player, holder.categoryId(), holder.page());
+        else complete(player, holder.categoryId(), index, holder.page());
+    }
+
+    private static int indexOfQuest(CategoryDef c, int questId) {
+        for (int i = 0; i < c.quests().size(); i++) if (c.quests().get(i).id() == questId) return i;
+        return -1;
     }
 
     @EventHandler

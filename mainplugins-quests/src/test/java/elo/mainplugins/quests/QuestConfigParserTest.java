@@ -49,7 +49,7 @@ class QuestConfigParserTest {
                 name: "Main Path"
                 icon: { item: KNOWLEDGE_BOOK }
                 description: "Start here"
-                main-path: true
+                glow: true
                 sequential: true
                 page-layout:
                   - { slot: 10, role: QUEST_SLOT }
@@ -105,8 +105,8 @@ class QuestConfigParserTest {
         assertEquals(List.of("main_path", "mining"), c.categoryOrder());
         assertEquals("&7[Beginner] ", c.titles().get("beginner"));
 
-        CategoryDef main = c.mainPath();
-        assertEquals("main_path", main.id());
+        CategoryDef main = c.categories().get("main_path");
+        assertTrue(main.glow());
         assertTrue(main.sequential());
         assertNull(main.after());
         assertNull(main.requiresUnlock());
@@ -131,7 +131,7 @@ class QuestConfigParserTest {
         CategoryDef mining = c.categories().get("mining");
         assertEquals(new After("main_path", 3), mining.after());
         assertEquals("nether", mining.requiresUnlock());
-        assertFalse(mining.mainPath());
+        assertFalse(mining.glow());
     }
 
     @Test
@@ -181,7 +181,6 @@ class QuestConfigParserTest {
         assertEquals(new ItemRef("BOOK", null, 1), a.icon());
         assertNull(a.after());
         assertEquals(List.of("a"), c.categoryOrder());
-        assertNull(c.mainPath());
         // ikona, after, "ghost" w category-order, "b" poza category-order
         assertEquals(4, warnings.size(), warnings.toString());
     }

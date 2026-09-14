@@ -7,7 +7,6 @@ menu:
   prev: "&e&lPoprzednia strona"
   next: "&e&lNastępna strona"
 category:
-  new-quest: "&6&l🔔 Nowe zadanie dostępne!"
   locked: "&c&l🔒 Zablokowane"
   locked-after: "&8Ukończ \"{quest}\" w kategorii {category}."
   locked-unlock: "&8Tę kategorię trzeba najpierw odblokować."

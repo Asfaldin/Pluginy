@@ -40,10 +40,6 @@ public final class QuestRules {
         return CategoryState.AVAILABLE;
     }
 
-    public static boolean hasOpenQuest(CategoryDef c, Set<Integer> done) {
-        return c.quests().stream().anyMatch(q -> !done.contains(q.id()));
-    }
-
     /** Plik startowy w jarze według języka serwera z core. */
     public static String defaultContentResource(String language) {
         return language != null && language.trim().equalsIgnoreCase("pl") ? "defaults/quests-pl.yml" : "defaults/quests-en.yml";

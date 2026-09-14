@@ -35,7 +35,7 @@ categories:
     name: "Main Path"
     icon: { item: KNOWLEDGE_BOOK }
     description: "Start here - quests in order!"
-    main-path: true
+    glow: true
     sequential: true
     after: null
     requires-unlock: null
@@ -127,7 +127,7 @@ categories:
     name: "Mining"
     icon: { item: IRON_PICKAXE }
     description: "Dig deep for riches."
-    main-path: false
+    glow: false
     sequential: false
     after: { category: main_path, quest: 3 }
     requires-unlock: null
@@ -176,7 +176,7 @@ categories:
     name: "Farming"
     icon: { item: WHEAT }
     description: "Grow crops and feed the island."
-    main-path: false
+    glow: false
     sequential: false
     after: { category: main_path, quest: 2 }
     requires-unlock: null
@@ -225,7 +225,7 @@ categories:
     name: "Hunting"
     icon: { item: IRON_SWORD }
     description: "Fight the monsters of the night."
-    main-path: false
+    glow: false
     sequential: false
     after: { category: main_path, quest: 5 }
     requires-unlock: null
@@ -274,7 +274,7 @@ categories:
     name: "Fishing"
     icon: { item: FISHING_ROD }
     description: "Relax by the water."
-    main-path: false
+    glow: false
     sequential: false
     after: { category: main_path, quest: 4 }
     requires-unlock: null
@@ -323,7 +323,7 @@ categories:
     name: "Woodcutting"
     icon: { item: IRON_AXE }
     description: "Every island needs wood."
-    main-path: false
+    glow: false
     sequential: false
     after: { category: main_path, quest: 2 }
     requires-unlock: null

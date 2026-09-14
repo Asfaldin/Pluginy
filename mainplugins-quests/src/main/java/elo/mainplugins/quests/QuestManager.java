@@ -198,12 +198,10 @@ final class QuestManager implements Listener, TytulService {
                 lore.add(lang.msg(plugin, "category.empty"));
                 lore.add(lang.msg(plugin, "category.empty-hint"));
             }
-            case AVAILABLE -> {
-                if (c.mainPath() && QuestRules.hasOpenQuest(c, p.doneView(c.id()))) lore.add(lang.msg(plugin, "category.new-quest"));
-            }
+            case AVAILABLE -> { }
         }
         boolean available = state == CategoryState.AVAILABLE;
-        return items.icon(icon, QuestItems.text((available ? "&6&l" : "&8&l") + c.name()), lore, c.mainPath() && available);
+        return items.icon(icon, QuestItems.text((available ? "&6&l" : "&8&l") + c.name()), lore, c.glow() && available);
     }
 
     private Component lockReason(ProgressStore.PlayerProgress p, CategoryDef c) {

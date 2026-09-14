@@ -69,9 +69,6 @@ public final class QuestConfigParser {
         for (String id : categories.keySet()) {
             if (!order.contains(id)) warn.accept("quests.yml categories." + id + ": not in category-order - it will not show in the menu.");
         }
-        if (categories.values().stream().filter(CategoryDef::mainPath).count() > 1) {
-            warn.accept("quests.yml: more than one category has main-path: true - only the first one counts.");
-        }
         return new QuestConfig(settings, List.copyOf(mainMenu), List.copyOf(order),
                 Collections.unmodifiableMap(titles), Collections.unmodifiableMap(categories));
     }
@@ -110,7 +107,8 @@ public final class QuestConfigParser {
             quests.add(q);
         }
         return new CategoryDef(id, s.getString("name", id), icon, s.getString("description", ""),
-                s.getBoolean("main-path"), s.getBoolean("sequential"), after, unlock,
+                // main-path: stara nazwa z pierwszej wersji - dziś znaczy tylko blask na ikonce
+                s.getBoolean("glow", s.getBoolean("main-path")), s.getBoolean("sequential"), after, unlock,
                 List.copyOf(layout), List.copyOf(quests));
     }
 

@@ -43,12 +43,13 @@ class DefaultContentTest {
 
         assertEquals(List.of("main_path", "mining", "farming", "hunting", "fishing", "woodcutting"), en.categoryOrder());
         assertEquals(en.categoryOrder(), pl.categoryOrder());
-        assertEquals("main_path", en.mainPath().id());
-        assertEquals(10, en.mainPath().quests().size());
+        assertTrue(en.categories().get("main_path").glow());
+        assertEquals(10, en.categories().get("main_path").quests().size());
         for (String id : en.categoryOrder()) {
             CategoryDef e = en.categories().get(id);
             CategoryDef p = pl.categories().get(id);
-            if (!e.mainPath()) assertEquals(5, e.quests().size(), id);
+            assertEquals(e.glow(), p.glow(), id);
+            if (!id.equals("main_path")) assertEquals(5, e.quests().size(), id);
             assertEquals(e.quests().stream().map(QuestDef::id).toList(), p.quests().stream().map(QuestDef::id).toList(), id);
             assertEquals(e.after(), p.after(), id);
             for (int i = 0; i < e.quests().size(); i++) {

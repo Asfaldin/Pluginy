@@ -35,7 +35,7 @@ categories:
     name: "Główna Ścieżka"
     icon: { item: KNOWLEDGE_BOOK }
     description: "Zacznij tutaj - zadania po kolei!"
-    main-path: true
+    glow: true
     sequential: true
     after: null
     requires-unlock: null
@@ -127,7 +127,7 @@ categories:
     name: "Górnictwo"
     icon: { item: IRON_PICKAXE }
     description: "Kop głęboko po skarby."
-    main-path: false
+    glow: false
     sequential: false
     after: { category: main_path, quest: 3 }
     requires-unlock: null
@@ -176,7 +176,7 @@ categories:
     name: "Hodowla"
     icon: { item: WHEAT }
     description: "Uprawiaj i wykarm całą wyspę."
-    main-path: false
+    glow: false
     sequential: false
     after: { category: main_path, quest: 2 }
     requires-unlock: null
@@ -225,7 +225,7 @@ categories:
     name: "Łowca"
     icon: { item: IRON_SWORD }
     description: "Walcz z potworami nocy."
-    main-path: false
+    glow: false
     sequential: false
     after: { category: main_path, quest: 5 }
     requires-unlock: null
@@ -274,7 +274,7 @@ categories:
     name: "Rybak"
     icon: { item: FISHING_ROD }
     description: "Odpocznij nad wodą."
-    main-path: false
+    glow: false
     sequential: false
     after: { category: main_path, quest: 4 }
     requires-unlock: null
@@ -323,7 +323,7 @@ categories:
     name: "Drwal"
     icon: { item: IRON_AXE }
     description: "Każda wyspa potrzebuje drewna."
-    main-path: false
+    glow: false
     sequential: false
     after: { category: main_path, quest: 2 }
     requires-unlock: null

@@ -58,10 +58,7 @@ class QuestRulesTest {
     }
 
     @Test
-    void openQuestAndDefaultFile() {
-        CategoryDef c = cat("a", false, null, null, List.of(q(1), q(2)));
-        assertTrue(QuestRules.hasOpenQuest(c, Set.of(1)));
-        assertFalse(QuestRules.hasOpenQuest(c, Set.of(1, 2)));
+    void defaultFileByLanguage() {
         assertEquals("defaults/quests-pl.yml", QuestRules.defaultContentResource("pl"));
         assertEquals("defaults/quests-pl.yml", QuestRules.defaultContentResource(" PL "));
         assertEquals("defaults/quests-en.yml", QuestRules.defaultContentResource("en"));

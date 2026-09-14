@@ -16,6 +16,8 @@ import elo.mainplugins.core.api.LangService;
 import elo.mainplugins.core.api.LicenseService;
 import elo.mainplugins.core.api.PlaceholderService;
 import elo.mainplugins.core.api.RewardService;
+import elo.mainplugins.core.api.UnlockService;
+import elo.mainplugins.core.command.UnlockCommand;
 import elo.mainplugins.core.customitem.CustomItemManager;
 import elo.mainplugins.core.economy.EconomyManager;
 import elo.mainplugins.core.economy.VaultBackedEconomy;
@@ -23,12 +25,15 @@ import elo.mainplugins.core.economy.VaultHook;
 import elo.mainplugins.core.lang.LangManager;
 import elo.mainplugins.core.placeholder.PlaceholderManager;
 import elo.mainplugins.core.reward.RewardManager;
+import elo.mainplugins.core.unlock.UnlockManager;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import elo.mainplugins.core.license.LicenseManager;
 import elo.mainplugins.core.util.TabCompleteUtils;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.io.File;
 
 /**
  * Rdzeń całego ekosystemu Mainplugins. Nie zawiera żadnej logiki gry - tylko
@@ -80,6 +85,17 @@ public final class MainpluginsCore extends JavaPlugin {
         RewardManager rewardManager = new RewardManager(this, economyService, customItemManager, langManager);
         getServer().getServicesManager().register(RewardService.class, rewardManager, this, ServicePriority.Normal);
         getServer().getPluginManager().registerEvents(rewardManager, this);
+
+        UnlockManager unlockManager = new UnlockManager(new File(getDataFolder(), "unlocks.yml"), getLogger()::warning);
+        getServer().getServicesManager().register(UnlockService.class, unlockManager, this, ServicePriority.Normal);
+        // Nagroda "unlock: nazwa" działa w nagrodach WSZYSTKICH pluginów.
+        rewardManager.registerType(this, RewardService.UNLOCK, (player, r) -> {
+            String name = String.valueOf(r.value()).trim().toLowerCase(java.util.Locale.ROOT);
+            if (name.isEmpty()) return false;
+            unlockManager.give(player.getUniqueId(), name);
+            if (!r.silent()) langManager.send(player, this, "reward.unlock", java.util.Map.of("name", name));
+            return true;
+        });
 
         getServer().getPluginManager().registerEvents(new ResourcePackManager(this), this);
 
@@ -179,6 +195,11 @@ public final class MainpluginsCore extends JavaPlugin {
                 return true;
             });
             getCommand("@reloadlang").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
+        }
+        if (getCommand("@unlock") != null) {
+            UnlockCommand unlockCommand = new UnlockCommand(this, unlockManager, langManager);
+            getCommand("@unlock").setExecutor(unlockCommand);
+            getCommand("@unlock").setTabCompleter(unlockCommand);
         }
 
         getServer().getPluginManager().registerEvents(new CommandRemapper(this), this);

@@ -14,6 +14,7 @@ import elo.mainplugins.core.api.RewardService;
 import elo.mainplugins.core.api.SpawnService;
 import elo.mainplugins.core.api.ToolsService;
 import elo.mainplugins.core.api.TytulService;
+import elo.mainplugins.core.api.UnlockService;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
@@ -141,5 +142,11 @@ public final class CoreAPI {
             throw new IllegalStateException("MainpluginsCore nie jest włączony lub nie zarejestrował jeszcze PlaceholderService - sprawdź plugin.yml (depend: [MainpluginsCore]).");
         }
         return rsp.getProvider();
+    }
+
+    /** Odblokowania graczy (patrz {@link UnlockService}) - rejestruje go samo core; null tylko na bardzo wczesnym etapie startu. */
+    public static UnlockService getUnlockService() {
+        RegisteredServiceProvider<UnlockService> rsp = Bukkit.getServicesManager().getRegistration(UnlockService.class);
+        return rsp != null ? rsp.getProvider() : null;
     }
 }

@@ -3,6 +3,7 @@ reward:
   money: "&aOtrzymujesz &e{amount}$&a."
   item: "&aOtrzymujesz &e{amount}x {item}&a."
   custom: "&aOtrzymujesz &e{amount}x {item}&a."
+  unlock: "&aOdblokowano: &e{name}&a."
 items:
   reloaded: "&aKatalog itemów przeładowany."
 lang:
@@ -12,3 +13,10 @@ admin:
   rewardtest:
     usage: "&cUżycie: /@rewardtest <gracz>"
     done: "&aWydano test-rewards graczowi {player}."
+  unlock:
+    usage: "&eUżycie: /@unlock give|take|list <gracz> [nazwa]"
+    given: "&aDano odblokowanie {name} graczowi {player}."
+    already: "&e{player} ma już odblokowanie {name}."
+    taken: "&aZabrano odblokowanie {name} graczowi {player}."
+    missing: "&e{player} nie ma odblokowania {name}."
+    list: "&eOdblokowania gracza {player}: &f{list}"

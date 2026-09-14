@@ -67,6 +67,11 @@ commands:
     description: (Admin) Reload language files of every Mainplugins plugin
     permission: mainplugins.core.reloadlang
     permission-message: "&cNie masz permisji do tej komendy!"
+  "@unlock":
+    description: (Admin) Give, take or list a player's unlocks (shared by all Mainplugins plugins)
+    usage: /<command> give|take|list <player> [name]
+    permission: mainplugins.core.unlock
+    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.core.admin:
@@ -86,4 +91,7 @@ permissions:
     default: op
   mainplugins.core.rewardtest:
     description: Access to /@rewardtest
+    default: op
+  mainplugins.core.unlock:
+    description: Access to /@unlock
     default: op

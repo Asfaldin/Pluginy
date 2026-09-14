@@ -3,6 +3,7 @@ reward:
   money: "&aYou received &e{amount}$&a."
   item: "&aYou received &e{amount}x {item}&a."
   custom: "&aYou received &e{amount}x {item}&a."
+  unlock: "&aUnlocked: &e{name}&a."
 items:
   reloaded: "&aItem catalog reloaded."
 lang:
@@ -12,3 +13,10 @@ admin:
   rewardtest:
     usage: "&cUsage: /@rewardtest <player>"
     done: "&aGave test-rewards to {player}."
+  unlock:
+    usage: "&eUsage: /@unlock give|take|list <player> [name]"
+    given: "&aGave unlock {name} to {player}."
+    already: "&e{player} already has unlock {name}."
+    taken: "&aTook unlock {name} from {player}."
+    missing: "&e{player} does not have unlock {name}."
+    list: "&eUnlocks of {player}: &f{list}"

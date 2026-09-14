@@ -2,7 +2,6 @@ package elo.mainplugins.market;
 
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.EconomyService;
-import elo.mainplugins.core.api.MarketService;
 import elo.mainplugins.core.api.Rank;
 import elo.mainplugins.core.api.RankService;
 import elo.mainplugins.core.util.AsyncConfigSaver;
@@ -33,7 +32,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-public class MarketManager implements Listener, MarketService {
+public class MarketManager implements Listener {
 
     private final Plugin plugin;
     private final EconomyService economyManager;
@@ -100,8 +99,6 @@ public class MarketManager implements Listener, MarketService {
         this.saverRynku = new AsyncConfigSaver(plugin, configRynku, plikRynku, 10);
     }
 
-    /** {@inheritDoc} Skanuje wszystkie aktywne oferty po polu "sprzedawca". */
-    @Override
     public boolean maAktywnaOferte(UUID uuid) {
         if (!configRynku.contains("przedmioty")) return false;
         String szukany = uuid.toString();

@@ -46,6 +46,11 @@ public final class PlaceholderManager implements PlaceholderService, Listener {
     }
 
     @Override
+    public String resolve(OfflinePlayer player, String name) {
+        return registry.resolve(player, name);
+    }
+
+    @Override
     public String apply(Player player, String text) {
         return papi && player != null && text.indexOf('%') >= 0 ? PapiHook.setPlaceholders(player, text) : text;
     }

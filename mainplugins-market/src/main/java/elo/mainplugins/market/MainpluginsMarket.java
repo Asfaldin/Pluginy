@@ -2,11 +2,9 @@ package elo.mainplugins.market;
 
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.EconomyService;
-import elo.mainplugins.core.api.MarketService;
 import elo.mainplugins.core.util.MenuBridge;
 import elo.mainplugins.core.util.TabCompleteUtils;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.List;
@@ -28,7 +26,6 @@ public final class MainpluginsMarket extends JavaPlugin {
         EconomyService economyService = CoreAPI.getEconomyService();
         marketManager = new MarketManager(this, economyService);
         getServer().getPluginManager().registerEvents(marketManager, this);
-        getServer().getServicesManager().register(MarketService.class, marketManager, this, ServicePriority.Normal);
 
         if (getCommand("targ") != null) {
             getCommand("targ").setExecutor((sender, command, label, args) -> {

@@ -17,6 +17,9 @@ public interface PlaceholderService {
     /** Wyrejestrowywany automatycznie, gdy plugin się wyłącza. */
     void register(Plugin owner, BiFunction<OfflinePlayer, String, String> resolver);
 
+    /** Wartość naszego placeholdera bez PlaceholderAPI (nazwa bez "mainplugins_"), null gdy nikt jej nie zna. */
+    String resolve(OfflinePlayer player, String name);
+
     /** Podmienia w tekście wszystkie %...% (nasze i innych pluginów). Bez PlaceholderAPI zwraca tekst bez zmian. */
     String apply(Player player, String text);
 }

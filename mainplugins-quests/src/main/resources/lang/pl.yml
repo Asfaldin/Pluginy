@@ -44,7 +44,6 @@ label:
 welcome:
   title: "&6&lWitaj"
   subtitle: "&eTwoja opowieść zaczyna się teraz."
-reminder: "&6&l📜 Czeka na Ciebie zadanie w kategorii {category}! Wpisz /quests"
 reward:
   title: "&aNowy tytuł na czacie: {title}"
 admin:

@@ -4,8 +4,6 @@
 #   money (pay), have-item (have it with you, you keep it).
 # Rewards use the shared "rewards:" format (money, item, custom, command, crate, key, title, unlock).
 settings:
-  join-reminder: true
-  welcome-sound: "mainplugins:quest_welcome"
   filler: { item: BLACK_STAINED_GLASS_PANE }
   icons:
     available: { item: RED_DYE }

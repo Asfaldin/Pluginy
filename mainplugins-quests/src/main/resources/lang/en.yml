@@ -44,7 +44,6 @@ label:
 welcome:
   title: "&6&lWelcome"
   subtitle: "&eYour story starts now."
-reminder: "&6&l📜 You have a quest waiting in {category}! Type /quests"
 reward:
   title: "&aNew chat title: {title}"
 admin:

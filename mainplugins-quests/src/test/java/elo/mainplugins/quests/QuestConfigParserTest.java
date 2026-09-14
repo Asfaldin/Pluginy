@@ -35,8 +35,6 @@ class QuestConfigParserTest {
 
     private static final String FULL = """
             settings:
-              join-reminder: false
-              welcome-sound: ""
               icons:
                 available: { item: ARROW }
             main-menu:
@@ -99,8 +97,6 @@ class QuestConfigParserTest {
         assertTrue(warnings.isEmpty(), warnings.toString());
 
         QuestSettings s = c.settings();
-        assertFalse(s.joinReminder());
-        assertEquals("", s.welcomeSound());
         assertEquals(new ItemRef("ARROW", null, 1), s.available());
         assertEquals(QuestSettings.DEFAULTS.completed(), s.completed());
 

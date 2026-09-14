@@ -20,7 +20,6 @@ import elo.mainplugins.quests.model.QuestSettings;
 import elo.mainplugins.quests.model.Requirement;
 import elo.mainplugins.quests.model.SlotEntry;
 import elo.mainplugins.quests.model.SlotRole;
-import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.TextReplacementConfig;
@@ -36,7 +35,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -445,24 +443,6 @@ final class QuestManager implements Listener, TytulService {
     private void welcome(Player player) {
         player.closeInventory();
         player.showTitle(Title.title(lang.msg(plugin, "welcome.title"), lang.msg(plugin, "welcome.subtitle")));
-        String sound = config.settings().welcomeSound();
-        if (sound != null && !sound.isBlank()) player.playSound(player.getLocation(), sound, 1f, 1f);
-    }
-
-    /** Przypomnienie po wejściu: pasek na górze ekranu, sam znika po 6 s. */
-    @EventHandler
-    public void onJoin(PlayerJoinEvent event) {
-        if (!config.settings().joinReminder()) return;
-        Player player = event.getPlayer();
-        CategoryDef main = config.mainPath();
-        if (main == null || main.quests().isEmpty()) return;
-        ProgressStore.PlayerProgress p = progress.get(player.getUniqueId());
-        Set<Integer> done = p == null ? Set.of() : p.doneView(main.id());
-        if (!QuestRules.hasOpenQuest(main, done)) return;
-        BossBar bar = BossBar.bossBar(lang.msg(plugin, "reminder", Map.of("category", main.name())), 1f,
-                BossBar.Color.YELLOW, BossBar.Overlay.PROGRESS);
-        player.showBossBar(bar);
-        Bukkit.getScheduler().runTaskLater(plugin, () -> player.hideBossBar(bar), 20L * 6);
     }
 
     // ---- Tytuły ----

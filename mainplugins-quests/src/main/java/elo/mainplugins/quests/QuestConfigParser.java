@@ -225,8 +225,6 @@ public final class QuestConfigParser {
         QuestSettings d = QuestSettings.DEFAULTS;
         if (s == null) return d;
         return new QuestSettings(
-                s.getBoolean("join-reminder", d.joinReminder()),
-                s.getString("welcome-sound", d.welcomeSound()),
                 item(s, "filler", d.filler(), materialExists, warn),
                 item(s, "icons.available", d.available(), materialExists, warn),
                 item(s, "icons.completed", d.completed(), materialExists, warn),

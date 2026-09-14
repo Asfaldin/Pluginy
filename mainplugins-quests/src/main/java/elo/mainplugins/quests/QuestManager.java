@@ -535,4 +535,13 @@ final class QuestManager implements Listener, TytulService {
         rewards.give(player, q.rewards());
         return true;
     }
+
+    /** Cofa jedno zadanie (nagród nie zabiera); false = gracz go nie miał zrobionego. */
+    boolean undo(UUID uuid, String categoryId, int questId) {
+        ProgressStore.PlayerProgress p = progress.get(uuid);
+        if (p == null || !p.doneView(categoryId).contains(questId)) return false;
+        p.doneIn(categoryId).remove(questId);
+        saveProgress();
+        return true;
+    }
 }

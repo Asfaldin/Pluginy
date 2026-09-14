@@ -48,7 +48,7 @@ reminder: "&6&l📜 Czeka na Ciebie zadanie w kategorii {category}! Wpisz /quest
 reward:
   title: "&aNowy tytuł na czacie: {title}"
 admin:
-  usage: "&eUżycie: /@quests reload | list | reset <gracz> [kategoria] | complete <gracz> <kategoria> <nr>"
+  usage: "&eUżycie: /@quests reload | list | reset <gracz> [kategoria] | complete <gracz> <kategoria> <nr> | undo <gracz> <kategoria> <nr>"
   players-only: "&cMenu zadań może otworzyć tylko gracz."
   reloaded: "&aQuesty przeładowane: {categories} kategorii, {quests} zadań."
   list: "&e{category}&7 ({id}): {quests} zadań"
@@ -60,3 +60,5 @@ admin:
   reset-category: "&aWyzerowano {category} graczowi {player}."
   completed: "&aZaliczono graczowi {player} zadanie {quest} w {category} i wydano nagrody."
   already-done: "&e{player} ma już zadanie {quest} w {category}."
+  undone: "&aCofnięto graczowi {player} zadanie {quest} w {category} (nagrody zostają u gracza)."
+  not-done: "&e{player} nie ma zrobionego zadania {quest} w {category}."

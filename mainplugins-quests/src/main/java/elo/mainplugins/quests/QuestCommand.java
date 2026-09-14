@@ -49,6 +49,7 @@ final class QuestCommand implements CommandExecutor, TabCompleter {
             }
             case "reset" -> reset(sender, args);
             case "complete" -> complete(sender, args);
+            case "undo" -> undo(sender, args);
             default -> lang.send(sender, plugin, "admin.usage");
         }
         return true;
@@ -112,13 +113,39 @@ final class QuestCommand implements CommandExecutor, TabCompleter {
         lang.send(sender, plugin, quests.forceComplete(target, c, q) ? "admin.completed" : "admin.already-done", ph);
     }
 
+    /** Cofa jedno zadanie graczowi (też offline) - np. gdy coś się zbugowało. Nagród nie zabiera. */
+    private void undo(CommandSender sender, String[] args) {
+        if (args.length < 4) {
+            lang.send(sender, plugin, "admin.usage");
+            return;
+        }
+        OfflinePlayer target = Bukkit.getPlayerExact(args[1]);
+        if (target == null) target = Bukkit.getOfflinePlayerIfCached(args[1]);
+        if (target == null) {
+            lang.send(sender, plugin, "admin.player-not-found", Map.of("player", args[1]));
+            return;
+        }
+        CategoryDef c = category(sender, args[2]);
+        if (c == null) return;
+        int id;
+        try {
+            id = Integer.parseInt(args[3]);
+        } catch (NumberFormatException e) {
+            lang.send(sender, plugin, "admin.usage");
+            return;
+        }
+        String name = target.getName() != null ? target.getName() : args[1];
+        Map<String, String> ph = Map.of("quest", args[3], "category", c.id(), "player", name);
+        lang.send(sender, plugin, quests.undo(target.getUniqueId(), c.id(), id) ? "admin.undone" : "admin.not-done", ph);
+    }
+
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String[] args) {
-        if (args.length == 1) return filter(List.of("reload", "list", "reset", "complete"), args[0]);
-        boolean withPlayer = args[0].equalsIgnoreCase("reset") || args[0].equalsIgnoreCase("complete");
+        if (args.length == 1) return filter(List.of("reload", "list", "reset", "complete", "undo"), args[0]);
+        boolean withPlayer = args[0].equalsIgnoreCase("reset") || args[0].equalsIgnoreCase("complete") || args[0].equalsIgnoreCase("undo");
         if (args.length == 2 && withPlayer) return null;
         if (args.length == 3 && withPlayer) return filter(new ArrayList<>(quests.config().categories().keySet()), args[2]);
-        if (args.length == 4 && args[0].equalsIgnoreCase("complete")) {
+        if (args.length == 4 && (args[0].equalsIgnoreCase("complete") || args[0].equalsIgnoreCase("undo"))) {
             CategoryDef c = quests.config().categories().get(args[2]);
             if (c == null) return List.of();
             return filter(c.quests().stream().map(q -> String.valueOf(q.id())).toList(), args[3]);

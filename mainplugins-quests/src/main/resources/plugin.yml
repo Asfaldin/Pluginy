@@ -9,8 +9,8 @@ commands:
     description: Quests menu
     aliases: [quest]
   "@quests":
-    description: (Admin) Quests - reload, list, reset or complete a player's quests
-    usage: /<command> reload | list | reset <player> [category] | complete <player> <category> <quest>
+    description: (Admin) Quests - reload, list, reset, complete or undo a player's quests
+    usage: /<command> reload | list | reset <player> [category] | complete <player> <category> <quest> | undo <player> <category> <quest>
     permission: mainplugins.quests.admin
     permission-message: "&cNie masz permisji do tej komendy!"
 

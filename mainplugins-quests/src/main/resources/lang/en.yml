@@ -48,7 +48,7 @@ reminder: "&6&l📜 You have a quest waiting in {category}! Type /quests"
 reward:
   title: "&aNew chat title: {title}"
 admin:
-  usage: "&eUsage: /@quests reload | list | reset <player> [category] | complete <player> <category> <quest>"
+  usage: "&eUsage: /@quests reload | list | reset <player> [category] | complete <player> <category> <quest> | undo <player> <category> <quest>"
   players-only: "&cOnly a player can open the quest menu."
   reloaded: "&aQuests reloaded: {categories} categories, {quests} quests."
   list: "&e{category}&7 ({id}): {quests} quests"
@@ -60,3 +60,5 @@ admin:
   reset-category: "&aReset {category} for {player}."
   completed: "&aMarked quest {quest} in {category} as done for {player} and gave the rewards."
   already-done: "&e{player} has already done quest {quest} in {category}."
+  undone: "&aUndid quest {quest} in {category} for {player} (rewards are not taken back)."
+  not-done: "&e{player} has not done quest {quest} in {category}."

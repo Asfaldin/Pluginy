@@ -59,6 +59,18 @@ class QuestRulesTest {
     }
 
     @Test
+    void onlyItemRewardsNeedFreeSpace() {
+        java.util.function.Function<String, elo.mainplugins.core.api.Reward> r =
+                t -> new elo.mainplugins.core.api.Reward(t, "x", 1, false, List.of());
+        assertFalse(QuestRules.givesItems(List.of(r.apply("money"), r.apply("title"), r.apply("unlock"), r.apply("command"))));
+        assertTrue(QuestRules.givesItems(List.of(r.apply("money"), r.apply("item"))));
+        assertTrue(QuestRules.givesItems(List.of(r.apply("custom"))));
+        assertTrue(QuestRules.givesItems(List.of(r.apply("crate"))));
+        assertTrue(QuestRules.givesItems(List.of(r.apply("key"))));
+        assertFalse(QuestRules.givesItems(List.of()));
+    }
+
+    @Test
     void defaultFileByLanguage() {
         assertEquals("defaults/quests-pl.yml", QuestRules.defaultContentResource("pl"));
         assertEquals("defaults/quests-pl.yml", QuestRules.defaultContentResource(" PL "));

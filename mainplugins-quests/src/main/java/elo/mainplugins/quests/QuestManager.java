@@ -370,7 +370,8 @@ final class QuestManager implements Listener, TytulService {
             deny(player);
             return;
         }
-        if (player.getInventory().firstEmpty() == -1) {
+        // Pełny ekwipunek blokuje tylko zadania, które dają przedmioty (kasa, tytuł itp. zawsze wchodzą).
+        if (QuestRules.givesItems(q.rewards()) && player.getInventory().firstEmpty() == -1) {
             lang.send(player, plugin, "quest.inventory-full");
             deny(player);
             return;

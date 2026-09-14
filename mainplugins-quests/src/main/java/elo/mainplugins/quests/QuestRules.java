@@ -1,5 +1,6 @@
 package elo.mainplugins.quests;
 
+import elo.mainplugins.core.api.Reward;
 import elo.mainplugins.quests.model.CategoryDef;
 import elo.mainplugins.quests.model.QuestDef;
 import elo.mainplugins.quests.model.SlotEntry;
@@ -38,6 +39,14 @@ public final class QuestRules {
         if (!afterDone(c, doneIn)) return CategoryState.LOCKED;
         if (c.requiresUnlock() != null && !hasUnlock.test(c.requiresUnlock())) return CategoryState.LOCKED;
         return CategoryState.AVAILABLE;
+    }
+
+    /** Typy nagród, które lądują w ekwipunku gracza. */
+    private static final Set<String> ITEM_REWARDS = Set.of("item", "custom", "crate", "key");
+
+    /** Czy któraś nagroda to przedmiot (item, custom item, skrzynka, klucz). */
+    public static boolean givesItems(List<Reward> rewards) {
+        return rewards.stream().anyMatch(r -> ITEM_REWARDS.contains(r.type()));
     }
 
     /** Plik startowy w jarze według języka serwera z core. */

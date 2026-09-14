@@ -1,0 +1,38 @@
+name: MainpluginsGenerators
+version: ${project.version}
+main: elo.mainplugins.generators.MainpluginsGenerators
+api-version: '1.20'
+depend: [MainpluginsCore]
+
+commands:
+  "@addkruchy":
+    description: (Admin) Testowe wydanie generatora kruchych surowcow + przewodnika
+    permission: mainplugins.generators.addkruchy
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@dajbrukgen":
+    description: (Admin) Testowe wydanie Generatora Bruku
+    permission: mainplugins.generators.dajbrukgen
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@dajgenerator":
+    description: (Admin) Nadaje generator (tier 2-4) po custom-id z generatory.yml
+    usage: "/<command> <id> [gracz]"
+    permission: mainplugins.generators.dajgenerator
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@reloadgeneratory":
+    description: (Admin) Wczytaj generatory.yml na nowo, bez restartu serwera
+    permission: mainplugins.generators.reloadgeneratory
+    permission-message: "&cNie masz permisji do tej komendy!"
+
+permissions:
+  mainplugins.generators.addkruchy:
+    description: Testowe wydanie generatora kruchych surowcow (komenda /@addkruchy)
+    default: op
+  mainplugins.generators.dajbrukgen:
+    description: Testowe wydanie Generatora Bruku (komenda /@dajbrukgen)
+    default: op
+  mainplugins.generators.dajgenerator:
+    description: Pozwala nadac dowolny generator (tier 2-4) po custom-id
+    default: op
+  mainplugins.generators.reloadgeneratory:
+    description: Dostep do przeladowania generatory.yml
+    default: op

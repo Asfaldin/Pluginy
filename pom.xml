@@ -33,6 +33,7 @@
         <module>mainplugins-shop</module>
         <module>mainplugins-market</module>
         <module>mainplugins-quests</module>
+        <module>mainplugins-generators</module>
         <module>mainplugins-ranks</module>
         <module>mainplugins-tools</module>
         <module>mainplugins-hud</module>

@@ -1,4 +1,4 @@
-package elo.mainplugins.quests;
+package elo.mainplugins.generators;
 
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.ToolsService;

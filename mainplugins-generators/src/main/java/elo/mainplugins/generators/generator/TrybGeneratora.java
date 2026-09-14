@@ -1,4 +1,4 @@
-package elo.mainplugins.quests.generator;
+package elo.mainplugins.generators.generator;
 
 /**
  * Dwa istniejące wzorce generatorów (patrz GeneratorBrukuManager/GeneratorKruchychManager,

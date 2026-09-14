@@ -1,4 +1,4 @@
-package elo.mainplugins.quests.generator;
+package elo.mainplugins.generators.generator;
 
 import org.bukkit.Material;
 

@@ -1,4 +1,4 @@
-package elo.mainplugins.quests.generator;
+package elo.mainplugins.generators.generator;
 
 import net.kyori.adventure.text.Component;
 import org.bukkit.Material;

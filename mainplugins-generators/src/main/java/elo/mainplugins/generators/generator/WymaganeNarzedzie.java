@@ -1,4 +1,4 @@
-package elo.mainplugins.quests.generator;
+package elo.mainplugins.generators.generator;
 
 /** Jakim narzędziem trzeba kopać dany generator - patrz GeneratorManager#jestWlasciwymNarzedziem. */
 public enum WymaganeNarzedzie {

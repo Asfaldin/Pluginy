@@ -8,41 +8,12 @@ commands:
   zadania:
     description: Zadania
     aliases: [quest]
-  "@addkruchy":
-    description: (Admin) Testowe wydanie generatora kruchych surowcow + przewodnika
-    permission: mainplugins.quests.addkruchy
-    permission-message: "&cNie masz permisji do tej komendy!"
-  "@dajbrukgen":
-    description: (Admin) Testowe wydanie Generatora Bruku
-    permission: mainplugins.quests.dajbrukgen
-    permission-message: "&cNie masz permisji do tej komendy!"
   "@reloadquesty":
     description: (Admin) Wczytaj quests-content.yml na nowo, bez restartu serwera
     permission: mainplugins.quests.reloadquesty
     permission-message: "&cNie masz permisji do tej komendy!"
-  "@dajgenerator":
-    description: (Admin) Nadaje generator (tier 2-4) po custom-id z generatory.yml
-    usage: "/<command> <id> [gracz]"
-    permission: mainplugins.quests.dajgenerator
-    permission-message: "&cNie masz permisji do tej komendy!"
-  "@reloadgeneratory":
-    description: (Admin) Wczytaj generatory.yml na nowo, bez restartu serwera
-    permission: mainplugins.quests.reloadgeneratory
-    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
-  mainplugins.quests.addkruchy:
-    description: Testowe wydanie generatora kruchych surowcow (komenda /@addkruchy)
-    default: op
-  mainplugins.quests.dajbrukgen:
-    description: Testowe wydanie Generatora Bruku (komenda /@dajbrukgen)
-    default: op
   mainplugins.quests.reloadquesty:
     description: Dostep do przeladowania quests-content.yml
-    default: op
-  mainplugins.quests.dajgenerator:
-    description: Pozwala nadac dowolny generator (tier 2-4) po custom-id
-    default: op
-  mainplugins.quests.reloadgeneratory:
-    description: Dostep do przeladowania generatory.yml
     default: op

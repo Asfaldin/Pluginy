@@ -1,4 +1,4 @@
-package elo.mainplugins.quests;
+package elo.mainplugins.generators;
 
 import elo.mainplugins.core.util.CustomItemKeys;
 import net.kyori.adventure.text.Component;
@@ -42,7 +42,7 @@ import java.util.concurrent.ThreadLocalRandom;
  *
  * Drugi sposób zdobycia kolejnych generatorów (poza jednorazową nagrodą questu) to
  * REALNA receptura w stole rzemieślniczym (patrz zarejestrujReceptureGeneratora w
- * MainpluginsQuests) - ShapelessRecipe (liczą się tylko ILOŚCI składników, nie ich
+ * MainpluginsGenerators) - ShapelessRecipe (liczą się tylko ILOŚCI składników, nie ich
  * pozycja w siatce), zmieszczona w twardym limicie 9 składników 3x3 siatki - patrz
  * komentarz w stworzKsiazkaPrzewodnik dla dokładnych ilości.
  */
@@ -88,7 +88,7 @@ public class GeneratorKruchychManager implements Listener {
     /**
      * Książka-przewodnik po recepturze - CZYSTO informacyjna (lore), nie prawdziwa
      * wanilijska receptura odkrywana w Recipe Book. Receptura (patrz
-     * MainpluginsQuests#zarejestrujReceptureGeneratora) jest SHAPELESS: liczą się tylko
+     * MainpluginsGenerators#zarejestrujReceptureGeneratora) jest SHAPELESS: liczą się tylko
      * ilości, gracz może je rozłożyć w dowolne wolne sloty stołu. Ilości NAPRAWIONE, żeby
      * łącznie mieściły się w twardym limicie 9 składników 3x3 siatki (Minecraft nie
      * pozwala na więcej - patrz komentarz przy zarejestrujReceptureGeneratora).

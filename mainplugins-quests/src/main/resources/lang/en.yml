@@ -1,0 +1,62 @@
+# Mainplugins Quests - English messages. Colors: &a &e ...  Placeholders: {name}
+# {items} and {reward} are filled with item names in the player's own game language.
+menu:
+  title: "&2&lQuest Categories"
+  category-title: "&2&l{category} &8| &7page {page}"
+  back: "&6&lBack to categories"
+  prev: "&e&lPrevious page"
+  next: "&e&lNext page"
+category:
+  new-quest: "&6&l🔔 New quest available!"
+  locked: "&c&l🔒 Locked"
+  locked-after: "&8Complete \"{quest}\" in {category}."
+  locked-unlock: "&8This category must be unlocked first."
+  empty: "&e&l🚧 Coming soon"
+  empty-hint: "&8There are no quests here yet."
+  locked-message: "&cThis category is still locked!"
+  empty-message: "&eThis category has no quests yet - come back later!"
+quest:
+  locked-name: "&8??? (locked)"
+  locked-hint: "&8Finish the previous quest first."
+  requirement:
+    free: "&eRequires: nothing - click to claim!"
+    items: "&eRequires: {items}"
+    money: "&eRequires: {amount}$"
+    have-item: "&eRequires: having {items} (you keep it)"
+  reward: "&6Reward: {reward}"
+  reward-hidden: "&8Reward: ???"
+  done: "&a&l✔ COMPLETED"
+  click: "&c&l❌ CLICK TO COMPLETE"
+  completed: "&aQuest completed: &6&l{quest}&a!"
+  already-done: "&cYou have already done this quest!"
+  locked-message: "&cFinish the previous quest of this path first!"
+  inventory-full: "&cYour inventory is full! Make room to get the reward."
+  missing:
+    items: "&cYou don't have the required items!"
+    money: "&cYou don't have enough money!"
+    have-item: "&cYou don't have the required item!"
+label:
+  money: "{amount}$"
+  crate: "crate {id}"
+  key: "key {id}"
+  title: "a chat title"
+  unlock: "an unlock"
+welcome:
+  title: "&6&lWelcome"
+  subtitle: "&eYour story starts now."
+reminder: "&6&l📜 You have a quest waiting in {category}! Type /quests"
+reward:
+  title: "&aNew chat title: {title}"
+admin:
+  usage: "&eUsage: /@quests reload | list | reset <player> [category] | complete <player> <category> <quest>"
+  players-only: "&cOnly a player can open the quest menu."
+  reloaded: "&aQuests reloaded: {categories} categories, {quests} quests."
+  list: "&e{category}&7 ({id}): {quests} quests"
+  list-empty: "&7No categories."
+  player-not-found: "&cPlayer not found: {player}"
+  unknown-category: "&cUnknown category: {id}. Available: {list}"
+  unknown-quest: "&cCategory {category} has no quest {quest}."
+  reset-all: "&aReset all quest progress of {player}."
+  reset-category: "&aReset {category} for {player}."
+  completed: "&aMarked quest {quest} in {category} as done for {player} and gave the rewards."
+  already-done: "&e{player} has already done quest {quest} in {category}."

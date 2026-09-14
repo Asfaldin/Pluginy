@@ -6,14 +6,15 @@ depend: [MainpluginsCore]
 
 commands:
   zadania:
-    description: Zadania
+    description: Quests menu
     aliases: [quest]
-  "@reloadquesty":
-    description: (Admin) Wczytaj quests-content.yml na nowo, bez restartu serwera
-    permission: mainplugins.quests.reloadquesty
+  "@quests":
+    description: (Admin) Quests - reload, list, reset or complete a player's quests
+    usage: /<command> reload | list | reset <player> [category] | complete <player> <category> <quest>
+    permission: mainplugins.quests.admin
     permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
-  mainplugins.quests.reloadquesty:
-    description: Dostep do przeladowania quests-content.yml
+  mainplugins.quests.admin:
+    description: Access to /@quests
     default: op

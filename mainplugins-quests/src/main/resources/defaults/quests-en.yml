@@ -1,0 +1,369 @@
+# Quests - categories, quests and how the menu looks.
+# Reload without a restart: /@quests reload
+# Requirement types: free (just click), items (bring them, they are taken),
+#   money (pay), have-item (have it with you, you keep it).
+# Rewards use the shared "rewards:" format (money, item, custom, command, crate, key, title, unlock).
+settings:
+  join-reminder: true
+  welcome-sound: "mainplugins:quest_welcome"
+  filler: { item: BLACK_STAINED_GLASS_PANE }
+  icons:
+    available: { item: RED_DYE }
+    completed: { item: LIME_DYE }
+    locked: { item: GRAY_DYE }
+    category-locked: { item: GRAY_DYE }
+    category-empty: { item: BARRIER }
+  buttons:
+    back: { item: DARK_OAK_DOOR }
+    prev: { item: ARROW }
+    next: { item: ARROW }
+
+main-menu:
+  layout:
+    - { slot: 13, role: CATEGORY_SLOT }
+    - { slot: 29, role: CATEGORY_SLOT }
+    - { slot: 30, role: CATEGORY_SLOT }
+    - { slot: 31, role: CATEGORY_SLOT }
+    - { slot: 32, role: CATEGORY_SLOT }
+    - { slot: 33, role: CATEGORY_SLOT }
+
+category-order: [main_path, mining, farming, hunting, fishing, woodcutting]
+
+titles:
+  beginner: "&7&l[Beginner] "
+
+categories:
+  main_path:
+    name: "Main Path"
+    icon: { item: KNOWLEDGE_BOOK }
+    description: "Start here - quests in order!"
+    main-path: true
+    sequential: true
+    after: null
+    requires-unlock: null
+    page-layout:
+      - { slot: 10, role: QUEST_SLOT }
+      - { slot: 11, role: QUEST_SLOT }
+      - { slot: 12, role: QUEST_SLOT }
+      - { slot: 13, role: QUEST_SLOT }
+      - { slot: 14, role: QUEST_SLOT }
+      - { slot: 15, role: QUEST_SLOT }
+      - { slot: 16, role: QUEST_SLOT }
+      - { slot: 25, role: QUEST_SLOT }
+      - { slot: 24, role: QUEST_SLOT }
+      - { slot: 23, role: QUEST_SLOT }
+      - { slot: 45, role: NAV_PREV }
+      - { slot: 49, role: NAV_BACK }
+      - { slot: 53, role: NAV_NEXT }
+    quests:
+      - id: 1
+        title: "Welcome"
+        description: ["Your adventure starts now.", "Claim your first tools!"]
+        requirement: { type: free }
+        rewards:
+          - item: WOODEN_PICKAXE
+          - item: BREAD
+            amount: 5
+      - id: 2
+        title: "First Wood"
+        description: ["Chop some trees."]
+        requirement: { type: items, items: [ { item: OAK_LOG, amount: 16 } ] }
+        rewards:
+          - item: STONE_AXE
+          - money: 50
+      - id: 3
+        title: "Stone Age"
+        description: ["Mine cobblestone for better tools."]
+        requirement: { type: items, items: [ { item: COBBLESTONE, amount: 32 } ] }
+        rewards:
+          - item: STONE_PICKAXE
+          - money: 50
+      - id: 4
+        title: "Light It Up"
+        description: ["Craft torches - the night is less scary."]
+        requirement: { type: items, items: [ { item: TORCH, amount: 16 } ] }
+        rewards:
+          - money: 100
+      - id: 5
+        title: "Fed and Ready"
+        description: ["Bake some bread."]
+        requirement: { type: items, items: [ { item: BREAD, amount: 5 } ] }
+        rewards:
+          - item: COOKED_BEEF
+            amount: 8
+      - id: 6
+        title: "Iron Will"
+        description: ["Smelt some iron."]
+        requirement: { type: items, items: [ { item: IRON_INGOT, amount: 8 } ] }
+        rewards:
+          - item: IRON_PICKAXE
+      - id: 7
+        title: "Shield Up"
+        description: ["Craft a shield and keep it with you."]
+        requirement: { type: have-item, item: { item: SHIELD } }
+        rewards:
+          - money: 150
+      - id: 8
+        title: "Pay Your Dues"
+        description: ["Show that you can earn money."]
+        requirement: { type: money, amount: 200 }
+        rewards:
+          - crate: basic
+            fallback:
+              - money: 300
+      - id: 9
+        title: "Shiny"
+        description: ["Find diamonds deep underground."]
+        requirement: { type: items, items: [ { item: DIAMOND, amount: 3 } ] }
+        rewards:
+          - money: 500
+      - id: 10
+        title: "Veteran"
+        description: ["Bring gold and earn your first title."]
+        requirement: { type: items, items: [ { item: GOLD_INGOT, amount: 16 } ] }
+        rewards:
+          - title: beginner
+          - money: 1000
+
+  mining:
+    name: "Mining"
+    icon: { item: IRON_PICKAXE }
+    description: "Dig deep for riches."
+    main-path: false
+    sequential: false
+    after: { category: main_path, quest: 3 }
+    requires-unlock: null
+    page-layout:
+      - { slot: 20, role: QUEST_SLOT }
+      - { slot: 21, role: QUEST_SLOT }
+      - { slot: 22, role: QUEST_SLOT }
+      - { slot: 23, role: QUEST_SLOT }
+      - { slot: 24, role: QUEST_SLOT }
+      - { slot: 49, role: NAV_BACK }
+    quests:
+      - id: 1
+        title: "Coal Miner"
+        description: ["Mine coal."]
+        requirement: { type: items, items: [ { item: COAL, amount: 32 } ] }
+        rewards:
+          - money: 100
+      - id: 2
+        title: "Iron Hunter"
+        description: ["Mine raw iron."]
+        requirement: { type: items, items: [ { item: RAW_IRON, amount: 16 } ] }
+        rewards:
+          - money: 150
+      - id: 3
+        title: "Redstone"
+        description: ["Collect redstone dust."]
+        requirement: { type: items, items: [ { item: REDSTONE, amount: 32 } ] }
+        rewards:
+          - money: 150
+      - id: 4
+        title: "Deep Blue"
+        description: ["Collect lapis lazuli."]
+        requirement: { type: items, items: [ { item: LAPIS_LAZULI, amount: 32 } ] }
+        rewards:
+          - money: 200
+      - id: 5
+        title: "Diamond Hands"
+        description: ["Bring diamonds."]
+        requirement: { type: items, items: [ { item: DIAMOND, amount: 5 } ] }
+        rewards:
+          - crate: basic
+            fallback:
+              - money: 500
+
+  farming:
+    name: "Farming"
+    icon: { item: WHEAT }
+    description: "Grow crops and feed the island."
+    main-path: false
+    sequential: false
+    after: { category: main_path, quest: 2 }
+    requires-unlock: null
+    page-layout:
+      - { slot: 20, role: QUEST_SLOT }
+      - { slot: 21, role: QUEST_SLOT }
+      - { slot: 22, role: QUEST_SLOT }
+      - { slot: 23, role: QUEST_SLOT }
+      - { slot: 24, role: QUEST_SLOT }
+      - { slot: 49, role: NAV_BACK }
+    quests:
+      - id: 1
+        title: "Wheat Field"
+        description: ["Harvest wheat."]
+        requirement: { type: items, items: [ { item: WHEAT, amount: 32 } ] }
+        rewards:
+          - money: 80
+      - id: 2
+        title: "Carrot Patch"
+        description: ["Harvest carrots."]
+        requirement: { type: items, items: [ { item: CARROT, amount: 32 } ] }
+        rewards:
+          - money: 80
+      - id: 3
+        title: "Potato Farmer"
+        description: ["Harvest potatoes."]
+        requirement: { type: items, items: [ { item: POTATO, amount: 32 } ] }
+        rewards:
+          - money: 80
+      - id: 4
+        title: "Pumpkin Season"
+        description: ["Grow pumpkins."]
+        requirement: { type: items, items: [ { item: PUMPKIN, amount: 8 } ] }
+        rewards:
+          - money: 120
+      - id: 5
+        title: "Melon Master"
+        description: ["Grow melons."]
+        requirement: { type: items, items: [ { item: MELON_SLICE, amount: 64 } ] }
+        rewards:
+          - item: GOLDEN_CARROT
+            amount: 8
+          - money: 150
+
+  hunting:
+    name: "Hunting"
+    icon: { item: IRON_SWORD }
+    description: "Fight the monsters of the night."
+    main-path: false
+    sequential: false
+    after: { category: main_path, quest: 5 }
+    requires-unlock: null
+    page-layout:
+      - { slot: 20, role: QUEST_SLOT }
+      - { slot: 21, role: QUEST_SLOT }
+      - { slot: 22, role: QUEST_SLOT }
+      - { slot: 23, role: QUEST_SLOT }
+      - { slot: 24, role: QUEST_SLOT }
+      - { slot: 49, role: NAV_BACK }
+    quests:
+      - id: 1
+        title: "Zombie Slayer"
+        description: ["Bring rotten flesh."]
+        requirement: { type: items, items: [ { item: ROTTEN_FLESH, amount: 16 } ] }
+        rewards:
+          - money: 80
+      - id: 2
+        title: "Bone Collector"
+        description: ["Bring bones."]
+        requirement: { type: items, items: [ { item: BONE, amount: 16 } ] }
+        rewards:
+          - money: 100
+      - id: 3
+        title: "Web Cutter"
+        description: ["Bring string."]
+        requirement: { type: items, items: [ { item: STRING, amount: 16 } ] }
+        rewards:
+          - money: 100
+      - id: 4
+        title: "Boom"
+        description: ["Bring gunpowder."]
+        requirement: { type: items, items: [ { item: GUNPOWDER, amount: 8 } ] }
+        rewards:
+          - money: 150
+      - id: 5
+        title: "Pearl Hunter"
+        description: ["Bring ender pearls."]
+        requirement: { type: items, items: [ { item: ENDER_PEARL, amount: 4 } ] }
+        rewards:
+          - crate: basic
+            fallback:
+              - money: 400
+
+  fishing:
+    name: "Fishing"
+    icon: { item: FISHING_ROD }
+    description: "Relax by the water."
+    main-path: false
+    sequential: false
+    after: { category: main_path, quest: 4 }
+    requires-unlock: null
+    page-layout:
+      - { slot: 20, role: QUEST_SLOT }
+      - { slot: 21, role: QUEST_SLOT }
+      - { slot: 22, role: QUEST_SLOT }
+      - { slot: 23, role: QUEST_SLOT }
+      - { slot: 24, role: QUEST_SLOT }
+      - { slot: 49, role: NAV_BACK }
+    quests:
+      - id: 1
+        title: "Gone Fishing"
+        description: ["Craft a fishing rod and keep it with you."]
+        requirement: { type: have-item, item: { item: FISHING_ROD } }
+        rewards:
+          - money: 50
+      - id: 2
+        title: "Cod Catcher"
+        description: ["Catch cod."]
+        requirement: { type: items, items: [ { item: COD, amount: 10 } ] }
+        rewards:
+          - money: 100
+      - id: 3
+        title: "Salmon Run"
+        description: ["Catch salmon."]
+        requirement: { type: items, items: [ { item: SALMON, amount: 10 } ] }
+        rewards:
+          - money: 120
+      - id: 4
+        title: "Tropical"
+        description: ["Catch tropical fish."]
+        requirement: { type: items, items: [ { item: TROPICAL_FISH, amount: 3 } ] }
+        rewards:
+          - money: 150
+      - id: 5
+        title: "Pufferfish"
+        description: ["Catch pufferfish - carefully!"]
+        requirement: { type: items, items: [ { item: PUFFERFISH, amount: 3 } ] }
+        rewards:
+          - crate: basic
+            fallback:
+              - money: 400
+
+  woodcutting:
+    name: "Woodcutting"
+    icon: { item: IRON_AXE }
+    description: "Every island needs wood."
+    main-path: false
+    sequential: false
+    after: { category: main_path, quest: 2 }
+    requires-unlock: null
+    page-layout:
+      - { slot: 20, role: QUEST_SLOT }
+      - { slot: 21, role: QUEST_SLOT }
+      - { slot: 22, role: QUEST_SLOT }
+      - { slot: 23, role: QUEST_SLOT }
+      - { slot: 24, role: QUEST_SLOT }
+      - { slot: 49, role: NAV_BACK }
+    quests:
+      - id: 1
+        title: "Oak"
+        description: ["Chop oak logs."]
+        requirement: { type: items, items: [ { item: OAK_LOG, amount: 32 } ] }
+        rewards:
+          - money: 60
+      - id: 2
+        title: "Birch"
+        description: ["Chop birch logs."]
+        requirement: { type: items, items: [ { item: BIRCH_LOG, amount: 32 } ] }
+        rewards:
+          - money: 80
+      - id: 3
+        title: "Spruce"
+        description: ["Chop spruce logs."]
+        requirement: { type: items, items: [ { item: SPRUCE_LOG, amount: 32 } ] }
+        rewards:
+          - money: 80
+      - id: 4
+        title: "Sharp Axe"
+        description: ["Craft an iron axe and keep it with you."]
+        requirement: { type: have-item, item: { item: IRON_AXE } }
+        rewards:
+          - money: 100
+      - id: 5
+        title: "Dark Forest"
+        description: ["Chop dark oak logs."]
+        requirement: { type: items, items: [ { item: DARK_OAK_LOG, amount: 64 } ] }
+        rewards:
+          - money: 250

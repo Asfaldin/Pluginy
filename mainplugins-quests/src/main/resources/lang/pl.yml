@@ -1,0 +1,62 @@
+# Mainplugins Quests - komunikaty po polsku. Kolory: &a &e ...  Placeholdery: {nazwa}
+# {items} i {reward} to nazwy przedmiotów w języku gry gracza.
+menu:
+  title: "&2&lKategorie zadań"
+  category-title: "&2&l{category} &8| &7strona {page}"
+  back: "&6&lPowrót do kategorii"
+  prev: "&e&lPoprzednia strona"
+  next: "&e&lNastępna strona"
+category:
+  new-quest: "&6&l🔔 Nowe zadanie dostępne!"
+  locked: "&c&l🔒 Zablokowane"
+  locked-after: "&8Ukończ \"{quest}\" w kategorii {category}."
+  locked-unlock: "&8Tę kategorię trzeba najpierw odblokować."
+  empty: "&e&l🚧 W budowie"
+  empty-hint: "&8Nie ma tu jeszcze zadań."
+  locked-message: "&cTa kategoria jest jeszcze zablokowana!"
+  empty-message: "&eTa kategoria nie ma jeszcze zadań - wróć później!"
+quest:
+  locked-name: "&8??? (zablokowane)"
+  locked-hint: "&8Najpierw ukończ poprzednie zadanie."
+  requirement:
+    free: "&eWymaga: nic - kliknij, żeby odebrać!"
+    items: "&eWymaga: {items}"
+    money: "&eWymaga: {amount}$"
+    have-item: "&eWymaga: posiadania {items} (zostaje przy Tobie)"
+  reward: "&6Nagroda: {reward}"
+  reward-hidden: "&8Nagroda: ???"
+  done: "&a&l✔ UKOŃCZONE"
+  click: "&c&l❌ KLIKNIJ, ABY ZDAĆ"
+  completed: "&aUkończyłeś zadanie: &6&l{quest}&a!"
+  already-done: "&cTo zadanie jest już zrobione!"
+  locked-message: "&cNajpierw ukończ poprzednie zadanie tej ścieżki!"
+  inventory-full: "&cMasz pełny ekwipunek! Zrób miejsce na nagrodę."
+  missing:
+    items: "&cNie masz wymaganych przedmiotów!"
+    money: "&cNie masz wystarczająco pieniędzy!"
+    have-item: "&cNie masz wymaganego przedmiotu!"
+label:
+  money: "{amount}$"
+  crate: "skrzynka {id}"
+  key: "klucz {id}"
+  title: "tytuł na czacie"
+  unlock: "odblokowanie"
+welcome:
+  title: "&6&lWitaj"
+  subtitle: "&eTwoja opowieść zaczyna się teraz."
+reminder: "&6&l📜 Czeka na Ciebie zadanie w kategorii {category}! Wpisz /quests"
+reward:
+  title: "&aNowy tytuł na czacie: {title}"
+admin:
+  usage: "&eUżycie: /@quests reload | list | reset <gracz> [kategoria] | complete <gracz> <kategoria> <nr>"
+  players-only: "&cMenu zadań może otworzyć tylko gracz."
+  reloaded: "&aQuesty przeładowane: {categories} kategorii, {quests} zadań."
+  list: "&e{category}&7 ({id}): {quests} zadań"
+  list-empty: "&7Brak kategorii."
+  player-not-found: "&cNie znaleziono gracza: {player}"
+  unknown-category: "&cNieznana kategoria: {id}. Dostępne: {list}"
+  unknown-quest: "&cKategoria {category} nie ma zadania {quest}."
+  reset-all: "&aWyzerowano cały postęp zadań gracza {player}."
+  reset-category: "&aWyzerowano {category} graczowi {player}."
+  completed: "&aZaliczono graczowi {player} zadanie {quest} w {category} i wydano nagrody."
+  already-done: "&e{player} ma już zadanie {quest} w {category}."

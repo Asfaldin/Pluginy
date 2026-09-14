@@ -79,6 +79,10 @@ class QuestConfigParserTest {
               mining:
                 name: "Mining"
                 icon: { item: IRON_PICKAXE }
+                look:
+                  filler: { item: BOOK }
+                  buttons:
+                    back: { item: NOT_AN_ITEM }
                 after: { category: main_path, quest: 3 }
                 requires-unlock: Nether
                 page-layout:
@@ -94,7 +98,8 @@ class QuestConfigParserTest {
     @Test
     void parsesEverything() throws Exception {
         QuestConfig c = parse(FULL);
-        assertTrue(warnings.isEmpty(), warnings.toString());
+        // jedyne ostrzeżenie: zły przycisk w look kategorii mining
+        assertEquals(List.of("quests.yml categories.mining.look.buttons.back: missing or unknown item - using the default."), warnings);
 
         QuestSettings s = c.settings();
         assertEquals(new ItemRef("ARROW", null, 1), s.available());
@@ -132,6 +137,13 @@ class QuestConfigParserTest {
         assertEquals(new After("main_path", 3), mining.after());
         assertEquals("nether", mining.requiresUnlock());
         assertFalse(mining.glow());
+
+        // Własny wygląd: tło z look, reszta z settings (ARROW z settings, drzwi z domyślnych).
+        assertEquals(new ItemRef("BOOK", null, 1), mining.look().filler());
+        assertEquals(new ItemRef("ARROW", null, 1), mining.look().available());
+        assertEquals(QuestSettings.DEFAULTS.back(), mining.look().back());
+        // Kategoria bez look = dokładnie wygląd z settings.
+        assertEquals(c.settings(), main.look());
     }
 
     @Test

@@ -33,7 +33,8 @@ public final class QuestConfigParser {
                                     BiFunction<List<?>, String, List<Reward>> rewards,
                                     Predicate<String> materialExists,
                                     Consumer<String> warn) {
-        QuestSettings settings = parseSettings(root.getConfigurationSection("settings"), materialExists, warn);
+        QuestSettings settings = parseLook(root.getConfigurationSection("settings"), QuestSettings.DEFAULTS,
+                "quests.yml settings", materialExists, warn);
         List<SlotEntry> mainMenu = parseLayout(root.getList("main-menu.layout"), "quests.yml main-menu.layout", materialExists, warn);
 
         Map<String, String> titles = new LinkedHashMap<>();
@@ -50,7 +51,7 @@ public final class QuestConfigParser {
                     warn.accept(where + ": not a section - skipping category.");
                     continue;
                 }
-                categories.put(id, parseCategory(id, s, where, rewards, materialExists, warn));
+                categories.put(id, parseCategory(id, s, where, settings, rewards, materialExists, warn));
             }
         }
         // after wskazuje na inną kategorię - sprawdzane, gdy wszystkie są już wczytane
@@ -73,7 +74,7 @@ public final class QuestConfigParser {
                 Collections.unmodifiableMap(titles), Collections.unmodifiableMap(categories));
     }
 
-    private static CategoryDef parseCategory(String id, ConfigurationSection s, String where,
+    private static CategoryDef parseCategory(String id, ConfigurationSection s, String where, QuestSettings defaults,
                                              BiFunction<List<?>, String, List<Reward>> rewards,
                                              Predicate<String> materialExists, Consumer<String> warn) {
         ItemRef icon = validItem(ItemRef.from(s.get("icon")), materialExists);
@@ -109,7 +110,9 @@ public final class QuestConfigParser {
         return new CategoryDef(id, s.getString("name", id), icon, s.getString("description", ""),
                 // main-path: stara nazwa z pierwszej wersji - dziś znaczy tylko blask na ikonce
                 s.getBoolean("glow", s.getBoolean("main-path")), s.getBoolean("sequential"), after, unlock,
-                List.copyOf(layout), List.copyOf(quests));
+                List.copyOf(layout), List.copyOf(quests),
+                // własny wygląd kategorii; czego brak - z settings
+                parseLook(s.getConfigurationSection("look"), defaults, where + ".look", materialExists, warn));
     }
 
     private static QuestDef parseQuest(Object raw, String at, BiFunction<List<?>, String, List<Reward>> rewards,
@@ -219,26 +222,28 @@ public final class QuestConfigParser {
         return out;
     }
 
-    private static QuestSettings parseSettings(ConfigurationSection s, Predicate<String> materialExists, Consumer<String> warn) {
-        QuestSettings d = QuestSettings.DEFAULTS;
+    /** Sekcja wyglądu (settings albo look kategorii); brakujące pola biorą się z d. */
+    private static QuestSettings parseLook(ConfigurationSection s, QuestSettings d, String where,
+                                           Predicate<String> materialExists, Consumer<String> warn) {
         if (s == null) return d;
         return new QuestSettings(
-                item(s, "filler", d.filler(), materialExists, warn),
-                item(s, "icons.available", d.available(), materialExists, warn),
-                item(s, "icons.completed", d.completed(), materialExists, warn),
-                item(s, "icons.locked", d.locked(), materialExists, warn),
-                item(s, "icons.category-locked", d.categoryLocked(), materialExists, warn),
-                item(s, "icons.category-empty", d.categoryEmpty(), materialExists, warn),
-                item(s, "buttons.back", d.back(), materialExists, warn),
-                item(s, "buttons.prev", d.prev(), materialExists, warn),
-                item(s, "buttons.next", d.next(), materialExists, warn));
+                item(s, "filler", d.filler(), where, materialExists, warn),
+                item(s, "icons.available", d.available(), where, materialExists, warn),
+                item(s, "icons.completed", d.completed(), where, materialExists, warn),
+                item(s, "icons.locked", d.locked(), where, materialExists, warn),
+                item(s, "icons.category-locked", d.categoryLocked(), where, materialExists, warn),
+                item(s, "icons.category-empty", d.categoryEmpty(), where, materialExists, warn),
+                item(s, "buttons.back", d.back(), where, materialExists, warn),
+                item(s, "buttons.prev", d.prev(), where, materialExists, warn),
+                item(s, "buttons.next", d.next(), where, materialExists, warn));
     }
 
-    private static ItemRef item(ConfigurationSection s, String path, ItemRef def, Predicate<String> materialExists, Consumer<String> warn) {
+    private static ItemRef item(ConfigurationSection s, String path, ItemRef def, String where,
+                                Predicate<String> materialExists, Consumer<String> warn) {
         if (!s.contains(path)) return def;
         ItemRef r = validItem(ItemRef.from(s.get(path)), materialExists);
         if (r == null) {
-            warn.accept("quests.yml settings." + path + ": missing or unknown item - using the default.");
+            warn.accept(where + "." + path + ": missing or unknown item - using the default.");
             return def;
         }
         return r;

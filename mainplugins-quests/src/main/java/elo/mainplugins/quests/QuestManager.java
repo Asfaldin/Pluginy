@@ -163,7 +163,7 @@ final class QuestManager implements Listener, TytulService {
     void openMain(Player player) {
         QuestGuiHolder holder = new QuestGuiHolder(QuestGuiHolder.Kind.MAIN, null, 0);
         Inventory gui = holder.create(54, lang.msg(plugin, "menu.title"));
-        fill(gui, config.mainMenu());
+        fill(gui, config.mainMenu(), config.settings().filler());
         ProgressStore.PlayerProgress p = of(player.getUniqueId());
         Map<Integer, String> slots = QuestRules.categorySlots(config.mainMenu(), config.categoryOrder());
         slots.forEach((slot, id) -> gui.setItem(slot, categoryIcon(player, p, config.categories().get(id))));
@@ -171,17 +171,17 @@ final class QuestManager implements Listener, TytulService {
         player.openInventory(gui);
     }
 
-    private void fill(Inventory gui, List<SlotEntry> layout) {
-        ItemStack def = items.filler(null, config.settings().filler());
+    private void fill(Inventory gui, List<SlotEntry> layout, ItemRef background) {
+        ItemStack def = items.filler(null, background);
         for (int i = 0; i < gui.getSize(); i++) gui.setItem(i, def);
         for (SlotEntry e : layout) {
-            if (e.role() == SlotRole.FILLER && e.material() != null) gui.setItem(e.slot(), items.filler(e.material(), config.settings().filler()));
+            if (e.role() == SlotRole.FILLER && e.material() != null) gui.setItem(e.slot(), items.filler(e.material(), background));
         }
     }
 
     private ItemStack categoryIcon(Player player, ProgressStore.PlayerProgress p, CategoryDef c) {
         CategoryState state = stateOf(player, p, c);
-        QuestSettings s = config.settings();
+        QuestSettings s = c.look();
         List<Component> lore = new ArrayList<>();
         if (!c.description().isBlank()) lore.add(QuestItems.text("&7" + c.description()));
         ItemRef icon = c.icon();
@@ -224,12 +224,12 @@ final class QuestManager implements Listener, TytulService {
         QuestGuiHolder holder = new QuestGuiHolder(QuestGuiHolder.Kind.CATEGORY, categoryId, shown);
         Inventory gui = holder.create(54, lang.msg(plugin, "menu.category-title",
                 Map.of("category", c.name(), "page", String.valueOf(shown + 1))));
-        fill(gui, c.pageLayout());
+        fill(gui, c.pageLayout(), c.look().filler());
         Set<Integer> done = of(player.getUniqueId()).doneView(categoryId);
         Map<Integer, Integer> questSlots = QuestRules.questSlots(c.pageLayout(), shown, c.quests().size());
         questSlots.forEach((slot, index) -> gui.setItem(slot, questIcon(c, index, QuestRules.state(c, index, done))));
         holder.questSlots().putAll(questSlots);
-        QuestSettings s = config.settings();
+        QuestSettings s = c.look();
         for (SlotEntry e : c.pageLayout()) {
             switch (e.role()) {
                 case NAV_BACK -> nav(gui, holder, e, s.back(), "menu.back");
@@ -256,7 +256,7 @@ final class QuestManager implements Listener, TytulService {
 
     private ItemStack questIcon(CategoryDef c, int index, QuestState state) {
         QuestDef q = c.quests().get(index);
-        QuestSettings s = config.settings();
+        QuestSettings s = c.look();
         if (state == QuestState.LOCKED) {
             return items.icon(s.locked(), lang.msg(plugin, "quest.locked-name"), List.of(lang.msg(plugin, "quest.locked-hint")), false);
         }

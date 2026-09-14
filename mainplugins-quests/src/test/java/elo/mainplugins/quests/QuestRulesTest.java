@@ -24,7 +24,8 @@ class QuestRulesTest {
     }
 
     private static CategoryDef cat(String id, boolean sequential, After after, String unlock, List<QuestDef> quests) {
-        return new CategoryDef(id, id, new ItemRef("BOOK", null, 1), "", false, sequential, after, unlock, List.of(), quests);
+        return new CategoryDef(id, id, new ItemRef("BOOK", null, 1), "", false, sequential, after, unlock, List.of(), quests,
+                elo.mainplugins.quests.model.QuestSettings.DEFAULTS);
     }
 
     @Test

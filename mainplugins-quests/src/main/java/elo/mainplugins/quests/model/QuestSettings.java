@@ -1,6 +1,9 @@
 package elo.mainplugins.quests.model;
 
-/** Sekcja settings z quests.yml - wygląd menu. */
+/**
+ * Wygląd menu: sekcja settings z quests.yml (domyślny + tło menu głównego) albo look kategorii
+ * (jej ikonki zadań, ikonki w menu głównym, przyciski i tło strony).
+ */
 public record QuestSettings(ItemRef filler,
                             ItemRef available, ItemRef completed, ItemRef locked,
                             ItemRef categoryLocked, ItemRef categoryEmpty,

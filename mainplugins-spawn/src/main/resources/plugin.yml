@@ -18,7 +18,7 @@ commands:
     permission: mainplugins.spawn.admin
     permission-message: "&cNie masz permisji do tej komendy!"
   warp:
-    description: Teleportuj się do nazwanego warpu (niektóre wymagają ukończenia questa)
+    description: Teleportuj się do nazwanego warpu (niektóre wymagają odblokowania)
     usage: "/warp <nazwa>"
   "@setwarp":
     description: Ustaw/nadpisz warp w swojej aktualnej lokalizacji
@@ -28,6 +28,11 @@ commands:
   "@delwarp":
     description: Usuń istniejący warp
     usage: "/@delwarp <nazwa>"
+    permission: mainplugins.spawn.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@warplock":
+    description: (Admin) Warp needs an unlock from core (requires-unlock); without a name the lock is removed
+    usage: "/@warplock <warp> [unlock]"
     permission: mainplugins.spawn.admin
     permission-message: "&cNie masz permisji do tej komendy!"
 

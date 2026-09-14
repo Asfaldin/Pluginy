@@ -5,13 +5,10 @@ import net.kyori.adventure.text.Component;
 import java.util.UUID;
 
 /**
- * Opcjonalny kontrakt tytułów na czacie - implementuje go i rejestruje w ServicesManager
- * mainplugins-quests. Tytuł to na razie efekt uboczny ukończenia konkretnego questu Głównej
- * Ścieżki (patrz QuestManager) - zero osobnej persystencji, dane już siedzą w quests.yml.
- * mainplugins-ranks (jedyny, kto dziś dotyka renderera czatu - patrz RankManager.onChat)
- * musi doklejać ten tytuł do WŁASNEGO renderera, a nie rejestrować drugi, konkurencyjny -
- * Paper's AsyncChatEvent#renderer(...) to zwykły setter, nie łańcuch, więc dwa niezależne
- * event.renderer() nadpisałyby się nawzajem zamiast się złożyć.
+ * Opcjonalny kontrakt tytułów na czacie - rejestruje go mainplugins-quests (tytuły z nagrody
+ * "title: id", zdefiniowane w quests.yml). mainplugins-ranks dokleja tytuł do własnego renderera
+ * czatu (Paper's AsyncChatEvent#renderer(...) to setter, więc drugi renderer nadpisałby pierwszy).
+ * Bez Questów po prostu nie ma tytułów - nic się nie psuje.
  */
 public interface TytulService {
 

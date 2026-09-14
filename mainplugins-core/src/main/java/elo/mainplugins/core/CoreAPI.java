@@ -8,7 +8,6 @@ import elo.mainplugins.core.api.LangService;
 import elo.mainplugins.core.api.LicenseService;
 import elo.mainplugins.core.api.MarketService;
 import elo.mainplugins.core.api.PlaceholderService;
-import elo.mainplugins.core.api.QuestService;
 import elo.mainplugins.core.api.RankService;
 import elo.mainplugins.core.api.RewardService;
 import elo.mainplugins.core.api.SpawnService;
@@ -76,12 +75,6 @@ public final class CoreAPI {
     /** Opcjonalny jak {@link #getIslandService()} - zwraca null, jeśli mainplugins-spawn nie jest wgrany/włączony. */
     public static SpawnService getSpawnService() {
         RegisteredServiceProvider<SpawnService> rsp = Bukkit.getServicesManager().getRegistration(SpawnService.class);
-        return rsp != null ? rsp.getProvider() : null;
-    }
-
-    /** Opcjonalny jak {@link #getIslandService()} - zwraca null, jeśli mainplugins-quests nie jest wgrany/włączony. */
-    public static QuestService getQuestService() {
-        RegisteredServiceProvider<QuestService> rsp = Bukkit.getServicesManager().getRegistration(QuestService.class);
         return rsp != null ? rsp.getProvider() : null;
     }
 

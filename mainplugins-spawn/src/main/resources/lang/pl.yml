@@ -1,0 +1,7 @@
+# Mainplugins Spawn - komunikaty po polsku (na razie tylko blokada warpów).
+warp:
+  locked: "&cTen warp jest jeszcze zablokowany."
+  lock-usage: "&eUżycie: /@warplock <warp> [odblokowanie] - bez nazwy odblokowania blokada znika"
+  lock-set: "&aWarp {warp} wymaga teraz odblokowania: {unlock}"
+  lock-removed: "&aWarp {warp} jest znowu otwarty dla wszystkich."
+  unknown: "&cNie ma warpu o nazwie \"{warp}\"."

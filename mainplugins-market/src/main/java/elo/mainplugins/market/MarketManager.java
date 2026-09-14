@@ -3,7 +3,6 @@ package elo.mainplugins.market;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.MarketService;
-import elo.mainplugins.core.api.QuestService;
 import elo.mainplugins.core.api.Rank;
 import elo.mainplugins.core.api.RankService;
 import elo.mainplugins.core.util.AsyncConfigSaver;
@@ -101,7 +100,7 @@ public class MarketManager implements Listener, MarketService {
         this.saverRynku = new AsyncConfigSaver(plugin, configRynku, plikRynku, 10);
     }
 
-    /** {@inheritDoc} Skanuje wszystkie aktywne oferty po polu "sprzedawca" - pod QuestService/quest #19 Głównej Ścieżki. */
+    /** {@inheritDoc} Skanuje wszystkie aktywne oferty po polu "sprzedawca". */
     @Override
     public boolean maAktywnaOferte(UUID uuid) {
         if (!configRynku.contains("przedmioty")) return false;
@@ -188,9 +187,6 @@ public class MarketManager implements Listener, MarketService {
         configRynku.set("przedmioty." + idPrzedmiotu + ".nick_sprzedawcy", player.getName());
 
         zapiszRynek();
-
-        QuestService quests = CoreAPI.getQuestService();
-        if (quests != null) quests.zarejestrujWystawienieNaTarg(player.getUniqueId());
 
         player.getInventory().setItemInMainHand(null);
         player.sendMessage(Component.text("Pomyślnie wystawiono przedmiot na targ za " + cena + "$!", NamedTextColor.GREEN));

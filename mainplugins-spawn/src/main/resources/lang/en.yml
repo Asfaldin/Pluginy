@@ -1,0 +1,7 @@
+# Mainplugins Spawn - English messages (only the warp lock for now).
+warp:
+  locked: "&cThis warp is still locked."
+  lock-usage: "&eUsage: /@warplock <warp> [unlock] - without an unlock name the lock is removed"
+  lock-set: "&aWarp {warp} now needs the unlock: {unlock}"
+  lock-removed: "&aWarp {warp} is open for everyone again."
+  unknown: "&cThere is no warp called \"{warp}\"."

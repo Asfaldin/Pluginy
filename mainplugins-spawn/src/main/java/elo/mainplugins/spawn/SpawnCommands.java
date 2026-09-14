@@ -1,5 +1,6 @@
 package elo.mainplugins.spawn;
 
+import elo.mainplugins.core.api.LangService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
@@ -7,6 +8,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -14,11 +16,12 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
  * /spawn i /warp (każdy), /@setspawn [info], /@obszar <wand|usun|lista|info|moby|border> ...,
- * /@setwarp <nazwa> i /@delwarp <nazwa> - te ostatnie cztery chronione uprawnieniem
+ * /@setwarp <nazwa>, /@delwarp <nazwa> i /@warplock <nazwa> [odblokowanie] - te ostatnie chronione uprawnieniem
  * mainplugins.spawn.admin (patrz plugin.yml - Bukkit sam odrzuca wywołanie zanim trafi do
  * onCommand). Cała logika w SpawnManager/ObszarManager/WarpManager. Ta sama klasa dostarcza
  * też podpowiedzi Tab (patrz onTabComplete) - żeby admin nie musiał pamiętać z głowy
@@ -37,11 +40,15 @@ public class SpawnCommands implements CommandExecutor, TabCompleter {
     // Podkomendy, których drugi argument to nazwa istniejącego obszaru - patrz onTabComplete.
     private static final List<String> PODKOMENDY_Z_NAZWA = List.of("wand", "usun", "info", "moby", "border");
 
+    private final Plugin plugin;
+    private final LangService lang;
     private final SpawnManager spawnManager;
     private final ObszarManager obszarManager;
     private final WarpManager warpManager;
 
-    public SpawnCommands(SpawnManager spawnManager, ObszarManager obszarManager, WarpManager warpManager) {
+    public SpawnCommands(Plugin plugin, LangService lang, SpawnManager spawnManager, ObszarManager obszarManager, WarpManager warpManager) {
+        this.plugin = plugin;
+        this.lang = lang;
         this.spawnManager = spawnManager;
         this.obszarManager = obszarManager;
         this.warpManager = warpManager;
@@ -61,6 +68,7 @@ public class SpawnCommands implements CommandExecutor, TabCompleter {
             case "warp" -> handleWarp(player, args);
             case "@setwarp" -> handleSetwarp(player, args);
             case "@delwarp" -> handleDelwarp(player, args);
+            case "@warplock" -> handleWarplock(player, args);
         }
         return true;
     }
@@ -88,6 +96,21 @@ public class SpawnCommands implements CommandExecutor, TabCompleter {
             return;
         }
         warpManager.usunWarp(player, args[0]);
+    }
+
+    private void handleWarplock(Player player, String[] args) {
+        if (args.length == 0) {
+            lang.send(player, plugin, "warp.lock-usage");
+            return;
+        }
+        String unlock = args.length > 1 ? args[1] : null;
+        if (!warpManager.ustawBlokade(args[0], unlock)) {
+            lang.send(player, plugin, "warp.unknown", Map.of("warp", args[0]));
+            return;
+        }
+        String warp = args[0].toLowerCase();
+        if (unlock == null) lang.send(player, plugin, "warp.lock-removed", Map.of("warp", warp));
+        else lang.send(player, plugin, "warp.lock-set", Map.of("warp", warp, "unlock", unlock.toLowerCase()));
     }
 
     private void handleSetspawn(Player player, String[] args) {
@@ -168,7 +191,7 @@ public class SpawnCommands implements CommandExecutor, TabCompleter {
         if (nazwaKomendy.equals("@setspawn")) {
             return args.length == 1 ? dopasuj(args[0], PODKOMENDY_SETSPAWN) : List.of();
         }
-        if (nazwaKomendy.equals("warp") || nazwaKomendy.equals("@delwarp")) {
+        if (nazwaKomendy.equals("warp") || nazwaKomendy.equals("@delwarp") || nazwaKomendy.equals("@warplock")) {
             return args.length == 1 ? dopasuj(args[0], warpManager.nazwyWarpow()) : List.of();
         }
         if (!nazwaKomendy.equals("@obszar")) return List.of();

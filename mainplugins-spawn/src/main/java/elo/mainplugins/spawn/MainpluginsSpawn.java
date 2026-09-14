@@ -1,6 +1,7 @@
 package elo.mainplugins.spawn;
 
 import elo.mainplugins.core.CoreAPI;
+import elo.mainplugins.core.api.LangService;
 import elo.mainplugins.core.api.SpawnService;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -21,15 +22,18 @@ public final class MainpluginsSpawn extends JavaPlugin {
             return;
         }
 
+        LangService lang = CoreAPI.getLangService();
+        lang.registerDefaults(this);
+
         spawnManager = new SpawnManager(this);
         obszarManager = new ObszarManager(this);
-        warpManager = new WarpManager(this);
+        warpManager = new WarpManager(this, lang);
         getServer().getPluginManager().registerEvents(spawnManager, this);
         getServer().getPluginManager().registerEvents(obszarManager, this);
         getServer().getPluginManager().registerEvents(new ObszarProtectionManager(obszarManager), this);
         getServer().getServicesManager().register(SpawnService.class, spawnManager, this, ServicePriority.Normal);
 
-        SpawnCommands executor = new SpawnCommands(spawnManager, obszarManager, warpManager);
+        SpawnCommands executor = new SpawnCommands(this, lang, spawnManager, obszarManager, warpManager);
         if (getCommand("spawn") != null) {
             getCommand("spawn").setExecutor(executor);
             getCommand("spawn").setTabCompleter(executor);
@@ -53,6 +57,10 @@ public final class MainpluginsSpawn extends JavaPlugin {
         if (getCommand("@delwarp") != null) {
             getCommand("@delwarp").setExecutor(executor);
             getCommand("@delwarp").setTabCompleter(executor);
+        }
+        if (getCommand("@warplock") != null) {
+            getCommand("@warplock").setExecutor(executor);
+            getCommand("@warplock").setTabCompleter(executor);
         }
     }
 

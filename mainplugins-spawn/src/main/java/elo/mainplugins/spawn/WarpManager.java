@@ -1,7 +1,8 @@
 package elo.mainplugins.spawn;
 
 import elo.mainplugins.core.CoreAPI;
-import elo.mainplugins.core.api.QuestService;
+import elo.mainplugins.core.api.LangService;
+import elo.mainplugins.core.api.UnlockService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -15,7 +16,9 @@ import org.bukkit.plugin.Plugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -26,24 +29,21 @@ import java.util.TreeSet;
  * jednym pliku warps.yml zamiast pojedynczych pól. Nazwy warpów są case-insensitive
  * (przechowywane z małej litery) - "Kowal"/"kowal"/"KOWAL" to ten sam warp.
  *
- * Jedyny warp z realną blokadą to "kowal" (patrz jestZablokowany) - nagroda questu #16
- * Głównej Ścieżki (mainplugins-quests, "Zaklinacz" -> "Kowal Wyspy"). To CELOWO
- * zaszyty na sztywno special case, nie generyczny system wymagań per-warp - jedyny
- * warp, który tego potrzebuje, więc osobna konfiguracja "wymogów" byłaby przedwczesną
- * abstrakcją. Jeśli w przyszłości powstanie drugi gated warp, wtedy warto to uogólnić.
+ * Warp może wymagać odblokowania z core (requires-unlock w warps.yml, ustawiane /@warplock) -
+ * Spawn nie wie, kto je daje (zadanie, osiągnięcie, admin).
  */
 public class WarpManager {
 
-    private static final String WARP_KOWAL = "kowal";
-    private static final int QUEST_ODBLOKOWUJACY_KOWALA = 16;
-
     private final Plugin plugin;
+    private final LangService lang;
     private final File plikWarpow;
     private final FileConfiguration configWarpow;
     private final Map<String, Location> warpy = new LinkedHashMap<>();
+    private final Map<String, String> blokady = new HashMap<>();
 
-    public WarpManager(Plugin plugin) {
+    public WarpManager(Plugin plugin, LangService lang) {
         this.plugin = plugin;
+        this.lang = lang;
         this.plikWarpow = new File(plugin.getDataFolder(), "warps.yml");
         if (!plikWarpow.exists()) {
             plikWarpow.getParentFile().mkdirs();
@@ -66,6 +66,8 @@ public class WarpManager {
             warpy.put(nazwa, new Location(world,
                     w.getDouble("x"), w.getDouble("y"), w.getDouble("z"),
                     (float) w.getDouble("yaw", 0), (float) w.getDouble("pitch", 0)));
+            String wymagane = w.getString("requires-unlock");
+            if (wymagane != null && !wymagane.isBlank()) blokady.put(nazwa, wymagane.trim().toLowerCase(Locale.ROOT));
         }
     }
 
@@ -80,6 +82,8 @@ public class WarpManager {
             configWarpow.set(sciezka + ".z", loc.getZ());
             configWarpow.set(sciezka + ".yaw", (double) loc.getYaw());
             configWarpow.set(sciezka + ".pitch", (double) loc.getPitch());
+            String wymagane = blokady.get(e.getKey());
+            if (wymagane != null) configWarpow.set(sciezka + ".requires-unlock", wymagane);
         }
         try {
             configWarpow.save(plikWarpow);
@@ -101,6 +105,7 @@ public class WarpManager {
             player.sendMessage(Component.text("Nie ma warpu o nazwie \"" + klucz + "\".", NamedTextColor.RED));
             return;
         }
+        blokady.remove(klucz);
         zapisz();
         player.sendMessage(Component.text("Usunięto warp \"" + klucz + "\".", NamedTextColor.GREEN));
     }
@@ -113,18 +118,29 @@ public class WarpManager {
             return;
         }
         if (jestZablokowany(player, klucz)) {
-            player.sendMessage(Component.text("Ten warp jest jeszcze zablokowany - ukończ quest \"Kowal Wyspy\" (Główna Ścieżka #" + QUEST_ODBLOKOWUJACY_KOWALA + ").", NamedTextColor.RED));
+            lang.send(player, plugin, "warp.locked");
             return;
         }
         player.teleport(cel);
         player.sendMessage(Component.text("Przeteleportowano do \"" + klucz + "\".", NamedTextColor.AQUA));
     }
 
-    /** Patrz javadoc klasy - jedyny obecnie zablokowany warp, celowo zaszyty na sztywno. */
+    /** Blokada z warps.yml (requires-unlock); bez niej warp otwarty dla wszystkich. */
     private boolean jestZablokowany(Player player, String klucz) {
-        if (!WARP_KOWAL.equals(klucz)) return false;
-        QuestService quests = CoreAPI.getQuestService();
-        return quests == null || !quests.ukonczylGlownaSciezke(player.getUniqueId(), QUEST_ODBLOKOWUJACY_KOWALA);
+        String wymagane = blokady.get(klucz);
+        if (wymagane == null) return false;
+        UnlockService unlocks = CoreAPI.getUnlockService();
+        return unlocks == null || !unlocks.has(player.getUniqueId(), wymagane);
+    }
+
+    /** unlock null/pusty = zdjęcie blokady; false = nie ma takiego warpu. */
+    public boolean ustawBlokade(String warp, String unlock) {
+        String klucz = warp.toLowerCase(Locale.ROOT);
+        if (!warpy.containsKey(klucz)) return false;
+        if (unlock == null || unlock.isBlank()) blokady.remove(klucz);
+        else blokady.put(klucz, unlock.trim().toLowerCase(Locale.ROOT));
+        zapisz();
+        return true;
     }
 
     public Set<String> nazwyWarpow() {

@@ -1,5 +1,7 @@
 package elo.mainplugins.generators;
 
+import elo.mainplugins.core.CoreAPI;
+import elo.mainplugins.core.api.CustomItemProvider;
 import elo.mainplugins.core.util.TabCompleteUtils;
 import elo.mainplugins.generators.generator.GeneratorManager;
 import org.bukkit.Bukkit;
@@ -10,8 +12,16 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapelessRecipe;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
 /** Generatory (bruk, piasek/żwir, tiery 2-4) - wydzielone z Questów 1:1. Na razie bez licencji. */
 public final class MainpluginsGenerators extends JavaPlugin {
+
+    /** Id generatorów bruku i kruchych surowców (te same co tagi na przedmiotach). */
+    private static final String BRUK_ID = "GENERATOR_BRUK_T1";
+    private static final String KRUCHY_ID = "GENERATOR_KRUCHY_T1";
 
     private GeneratorManager tierowyGeneratorManager;
 
@@ -26,6 +36,30 @@ public final class MainpluginsGenerators extends JavaPlugin {
 
         tierowyGeneratorManager = new GeneratorManager(this);
         getServer().getPluginManager().registerEvents(tierowyGeneratorManager, this);
+
+        // Generatory w katalogu itemów core: "custom: GENERATOR_BRUK_T1" działa w Sklepie, nagrodach itd.
+        // Tagi przedmiotów się nie zmieniają, więc stare generatory graczy dalej działają.
+        CoreAPI.getCustomItemService().registerProvider(this, new CustomItemProvider() {
+            @Override
+            public Set<String> ids() {
+                Set<String> ids = new LinkedHashSet<>(List.of(BRUK_ID, KRUCHY_ID));
+                ids.addAll(tierowyGeneratorManager.ids());
+                return ids;
+            }
+
+            @Override
+            public ItemStack create(String id, int amount, Player player) {
+                ItemStack item;
+                if (id.equalsIgnoreCase(BRUK_ID)) item = GeneratorBrukuManager.stworzGenerator();
+                else if (id.equalsIgnoreCase(KRUCHY_ID)) item = GeneratorKruchychManager.stworzGenerator();
+                else {
+                    String known = tierowyGeneratorManager.ids().stream().filter(k -> k.equalsIgnoreCase(id)).findFirst().orElse(null);
+                    item = known == null ? null : tierowyGeneratorManager.stworz(known);
+                }
+                if (item != null) item.setAmount(Math.max(1, Math.min(amount, item.getMaxStackSize())));
+                return item;
+            }
+        });
 
         if (getCommand("@addkruchy") != null) {
             getCommand("@addkruchy").setExecutor((sender, command, label, args) -> {

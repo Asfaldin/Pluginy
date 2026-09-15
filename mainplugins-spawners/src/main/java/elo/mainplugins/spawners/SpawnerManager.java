@@ -170,6 +170,41 @@ public class SpawnerManager implements Listener {
         this.config = nowy;
     }
 
+    /** Prefiks id spawnerów w katalogu itemów core ("custom: spawner_zombie"). */
+    public static final String CATALOG_PREFIX = "spawner_";
+
+    /** Id wszystkich spawnerów w katalogu itemów. */
+    public java.util.Set<String> catalogIds() {
+        java.util.Set<String> out = new java.util.LinkedHashSet<>();
+        for (String id : config.typy().keySet()) out.add(CATALOG_PREFIX + id.toLowerCase(java.util.Locale.ROOT));
+        return out;
+    }
+
+    /** Typ z tagu przedmiotu: nowy "spawner_zombie" albo stary "ZOMBIE" (przedmioty sprzed katalogu). */
+    private SpawnerTypeDef typZTagu(String tag) {
+        String id = tag.toLowerCase(java.util.Locale.ROOT).startsWith(CATALOG_PREFIX) ? tag.substring(CATALOG_PREFIX.length()) : tag;
+        SpawnerTypeDef exact = config.typ(id);
+        if (exact != null) return exact;
+        for (Map.Entry<String, SpawnerTypeDef> e : config.typy().entrySet()) {
+            if (e.getKey().equalsIgnoreCase(id)) return e.getValue();
+        }
+        return null;
+    }
+
+    /** Przedmiot spawnera danego typu (id z katalogu albo samo id typu); null, gdy typu nie ma. */
+    public ItemStack createItem(String catalogId, int amount) {
+        SpawnerTypeDef typ = typZTagu(catalogId);
+        if (typ == null) return null;
+        ItemStack item = new ItemStack(Material.SPAWNER, Math.max(1, amount));
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.text("Spawner: " + typ.nazwaOdmieniona(), NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
+        meta.getPersistentDataContainer().set(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING,
+                CATALOG_PREFIX + typ.id().toLowerCase(java.util.Locale.ROOT));
+        meta.setEnchantmentGlintOverride(true);
+        item.setItemMeta(meta);
+        return item;
+    }
+
     private String kluczLokalizacji(Location loc) {
         return loc.getWorld().getName() + ";" + loc.getBlockX() + ";" + loc.getBlockY() + ";" + loc.getBlockZ();
     }
@@ -185,7 +220,7 @@ public class SpawnerManager implements Listener {
         String typName = meta.getPersistentDataContainer().get(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING);
         if (typName == null) return; // zwykły wanilijski spawner (np. z creative) - zostaw jak jest
 
-        SpawnerTypeDef typ = config.typ(typName);
+        SpawnerTypeDef typ = typZTagu(typName);
         if (typ == null) return; // nieznany typ (spoza spawnery-typy.yml) - nie nasz custom-id
 
         Player player = event.getPlayer();
@@ -311,15 +346,8 @@ public class SpawnerManager implements Listener {
         usunSpawner(loc);
         block.setType(Material.AIR);
 
-        // Item z custom-id, żeby po podniesieniu i postawieniu był tym samym typem.
-        ItemStack drop = new ItemStack(Material.SPAWNER);
-        ItemMeta meta = drop.getItemMeta();
-        meta.displayName(Component.text("Spawner: " + typ.nazwaOdmieniona(),
-                NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
-        meta.getPersistentDataContainer()
-                .set(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING, typ.id());
-        meta.setEnchantmentGlintOverride(true);
-        drop.setItemMeta(meta);
+        // Item z custom-id (ten sam co w katalogu), żeby po podniesieniu i postawieniu był tym samym typem.
+        ItemStack drop = createItem(typ.id(), 1);
 
         loc.getWorld().dropItemNaturally(loc.clone().add(0.5, 0.5, 0.5), drop);
         player.sendMessage(Component.text("Zebrano spawner: " + typ.nazwaOdmieniona() + "!",

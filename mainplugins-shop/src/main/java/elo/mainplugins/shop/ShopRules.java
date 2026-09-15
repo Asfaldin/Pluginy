@@ -1,0 +1,84 @@
+package elo.mainplugins.shop;
+
+import elo.mainplugins.shop.model.Category;
+import elo.mainplugins.shop.model.Rounding;
+import elo.mainplugins.shop.model.ShopConfig;
+import elo.mainplugins.shop.model.ShopItem;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.List;
+import java.util.Map;
+
+/** Liczenie cen sklepu, bez serwera. Liczone na BigDecimal - bez błędów typu 0.16*64 = 10.2400001. */
+public final class ShopRules {
+
+    /** Wynik skupu: ile pełnych paczek, ile sztuk zabrać, ile pieniędzy. */
+    public record SellResult(int lots, int pieces, double money) {}
+
+    private ShopRules() {}
+
+    private static int scale(Rounding r) {
+        return r == Rounding.WHOLE ? 0 : 2;
+    }
+
+    private static BigDecimal minimum(Rounding r) {
+        return r == Rounding.WHOLE ? BigDecimal.ONE : new BigDecimal("0.01");
+    }
+
+    /** Cena za dowolną ilość sztuk: proporcjonalnie z ceny paczki, w górę; minimum 1 / 0.01 (0 gdy przedmiot za darmo). */
+    public static double buyPrice(ShopItem item, int pieces, Rounding rounding) {
+        if (item.buy() == null) return -1;
+        if (item.buy() == 0) return 0;
+        BigDecimal price = BigDecimal.valueOf(item.buy()).multiply(BigDecimal.valueOf(pieces))
+                .divide(BigDecimal.valueOf(item.amount()), scale(rounding), RoundingMode.CEILING);
+        return price.max(minimum(rounding)).doubleValue();
+    }
+
+    /**
+     * Cena skupu jednej paczki po mnożniku - 1:1 jak dawne DynamicPriceManager.policzCeneSkupu:
+     * zaokrąglenie do najbliższej (połówki w górę), sufit = cena kupna tej paczki * maxSellShare (w dół), minimum 1 / 0.01.
+     */
+    public static double sellPerLot(ShopItem item, double multiplier, double maxSellShare, Rounding rounding) {
+        int scale = scale(rounding);
+        BigDecimal price = BigDecimal.valueOf(item.sell()).multiply(BigDecimal.valueOf(multiplier)).setScale(scale, RoundingMode.HALF_UP);
+        if (item.buy() != null) {
+            BigDecimal buyPerSellLot = BigDecimal.valueOf(item.buy()).multiply(BigDecimal.valueOf(item.sellAmount()))
+                    .divide(BigDecimal.valueOf(item.amount()), scale, RoundingMode.HALF_UP);
+            if (buyPerSellLot.signum() > 0) {
+                BigDecimal cap = buyPerSellLot.multiply(BigDecimal.valueOf(maxSellShare)).setScale(scale, RoundingMode.FLOOR);
+                if (price.compareTo(cap) > 0) price = cap;
+            }
+        }
+        return price.max(minimum(rounding)).doubleValue();
+    }
+
+    /** Skup z posiadanych sztuk - tylko pełne paczki, reszta zostaje u gracza. */
+    public static SellResult sell(ShopItem item, int ownedPieces, double multiplier, double maxSellShare, Rounding rounding) {
+        int lots = ownedPieces / item.sellAmount();
+        if (lots == 0) return new SellResult(0, 0, 0);
+        double perLot = sellPerLot(item, multiplier, maxSellShare, rounding);
+        double money = BigDecimal.valueOf(perLot).multiply(BigDecimal.valueOf(lots)).doubleValue();
+        return new SellResult(lots, lots * item.sellAmount(), money);
+    }
+
+    /** Pierwsza sprzedawalna pozycja o danym kluczu (kategorie po kolei, w każdej: stałe + aktualnie rotujące). */
+    public static ShopItem sellOffer(ShopConfig cfg, Map<String, List<ShopItem>> rotationActive, String key) {
+        for (Category c : cfg.categories().values()) {
+            for (ShopItem it : c.items()) if (it.sellable() && it.key().equals(key)) return it;
+            for (ShopItem it : rotationActive.getOrDefault(c.id(), List.of())) if (it.sellable() && it.key().equals(key)) return it;
+        }
+        return null;
+    }
+
+    /** Ile sztuk da się kupić za pieniądze i na ile starczy miejsca (jak dawne kupMaksymalnaIlosc). */
+    public static int maxBuyPieces(ShopItem item, double money, int freeSpacePieces, Rounding rounding) {
+        if (item.buy() == null || freeSpacePieces <= 0) return 0;
+        if (item.buy() == 0) return freeSpacePieces;
+        long guess = (long) Math.floor(money * item.amount() / item.buy());
+        int n = (int) Math.max(0, Math.min(guess, freeSpacePieces));
+        while (n > 0 && buyPrice(item, n, rounding) > money) n--;
+        while (n < freeSpacePieces && buyPrice(item, n + 1, rounding) <= money) n++;
+        return n;
+    }
+}

@@ -6,35 +6,21 @@ depend: [MainpluginsCore]
 
 commands:
   sklep:
-    description: Sklep
+    description: Server shop
     aliases: [buy]
   sprzedaj:
-    description: Sprzedaj trzymany przedmiot
+    description: Sell the item in your hand
     aliases: [sell]
   sprzedajwszystko:
-    description: Sprzedaj wszystkie przedmioty tego typu z ekwipunku
+    description: Sell all items of the type in your hand
     aliases: [sellall]
-  "@reloadsklep":
-    description: Wczytaj sklep.yml na nowo, bez restartu serwera
-    permission: mainplugins.shop.reload
-    permission-message: "&cNie masz permisji do tej komendy!"
-  "@statsklep":
-    description: Statystyki sprzedazy z biezacej doby
-    usage: /@statsklep [snapshot]
-    permission: mainplugins.shop.stats
-    permission-message: "&cNie masz permisji do tej komendy!"
-  '@sklep':
-    description: Administracyjna edycja cen sklepu
-    usage: /@sklep <info|cena|reset|resetall|mnoznik|rotacja>
+  "@shop":
+    description: (Admin) Shop - reload, prices, dynamic prices, events, rotation, statistics
+    usage: /<command> reload | info | price | reset | resetall | multiplier | event | rotation | stats
     permission: mainplugins.shop.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
-  mainplugins.shop.reload:
-    description: Pozwala przeładować konfigurację sklepu
-    default: op
-  mainplugins.shop.stats:
-    description: Dostep do statystyk sklepu
-    default: op
   mainplugins.shop.admin:
-    description: Edycja cen sklepu
+    description: Access to /@shop
     default: op

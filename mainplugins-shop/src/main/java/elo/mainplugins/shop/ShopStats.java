@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * przyrostowo), a raport wypluwany do statystyki-sklepu.csv (bo to otwiera
  * się w Excelu i da się posortować).
  */
-public class StatystykiSklepu {
+public class ShopStats {
 
     /** Poniżej tego mnożnika uznajemy, że item "siedzi na dnie". */
     private static final double PROG_DNA = 0.55;
@@ -44,7 +44,7 @@ public class StatystykiSklepu {
     private static class Wpis {
         // ---- kumulowane od zawsze (bez zmian) ----
         long sztukLacznie;
-        long wyplaconoLacznie;
+        double wyplaconoLacznie;
         long transakcji;
         long cykliLacznie;
         long cykliNaDnie;
@@ -54,7 +54,7 @@ public class StatystykiSklepu {
 
         // ---- liczniki dobowe, zerowane o północy ----
         long sztukDzis;
-        long wyplaconoDzis;
+        double wyplaconoDzis;
         long transakcjiDzis;
     }
 
@@ -69,20 +69,31 @@ public class StatystykiSklepu {
 
     private final File folderArchiwum;
 
-    public StatystykiSklepu(Plugin plugin) {
+    private volatile boolean enabled;
+
+    public ShopStats(Plugin plugin, boolean enabled) {
         this.plugin = plugin;
-        this.plikYml = new File(plugin.getDataFolder(), "statystyki-sklepu.yml");
-        this.plikCsv = new File(plugin.getDataFolder(), "statystyki-sklepu.csv");
+        this.enabled = enabled;
+        this.plikYml = new File(plugin.getDataFolder(), "stats.yml");
+        this.plikCsv = new File(plugin.getDataFolder(), "stats.csv");
         this.config = YamlConfiguration.loadConfiguration(plikYml);
         wczytaj();
 
-        this.folderArchiwum = new File(plugin.getDataFolder(), "archiwum-statystyk");
-        if (!folderArchiwum.exists()) folderArchiwum.mkdirs();
+        this.folderArchiwum = new File(plugin.getDataFolder(), "stats-archive");
 
         // Data zapisana w pliku, a nie bieżąca - jeśli serwer stał wyłączony
         // przez dobę, chcemy to wykryć i zamknąć poprzedni dzień, a nie
         // po cichu doliczyć wczorajszy ruch do dzisiejszego.
         this.dzisiejszaData = config.getString("_meta.data", dzisiejszaDataSystemowa());
+    }
+
+    /** Włącz/wyłącz zbieranie (shop.yml stats.enabled, po /@shop reload). */
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public boolean enabled() {
+        return enabled;
     }
 
     private static String dzisiejszaDataSystemowa() {
@@ -100,6 +111,7 @@ public class StatystykiSklepu {
         String teraz = dzisiejszaDataSystemowa();
         if (teraz.equals(dzisiejszaData)) return;
 
+        if (!folderArchiwum.exists()) folderArchiwum.mkdirs();
         zapiszSnapshotDobowy(dzisiejszaData);
 
         for (Wpis w : dane.values()) {
@@ -132,12 +144,12 @@ public class StatystykiSklepu {
             linie.add(String.join(";",
                     e.getKey(),
                     String.valueOf(w.sztukDzis),
-                    String.valueOf(w.wyplaconoDzis),
+                    fmt(w.wyplaconoDzis),
                     String.valueOf(w.transakcjiDzis),
                     fmt(sredni)));
         }
 
-        File plik = new File(folderArchiwum, "statystyki-" + data + ".csv");
+        File plik = new File(folderArchiwum, "stats-" + data + ".csv");
         final String tresc = String.join("\n", linie) + "\n";
         wTle(() -> zapiszPlik(plik.toPath(), tresc));
     }
@@ -156,7 +168,7 @@ public class StatystykiSklepu {
             if (klucz.equals("_meta")) continue;
             Wpis w = new Wpis();
             w.sztukLacznie = config.getLong(klucz + ".sztuk", 0);
-            w.wyplaconoLacznie = config.getLong(klucz + ".wyplacono", 0);
+            w.wyplaconoLacznie = config.getDouble(klucz + ".wyplacono", 0);
             w.transakcji = config.getLong(klucz + ".transakcji", 0);
             w.cykliLacznie = config.getLong(klucz + ".cykli", 0);
             w.cykliNaDnie = config.getLong(klucz + ".cykli-na-dnie", 0);
@@ -164,7 +176,7 @@ public class StatystykiSklepu {
             w.sumaMnoznikow = config.getDouble(klucz + ".suma-mnoznikow", 0);
             w.najwiekszaTransakcja = config.getLong(klucz + ".max-transakcja", 0);
             w.sztukDzis = config.getLong(klucz + ".sztuk-dzis", 0);
-            w.wyplaconoDzis = config.getLong(klucz + ".wyplacono-dzis", 0);
+            w.wyplaconoDzis = config.getDouble(klucz + ".wyplacono-dzis", 0);
             w.transakcjiDzis = config.getLong(klucz + ".transakcji-dzis", 0);
             dane.put(klucz, w);
         }
@@ -182,7 +194,8 @@ public class StatystykiSklepu {
      * @param sztuk ile sztuk sprzedano w tej transakcji
      * @param wyplacono ile $ gracz dostał
      */
-    public void zapiszTransakcje(String klucz, int sztuk, long wyplacono) {
+    public void zapiszTransakcje(String klucz, int sztuk, double wyplacono) {
+        if (!enabled) return;
         Wpis w = dane.computeIfAbsent(klucz, k -> new Wpis());
         w.sztukLacznie += sztuk;
         w.wyplaconoLacznie += wyplacono;
@@ -199,6 +212,7 @@ public class StatystykiSklepu {
      * o tym, ile czasu item spędza na dnie i na szczycie.
      */
     public void zapiszCykl(String klucz, double mnoznik) {
+        if (!enabled) return;
         Wpis w = dane.computeIfAbsent(klucz, k -> new Wpis());
         w.cykliLacznie++;
         w.sumaMnoznikow += mnoznik;
@@ -211,6 +225,7 @@ public class StatystykiSklepu {
     // =========================================================================
 
     public void zapisz() {
+        if (!enabled) return;
         sprawdzZmianeDoby();
 
         config.set("_meta.data", dzisiejszaData);
@@ -218,7 +233,7 @@ public class StatystykiSklepu {
             String k = e.getKey();
             Wpis w = e.getValue();
             config.set(k + ".sztuk", w.sztukLacznie);
-            config.set(k + ".wyplacono", w.wyplaconoLacznie);
+            config.set(k + ".wyplacono", Math.round(w.wyplaconoLacznie * 100.0) / 100.0);
             config.set(k + ".transakcji", w.transakcji);
             config.set(k + ".cykli", w.cykliLacznie);
             config.set(k + ".cykli-na-dnie", w.cykliNaDnie);
@@ -226,7 +241,7 @@ public class StatystykiSklepu {
             config.set(k + ".suma-mnoznikow", Math.round(w.sumaMnoznikow * 100.0) / 100.0);
             config.set(k + ".max-transakcja", w.najwiekszaTransakcja);
             config.set(k + ".sztuk-dzis", w.sztukDzis);
-            config.set(k + ".wyplacono-dzis", w.wyplaconoDzis);
+            config.set(k + ".wyplacono-dzis", Math.round(w.wyplaconoDzis * 100.0) / 100.0);
             config.set(k + ".transakcji-dzis", w.transakcjiDzis);
         }
         // Serializacja na głównym wątku (config nie jest thread-safe),
@@ -283,10 +298,10 @@ public class StatystykiSklepu {
             linie.add(String.join(";",
                     e.getKey(),
                     String.valueOf(w.sztukDzis),
-                    String.valueOf(w.wyplaconoDzis),
+                    fmt(w.wyplaconoDzis),
                     String.valueOf(w.transakcjiDzis),
                     String.valueOf(w.sztukLacznie),
-                    String.valueOf(w.wyplaconoLacznie),
+                    fmt(w.wyplaconoLacznie),
                     String.valueOf(w.transakcji),
                     fmt(sredniaTrans),
                     String.valueOf(w.najwiekszaTransakcja),
@@ -323,7 +338,7 @@ public class StatystykiSklepu {
     // =========================================================================
 
     /** Rekord na potrzeby wyświetlania w grze. */
-    public record PozycjaTopki(String item, long sztuk, long wyplacono, double mnoznik) {}
+    public record PozycjaTopki(String item, long sztuk, double wyplacono, double mnoznik) {}
 
     /**
      * Najczęściej sprzedawane itemy z bieżącej doby.
@@ -351,14 +366,14 @@ public class StatystykiSklepu {
     }
 
     /** Podsumowanie całej doby - ile w sumie wypłacono graczom. */
-    public long getWyplaconoDzis() {
-        long suma = 0;
+    public double getWyplaconoDzis() {
+        double suma = 0;
         for (Wpis w : dane.values()) suma += w.wyplaconoDzis;
         return suma;
     }
 
     /** Wymuszony snapshot - do komendy administracyjnej. */
     public void wymusSnapshot() {
-        zapiszSnapshotDobowy(dzisiejszaData + "-reczny-" + System.currentTimeMillis());
+        zapiszSnapshotDobowy(dzisiejszaData + "-manual-" + System.currentTimeMillis());
     }
 }

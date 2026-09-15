@@ -1,22 +1,49 @@
 package elo.mainplugins.shop;
 
 import elo.mainplugins.core.CoreAPI;
-import elo.mainplugins.core.api.EconomyService;
+import elo.mainplugins.core.api.LangService;
 import elo.mainplugins.core.util.MenuBridge;
 import elo.mainplugins.core.util.TabCompleteUtils;
-import org.bukkit.command.Command;
+import elo.mainplugins.shop.model.Category;
+import elo.mainplugins.shop.model.ShopConfig;
+import elo.mainplugins.shop.model.ShopItem;
+import elo.mainplugins.shop.model.ShopSettings;
+import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.jetbrains.annotations.NotNull;
+import org.bukkit.scheduler.BukkitTask;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
+/** Sklep serwerowy - działa z samym core. Treść w shop.yml + categories/, teksty w lang/. */
 public final class MainpluginsShop extends JavaPlugin {
 
-    private ShopManager shopManager;
-    private RotacjaManager rotacjaManager;
+    /** Kategorie treści startowej (defaults/<język>/categories/<id>.yml). */
+    private static final List<String> DEFAULT_CATEGORIES = List.of("blocks", "farming", "ores", "mob-drops", "food");
+    /** Pliki starego sklepu - przy pierwszym starcie nowej wersji idą do old/. */
+    private static final List<String> OLD_FILES = List.of("sklep.yml", "sklep-gui.yml", "pula-rotacyjna.yml", "categories",
+            "ceny-dynamiczne.yml", "statystyki-sklepu.yml", "statystyki-sklepu.csv", "archiwum-statystyk", "rotacja.yml");
+
+    private volatile ShopConfig config;
+    private LangService lang;
+    private ShopStats stats;
+    private DynamicPriceManager prices;
+    private RotationManager rotation;
+    private ShopManager shop;
+    private BukkitTask timer;
 
     @Override
     public void onEnable() {
@@ -28,72 +55,130 @@ public final class MainpluginsShop extends JavaPlugin {
             return;
         }
 
-        EconomyService economyService = CoreAPI.getEconomyService();
-        shopManager = new ShopManager(this, economyService);
-        getServer().getPluginManager().registerEvents(shopManager, this);
-        rotacjaManager = new RotacjaManager(this, shopManager);
+        lang = CoreAPI.getLangService();
+        lang.registerDefaults(this);
+        prepareFiles();
+        config = load();
 
-        CommandExecutor executor = new CommandExecutor() {
-            @Override
-            public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-                if (!(sender instanceof Player player)) {
-                    sender.sendMessage("Tylko gracz moze uzyc tej komendy.");
-                    return true;
-                }
-                switch (command.getName().toLowerCase()) {
-                    case "sklep" -> shopManager.otworzSklep(player, MenuBridge.isZMenu(args));
-                    case "sprzedaj" -> shopManager.handleSellCommand(player);
-                    case "sprzedajwszystko" -> shopManager.handleSellAllCommand(player);
-                }
+        ShopItems items = new ShopItems(this, CoreAPI.getCustomItemService());
+        stats = new ShopStats(this, config.settings().statsEnabled());
+        prices = new DynamicPriceManager(this, config.settings().dynamic(), stats, key -> nameOf(items, key),
+                () -> Bukkit.getOnlinePlayers().forEach(p -> lang.send(p, this, "dynamic.reset-broadcast")));
+        rotation = new RotationManager(this, () -> config);
+        rotation.check();
+        shop = new ShopManager(this, lang, CoreAPI.getEconomyService(), items, () -> config, prices, rotation, stats);
+        getServer().getPluginManager().registerEvents(shop, this);
+        CoreAPI.getPlaceholderService().register(this, new ShopPlaceholders(this, lang, prices));
+
+        // Co 10 minut: nowe rotacje i zapis statystyk.
+        timer = getServer().getScheduler().runTaskTimer(this, () -> {
+            rotation.check();
+            stats.zapisz();
+        }, 12_000L, 12_000L);
+
+        CommandExecutor player = (sender, command, label, args) -> {
+            if (!(sender instanceof Player p)) {
+                lang.send(sender, this, "admin.players-only");
                 return true;
             }
+            switch (command.getName().toLowerCase()) {
+                case "sklep" -> shop.openMain(p, MenuBridge.isZMenu(args));
+                case "sprzedaj" -> shop.sellHand(p);
+                case "sprzedajwszystko" -> shop.sellAll(p);
+                default -> { }
+            }
+            return true;
         };
-
-        // sklep/sprzedaj/sprzedajwszystko nie biorą argumentów - pusty completer,
-        // żeby Bukkit nie podpowiadał domyślnie listy graczy online.
-        if (getCommand("sklep") != null) {
-            getCommand("sklep").setExecutor(executor);
-            getCommand("sklep").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
+        for (String name : List.of("sklep", "sprzedaj", "sprzedajwszystko")) {
+            if (getCommand(name) == null) continue;
+            getCommand(name).setExecutor(player);
+            getCommand(name).setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
-        if (getCommand("sprzedaj") != null) {
-            getCommand("sprzedaj").setExecutor(executor);
-            getCommand("sprzedaj").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
-        }
-        if (getCommand("sprzedajwszystko") != null) {
-            getCommand("sprzedajwszystko").setExecutor(executor);
-            getCommand("sprzedajwszystko").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
-        }
-        if (getCommand("@statsklep") != null) {
-            getCommand("@statsklep").setExecutor(new StatSklepCommand(shopManager));
-            getCommand("@statsklep").setTabCompleter((sender, command, alias, args) ->
-                    args.length == 1 ? TabCompleteUtils.dopasuj(args[0], List.of("snapshot")) : TabCompleteUtils.PUSTA);
-        }
-
-        // Osobny executor: /@reloadsklep ma sens też z konsoli, nie tylko od gracza.
-        // Uprawnienie (mainplugins.shop.reload, domyślnie op) pilnuje tego plugin.yml.
-        if (getCommand("@reloadsklep") != null) {
-            getCommand("@reloadsklep").setExecutor((sender, command, label, args) -> {
-                shopManager.przeladujKonfiguracje();
-                sender.sendMessage("§aSklep.yml został przeładowany.");
-                return true;
-            });
-            getCommand("@reloadsklep").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
-        }
-
-        if (getCommand("@sklep") != null) {
-            SklepAdminCommand adminCmd = new SklepAdminCommand(shopManager, rotacjaManager);
-            getCommand("@sklep").setExecutor(adminCmd);
-            getCommand("@sklep").setTabCompleter(adminCmd);
+        if (getCommand("@shop") != null) {
+            ShopCommand admin = new ShopCommand(this, lang, () -> config, this::reload, prices, rotation, stats, items);
+            getCommand("@shop").setExecutor(admin);
+            getCommand("@shop").setTabCompleter(admin);
         }
     }
 
-    public RotacjaManager getRotacjaManager() { return rotacjaManager; }
-
     @Override
     public void onDisable() {
-        if (rotacjaManager != null) rotacjaManager.zamknij();
-        if (shopManager != null && shopManager.getCeny() != null) {
-            shopManager.getCeny().zamknij();
+        if (timer != null) timer.cancel();
+        if (rotation != null) rotation.close();
+        if (prices != null) prices.zamknij();
+        if (stats != null) stats.zapisz();
+    }
+
+    /** /@shop reload - pliki od nowa, nowe ustawienia cen dynamicznych i statystyk. */
+    private void reload() {
+        config = load();
+        prices.applySettings(config.settings().dynamic());
+        stats.setEnabled(config.settings().statsEnabled());
+        rotation.check();
+    }
+
+    private String nameOf(ShopItems items, String key) {
+        for (Category c : config.categories().values()) {
+            for (ShopItem it : c.items()) if (it.key().equals(key)) return items.plainName(it);
+            if (c.rotation() != null) for (ShopItem it : c.rotation().pool()) if (it.key().equals(key)) return items.plainName(it);
         }
+        return key;
+    }
+
+    // ---------- pliki ----------
+
+    /** Pierwszy start nowej wersji: stare pliki do old/, potem treść startowa w języku serwera. */
+    private void prepareFiles() {
+        File dir = getDataFolder();
+        if (new File(dir, "shop.yml").exists()) return;
+        File old = new File(dir, "old");
+        boolean moved = false;
+        for (String name : OLD_FILES) {
+            File f = new File(dir, name);
+            if (!f.exists()) continue;
+            old.mkdirs();
+            try {
+                Files.move(f.toPath(), new File(old, name).toPath(), StandardCopyOption.REPLACE_EXISTING);
+                moved = true;
+            } catch (IOException e) {
+                getLogger().warning("Could not move old " + name + " to old/: " + e.getMessage());
+            }
+        }
+        if (moved) getLogger().info("Moved the old shop files to old/ - the new shop starts with the default content.");
+
+        String language = lang.language();
+        if (getResource("defaults/" + language + "/shop.yml") == null) language = "en";
+        copy("defaults/" + language + "/shop.yml", new File(dir, "shop.yml"));
+        for (String id : DEFAULT_CATEGORIES) {
+            copy("defaults/" + language + "/categories/" + id + ".yml", new File(dir, "categories/" + id + ".yml"));
+        }
+    }
+
+    private void copy(String resource, File target) {
+        try (InputStream in = getResource(resource)) {
+            if (in == null) {
+                getLogger().warning("Missing bundled " + resource);
+                return;
+            }
+            target.getParentFile().mkdirs();
+            Files.copy(in, target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            getLogger().warning("Could not write " + target.getName() + ": " + e.getMessage());
+        }
+    }
+
+    private ShopConfig load() {
+        Consumer<String> warn = getLogger()::warning;
+        Predicate<String> material = m -> Material.matchMaterial(m) != null;
+        ShopSettings settings = ShopConfigParser.parseSettings(
+                YamlConfiguration.loadConfiguration(new File(getDataFolder(), "shop.yml")), material, warn);
+        Map<String, Category> cats = new LinkedHashMap<>();
+        File[] files = new File(getDataFolder(), "categories").listFiles((d, n) -> n.endsWith(".yml"));
+        Map<String, File> sorted = new TreeMap<>();
+        if (files != null) for (File f : files) sorted.put(f.getName().substring(0, f.getName().length() - 4), f);
+        for (Map.Entry<String, File> e : sorted.entrySet()) {
+            cats.put(e.getKey(), ShopConfigParser.parseCategory(e.getKey(), YamlConfiguration.loadConfiguration(e.getValue()), material, warn));
+        }
+        return ShopConfigParser.combine(settings, cats, warn);
     }
 }

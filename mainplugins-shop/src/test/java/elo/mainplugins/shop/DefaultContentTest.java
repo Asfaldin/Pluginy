@@ -54,6 +54,11 @@ class DefaultContentTest {
     }
 
     @Test
+    void langFilesHaveTheSameKeys() throws Exception {
+        assertEquals(yaml("lang/en.yml").getKeys(true), yaml("lang/pl.yml").getKeys(true));
+    }
+
+    @Test
     void categoriesAreCleanAndTheSameInBothLanguages() throws Exception {
         List<String> w = new ArrayList<>();
         for (String id : CATEGORIES) {

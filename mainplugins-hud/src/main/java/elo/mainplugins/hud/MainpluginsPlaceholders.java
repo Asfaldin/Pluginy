@@ -1,7 +1,6 @@
 package elo.mainplugins.hud;
 
 import elo.mainplugins.core.CoreAPI;
-import elo.mainplugins.core.api.CenyService;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.IslandSummary;
 import elo.mainplugins.core.api.Rank;
@@ -110,21 +109,7 @@ public class MainpluginsPlaceholders {
             case "wskazowka" -> {
                 return wskazowka();
             }
-            case "reset_cen_dni" -> {
-                CenyService ceny = znajdzCenyService();
-                return ceny != null ? String.valueOf(ceny.dniDoResetu()) : "-";
-            }
-            case "event_info" -> {
-                CenyService ceny = znajdzCenyService();
-                if (ceny == null) return "";
-                var zablokowane = ceny.getZablokowaneNazwy();
-                if (zablokowane.isEmpty()) return "";
-                // Pokazujemy tylko LICZBĘ aktywnych eventów, nie każdy z osobna -
-                // stopka ma jedną linijkę, nie da się tam wypisać dowolnej ilości.
-                return "&d&lEVENT &7- " + zablokowane.size()
-                        + (zablokowane.size() == 1 ? " przedmiot" : " przedmioty")
-                        + " w promocji!";
-            }
+            // reset_cen_dni i event_info wystawia teraz sam Sklep (ShopPlaceholders) - bez Sklepu ich nie ma.
             default -> { /* sprawdz pozostale wzorce ponizej (z numerem na koncu) */ }
         }
 
@@ -229,26 +214,10 @@ public class MainpluginsPlaceholders {
      * przy skupie w sklepie, tylko wyciągnięta na tab.
      *
      * @return sformatowana linijka, albo null gdy nie ma o czym mówić
-     *         (shop niewgrany, albo wszystko w normie)
+     *         (shop niewgrany, albo wszystko w normie). Tekst daje Sklep (placeholder shop_trend).
      */
     private String wskazowkaRynkowa() {
-        CenyService ceny = znajdzCenyService();
-        if (ceny == null) return null;
-
-        CenyService.Odchylenie top = ceny.najwiekszeOdchylenie();
-        if (top == null) return null;   // wszystko w normie albo brak danych
-
-        boolean wzrost = top.mnoznik() > 1.0;
-        String strzalka = wzrost ? "&a▲" : "&c▼";
-        int procent = (int) Math.round((top.mnoznik() - 1.0) * 100);
-        String znak = procent >= 0 ? "+" : "";
-
-        return strzalka + " &f" + top.nazwa() + " &7" + (wzrost ? "drozeje" : "taniej")
-                + " &7(" + znak + procent + "%)";
-    }
-
-    private CenyService znajdzCenyService() {
-        var rsp = Bukkit.getServicesManager().getRegistration(CenyService.class);
-        return rsp != null ? rsp.getProvider() : null;
+        String trend = CoreAPI.getPlaceholderService().resolve(null, "shop_trend");
+        return trend == null || trend.isEmpty() ? null : trend;
     }
 }

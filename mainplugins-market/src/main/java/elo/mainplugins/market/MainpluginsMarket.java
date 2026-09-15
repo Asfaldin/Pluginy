@@ -1,17 +1,13 @@
 package elo.mainplugins.market;
 
 import elo.mainplugins.core.CoreAPI;
-import elo.mainplugins.core.api.EconomyService;
-import elo.mainplugins.core.util.MenuBridge;
-import elo.mainplugins.core.util.TabCompleteUtils;
-import org.bukkit.entity.Player;
+import elo.mainplugins.core.api.LangService;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.List;
-
+/** Targ graczy - działa z samym core. */
 public final class MainpluginsMarket extends JavaPlugin {
 
-    private MarketManager marketManager;
+    private MarketManager market;
 
     @Override
     public void onEnable() {
@@ -23,31 +19,24 @@ public final class MainpluginsMarket extends JavaPlugin {
             return;
         }
 
-        EconomyService economyService = CoreAPI.getEconomyService();
-        marketManager = new MarketManager(this, economyService);
-        getServer().getPluginManager().registerEvents(marketManager, this);
+        LangService lang = CoreAPI.getLangService();
+        lang.registerDefaults(this);
+        market = new MarketManager(this, lang, CoreAPI.getEconomyService());
+        getServer().getPluginManager().registerEvents(market, this);
 
         if (getCommand("targ") != null) {
-            getCommand("targ").setExecutor((sender, command, label, args) -> {
-                if (!(sender instanceof Player player)) {
-                    sender.sendMessage("Tylko gracz moze uzyc tej komendy.");
-                    return true;
-                }
-                if (args.length > 0 && args[0].equalsIgnoreCase("wystaw")) {
-                    marketManager.wystawPrzedmiot(player, args);
-                } else {
-                    marketManager.otworzTarg(player, 0, MenuBridge.isZMenu(args));
-                }
-                return true;
-            });
-            getCommand("targ").setTabCompleter((sender, command, alias, args) ->
-                    args.length == 1 ? TabCompleteUtils.dopasuj(args[0], List.of("wystaw")) : TabCompleteUtils.PUSTA);
+            getCommand("targ").setExecutor(MarketCommand.player(this, market, lang));
+            getCommand("targ").setTabCompleter(MarketCommand.playerTab());
+        }
+        if (getCommand("@market") != null) {
+            MarketCommand.Admin admin = new MarketCommand.Admin(this, market, lang);
+            getCommand("@market").setExecutor(admin);
+            getCommand("@market").setTabCompleter(admin);
         }
     }
 
     @Override
     public void onDisable() {
-        if (marketManager != null) marketManager.zamknij();
-        getServer().getServicesManager().unregisterAll(this);
+        if (market != null) market.close();
     }
 }

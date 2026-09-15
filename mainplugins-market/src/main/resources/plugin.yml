@@ -6,4 +6,15 @@ depend: [MainpluginsCore]
 
 commands:
   targ:
-    description: Otwórz targ graczy
+    description: Player market - open it or list the item in your hand
+    usage: /<command> [sell <price>]
+  "@market":
+    description: (Admin) Market - reload settings, list or remove a player's offers
+    usage: /<command> reload | list <player> | remove <player>
+    permission: mainplugins.market.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+
+permissions:
+  mainplugins.market.admin:
+    description: Access to /@market
+    default: op

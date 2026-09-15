@@ -1,0 +1,34 @@
+# Mainplugins Market - settings. Texts are in lang/en.yml and lang/pl.yml.
+# Reload without restart: /@market reload
+
+limits:
+  # How many offers a player can have at once.
+  # More with the permission mainplugins.market.limit.<number>, e.g. mainplugins.market.limit.15 (highest wins).
+  default: 10
+
+min-price: 1
+max-price: 10000000
+
+# After how many days an unsold offer is taken off the market (0 = never).
+expire-days: 7
+
+# "To collect" box: expired offers and bought items that did not fit in the inventory wait here.
+# false = such items drop at the player's feet (expired offers come back on the next join).
+mailbox: true
+
+# Percent of the price the seller does NOT get (0-100). Money sink for the server economy.
+tax-percent: 0
+
+menu:
+  # Window title - leave empty to use the text from the lang file.
+  title: ""
+  background: GRAY_STAINED_GLASS_PANE
+  # Offers use slots 10-16, 19-25 and 28-34. Buttons must use other slots (0-53).
+  buttons:
+    prev: {slot: 45, material: SPECTRAL_ARROW}
+    next: {slot: 53, material: SPECTRAL_ARROW}
+    search: {slot: 46, material: OAK_SIGN}
+    mine: {slot: 47, material: HOPPER}
+    close: {slot: 49, material: BARRIER}
+    sort: {slot: 51, material: COMPARATOR}
+    mailbox: {slot: 52, material: CHEST}

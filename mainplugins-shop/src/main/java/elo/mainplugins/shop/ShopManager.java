@@ -155,7 +155,7 @@ public final class ShopManager implements Listener {
 
     /** Ikona pozycji w siatce: sam przedmiot (1 szt.) + ceny i podpowiedzi. */
     private ItemStack itemIcon(ShopGuiHolder.Ref ref, ShopItem it, boolean withCategory) {
-        ItemStack icon = items.create(it, 1, null);
+        ItemStack icon = items.icon(it);
         if (icon == null) return null;
         icon.setAmount(1);
         ItemMeta meta = icon.getItemMeta();

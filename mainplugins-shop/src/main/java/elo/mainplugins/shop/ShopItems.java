@@ -35,7 +35,25 @@ final class ShopItems {
         this.catalog = catalog;
     }
 
-    /** Nowy stos tej pozycji (amount sztuk, może przekroczyć 64 - dzieli wołający). Null, gdy przedmiotu z katalogu nie ma. */
+    /**
+     * Ikona pozycji w menu: przedmiot + własna nazwa i opis z pliku kategorii. Nazwa i opis są TYLKO na ikonie -
+     * kupiony przedmiot jest zwykły (inaczej kupiony bruk nie łączyłby się w stos z wykopanym).
+     */
+    ItemStack icon(ShopItem item) {
+        ItemStack stack = create(item, 1, null);
+        if (stack == null || (item.name() == null && item.lore().isEmpty())) return stack;
+        ItemMeta meta = stack.getItemMeta();
+        if (item.name() != null) meta.displayName(SER.deserialize(item.name()).decoration(TextDecoration.ITALIC, false));
+        if (!item.lore().isEmpty()) {
+            List<Component> lore = new ArrayList<>();
+            for (String l : item.lore()) lore.add(SER.deserialize(l).decoration(TextDecoration.ITALIC, false));
+            meta.lore(lore);
+        }
+        stack.setItemMeta(meta);
+        return stack;
+    }
+
+    /** Nowy stos do kupienia (zwykły przedmiot albo z katalogu, + instrument). Null, gdy przedmiotu z katalogu nie ma. */
     ItemStack create(ShopItem item, int amount, Player player) {
         ItemStack stack;
         if (item.customId() != null) {
@@ -51,26 +69,12 @@ final class ShopItems {
             if (m == null) return null;
             stack = new ItemStack(m, Math.max(1, Math.min(amount, m.getMaxStackSize())));
         }
-        applyLook(stack, item);
-        return stack;
-    }
-
-    /** Własna nazwa, opis i instrument (rogi kóz) z pliku kategorii. */
-    private void applyLook(ItemStack stack, ShopItem item) {
         if (item.instrument() != null) {
             MusicInstrument inst = MusicInstrument.getByKey(NamespacedKey.minecraft(item.instrument().toLowerCase(Locale.ROOT)));
             if (inst != null) stack.setData(DataComponentTypes.INSTRUMENT, inst);
             else if (warned.add("instrument:" + item.instrument())) plugin.getLogger().warning("Shop: unknown instrument '" + item.instrument() + "'.");
         }
-        if (item.name() == null && item.lore().isEmpty()) return;
-        ItemMeta meta = stack.getItemMeta();
-        if (item.name() != null) meta.displayName(SER.deserialize(item.name()).decoration(TextDecoration.ITALIC, false));
-        if (!item.lore().isEmpty()) {
-            List<Component> lore = new ArrayList<>();
-            for (String l : item.lore()) lore.add(SER.deserialize(l).decoration(TextDecoration.ITALIC, false));
-            meta.lore(lore);
-        }
-        stack.setItemMeta(meta);
+        return stack;
     }
 
     /** Klucz przedmiotu z ekwipunku - jak ShopItem.key(): "custom:<id>" dla naszych przedmiotów, inaczej materiał. */

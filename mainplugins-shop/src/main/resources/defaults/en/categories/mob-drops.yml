@@ -1,0 +1,14 @@
+# One shop category. Prices are per pack: buy = price for 'amount' pieces (default 1),
+# sell = price for 'sell-amount' pieces (default 1). No buy = cannot be bought, no sell = cannot be sold.
+# Instead of 'item' you can use 'custom: <id>' (an item from the item catalog).
+name: "&c&lMob drops"
+icon: BONE
+items:
+  - {item: ROTTEN_FLESH, buy: 10, sell: 3.13}
+  - {item: BONE, buy: 30, sell: 2.34}
+  - {item: STRING, buy: 30, sell: 5.31}
+  - {item: SPIDER_EYE, buy: 100, sell: 5.31}
+  - {item: GUNPOWDER, buy: 200, sell: 9.38}
+  - {item: ENDER_PEARL, buy: 300, sell: 30}
+  - {item: SLIME_BALL, buy: 500, sell: 25}
+  - {item: LEATHER, buy: 40, sell: 2.03}

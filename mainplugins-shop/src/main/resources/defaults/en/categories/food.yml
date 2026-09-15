@@ -1,0 +1,14 @@
+# One shop category. Prices are per pack: buy = price for 'amount' pieces (default 1),
+# sell = price for 'sell-amount' pieces (default 1). No buy = cannot be bought, no sell = cannot be sold.
+# Instead of 'item' you can use 'custom: <id>' (an item from the item catalog).
+name: "&6&lFood"
+icon: COOKED_BEEF
+items:
+  - {item: BREAD, buy: 40, sell: 5}
+  - {item: COOKED_BEEF, buy: 45, sell: 5.47}
+  - {item: COOKED_PORKCHOP, buy: 45, sell: 7.03}
+  - {item: COOKED_CHICKEN, buy: 40, sell: 7.03}
+  - {item: BAKED_POTATO, buy: 40, sell: 5}
+  - {item: APPLE, buy: 50, sell: 23.44}
+  - {item: GOLDEN_CARROT, buy: 150, sell: 20}
+  - {item: COOKIE, buy: 20, sell: 2}

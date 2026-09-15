@@ -1,0 +1,14 @@
+# One shop category. Prices are per pack: buy = price for 'amount' pieces (default 1),
+# sell = price for 'sell-amount' pieces (default 1). No buy = cannot be bought, no sell = cannot be sold.
+# Instead of 'item' you can use 'custom: <id>' (an item from the item catalog).
+name: "&e&lFarming"
+icon: WHEAT
+items:
+  - {item: WHEAT_SEEDS, buy: 20, sell: 0.16}
+  - {item: WHEAT, buy: 30, sell: 9.38}
+  - {item: CARROT, buy: 80, sell: 9.38}
+  - {item: POTATO, buy: 80, sell: 9.38}
+  - {item: SUGAR_CANE, buy: 100, sell: 6.25}
+  - {item: PUMPKIN, buy: 30, sell: 7.81}
+  - {item: MELON_SLICE, buy: 25, sell: 4.69}
+  - {item: BONE_MEAL, buy: 16, sell: 4}

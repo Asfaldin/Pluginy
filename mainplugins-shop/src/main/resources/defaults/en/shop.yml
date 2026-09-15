@@ -1,0 +1,135 @@
+# Mainplugins Shop - settings. Items and prices are in categories/<id>.yml (one file per category).
+# Texts (titles, buttons, messages) are in lang/en.yml and lang/pl.yml.
+# Reload without restart: /@shop reload
+
+# Order of categories in the main menu (file names from categories/ without .yml).
+categories: [blocks, farming, ores, mob-drops, food]
+
+# How prices are rounded when a player buys part of a pack or when dynamic prices change them:
+#   whole = whole coins (1 piece of a "64 for 10" pack costs 1)
+#   cents = cents (1 piece of a "64 for 10" pack costs 0.16)
+price-rounding: cents
+
+# Sell prices react to what players sell: lots of selling -> the price drops, nobody sells -> it rises.
+dynamic-prices:
+  enabled: true
+  cycle-minutes: 60        # how often prices are recalculated
+  min-multiplier: 0.5      # lowest sell price = 50% of the normal one
+  max-multiplier: 1.5      # highest sell price = 150% of the normal one
+  reset-days: 14           # every N days all prices go back to normal
+  max-sell-share: 0.9      # selling never pays more than 90% of the buy price
+
+# Sales statistics (stats.yml + stats.csv for Excel) with hints which prices to change.
+stats:
+  enabled: false
+
+# Where things are in each window. size = 9, 18, 27, 36, 45 or 54.
+# Roles: CATEGORY_SLOT (main menu), ITEM_SLOT, AMOUNT_SLOT (buy-picker, amount = pieces),
+#        NAV_BACK, NAV_PREV, NAV_NEXT, EXIT, SEARCH, SORT, FILLER (optional material).
+menus:
+  main-menu:
+    size: 54
+    layout:
+      - {slot: 4, role: SEARCH}
+      - {slot: 49, role: EXIT}
+      - {slot: 19, role: CATEGORY_SLOT}
+      - {slot: 20, role: CATEGORY_SLOT}
+      - {slot: 21, role: CATEGORY_SLOT}
+      - {slot: 22, role: CATEGORY_SLOT}
+      - {slot: 23, role: CATEGORY_SLOT}
+      - {slot: 24, role: CATEGORY_SLOT}
+      - {slot: 25, role: CATEGORY_SLOT}
+      - {slot: 28, role: CATEGORY_SLOT}
+      - {slot: 29, role: CATEGORY_SLOT}
+      - {slot: 30, role: CATEGORY_SLOT}
+      - {slot: 31, role: CATEGORY_SLOT}
+      - {slot: 32, role: CATEGORY_SLOT}
+      - {slot: 33, role: CATEGORY_SLOT}
+      - {slot: 34, role: CATEGORY_SLOT}
+  category-page:
+    size: 54
+    layout:
+      - {slot: 4, role: SORT}
+      - {slot: 10, role: ITEM_SLOT}
+      - {slot: 11, role: ITEM_SLOT}
+      - {slot: 12, role: ITEM_SLOT}
+      - {slot: 13, role: ITEM_SLOT}
+      - {slot: 14, role: ITEM_SLOT}
+      - {slot: 15, role: ITEM_SLOT}
+      - {slot: 16, role: ITEM_SLOT}
+      - {slot: 19, role: ITEM_SLOT}
+      - {slot: 20, role: ITEM_SLOT}
+      - {slot: 21, role: ITEM_SLOT}
+      - {slot: 22, role: ITEM_SLOT}
+      - {slot: 23, role: ITEM_SLOT}
+      - {slot: 24, role: ITEM_SLOT}
+      - {slot: 25, role: ITEM_SLOT}
+      - {slot: 28, role: ITEM_SLOT}
+      - {slot: 29, role: ITEM_SLOT}
+      - {slot: 30, role: ITEM_SLOT}
+      - {slot: 31, role: ITEM_SLOT}
+      - {slot: 32, role: ITEM_SLOT}
+      - {slot: 33, role: ITEM_SLOT}
+      - {slot: 34, role: ITEM_SLOT}
+      - {slot: 37, role: ITEM_SLOT}
+      - {slot: 38, role: ITEM_SLOT}
+      - {slot: 39, role: ITEM_SLOT}
+      - {slot: 40, role: ITEM_SLOT}
+      - {slot: 41, role: ITEM_SLOT}
+      - {slot: 42, role: ITEM_SLOT}
+      - {slot: 43, role: ITEM_SLOT}
+      - {slot: 45, role: NAV_PREV}
+      - {slot: 48, role: NAV_BACK}
+      - {slot: 50, role: EXIT}
+      - {slot: 53, role: NAV_NEXT}
+  buy-picker:
+    size: 27
+    layout:
+      - {slot: 11, role: AMOUNT_SLOT, amount: 1}
+      - {slot: 12, role: AMOUNT_SLOT, amount: 8}
+      - {slot: 13, role: AMOUNT_SLOT, amount: 16}
+      - {slot: 14, role: AMOUNT_SLOT, amount: 32}
+      - {slot: 15, role: AMOUNT_SLOT, amount: 64}
+      - {slot: 22, role: NAV_BACK}
+  search-results:
+    size: 54
+    layout:
+      - {slot: 10, role: ITEM_SLOT}
+      - {slot: 11, role: ITEM_SLOT}
+      - {slot: 12, role: ITEM_SLOT}
+      - {slot: 13, role: ITEM_SLOT}
+      - {slot: 14, role: ITEM_SLOT}
+      - {slot: 15, role: ITEM_SLOT}
+      - {slot: 16, role: ITEM_SLOT}
+      - {slot: 19, role: ITEM_SLOT}
+      - {slot: 20, role: ITEM_SLOT}
+      - {slot: 21, role: ITEM_SLOT}
+      - {slot: 22, role: ITEM_SLOT}
+      - {slot: 23, role: ITEM_SLOT}
+      - {slot: 24, role: ITEM_SLOT}
+      - {slot: 25, role: ITEM_SLOT}
+      - {slot: 28, role: ITEM_SLOT}
+      - {slot: 29, role: ITEM_SLOT}
+      - {slot: 30, role: ITEM_SLOT}
+      - {slot: 31, role: ITEM_SLOT}
+      - {slot: 32, role: ITEM_SLOT}
+      - {slot: 33, role: ITEM_SLOT}
+      - {slot: 34, role: ITEM_SLOT}
+      - {slot: 37, role: ITEM_SLOT}
+      - {slot: 38, role: ITEM_SLOT}
+      - {slot: 39, role: ITEM_SLOT}
+      - {slot: 40, role: ITEM_SLOT}
+      - {slot: 41, role: ITEM_SLOT}
+      - {slot: 42, role: ITEM_SLOT}
+      - {slot: 43, role: ITEM_SLOT}
+      - {slot: 48, role: NAV_BACK}
+  # How the buttons look (their texts are in the lang files).
+  buttons:
+    search: OAK_SIGN
+    exit: BARRIER
+    back: COMPASS
+    prev: SPECTRAL_ARROW
+    next: SPECTRAL_ARROW
+    sort: HOPPER
+    sort-sell: GOLD_INGOT
+    picker-back: ARROW

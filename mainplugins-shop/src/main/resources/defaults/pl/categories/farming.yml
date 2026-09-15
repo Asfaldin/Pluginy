@@ -1,0 +1,14 @@
+# Jedna kategoria sklepu. Ceny są za paczkę: buy = cena za 'amount' sztuk (domyślnie 1),
+# sell = cena za 'sell-amount' sztuk (domyślnie 1). Bez buy = nie do kupienia, bez sell = nie do sprzedania.
+# Zamiast 'item' możesz użyć 'custom: <id>' (przedmiot z katalogu itemów).
+name: "&e&lRolnictwo"
+icon: WHEAT
+items:
+  - {item: WHEAT_SEEDS, buy: 20, sell: 0.16}
+  - {item: WHEAT, buy: 30, sell: 9.38}
+  - {item: CARROT, buy: 80, sell: 9.38}
+  - {item: POTATO, buy: 80, sell: 9.38}
+  - {item: SUGAR_CANE, buy: 100, sell: 6.25}
+  - {item: PUMPKIN, buy: 30, sell: 7.81}
+  - {item: MELON_SLICE, buy: 25, sell: 4.69}
+  - {item: BONE_MEAL, buy: 16, sell: 4}

@@ -1,0 +1,14 @@
+# One shop category. Prices are per pack: buy = price for 'amount' pieces (default 1),
+# sell = price for 'sell-amount' pieces (default 1). No buy = cannot be bought, no sell = cannot be sold.
+# Instead of 'item' you can use 'custom: <id>' (an item from the item catalog).
+name: "&b&lOres"
+icon: DIAMOND
+items:
+  - {item: COAL, buy: 50, sell: 40}
+  - {item: IRON_INGOT, buy: 150, sell: 60}
+  - {item: GOLD_INGOT, buy: 160, sell: 140}
+  - {item: COPPER_INGOT, buy: 70, sell: 50}
+  - {item: REDSTONE, buy: 170, sell: 80}
+  - {item: LAPIS_LAZULI, buy: 70, sell: 60}
+  - {item: DIAMOND, buy: 1450, sell: 1280}
+  - {item: EMERALD, buy: 2000, sell: 1280}

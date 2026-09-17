@@ -1,10 +1,14 @@
 package elo.mainplugins.shop;
 
+import elo.mainplugins.core.api.LangService;
 import elo.mainplugins.core.util.AsyncConfigSaver;
 import elo.mainplugins.shop.model.Category;
 import elo.mainplugins.shop.model.Rotation;
 import elo.mainplugins.shop.model.ShopConfig;
 import elo.mainplugins.shop.model.ShopItem;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextReplacementConfig;
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
@@ -31,14 +35,18 @@ public final class RotationManager {
     private record State(List<Integer> picked, long nextAt, Map<Integer, Integer> cooldown) {}
 
     private final Plugin plugin;
+    private final LangService lang;
+    private final ShopItems items;
     private final Supplier<ShopConfig> config;
     private final YamlConfiguration yml;
     private final AsyncConfigSaver saver;
     private final Map<String, State> states = new HashMap<>();
     private final Random random = new Random();
 
-    public RotationManager(Plugin plugin, Supplier<ShopConfig> config) {
+    public RotationManager(Plugin plugin, LangService lang, ShopItems items, Supplier<ShopConfig> config) {
         this.plugin = plugin;
+        this.lang = lang;
+        this.items = items;
         this.config = config;
         File file = new File(plugin.getDataFolder(), "rotation.yml");
         this.yml = YamlConfiguration.loadConfiguration(file);
@@ -88,6 +96,25 @@ public final class RotationManager {
         yml.set(c.id() + ".cooldown", cd.isEmpty() ? null : cd);
         saver.oznaczZmiane();
         plugin.getLogger().info("Shop rotation: new offer in category '" + c.id() + "' (" + picked.size() + " items).");
+        if (r.announce()) announce(c, active(c));
+    }
+
+    /** Ogłoszenie na czacie po wylosowaniu nowej oferty (rotation.announce: false wyłącza). Teksty w lang/. */
+    private void announce(Category c, List<ShopItem> offer) {
+        if (offer.isEmpty() || Bukkit.getOnlinePlayers().isEmpty()) return;
+        Map<String, String> head = Map.of("category", c.name(), "days", String.valueOf(daysLeft(c.id())));
+        for (var p : Bukkit.getOnlinePlayers()) {
+            lang.send(p, plugin, "rotation.broadcast-header", head);
+            for (ShopItem it : offer) {
+                Map<String, String> ph = new LinkedHashMap<>();
+                ph.put("price", ShopManager.money(it.buyable() ? it.buy() : it.sellable() ? it.sell() : 0.0));
+                ph.put("amount", String.valueOf(it.buyable() ? it.amount() : it.sellAmount()));
+                Component line = lang.msg(plugin, "rotation.broadcast-item", ph).replaceText(
+                        TextReplacementConfig.builder().matchLiteral("{item}").replacement(items.name(it)).build());
+                p.sendMessage(line);
+            }
+            lang.send(p, plugin, "rotation.broadcast-footer", head);
+        }
     }
 
     /** Wymusza nowe losowanie (categoryId = null -> wszystkie kategorie z rotacją). Zwraca, ile kategorii przelosowano. */

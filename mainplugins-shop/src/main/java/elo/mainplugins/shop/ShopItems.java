@@ -1,6 +1,7 @@
 package elo.mainplugins.shop;
 
 import elo.mainplugins.core.api.CustomItemService;
+import elo.mainplugins.core.api.ItemNameService;
 import elo.mainplugins.shop.model.ShopItem;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import net.kyori.adventure.text.Component;
@@ -28,11 +29,13 @@ final class ShopItems {
 
     private final Plugin plugin;
     private final CustomItemService catalog;
+    private final ItemNameService itemNames;
     private final Set<String> warned = new HashSet<>();
 
-    ShopItems(Plugin plugin, CustomItemService catalog) {
+    ShopItems(Plugin plugin, CustomItemService catalog, ItemNameService itemNames) {
         this.plugin = plugin;
         this.catalog = catalog;
+        this.itemNames = itemNames;
     }
 
     /**
@@ -99,6 +102,24 @@ final class ShopItems {
     /** Zwykły tekst nazwy - do wyszukiwarki i konsoli. */
     String plainName(ShopItem item) {
         if (item.name() != null) return PlainTextComponentSerializer.plainText().serialize(SER.deserialize(item.name()));
-        return item.customId() != null ? item.customId() : item.material().toLowerCase(Locale.ROOT).replace('_', ' ');
+        if (item.customId() != null) return item.customId();
+        Material m = Material.matchMaterial(item.material());
+        return m != null ? itemNames.name(m) : item.material().toLowerCase(Locale.ROOT).replace('_', ' ');
+    }
+
+    /**
+     * Po czym da się znaleźć tę pozycję w wyszukiwarce: własna nazwa z pliku kategorii, nazwa ze słownika
+     * (polska na polskim serwerze), nazwa angielska i id przedmiotu z katalogu. Wszystko małymi literami.
+     */
+    List<String> searchTerms(ShopItem item) {
+        List<String> out = new ArrayList<>(5);
+        out.add(plainName(item).toLowerCase(Locale.ROOT));
+        if (item.customId() != null) out.add(item.customId().toLowerCase(Locale.ROOT));
+        if (item.material() != null) {
+            Material m = Material.matchMaterial(item.material());
+            if (m != null) out.addAll(itemNames.searchTerms(m));
+            else out.add(item.material().toLowerCase(Locale.ROOT).replace('_', ' '));
+        }
+        return out;
     }
 }

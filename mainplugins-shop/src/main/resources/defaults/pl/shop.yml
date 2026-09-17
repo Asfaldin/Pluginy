@@ -18,6 +18,7 @@ dynamic-prices:
   max-multiplier: 1.5      # najwyższy skup = 150% zwykłego
   reset-days: 14           # co tyle dni wszystkie ceny wracają do normy
   max-sell-share: 0.9      # skup nigdy nie daje więcej niż 90% ceny kupna
+  announce-events: true    # ogłoś na czacie, gdy event (/@shop event) się zaczyna albo kończy
 
 # Statystyki sprzedaży (stats.yml + stats.csv do Excela) z podpowiedziami, które ceny zmienić.
 stats:

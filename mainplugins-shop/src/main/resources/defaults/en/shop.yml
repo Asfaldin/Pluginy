@@ -18,6 +18,7 @@ dynamic-prices:
   max-multiplier: 1.5      # highest sell price = 150% of the normal one
   reset-days: 14           # every N days all prices go back to normal
   max-sell-share: 0.9      # selling never pays more than 90% of the buy price
+  announce-events: true    # tell everyone on chat when an event (/@shop event) starts or ends
 
 # Sales statistics (stats.yml + stats.csv for Excel) with hints which prices to change.
 stats:

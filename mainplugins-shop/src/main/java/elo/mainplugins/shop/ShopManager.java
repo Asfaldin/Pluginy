@@ -171,7 +171,11 @@ public final class ShopManager implements Listener {
         if (it.sellable()) {
             Component line = t("item.sell", Map.of("price", money(sellPerLot(it)), "amount", String.valueOf(it.sellAmount())));
             if (prices.enabled()) {
-                if (prices.czyZablokowany(it.key())) line = line.append(t("item.event"));
+                if (prices.czyZablokowany(it.key())) {
+                    Long left = prices.zostaloEventu(it.key());
+                    line = line.append(left == null ? t("item.event")
+                            : t("item.event-timed", Map.of("time", ShopRules.formatDuration(left))));
+                }
                 else if (prices.kierunekZmiany(it.key()) > 0) line = line.append(t("item.trend-up"));
                 else if (prices.kierunekZmiany(it.key()) < 0) line = line.append(t("item.trend-down"));
             }
@@ -531,9 +535,12 @@ public final class ShopManager implements Listener {
             for (ShopGuiHolder.Ref ref : refsOf(c)) {
                 ShopItem it = resolve(ref);
                 if (it == null) continue;
-                String name = items.plainName(it).toLowerCase(Locale.ROOT);
-                String id = it.material() != null ? it.material().toLowerCase(Locale.ROOT).replace('_', ' ') : it.customId().toLowerCase(Locale.ROOT);
-                if (name.contains(q) || id.contains(q)) hits.add(ref);
+                for (String term : items.searchTerms(it)) {
+                    if (term.contains(q)) {
+                        hits.add(ref);
+                        break;
+                    }
+                }
             }
         }
         boolean menu = fromMenu.getOrDefault(player.getUniqueId(), false);

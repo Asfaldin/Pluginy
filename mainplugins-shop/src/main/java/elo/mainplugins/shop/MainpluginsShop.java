@@ -44,6 +44,7 @@ public final class MainpluginsShop extends JavaPlugin {
     private RotationManager rotation;
     private ShopManager shop;
     private BukkitTask timer;
+    private BukkitTask eventTimer;
 
     @Override
     public void onEnable() {
@@ -60,11 +61,11 @@ public final class MainpluginsShop extends JavaPlugin {
         prepareFiles();
         config = load();
 
-        ShopItems items = new ShopItems(this, CoreAPI.getCustomItemService());
+        ShopItems items = new ShopItems(this, CoreAPI.getCustomItemService(), CoreAPI.getItemNameService());
         stats = new ShopStats(this, config.settings().statsEnabled());
         prices = new DynamicPriceManager(this, config.settings().dynamic(), stats, key -> nameOf(items, key),
                 () -> Bukkit.getOnlinePlayers().forEach(p -> lang.send(p, this, "dynamic.reset-broadcast")));
-        rotation = new RotationManager(this, () -> config);
+        rotation = new RotationManager(this, lang, items, () -> config);
         rotation.check();
         shop = new ShopManager(this, lang, CoreAPI.getEconomyService(), items, () -> config, prices, rotation, stats);
         getServer().getPluginManager().registerEvents(shop, this);
@@ -75,6 +76,15 @@ public final class MainpluginsShop extends JavaPlugin {
             rotation.check();
             stats.zapisz();
         }, 12_000L, 12_000L);
+
+        // Co 10 sekund: eventy, którym minął czas (/@shop event <item> <procent> <czas>).
+        eventTimer = getServer().getScheduler().runTaskTimer(this, () -> {
+            for (String key : prices.zakonczWygasle()) {
+                if (!config.settings().dynamic().announceEvents()) continue;
+                Bukkit.getOnlinePlayers().forEach(p ->
+                        lang.send(p, this, "event.broadcast-off", Map.of("item", nameOf(items, key))));
+            }
+        }, 200L, 200L);
 
         CommandExecutor player = (sender, command, label, args) -> {
             if (!(sender instanceof Player p)) {
@@ -104,6 +114,7 @@ public final class MainpluginsShop extends JavaPlugin {
     @Override
     public void onDisable() {
         if (timer != null) timer.cancel();
+        if (eventTimer != null) eventTimer.cancel();
         if (rotation != null) rotation.close();
         if (prices != null) prices.zamknij();
         if (stats != null) stats.zapisz();

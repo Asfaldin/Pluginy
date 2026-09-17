@@ -9,6 +9,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -71,6 +72,8 @@ public class DynamicPriceManager {
     private final Map<String, Integer> zamrozenieNaBazie = new ConcurrentHashMap<>();
     /** Itemy z ręcznie zablokowanym mnożnikiem (eventy) - cykl ich nie rusza. */
     private final Set<String> zablokowane = ConcurrentHashMap.newKeySet();
+    /** Koniec eventu (czas systemowy w ms). Brak wpisu = event bez końca, trwa aż do /@shop event off. */
+    private final Map<String, Long> koniecEventu = new ConcurrentHashMap<>();
 
     private final Plugin plugin;
     private final FileConfiguration config;
@@ -136,6 +139,8 @@ public class DynamicPriceManager {
             double prog = config.getDouble(klucz + ".drought-threshold", -1);
             if (prog >= 0) zamrozonyProg.put(klucz, prog);
             if (config.getBoolean(klucz + ".locked", false)) zablokowane.add(klucz);
+            long doKiedy = config.getLong(klucz + ".event-until", 0L);
+            if (doKiedy > 0) koniecEventu.put(klucz, doKiedy);
         }
     }
 
@@ -149,6 +154,8 @@ public class DynamicPriceManager {
             Double prog = zamrozonyProg.get(klucz);
             config.set(klucz + ".drought-threshold", prog != null ? zaokr(prog) : null);
             config.set(klucz + ".locked", zablokowane.contains(klucz) ? true : null);
+            Long doKiedy = koniecEventu.get(klucz);
+            config.set(klucz + ".event-until", doKiedy != null && doKiedy > 0 ? doKiedy : null);
         }
         saver.oznaczZmiane();
     }
@@ -316,17 +323,52 @@ public class DynamicPriceManager {
         return licznikSuszy.getOrDefault(klucz, 0);
     }
 
-    /** Ustawia mnożnik i blokuje go (event). */
+    /** Ustawia mnożnik i blokuje go (event bez końca). */
     public void zablokujMnoznik(String klucz, double wartosc) {
+        zablokujMnoznik(klucz, wartosc, 0L);
+    }
+
+    /** Ustawia mnożnik i blokuje go. doKiedy = czas systemowy w ms, 0 = event bez końca. */
+    public void zablokujMnoznik(String klucz, double wartosc, long doKiedy) {
         ustawMnoznik(klucz, wartosc);
         zablokowane.add(klucz);
+        if (doKiedy > 0) koniecEventu.put(klucz, doKiedy);
+        else koniecEventu.remove(klucz);
         zapiszStan();
     }
 
     /** Koniec eventu: blokada zdjęta i od razu cena bazowa (inaczej ceny eventowe trzymałyby się godzinami). */
     public void odblokujMnoznik(String klucz) {
         zablokowane.remove(klucz);
+        koniecEventu.remove(klucz);
         ustawMnoznik(klucz, 1.0);
+    }
+
+    /** Ile ms zostało do końca eventu; null = event bez końca albo przedmiot nie ma eventu. */
+    public Long zostaloEventu(String klucz) {
+        Long doKiedy = koniecEventu.get(klucz);
+        if (doKiedy == null || !zablokowane.contains(klucz)) return null;
+        return Math.max(0L, doKiedy - System.currentTimeMillis());
+    }
+
+    /** Kończy wszystkie trwające eventy naraz. Zwraca ich klucze. */
+    public List<String> zakonczWszystkieEventy() {
+        List<String> wszystkie = new ArrayList<>(zablokowane);
+        for (String klucz : wszystkie) odblokujMnoznik(klucz);
+        if (!wszystkie.isEmpty()) zapiszStan();
+        return wszystkie;
+    }
+
+    /** Kończy eventy, którym minął czas. Zwraca klucze zakończonych - do ogłoszenia na czacie. */
+    public List<String> zakonczWygasle() {
+        long teraz = System.currentTimeMillis();
+        List<String> wygasle = new ArrayList<>();
+        for (Map.Entry<String, Long> e : koniecEventu.entrySet()) {
+            if (e.getValue() <= teraz) wygasle.add(e.getKey());
+        }
+        for (String klucz : wygasle) odblokujMnoznik(klucz);
+        if (!wygasle.isEmpty()) zapiszStan();
+        return wygasle;
     }
 
     public boolean czyZablokowany(String klucz) {

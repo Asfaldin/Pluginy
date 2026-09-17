@@ -73,7 +73,8 @@ public final class ShopConfigParser {
                 warn.accept("shop.yml dynamic-prices.max-sell-share: must be above 0 and at most 1 - using " + dd.maxSellShare() + ".");
                 share = dd.maxSellShare();
             }
-            dynamic = new DynamicSettings(dyn.getBoolean("enabled", dd.enabled()), cycle, min, max, reset, share);
+            dynamic = new DynamicSettings(dyn.getBoolean("enabled", dd.enabled()), cycle, min, max, reset, share,
+                    dyn.getBoolean("announce-events", dd.announceEvents()));
         }
 
         Map<String, MenuScreen> menus = new LinkedHashMap<>();
@@ -186,7 +187,7 @@ public final class ShopConfigParser {
                 warn.accept(file + " rotation.every-days: must be at least 1 - using 14.");
                 every = 14;
             }
-            rotation = new Rotation(rot.getBoolean("enabled", true), show, every,
+            rotation = new Rotation(rot.getBoolean("enabled", true), show, every, rot.getBoolean("announce", true),
                     parseItems(rot.getList("pool", List.of()), file + " rotation.pool", materialExists, warn));
         }
         return new Category(id, name, iconMaterial, iconCustom, items, rotation);

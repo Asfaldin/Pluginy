@@ -6,6 +6,9 @@ import elo.mainplugins.shop.model.Category;
 import elo.mainplugins.shop.model.DynamicSettings;
 import elo.mainplugins.shop.model.ShopConfig;
 import elo.mainplugins.shop.model.ShopItem;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextReplacementConfig;
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -36,7 +39,8 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
     /** Gdzie w sklepie jest przedmiot: kategoria, czy w puli rotacji, numer na liście. */
     private record Loc(Category category, boolean pool, int index, ShopItem item) {}
 
-    private record Pending(String action, String key, long at) {}
+    /** Czeka na /@shop confirm. Dla "price": field = buy/sell, amount = nowa cena paczki. */
+    private record Pending(String action, String key, long at, String field, Double amount) {}
 
     private final Plugin plugin;
     private final LangService lang;
@@ -70,6 +74,12 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
 
     private static String senderId(CommandSender s) {
         return s instanceof Player p ? p.getUniqueId().toString() : "CONSOLE";
+    }
+
+    /** Mnożnik -> "+50" / "-20" - admin widzi procenty, nie mnożniki. */
+    private static String signed(double multiplier) {
+        int pct = ShopRules.multiplierToPercent(multiplier);
+        return (pct >= 0 ? "+" : "") + pct;
     }
 
     private static String fmt(double x) {
@@ -131,12 +141,12 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
                 }
                 Loc loc = findOrWarn(sender, args[1]);
                 if (loc == null) return true;
-                pending.put(senderId(sender), new Pending("reset", loc.item().key(), System.currentTimeMillis()));
-                send(sender, "admin.confirm-reset", Map.of("item", loc.item().key(), "multiplier", fmt(prices.getMnoznik(loc.item().key())),
+                pending.put(senderId(sender), new Pending("reset", loc.item().key(), System.currentTimeMillis(), null, null));
+                send(sender, "admin.confirm-reset", Map.of("item", loc.item().key(), "percent", signed(prices.getMnoznik(loc.item().key())),
                         "seconds", String.valueOf(CONFIRM_SECONDS)));
             }
             case "resetall" -> {
-                pending.put(senderId(sender), new Pending("resetall", null, System.currentTimeMillis()));
+                pending.put(senderId(sender), new Pending("resetall", null, System.currentTimeMillis(), null, null));
                 send(sender, "admin.confirm-resetall", Map.of("count", String.valueOf(prices.getWszystkieMnozniki().size()),
                         "seconds", String.valueOf(CONFIRM_SECONDS)));
             }
@@ -151,10 +161,12 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 Loc loc = findOrWarn(sender, args[1]);
-                Double x = loc == null ? null : number(sender, args[2]);
-                if (x == null || !inRange(sender, x)) return true;
+                Double x = loc == null ? null : percent(sender, args[2]);
+                if (x == null) return true;
                 prices.ustawMnoznik(loc.item().key(), x);
-                send(sender, "admin.multiplier-set", Map.of("item", loc.item().key(), "multiplier", fmt(prices.getMnoznik(loc.item().key()))));
+                int pct = ShopRules.multiplierToPercent(prices.getMnoznik(loc.item().key()));
+                send(sender, "admin.multiplier-set", Map.of("item", loc.item().key(),
+                        "percent", (pct >= 0 ? "+" : "") + pct));
             }
             case "event" -> event(sender, args);
             case "rotation" -> rotationCmd(sender, args);
@@ -167,8 +179,19 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
     private boolean inRange(CommandSender s, double x) {
         DynamicSettings d = config.get().settings().dynamic();
         if (x >= d.minMultiplier() && x <= d.maxMultiplier()) return true;
-        send(s, "admin.multiplier-range", Map.of("min", fmt(d.minMultiplier()), "max", fmt(d.maxMultiplier())));
+        send(s, "admin.percent-range", Map.of("min", String.valueOf(ShopRules.multiplierToPercent(d.minMultiplier())),
+                "max", "+" + ShopRules.multiplierToPercent(d.maxMultiplier())));
         return false;
+    }
+
+    /** "+50" / "-20" / "50%" -> mnożnik, z komunikatem o błędzie. Null = zły zapis albo poza zakresem. */
+    private Double percent(CommandSender s, String raw) {
+        Double x = ShopRules.percentToMultiplier(raw);
+        if (x == null) {
+            send(s, "admin.not-a-percent", Map.of("value", raw));
+            return null;
+        }
+        return inRange(s, x) ? x : null;
     }
 
     private void confirm(CommandSender sender) {
@@ -181,7 +204,9 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
             send(sender, "admin.confirm-expired");
             return;
         }
-        if (p.action().equals("reset")) {
+        if (p.action().equals("price")) {
+            applyPrice(sender, p);
+        } else if (p.action().equals("reset")) {
             prices.resetujItem(p.key());
             send(sender, "admin.reset-done", Map.of("item", p.key()));
         } else {
@@ -205,7 +230,7 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
         ph.put("buy", it.buyable() ? per(it.buy(), it.amount()) : none);
         ph.put("sell", it.sellable() ? per(it.sell(), it.sellAmount()) : none);
         ph.put("real", it.sellable() ? per(ShopRules.sellPerLot(it, m, d.maxSellShare(), config.get().settings().rounding()), it.sellAmount()) : none);
-        ph.put("multiplier", fmt(m));
+        ph.put("percent", signed(m));
         ph.put("state", net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand().serialize(lang.msg(plugin, state)));
         ph.put("norm", String.format(Locale.US, "%.1f", prices.getNorma(key)));
         ph.put("drought", String.valueOf(prices.getLicznikSuszy(key)));
@@ -246,16 +271,40 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
             send(sender, "admin.price-margin", Map.of("sell", fmt(sell / it.sellAmount()), "buy", fmt(buy / it.amount())));
             return;
         }
-        String error = writePrice(loc, field, amount);
+        int pieces = field.equals("buy") ? it.amount() : it.sellAmount();
+        Double old = field.equals("buy") ? it.buy() : it.sell();
+        pending.put(senderId(sender), new Pending("price", it.key(), System.currentTimeMillis(), field, amount));
+        Map<String, String> ph = new LinkedHashMap<>();
+        ph.put("item", it.key());
+        ph.put("pieces", String.valueOf(pieces));
+        ph.put("old", old == null ? "-" : ShopManager.money(old));
+        ph.put("old-each", old == null ? "-" : ShopManager.money(old / pieces));
+        ph.put("new", ShopManager.money(amount));
+        ph.put("new-each", ShopManager.money(amount / pieces));
+        ph.put("seconds", String.valueOf(CONFIRM_SECONDS));
+        send(sender, field.equals("buy") ? "admin.confirm-price-buy" : "admin.confirm-price-sell", ph);
+    }
+
+    /** Zapisuje cenę potwierdzoną przez /@shop confirm. */
+    private void applyPrice(CommandSender sender, Pending p) {
+        Loc loc = find(p.key());
+        if (loc == null) {
+            send(sender, "admin.unknown-item", Map.of("item", p.key()));
+            return;
+        }
+        String error = writePrice(loc, p.field(), p.amount());
         if (error != null) {
             send(sender, "admin.price-failed", Map.of("error", error));
             return;
         }
         reload.run();
-        send(sender, "admin.price-set", Map.of("type", field, "item", it.key(), "amount", ShopManager.money(amount), "category", loc.category().id()));
-        double m = prices.getMnoznik(it.key());
-        if (field.equals("sell") && Math.abs(m - 1.0) > 0.02) {
-            send(sender, "admin.price-multiplier-note", Map.of("multiplier", fmt(m), "item", it.key()));
+        int pieces = p.field().equals("buy") ? loc.item().amount() : loc.item().sellAmount();
+        send(sender, "admin.price-set", Map.of("type", p.field(), "item", p.key(), "amount", ShopManager.money(p.amount()),
+                "pieces", String.valueOf(pieces), "each", ShopManager.money(p.amount() / pieces),
+                "category", loc.category().id()));
+        double m = prices.getMnoznik(p.key());
+        if (p.field().equals("sell") && Math.abs(m - 1.0) > 0.02) {
+            send(sender, "admin.price-multiplier-note", Map.of("percent", signed(m), "item", p.key()));
         }
     }
 
@@ -288,6 +337,18 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
     }
 
     private void event(CommandSender sender, String[] args) {
+        if (args.length >= 2 && args[1].equalsIgnoreCase("offall")) {
+            int n = prices.zakonczWszystkieEventy().size();
+            if (n == 0) {
+                send(sender, "admin.event-list-empty");
+                return;
+            }
+            send(sender, "admin.event-offall", Map.of("count", String.valueOf(n)));
+            if (config.get().settings().dynamic().announceEvents()) {
+                Bukkit.getOnlinePlayers().forEach(p -> lang.send(p, plugin, "event.broadcast-all-off"));
+            }
+            return;
+        }
         if (args.length >= 2 && args[1].equalsIgnoreCase("list")) {
             Map<String, Double> locked = prices.getZablokowane();
             if (locked.isEmpty()) {
@@ -295,7 +356,15 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
                 return;
             }
             send(sender, "admin.event-list-header");
-            locked.forEach((k, v) -> send(sender, "admin.event-list-line", Map.of("item", k, "multiplier", fmt(v))));
+            locked.forEach((k, v) -> {
+                int pct = ShopRules.multiplierToPercent(v);
+                Long left = prices.zostaloEventu(k);
+                Map<String, String> ph = new LinkedHashMap<>();
+                ph.put("item", k);
+                ph.put("percent", (pct >= 0 ? "+" : "") + pct);
+                if (left != null) ph.put("time", ShopRules.formatDuration(left));
+                send(sender, left == null ? "admin.event-list-line" : "admin.event-list-line-timed", ph);
+            });
             return;
         }
         if (args.length < 3) {
@@ -312,14 +381,43 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
             }
             prices.odblokujMnoznik(key);
             send(sender, "admin.event-off", Map.of("item", key));
+            broadcastEvent(loc.item(), "event.broadcast-off", Map.of());
             return;
         }
-        Double x = number(sender, args[2]);
-        if (x == null || !inRange(sender, x)) return;
-        prices.zablokujMnoznik(key, x);
-        int percent = (int) Math.round((x - 1.0) * 100);
-        send(sender, "admin.event-set", Map.of("item", key, "multiplier", fmt(x), "percent", (percent >= 0 ? "+" : "") + percent));
+        Double x = percent(sender, args[2]);
+        if (x == null) return;
+        long until = 0L;
+        String timeText = null;
+        if (args.length >= 4) {
+            Long span = ShopRules.parseDuration(args[3]);
+            if (span == null) {
+                send(sender, "admin.not-a-duration", Map.of("value", args[3]));
+                return;
+            }
+            until = System.currentTimeMillis() + span;
+            timeText = ShopRules.formatDuration(span);
+        }
+        prices.zablokujMnoznik(key, x, until);
+        int percent = ShopRules.multiplierToPercent(x);
+        Map<String, String> ph = new LinkedHashMap<>();
+        ph.put("item", key);
+        ph.put("percent", (percent >= 0 ? "+" : "") + percent);
+        if (timeText != null) ph.put("time", timeText);
+        send(sender, timeText == null ? "admin.event-set" : "admin.event-set-timed", ph);
+        Map<String, String> bc = new LinkedHashMap<>();
+        bc.put("percent", String.valueOf(Math.abs(percent)));
+        if (timeText != null) bc.put("time", timeText);
+        String dir = percent >= 0 ? "up" : "down";
+        broadcastEvent(loc.item(), "event.broadcast-" + dir + (timeText == null ? "" : "-timed"), bc);
         if (!prices.enabled()) send(sender, "admin.dynamic-off");
+    }
+
+    /** Ogłasza event wszystkim na serwerze (shop.yml dynamic-prices.announce-events: false wyłącza). Teksty w lang/. */
+    private void broadcastEvent(ShopItem item, String key, Map<String, String> ph) {
+        if (!config.get().settings().dynamic().announceEvents()) return;
+        Component line = lang.msg(plugin, key, ph).replaceText(
+                TextReplacementConfig.builder().matchLiteral("{item}").replacement(items.name(item)).build());
+        Bukkit.getOnlinePlayers().forEach(p -> p.sendMessage(line));
     }
 
     private void rotationCmd(CommandSender sender, String[] args) {
@@ -379,7 +477,10 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
             switch (sub) {
                 case "info", "price", "reset", "multiplier", "event" -> {
                     List<String> keys = new ArrayList<>();
-                    if (sub.equals("event")) keys.add("list");
+                    if (sub.equals("event")) {
+                        keys.add("list");
+                        keys.add("offall");
+                    }
                     for (Category c : config.get().categories().values()) {
                         for (ShopItem it : c.items()) keys.add(it.key());
                         if (c.rotation() != null) for (ShopItem it : c.rotation().pool()) keys.add(it.key());
@@ -398,7 +499,8 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
             }
         }
         if (args.length == 3 && sub.equals("price")) return TabCompleteUtils.dopasuj(args[2], List.of("buy", "sell"));
-        if (args.length == 3 && sub.equals("event")) return TabCompleteUtils.dopasuj(args[2], List.of("off", "0.8", "1.2", "1.5"));
+        if (args.length == 3 && sub.equals("event")) return TabCompleteUtils.dopasuj(args[2], List.of("off", "-20", "+20", "+50"));
+        if (args.length == 4 && sub.equals("event")) return TabCompleteUtils.dopasuj(args[3], List.of("30m", "2h", "6h", "1d", "3d"));
         if (args.length == 3 && sub.equals("rotation")) return TabCompleteUtils.dopasuj(args[2], config.get().categories().keySet());
         return TabCompleteUtils.PUSTA;
     }

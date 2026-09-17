@@ -105,4 +105,44 @@ class ShopRulesTest {
         assertNotEquals(ShopRules.buyPrice(item(10.0, 64, null, 1), 1, Rounding.WHOLE),
                 ShopRules.buyPrice(item(10.0, 64, null, 1), 1, Rounding.CENTS));
     }
+
+    // ---- eventy: procenty i czas ----
+
+    @Test
+    void percentToMultiplierAcceptsSignsAndPercentSign() {
+        assertEquals(1.5, ShopRules.percentToMultiplier("+50"), 1e-9);
+        assertEquals(1.5, ShopRules.percentToMultiplier("50"), 1e-9);
+        assertEquals(1.5, ShopRules.percentToMultiplier("50%"), 1e-9);
+        assertEquals(0.8, ShopRules.percentToMultiplier("-20"), 1e-9);
+        assertNull(ShopRules.percentToMultiplier("abc"));
+    }
+
+    @Test
+    void percentRoundTrips() {
+        assertEquals(50, ShopRules.multiplierToPercent(1.5));
+        assertEquals(-20, ShopRules.multiplierToPercent(0.8));
+        assertEquals(0, ShopRules.multiplierToPercent(1.0));
+    }
+
+    @Test
+    void parseDurationUnderstandsUnits() {
+        assertEquals(30 * 60_000L, ShopRules.parseDuration("30m"));
+        assertEquals(2 * 3_600_000L, ShopRules.parseDuration("2h"));
+        assertEquals(3 * 86_400_000L, ShopRules.parseDuration("3d"));
+        assertEquals(2 * 3_600_000L, ShopRules.parseDuration("2"), "sama liczba = godziny");
+        assertNull(ShopRules.parseDuration("0h"));
+        assertNull(ShopRules.parseDuration("-1h"));
+        assertNull(ShopRules.parseDuration("2x"));
+        assertNull(ShopRules.parseDuration(""));
+    }
+
+    @Test
+    void formatDurationShowsAtMostTwoUnits() {
+        assertEquals("30m", ShopRules.formatDuration(30 * 60_000L));
+        assertEquals("1h 20m", ShopRules.formatDuration(80 * 60_000L));
+        assertEquals("2h", ShopRules.formatDuration(2 * 3_600_000L));
+        assertEquals("2d 3h", ShopRules.formatDuration(2 * 86_400_000L + 3 * 3_600_000L));
+        assertEquals("45s", ShopRules.formatDuration(45_000L));
+        assertEquals("0s", ShopRules.formatDuration(-5));
+    }
 }

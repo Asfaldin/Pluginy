@@ -12,6 +12,7 @@ import elo.mainplugins.core.command.MoneyUndoCommand;
 import elo.mainplugins.core.command.PayCommand;
 import elo.mainplugins.core.command.PomocCommand;
 import elo.mainplugins.core.command.PortfelCommand;
+import elo.mainplugins.core.api.ItemNameService;
 import elo.mainplugins.core.api.LangService;
 import elo.mainplugins.core.api.LicenseService;
 import elo.mainplugins.core.api.PlaceholderService;
@@ -22,6 +23,7 @@ import elo.mainplugins.core.customitem.CustomItemManager;
 import elo.mainplugins.core.economy.EconomyManager;
 import elo.mainplugins.core.economy.VaultBackedEconomy;
 import elo.mainplugins.core.economy.VaultHook;
+import elo.mainplugins.core.lang.ItemNameManager;
 import elo.mainplugins.core.lang.LangManager;
 import elo.mainplugins.core.placeholder.PlaceholderManager;
 import elo.mainplugins.core.reward.RewardManager;
@@ -46,6 +48,7 @@ public final class MainpluginsCore extends JavaPlugin {
     private EconomyManager economyManager;
     private EconomyService economyService;
     private LangManager langManager;
+    private ItemNameManager itemNameManager;
 
     @Override
     public void onEnable() {
@@ -59,6 +62,9 @@ public final class MainpluginsCore extends JavaPlugin {
         langManager = new LangManager(this, placeholderManager);
         getServer().getServicesManager().register(LangService.class, langManager, this, ServicePriority.Normal);
         langManager.registerDefaults(this);
+
+        itemNameManager = new ItemNameManager(this, langManager::language);
+        getServer().getServicesManager().register(ItemNameService.class, itemNameManager, this, ServicePriority.Normal);
 
         boolean vault = getServer().getPluginManager().isPluginEnabled("Vault");
         String mode = getConfig().getString("economy", "own");
@@ -191,6 +197,7 @@ public final class MainpluginsCore extends JavaPlugin {
         if (getCommand("@reloadlang") != null) {
             getCommand("@reloadlang").setExecutor((sender, command, label, args) -> {
                 langManager.reload();
+                itemNameManager.reload();
                 langManager.send(sender, this, "lang.reloaded", java.util.Map.of("language", langManager.language()));
                 return true;
             });

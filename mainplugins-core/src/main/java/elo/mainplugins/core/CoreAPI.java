@@ -4,6 +4,7 @@ import elo.mainplugins.core.api.CrateService;
 import elo.mainplugins.core.api.CustomItemService;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.IslandService;
+import elo.mainplugins.core.api.ItemNameService;
 import elo.mainplugins.core.api.LangService;
 import elo.mainplugins.core.api.LicenseService;
 import elo.mainplugins.core.api.PlaceholderService;
@@ -108,6 +109,15 @@ public final class CoreAPI {
         RegisteredServiceProvider<LangService> rsp = Bukkit.getServicesManager().getRegistration(LangService.class);
         if (rsp == null) {
             throw new IllegalStateException("MainpluginsCore nie jest włączony lub nie zarejestrował jeszcze LangService - sprawdź plugin.yml (depend: [MainpluginsCore]).");
+        }
+        return rsp.getProvider();
+    }
+
+    /** Nazwy przedmiotów (patrz {@link ItemNameService}) - rejestruje go samo core, rzuca jak {@link #getEconomyService()}. */
+    public static ItemNameService getItemNameService() {
+        RegisteredServiceProvider<ItemNameService> rsp = Bukkit.getServicesManager().getRegistration(ItemNameService.class);
+        if (rsp == null) {
+            throw new IllegalStateException("MainpluginsCore nie jest włączony lub nie zarejestrował jeszcze ItemNameService - sprawdź plugin.yml (depend: [MainpluginsCore]).");
         }
         return rsp.getProvider();
     }

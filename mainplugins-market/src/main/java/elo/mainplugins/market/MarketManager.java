@@ -504,7 +504,7 @@ public final class MarketManager implements Listener {
         }
         store.remove(offerId);
         economy.odejmijKase(id, l.price());
-        long payout = MarketRules.payout(l.price(), settings.taxPercent());
+        long payout = MarketRules.payout(l.price(), settings.taxEnabled() ? settings.taxPercent() : 0);
         economy.dodajKase(l.seller(), payout);
         Player seller = Bukkit.getPlayer(l.seller());
         if (seller != null && seller.isOnline()) {

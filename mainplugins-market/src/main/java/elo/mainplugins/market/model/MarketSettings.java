@@ -6,7 +6,7 @@ import java.util.Map;
 
 /** Wszystko z market.yml. Przycisk, którego nie ma w mapie, po prostu się nie pokazuje. */
 public record MarketSettings(int defaultLimit, long minPrice, long maxPrice, int expireDays,
-                             boolean mailbox, int taxPercent, String title, String background,
+                             boolean mailbox, boolean taxEnabled, int taxPercent, String title, String background,
                              Map<String, ButtonDef> buttons) {
 
     /** Miejsca na oferty - blok 7x3 w środku okna 54. */
@@ -30,6 +30,6 @@ public record MarketSettings(int defaultLimit, long minPrice, long maxPrice, int
     }
 
     public static MarketSettings defaults() {
-        return new MarketSettings(10, 1, 10_000_000L, 7, true, 0, "", "GRAY_STAINED_GLASS_PANE", Map.copyOf(defaultButtons()));
+        return new MarketSettings(10, 1, 10_000_000L, 7, true, false, 5, "", "GRAY_STAINED_GLASS_PANE", Map.copyOf(defaultButtons()));
     }
 }

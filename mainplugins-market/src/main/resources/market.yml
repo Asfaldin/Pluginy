@@ -16,8 +16,11 @@ expire-days: 7
 # false = such items drop at the player's feet (expired offers come back on the next join).
 mailbox: true
 
-# Percent of the price the seller does NOT get (0-100). Money sink for the server economy.
-tax-percent: 0
+# Tax on a sale: the seller does NOT get this percent of the price. Money sink for the server economy.
+# enabled: false = no tax at all (the percent is only remembered for later).
+tax:
+  enabled: false
+  percent: 5
 
 menu:
   # Window title - leave empty to use the text from the lang file.

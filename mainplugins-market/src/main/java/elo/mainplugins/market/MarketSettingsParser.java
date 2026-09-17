@@ -42,10 +42,15 @@ public final class MarketSettingsParser {
             expire = 0;
         }
 
-        int tax = root.getInt("tax-percent", d.taxPercent());
+        // Podatek: tax.enabled + tax.percent. Stare pliki mialy samo tax-percent (0 = brak) - czytamy oba.
+        ConfigurationSection taxSection = root.getConfigurationSection("tax");
+        boolean taxOn = taxSection != null ? taxSection.getBoolean("enabled", d.taxEnabled())
+                : root.getInt("tax-percent", 0) > 0;
+        int tax = taxSection != null ? taxSection.getInt("percent", d.taxPercent())
+                : root.getInt("tax-percent", d.taxPercent());
         if (tax < 0 || tax > 100) {
             int fixed = Math.max(0, Math.min(100, tax));
-            warn.accept(FILE + " tax-percent: must be 0-100 - using " + fixed + ".");
+            warn.accept(FILE + " tax.percent: must be 0-100 - using " + fixed + ".");
             tax = fixed;
         }
 
@@ -75,7 +80,7 @@ public final class MarketSettingsParser {
             buttons.put(id, new ButtonDef(slot, mat));
         }
 
-        return new MarketSettings(limit, min, max, expire, root.getBoolean("mailbox", d.mailbox()), tax,
+        return new MarketSettings(limit, min, max, expire, root.getBoolean("mailbox", d.mailbox()), taxOn, tax,
                 title, background, Map.copyOf(buttons));
     }
 

@@ -63,9 +63,44 @@ class MarketSettingsParserTest {
     @Test
     void taxIsClamped() throws Exception {
         List<String> w = new ArrayList<>();
-        assertEquals(100, parse("tax-percent: 150", w).taxPercent());
+        assertEquals(100, parse("""
+                tax:
+                  enabled: true
+                  percent: 150
+                """, w).taxPercent());
         assertEquals(1, w.size());
-        assertTrue(w.get(0).contains("tax-percent"));
+        assertTrue(w.get(0).contains("tax.percent"));
+    }
+
+    @Test
+    void taxIsOffByDefaultAndSwitchable() throws Exception {
+        List<String> w = new ArrayList<>();
+        assertFalse(parse("", w).taxEnabled(), "domyślnie podatku nie ma");
+        MarketSettings on = parse("""
+                tax:
+                  enabled: true
+                  percent: 5
+                """, w);
+        assertTrue(on.taxEnabled());
+        assertEquals(5, on.taxPercent());
+        // Wyłączony podatek nie kasuje zapamiętanego procentu.
+        MarketSettings off = parse("""
+                tax:
+                  enabled: false
+                  percent: 5
+                """, w);
+        assertFalse(off.taxEnabled());
+        assertEquals(5, off.taxPercent());
+        assertTrue(w.isEmpty());
+    }
+
+    @Test
+    void oldTaxPercentStillWorks() throws Exception {
+        List<String> w = new ArrayList<>();
+        MarketSettings s = parse("tax-percent: 10", w);
+        assertTrue(s.taxEnabled(), "stary zapis: procent powyżej zera znaczy 'podatek włączony'");
+        assertEquals(10, s.taxPercent());
+        assertFalse(parse("tax-percent: 0", w).taxEnabled());
     }
 
     @Test

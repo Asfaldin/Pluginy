@@ -21,7 +21,7 @@ public final class MainpluginsMarket extends JavaPlugin {
 
         LangService lang = CoreAPI.getLangService();
         lang.registerDefaults(this);
-        market = new MarketManager(this, lang, CoreAPI.getEconomyService());
+        market = new MarketManager(this, lang, CoreAPI.getItemNameService(), CoreAPI.getEconomyService());
         getServer().getPluginManager().registerEvents(market, this);
 
         if (getCommand("targ") != null) {

@@ -66,6 +66,6 @@ admin:
   reloaded: "&aMarket settings reloaded ({offers} offers on the market)."
   player-not-found: "&cPlayer not found: {player}"
   list-header: "&e{player} has {count} offer(s):"
-  list-line: "&7- {item} &7for &f{price}$ &8({id})"
+  list-line: "&7- {item} &7for &f{price}$ &7({id})"
   list-empty: "&7{player} has no offers."
   removed: "&aTook {count} offer(s) of {player} off the market."

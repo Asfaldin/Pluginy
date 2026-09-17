@@ -1,6 +1,7 @@
 package elo.mainplugins.market;
 
 import elo.mainplugins.core.api.EconomyService;
+import elo.mainplugins.core.api.ItemNameService;
 import elo.mainplugins.core.api.LangService;
 import elo.mainplugins.core.util.AsyncConfigSaver;
 import elo.mainplugins.core.util.GuiUtils;
@@ -23,6 +24,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -58,6 +60,7 @@ public final class MarketManager implements Listener {
 
     private final Plugin plugin;
     private final LangService lang;
+    private final ItemNameService itemNames;
     private final EconomyService economy;
     private final ListingStore store;
     private final AsyncConfigSaver saver;
@@ -70,10 +73,13 @@ public final class MarketManager implements Listener {
     private final Map<UUID, String> lastQuery = new HashMap<>();
     private final Map<UUID, Boolean> lastFromMenu = new HashMap<>();
     private final Map<UUID, String> pendingRetract = new HashMap<>();
+    /** Gracze, którym właśnie odświeżamy okno - ich zamknięcia okna nie kasują potwierdzenia wycofania. */
+    private final Set<UUID> odswiezanie = new HashSet<>();
 
-    public MarketManager(Plugin plugin, LangService lang, EconomyService economy) {
+    public MarketManager(Plugin plugin, LangService lang, ItemNameService itemNames, EconomyService economy) {
         this.plugin = plugin;
         this.lang = lang;
+        this.itemNames = itemNames;
         this.economy = economy;
         if (!new File(plugin.getDataFolder(), "market.yml").exists()) plugin.saveResource("market.yml", false);
         reload();
@@ -345,12 +351,12 @@ public final class MarketManager implements Listener {
         holder.buttons().put(slot, "back");
     }
 
-    private static boolean matches(ItemStack item, String q) {
-        if (item.getType().name().toLowerCase(Locale.ROOT).replace('_', ' ').contains(q)) return true;
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null && meta.hasDisplayName() && meta.displayName() != null) {
-            return PlainTextComponentSerializer.plainText().serialize(meta.displayName()).toLowerCase(Locale.ROOT).contains(q);
-        }
+    /**
+     * Szukanie po nazwie w języku serwera ("bruk"), po angielskiej ("cobblestone", "cobble stone")
+     * i po własnej nazwie przedmiotu - słownik nazw siedzi w core (names/pl.yml).
+     */
+    private boolean matches(ItemStack item, String q) {
+        for (String term : itemNames.searchTerms(item)) if (term.contains(q)) return true;
         return false;
     }
 
@@ -380,6 +386,20 @@ public final class MarketManager implements Listener {
     }
 
     // ---------- kliknięcia ----------
+
+    /**
+     * Każde zamknięcie okna Targu kasuje czekające potwierdzenie wycofania oferty - także przejście na inną
+     * stronę czy do skrzynki "Do odebrania" (otwarcie nowego okna zamyka poprzednie). Potwierdzenie działa
+     * więc tylko na tym ekranie, na którym je uzbroiłeś. Wyjątkiem jest odświeżenie okna zaraz po uzbrojeniu -
+     * na ten jeden moment gracz jest w zbiorze "odswiezanie".
+     */
+    @EventHandler
+    public void onClose(InventoryCloseEvent event) {
+        if (!(event.getInventory().getHolder(false) instanceof MarketGuiHolder)) return;
+        if (!(event.getPlayer() instanceof Player player)) return;
+        if (odswiezanie.contains(player.getUniqueId())) return;
+        pendingRetract.remove(player.getUniqueId());
+    }
 
     @EventHandler
     public void onDrag(InventoryDragEvent event) {
@@ -457,11 +477,17 @@ public final class MarketManager implements Listener {
                 ItemStack item = decode(l.item());
                 if (item != null) give(player, item);
                 send(player, "retract.done");
+                refresh.run();
             } else {
                 pendingRetract.put(id, offerId);
                 Bukkit.getScheduler().runTaskLater(plugin, () -> pendingRetract.remove(id, offerId), RETRACT_TIMEOUT_TICKS);
+                odswiezanie.add(id);
+                try {
+                    refresh.run();
+                } finally {
+                    odswiezanie.remove(id);
+                }
             }
-            refresh.run();
             return;
         }
         if (!economy.maWystarczajaco(id, l.price())) {
@@ -589,6 +615,7 @@ public final class MarketManager implements Listener {
         lastQuery.remove(id);
         lastFromMenu.remove(id);
         pendingRetract.remove(id);
+        odswiezanie.remove(id);
     }
 
     // ---------- admin ----------

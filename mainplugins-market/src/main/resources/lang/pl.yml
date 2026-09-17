@@ -66,6 +66,6 @@ admin:
   reloaded: "&aUstawienia Targu wczytane ({offers} ofert na Targu)."
   player-not-found: "&cNie znaleziono gracza: {player}"
   list-header: "&e{player} ma {count} ofert(y):"
-  list-line: "&7- {item} &7za &f{price}$ &8({id})"
+  list-line: "&7- {item} &7za &f{price}$ &7({id})"
   list-empty: "&7{player} nie ma żadnych ofert."
   removed: "&aZdjęto z Targu {count} ofert(y) gracza {player}."

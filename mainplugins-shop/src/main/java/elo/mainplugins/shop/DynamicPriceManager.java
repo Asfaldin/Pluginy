@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * Mnożniki cen skupu reagujące na obrót. Ustawienia (włączone, cykl, granice, reset) z shop.yml;
@@ -30,34 +31,6 @@ public class DynamicPriceManager {
 
     /** Najmocniej odchylony item - pod wskazówkę HUD "co teraz warto sprzedać". */
     public record Deviation(String key, String name, double multiplier) {}
-
-    // =========================================================================
-    //  STROJENIE (bez zmian względem dawnej wersji)
-    // =========================================================================
-
-    /** Maksymalny spadek w jednym cyklu przy standardowej cenie (mnożnik = 1.0). */
-    private static final double MAX_SPADEK = 0.05;
-
-    /** Ile razy mocniejszy jest spadek, gdy mnożnik stoi na samym szczycie. */
-    private static final double MNOZNIK_SPADKU_NA_SZCZYCIE = 4.2;
-
-    /** Jaka część pozostałego dystansu do 1.0 jest odrabiana w jednym cyklu ciszy. */
-    private static final double TEMPO_POWROTU_Z_DOLU = 0.80;
-
-    /** O ile rośnie mnożnik na cykl po rozpoczęciu wzrostu. */
-    private static final double TEMPO_WZROSTU = 0.125;
-
-    /** Sprzedaż poniżej tego ułamka normy liczy się jako "prawie cisza". */
-    private static final double PROG_CISZY = 0.10;
-
-    /** Ile cykli prawie ciszy, zanim mnożnik zacznie rosnąć ponad 1.0. */
-    private static final int CYKLI_DO_WZROSTU = 2;
-
-    /** Ile cykli mnożnik stoi zamrożony na 1.0 po zejściu z góry. */
-    private static final int CYKLI_ZAMROZENIA = 2;
-
-    /** Jak szybko norma zapomina stare cykle. 0.02 ≈ tydzień historii przy cyklu godzinnym. */
-    private static final double TEMPO_UCZENIA_NORMY = 0.02;
 
     // =========================================================================
     //  STAN
@@ -80,6 +53,8 @@ public class DynamicPriceManager {
     private final AsyncConfigSaver saver;
     private final ShopStats stats;
     private final Function<String, String> nameOf;
+    /** Klucz -> czy przedmiot ma wahające się ceny (false = cena stała, cykl go pomija). */
+    private final Predicate<String> dynamiczny;
     private final Runnable onGlobalReset;
     private volatile DynamicSettings settings;
     private BukkitTask task;
@@ -87,13 +62,15 @@ public class DynamicPriceManager {
 
     /**
      * @param nameOf        klucz -> nazwa do pokazania graczom (HUD, eventy)
+     * @param dynamiczny    klucz -> czy ceny mają się wahać (false = cena stała w cenniku)
      * @param onGlobalReset wiadomość do graczy po globalnym resecie (teksty są w lang)
      */
     public DynamicPriceManager(Plugin plugin, DynamicSettings settings, ShopStats stats,
-                               Function<String, String> nameOf, Runnable onGlobalReset) {
+                               Function<String, String> nameOf, Predicate<String> dynamiczny, Runnable onGlobalReset) {
         this.plugin = plugin;
         this.stats = stats;
         this.nameOf = nameOf;
+        this.dynamiczny = dynamiczny;
         this.onGlobalReset = onGlobalReset;
         File plik = new File(plugin.getDataFolder(), "prices.yml");
         this.config = YamlConfiguration.loadConfiguration(plik);
@@ -173,9 +150,10 @@ public class DynamicPriceManager {
         if (settings.enabled()) obrotCyklu.merge(klucz, sztuk, Integer::sum);
     }
 
-    /** Aktualny mnożnik; przy wyłączonych cenach dynamicznych zawsze 1.0. */
+    /** Aktualny mnożnik; przy wyłączonych cenach dynamicznych i przy cenie stałej zawsze 1.0. */
     public double getMnoznik(String klucz) {
-        return settings.enabled() ? mnozniki.getOrDefault(klucz, 1.0) : 1.0;
+        if (!settings.enabled() || !dynamiczny.test(klucz)) return 1.0;
+        return mnozniki.getOrDefault(klucz, 1.0);
     }
 
     /** Strzałka do GUI: 1 = cena wyższa niż zwykle, -1 = niższa, 0 = normalna. */
@@ -209,13 +187,20 @@ public class DynamicPriceManager {
     private void przetworzItem(String klucz, int sprzedano) {
         double min = settings.minMultiplier();
         double max = settings.maxMultiplier();
+        DynamicSettings.Tuning t = settings.tuning();
+
+        // Cena stała - cykl w ogóle go nie dotyka i nie zostawia po sobie śladu w pliku.
+        if (!dynamiczny.test(klucz)) {
+            mnozniki.remove(klucz);
+            return;
+        }
 
         // Zablokowany ręcznie - cykl go nie rusza, ale norma i statystyki się uczą.
         if (zablokowane.contains(klucz)) {
             if (sprzedano > 0) {
                 double norma = normy.getOrDefault(klucz, 0.0);
                 if (norma < 1.0) normy.put(klucz, (double) sprzedano);
-                else normy.put(klucz, norma + (sprzedano - norma) * TEMPO_UCZENIA_NORMY);
+                else normy.put(klucz, norma + (sprzedano - norma) * t.normLearnRate());
             }
             stats.zapiszCykl(klucz, mnozniki.getOrDefault(klucz, 1.0));
             return;
@@ -232,29 +217,29 @@ public class DynamicPriceManager {
         double m = mnozniki.getOrDefault(klucz, 1.0);
         int susza = licznikSuszy.getOrDefault(klucz, 0);
         int zamrozenie = zamrozenieNaBazie.getOrDefault(klucz, 0);
-        double prog = zamrozonyProg.containsKey(klucz) ? zamrozonyProg.get(klucz) : norma * PROG_CISZY;
+        double prog = zamrozonyProg.containsKey(klucz) ? zamrozonyProg.get(klucz) : norma * t.quietThreshold();
 
         if (sprzedano < prog) {
             // ---- cisza ----
-            zamrozonyProg.putIfAbsent(klucz, norma * PROG_CISZY);
+            zamrozonyProg.putIfAbsent(klucz, norma * t.quietThreshold());
             susza++;
             if (m < 1.0) {
-                m += (1.0 - m) * TEMPO_POWROTU_Z_DOLU;
+                m += (1.0 - m) * t.recoverFromBelow();
                 if (m > 0.995) m = 1.0;
             } else if (zamrozenie > 0) {
                 zamrozenie--;
-            } else if (susza >= CYKLI_DO_WZROSTU) {
-                m += TEMPO_WZROSTU;
+            } else if (susza >= t.cyclesToRise()) {
+                m += t.risePerCycle();
             }
         } else {
             // ---- sprzedaż ----
             susza = Math.max(0, susza - 1);
             zamrozonyProg.remove(klucz);
-            if (m > 1.0) zamrozenie = CYKLI_ZAMROZENIA;
-            m -= policzSpadek(m, sprzedano, norma, max);
+            if (m > 1.0) zamrozenie = t.cyclesFrozen();
+            m -= policzSpadek(m, sprzedano, norma, max, t);
         }
 
-        normy.put(klucz, norma + (sprzedano - norma) * TEMPO_UCZENIA_NORMY);
+        normy.put(klucz, norma + (sprzedano - norma) * t.normLearnRate());
         mnozniki.put(klucz, Math.max(min, Math.min(max, m)));
         licznikSuszy.put(klucz, susza);
         zamrozenieNaBazie.put(klucz, zamrozenie);
@@ -262,14 +247,16 @@ public class DynamicPriceManager {
     }
 
     /** Siła spadku = WIĘKSZY z efektów ilości i wysokości (nie suma - inaczej jedna duża sprzedaż zrzuciłaby cenę na dno). */
-    private double policzSpadek(double mnoznik, int sprzedano, double norma, double max) {
+    private double policzSpadek(double mnoznik, int sprzedano, double norma, double max, DynamicSettings.Tuning t) {
         double stosunek = sprzedano / Math.max(1.0, norma);
         double efektIlosci = 0.0;
-        if (stosunek > 1.0) efektIlosci = Math.min((Math.log(stosunek) / Math.log(2)) * MAX_SPADEK, MAX_SPADEK);
+        if (stosunek > 1.0) {
+            efektIlosci = Math.min((Math.log(stosunek) / Math.log(2)) * t.maxDropPerCycle(), t.maxDropPerCycle());
+        }
         double efektWysokosci = 0.0;
         if (mnoznik > 1.0 && max > 1.0) {
             double ponad = (mnoznik - 1.0) / (max - 1.0);
-            efektWysokosci = MAX_SPADEK * (1.0 + ponad * (MNOZNIK_SPADKU_NA_SZCZYCIE - 1.0));
+            efektWysokosci = t.maxDropPerCycle() * (1.0 + ponad * (t.dropAtTop() - 1.0));
         }
         return Math.max(efektIlosci, efektWysokosci);
     }

@@ -213,7 +213,7 @@ public final class ShopManager implements Listener {
         for (int i = 0; i < catSlots.size() && i < order.size(); i++) {
             Category c = config.get().categories().get(order.get(i));
             if (c == null) continue;
-            ItemStack icon = c.iconCustom() != null ? items.create(new ShopItem(null, c.iconCustom(), 0.0, null, 1, 1, null, List.of(), null), 1, null) : null;
+            ItemStack icon = c.iconCustom() != null ? items.create(new ShopItem(null, c.iconCustom(), 0.0, null, 1, 1, null, List.of(), null, true), 1, null) : null;
             if (icon == null) icon = new ItemStack(material(c.iconMaterial(), Material.CHEST));
             ItemMeta meta = icon.getItemMeta();
             meta.displayName(SER.deserialize(c.name()).decoration(TextDecoration.ITALIC, false));

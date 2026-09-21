@@ -1,4 +1,5 @@
 # Jedna kategoria sklepu. Ceny są za paczkę: buy = cena za 'amount' sztuk (domyślnie 1),
+# dynamic: false przy pozycji = cena stała, ceny dynamiczne jej nie ruszają.
 # sell = cena za 'sell-amount' sztuk (domyślnie 1). Bez buy = nie do kupienia, bez sell = nie do sprzedania.
 # Zamiast 'item' możesz użyć 'custom: <id>' (przedmiot z katalogu itemów).
 name: "&c&lŁupy z mobów"

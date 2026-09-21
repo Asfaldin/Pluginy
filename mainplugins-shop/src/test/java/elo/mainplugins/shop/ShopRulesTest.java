@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ShopRulesTest {
 
     private static ShopItem item(Double buy, int amount, Double sell, int sellAmount) {
-        return new ShopItem("STONE", null, buy, sell, amount, sellAmount, null, List.of(), null);
+        return new ShopItem("STONE", null, buy, sell, amount, sellAmount, null, List.of(), null, true);
     }
 
     @Test
@@ -74,8 +74,8 @@ class ShopRulesTest {
     void sellOfferPrefersFirstCategoryAndMatchesExactKeys() {
         ShopItem stoneA = item(1.0, 1, 1.0, 1);
         ShopItem stoneB = item(1.0, 1, 2.0, 1);
-        ShopItem custom = new ShopItem(null, "gem", 5.0, 3.0, 1, 1, null, List.of(), null);
-        ShopItem rotating = new ShopItem("ELYTRA", null, 100.0, 50.0, 1, 1, null, List.of(), null);
+        ShopItem custom = new ShopItem(null, "gem", 5.0, 3.0, 1, 1, null, List.of(), null, true);
+        ShopItem rotating = new ShopItem("ELYTRA", null, 100.0, 50.0, 1, 1, null, List.of(), null, true);
         Map<String, Category> cats = new LinkedHashMap<>();
         cats.put("a", new Category("a", "A", "STONE", null, List.of(stoneA, custom), null));
         cats.put("b", new Category("b", "B", "STONE", null, List.of(stoneB), null));

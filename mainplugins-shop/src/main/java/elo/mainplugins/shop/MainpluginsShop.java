@@ -64,7 +64,11 @@ public final class MainpluginsShop extends JavaPlugin {
         ShopItems items = new ShopItems(this, CoreAPI.getCustomItemService(), CoreAPI.getItemNameService());
         stats = new ShopStats(this, config.settings().statsEnabled());
         prices = new DynamicPriceManager(this, config.settings().dynamic(), stats, key -> nameOf(items, key),
-                () -> Bukkit.getOnlinePlayers().forEach(p -> lang.send(p, this, "dynamic.reset-broadcast")));
+                this::dynamicFor,
+                () -> {
+                    if (!config.settings().dynamic().announceReset()) return;
+                    Bukkit.getOnlinePlayers().forEach(p -> lang.send(p, this, "dynamic.reset-broadcast"));
+                });
         rotation = new RotationManager(this, lang, items, () -> config);
         rotation.check();
         shop = new ShopManager(this, lang, CoreAPI.getEconomyService(), items, () -> config, prices, rotation, stats);
@@ -126,6 +130,18 @@ public final class MainpluginsShop extends JavaPlugin {
         prices.applySettings(config.settings().dynamic());
         stats.setEnabled(config.settings().statsEnabled());
         rotation.check();
+    }
+
+    /**
+     * Czy przedmiot o tym kluczu ma wahające się ceny. Przedmiot z "dynamic: false" (np. rzeczy,
+     * które da się farmić bez końca) trzyma cenę z cennika. Nieznany klucz = tak, jak dawniej.
+     */
+    private boolean dynamicFor(String key) {
+        for (Category c : config.categories().values()) {
+            for (ShopItem it : c.items()) if (it.key().equals(key)) return it.dynamic();
+            if (c.rotation() != null) for (ShopItem it : c.rotation().pool()) if (it.key().equals(key)) return it.dynamic();
+        }
+        return true;
     }
 
     private String nameOf(ShopItems items, String key) {

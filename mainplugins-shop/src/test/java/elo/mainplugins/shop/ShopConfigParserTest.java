@@ -1,6 +1,7 @@
 package elo.mainplugins.shop;
 
 import elo.mainplugins.shop.model.Category;
+import elo.mainplugins.shop.model.DynamicSettings;
 import elo.mainplugins.shop.model.Rounding;
 import elo.mainplugins.shop.model.ShopConfig;
 import elo.mainplugins.shop.model.ShopItem;
@@ -61,7 +62,7 @@ class ShopConfigParserTest {
         assertEquals("DIAMOND", c.iconMaterial());
         assertNull(c.rotation());
         assertEquals(5, c.items().size());
-        assertEquals(new ShopItem("DIAMOND", null, 150.0, 60.0, 1, 1, null, List.of(), null), c.items().get(0));
+        assertEquals(new ShopItem("DIAMOND", null, 150.0, 60.0, 1, 1, null, List.of(), null, true), c.items().get(0));
         ShopItem cobble = c.items().get(1);
         assertEquals(64, cobble.amount());
         assertEquals(64, cobble.sellAmount());
@@ -233,5 +234,57 @@ class ShopConfigParserTest {
         assertEquals(List.of("a"), cfg.settings().categoryOrder());
         assertTrue(w.stream().anyMatch(x -> x.contains("ghost")), w.toString());
         assertTrue(w.stream().anyMatch(x -> x.contains("'b'")), w.toString());
+    }
+
+    @Test
+    void itemsHaveMovingPricesUnlessTurnedOff() throws Exception {
+        List<String> w = new ArrayList<>();
+        Category c = cat("ores", """
+                name: "Ores"
+                icon: DIAMOND
+                items:
+                  - {item: DIAMOND, buy: 100, sell: 50}
+                  - {item: COBBLESTONE, buy: 10, sell: 5, dynamic: false}
+                """, w);
+        assertTrue(c.items().get(0).dynamic(), "brak wpisu = ceny dynamiczne dzialaja jak dotad");
+        assertFalse(c.items().get(1).dynamic(), "dynamic: false = cena stala");
+        assertTrue(w.isEmpty(), w.toString());
+    }
+
+    @Test
+    void readsDynamicTuningAndResetAnnouncement() throws Exception {
+        List<String> w = new ArrayList<>();
+        ShopSettings s = ShopConfigParser.parseSettings(yml("""
+                dynamic-prices:
+                  announce-reset: false
+                  tuning:
+                    max-drop-per-cycle: 0.1
+                    drop-at-top: 3.0
+                    cycles-to-rise: 4
+                """), MATERIAL, w::add);
+        assertFalse(s.dynamic().announceReset());
+        assertEquals(0.1, s.dynamic().tuning().maxDropPerCycle());
+        assertEquals(3.0, s.dynamic().tuning().dropAtTop());
+        assertEquals(4, s.dynamic().tuning().cyclesToRise());
+        // Niepodane zostaja domyslne.
+        assertEquals(DynamicSettings.Tuning.defaults().risePerCycle(), s.dynamic().tuning().risePerCycle());
+        assertTrue(w.isEmpty(), w.toString());
+    }
+
+    @Test
+    void badTuningFallsBackWithAWarning() throws Exception {
+        List<String> w = new ArrayList<>();
+        ShopSettings s = ShopConfigParser.parseSettings(yml("""
+                dynamic-prices:
+                  tuning:
+                    quiet-threshold: 5
+                    cycles-frozen: -2
+                    drop-at-top: 0.5
+                """), MATERIAL, w::add);
+        DynamicSettings.Tuning d = DynamicSettings.Tuning.defaults();
+        assertEquals(d.quietThreshold(), s.dynamic().tuning().quietThreshold());
+        assertEquals(d.cyclesFrozen(), s.dynamic().tuning().cyclesFrozen());
+        assertEquals(d.dropAtTop(), s.dynamic().tuning().dropAtTop());
+        assertEquals(3, w.size(), w.toString());
     }
 }

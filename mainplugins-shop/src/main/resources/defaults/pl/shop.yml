@@ -19,6 +19,17 @@ dynamic-prices:
   reset-days: 14           # co tyle dni wszystkie ceny wracają do normy
   max-sell-share: 0.9      # skup nigdy nie daje więcej niż 90% ceny kupna
   announce-events: true    # ogłoś na czacie, gdy event (/@shop event) się zaczyna albo kończy
+  announce-reset: true     # ogłoś na czacie, gdy wszystkie ceny wracają do normy (co reset-days)
+  # Strojenie mechaniki - domyślne wartości są przemyślane, zmieniaj tylko, gdy wiesz, co robisz.
+  tuning:
+    max-drop-per-cycle: 0.05   # ile najwyżej spada skup w jednym cyklu przy zwykłej cenie (0.05 = 5%)
+    drop-at-top: 4.2           # ile razy mocniejszy jest spadek, gdy cena stoi na maksimum
+    recover-from-below: 0.8    # jaka część drogi do zwykłej ceny wraca w jednym cyklu ciszy
+    rise-per-cycle: 0.125      # o ile rośnie cena na cykl, gdy przedmiotu nikt nie sprzedaje
+    quiet-threshold: 0.1       # sprzedaż poniżej tej części normy liczy się jako cisza
+    cycles-to-rise: 2          # ile cykli ciszy, zanim cena zacznie rosnąć ponad zwykłą
+    cycles-frozen: 2           # ile cykli cena stoi na zwykłej po zejściu z góry
+    norm-learn-rate: 0.02      # jak szybko sklep zapomina stare cykle (0.02 = jakiś tydzień historii)
 
 # Statystyki sprzedaży (stats.yml + stats.csv do Excela) z podpowiedziami, które ceny zmienić.
 stats:

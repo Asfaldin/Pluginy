@@ -74,7 +74,9 @@ public final class ShopConfigParser {
                 share = dd.maxSellShare();
             }
             dynamic = new DynamicSettings(dyn.getBoolean("enabled", dd.enabled()), cycle, min, max, reset, share,
-                    dyn.getBoolean("announce-events", dd.announceEvents()));
+                    dyn.getBoolean("announce-events", dd.announceEvents()),
+                    dyn.getBoolean("announce-reset", dd.announceReset()),
+                    parseTuning(dyn.getConfigurationSection("tuning"), warn));
         }
 
         Map<String, MenuScreen> menus = new LinkedHashMap<>();
@@ -232,9 +234,52 @@ public final class ShopConfigParser {
         int sellAmount = count(m.get("sell-amount"), at + " sell-amount", warn);
         List<String> lore = new ArrayList<>();
         if (m.get("lore") instanceof List<?> l) for (Object o : l) lore.add(String.valueOf(o));
+        // Brak wpisu "dynamic" = ceny dynamiczne działają (tak było, zanim ta opcja powstała).
+        boolean dynamic = !(m.get("dynamic") instanceof Boolean b) || b;
         return new ShopItem(material, custom, buy, sell, amount, sellAmount,
                 m.get("name") == null ? null : String.valueOf(m.get("name")), Collections.unmodifiableList(lore),
-                m.get("instrument") == null ? null : String.valueOf(m.get("instrument")));
+                m.get("instrument") == null ? null : String.valueOf(m.get("instrument")), dynamic);
+    }
+
+
+    /**
+     * Strojenie cyklu cen dynamicznych. Zła wartość = ostrzeżenie i wartość domyślna, jak wszędzie
+     * w tym pliku - serwer ma wstać nawet z popsutym configiem.
+     */
+    private static DynamicSettings.Tuning parseTuning(ConfigurationSection t, Consumer<String> warn) {
+        DynamicSettings.Tuning d = DynamicSettings.Tuning.defaults();
+        if (t == null) return d;
+        return new DynamicSettings.Tuning(
+                part(t, "max-drop-per-cycle", d.maxDropPerCycle(), warn),
+                above(t, "drop-at-top", d.dropAtTop(), 1.0, warn),
+                part(t, "recover-from-below", d.recoverFromBelow(), warn),
+                part(t, "rise-per-cycle", d.risePerCycle(), warn),
+                part(t, "quiet-threshold", d.quietThreshold(), warn),
+                atLeast(t, "cycles-to-rise", d.cyclesToRise(), 1, warn),
+                atLeast(t, "cycles-frozen", d.cyclesFrozen(), 0, warn),
+                part(t, "norm-learn-rate", d.normLearnRate(), warn));
+    }
+
+    /** Ułamek: musi być powyżej 0 i najwyżej 1. */
+    private static double part(ConfigurationSection t, String key, double fallback, Consumer<String> warn) {
+        double v = t.getDouble(key, fallback);
+        if (v > 0 && v <= 1) return v;
+        warn.accept("shop.yml dynamic-prices.tuning." + key + ": must be above 0 and at most 1 - using " + fallback + ".");
+        return fallback;
+    }
+
+    private static double above(ConfigurationSection t, String key, double fallback, double min, Consumer<String> warn) {
+        double v = t.getDouble(key, fallback);
+        if (v >= min) return v;
+        warn.accept("shop.yml dynamic-prices.tuning." + key + ": must be at least " + min + " - using " + fallback + ".");
+        return fallback;
+    }
+
+    private static int atLeast(ConfigurationSection t, String key, int fallback, int min, Consumer<String> warn) {
+        int v = t.getInt(key, fallback);
+        if (v >= min) return v;
+        warn.accept("shop.yml dynamic-prices.tuning." + key + ": must be at least " + min + " - using " + fallback + ".");
+        return fallback;
     }
 
     /** null = brak ceny; -1 = zła cena (pozycja do pominięcia, ostrzeżenie już wysłane). */

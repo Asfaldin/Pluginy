@@ -3,9 +3,17 @@ import express from "express";
 import { bindServer, createLicense, findByCustomer, findByKey, licenseGrants, listLicenses, revokeLicense } from "./db.js";
 import { generateLicenseKey } from "./keys.js";
 import { handleLemonSqueezyWebhook, verifyLemonSqueezySignature } from "./lemonsqueezy.js";
-import { authenticateCustomer, changePassword, findCustomerById, registerCustomer } from "./customers.js";
+import {
+    authenticateCustomer,
+    changePassword,
+    createPasswordResetToken,
+    findCustomerById,
+    registerCustomer,
+    resetPasswordWithToken,
+} from "./customers.js";
 import { createSession, deleteSession, resolveSession } from "./sessions.js";
 import { CATEGORIES, INDIVIDUAL_PLUGINS, PACKAGES } from "./catalog.js";
+import { sendEmail } from "./mailer.js";
 
 const app = express();
 
@@ -150,6 +158,53 @@ app.get("/api/me", requireCustomer, (req, res) => {
 
 app.get("/api/me/licenses", requireCustomer, (req, res) => {
     res.json(findByCustomer(req.customerId));
+});
+
+// Testowe "kup" bez prawdziwej płatności - WYŁĄCZONE domyślnie (musisz jawnie ustawić
+// DEV_LICENSE_GRANTS=1 w .env), żeby nie dało się tego przypadkiem zostawić włączonego
+// na produkcji. Appka pokazuje przycisk, który tu trafia, tylko w trybie deweloperskim
+// (import.meta.env.DEV, patrz ShopPage.tsx) - to druga, niezależna warstwa zabezpieczenia.
+app.post("/api/me/dev-grant", requireCustomer, (req, res) => {
+    if (process.env.DEV_LICENSE_GRANTS !== "1") {
+        return res.status(404).json({ error: "not found" });
+    }
+    const { plugin } = req.body ?? {};
+    if (!plugin) {
+        return res.status(400).json({ error: "plugin is required" });
+    }
+    const license = createLicense({ key: generateLicenseKey(), plugin, note: "TEST (dev-grant)", customerId: req.customerId });
+    res.status(201).json(license);
+});
+
+// Zawsze { ok: true } niezależnie od tego, czy e-mail istnieje w systemie - inaczej
+// formularz zdradzałby, które adresy mają konto (enumeracja kont). Kod trafia mailem
+// tylko wtedy, gdy konto istnieje.
+app.post("/api/auth/forgot-password", async (req, res) => {
+    const { email } = req.body ?? {};
+    if (!email) {
+        return res.status(400).json({ error: "email jest wymagany" });
+    }
+    const token = createPasswordResetToken(email);
+    if (token) {
+        await sendEmail(
+            email,
+            "Reset hasła - PluginManager",
+            `Kod do resetu hasła: ${token}\n\nWklej go w aplikacji na ekranie "Zapomniałem hasła" razem z nowym hasłem. Kod jest ważny 30 minut.\n\nJeśli to nie Ty prosiłeś/aś o reset, zignoruj tę wiadomość - Twoje hasło się nie zmieni.`
+        );
+    }
+    res.json({ ok: true });
+});
+
+app.post("/api/auth/reset-password", (req, res) => {
+    const { token, newPassword } = req.body ?? {};
+    if (!token || !newPassword || newPassword.length < 8) {
+        return res.status(400).json({ error: "token i newPassword (min. 8 znaków) są wymagane" });
+    }
+    const ok = resetPasswordWithToken(token, newPassword);
+    if (!ok) {
+        return res.status(400).json({ error: "kod nieprawidłowy albo wygasł" });
+    }
+    res.json({ ok: true });
 });
 
 app.patch("/api/me/password", requireCustomer, (req, res) => {

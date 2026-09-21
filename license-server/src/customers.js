@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -85,6 +85,43 @@ export function changePassword(customerId, currentPassword, newPassword) {
     if (!customer) return false;
     if (!verifyPassword(currentPassword, customer.passwordHash)) return false;
     customer.passwordHash = hashPassword(newPassword);
+    saveAll(list);
+    return true;
+}
+
+const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
+
+function hashToken(token) {
+    return createHash("sha256").update(token).digest("hex");
+}
+
+/** Generuje token resetu hasła (jawny tekst zwracany TYLKO tu, do wysłania mailem) -
+    w bazie trzymamy wyłącznie jego hash, tak jak hasła. Zwraca null, gdy e-mail nie
+    istnieje - wołający (server.js) i tak zawsze odpowiada tym samym komunikatem, żeby
+    formularz nie zdradzał, które adresy mają konto. */
+export function createPasswordResetToken(email) {
+    const customer = findCustomerByEmail(email);
+    if (!customer) return null;
+    const token = randomBytes(32).toString("hex");
+    const list = loadAll();
+    const target = list.find((c) => c.id === customer.id);
+    target.resetTokenHash = hashToken(token);
+    target.resetTokenExpiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS).toISOString();
+    saveAll(list);
+    return token;
+}
+
+/** @returns true jeśli kod poprawny i nie wygasł - wtedy od razu ustawia nowe hasło i
+    zużywa kod (jednorazowy, jak każdy token resetu). */
+export function resetPasswordWithToken(token, newPassword) {
+    const hash = hashToken(token);
+    const list = loadAll();
+    const customer = list.find((c) => c.resetTokenHash === hash);
+    if (!customer) return false;
+    if (!customer.resetTokenExpiresAt || new Date(customer.resetTokenExpiresAt).getTime() < Date.now()) return false;
+    customer.passwordHash = hashPassword(newPassword);
+    delete customer.resetTokenHash;
+    delete customer.resetTokenExpiresAt;
     saveAll(list);
     return true;
 }

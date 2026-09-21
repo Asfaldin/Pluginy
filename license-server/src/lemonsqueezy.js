@@ -3,6 +3,7 @@ import { resolveVariant } from "./catalog.js";
 import { findCustomerByEmail } from "./customers.js";
 import { createLicense, findBySubscriptionId, setStatus } from "./db.js";
 import { generateLicenseKey } from "./keys.js";
+import { sendEmail } from "./mailer.js";
 
 // Integracja z LemonSqueezy (merchant-of-record - obsługuje płatność/podatki za Ciebie,
 // nie musisz zakładać firmy). Dwa niezależne strumienie zdarzeń:
@@ -41,29 +42,11 @@ function resolveCustomerId(payload, buyerEmail) {
 }
 
 async function sendLicenseEmail(toEmail, pluginLabel, key) {
-    const apiKey = process.env.RESEND_API_KEY;
-    const fromEmail = process.env.FROM_EMAIL;
-    if (!apiKey || !fromEmail) {
-        console.warn(`RESEND_API_KEY/FROM_EMAIL nieskonfigurowane - klucz ${key} dla ${toEmail} (${pluginLabel}) NIE został wysłany mailem, tylko zapisany.`);
-        return;
-    }
-    try {
-        const resp = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-            body: JSON.stringify({
-                from: fromEmail,
-                to: toEmail,
-                subject: `Twój klucz licencyjny - ${pluginLabel}`,
-                text: `Dziękujemy za zakup!\n\n${pluginLabel}\nKlucz licencyjny: ${key}\n\nZaloguj się w zakładce Sklep w PluginManagerze, żeby zobaczyć swoje licencje, albo wklej ten klucz ręcznie do license.yml na serwerze.`,
-            }),
-        });
-        if (!resp.ok) {
-            console.error(`Resend zwrócił HTTP ${resp.status} przy wysyłce klucza do ${toEmail}: ${await resp.text()}`);
-        }
-    } catch (e) {
-        console.error(`Nie udało się wysłać maila z kluczem do ${toEmail}:`, e);
-    }
+    await sendEmail(
+        toEmail,
+        `Twój klucz licencyjny - ${pluginLabel}`,
+        `Dziękujemy za zakup!\n\n${pluginLabel}\nKlucz licencyjny: ${key}\n\nZaloguj się w zakładce Sklep w PluginManagerze, żeby zobaczyć swoje licencje, albo wklej ten klucz ręcznie do license.yml na serwerze.`
+    );
 }
 
 async function handleOrderCreated(payload) {

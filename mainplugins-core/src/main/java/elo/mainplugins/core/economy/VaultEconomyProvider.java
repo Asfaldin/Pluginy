@@ -54,9 +54,9 @@ final class VaultEconomyProvider implements Economy {
     @Override public String getName() { return "Mainplugins"; }
     @Override public boolean hasBankSupport() { return false; }
     @Override public int fractionalDigits() { return 2; }
-    @Override public String format(double amount) { return MoneyFormat.pelna(amount) + "$"; }
-    @Override public String currencyNamePlural() { return "$"; }
-    @Override public String currencyNameSingular() { return "$"; }
+    @Override public String format(double amount) { return MoneyFormat.zWaluta(amount); }
+    @Override public String currencyNamePlural() { return MoneyFormat.waluta().trim(); }
+    @Override public String currencyNameSingular() { return MoneyFormat.waluta().trim(); }
 
     @Override public boolean hasAccount(String playerName) { return true; }
     @Override public boolean hasAccount(OfflinePlayer player) { return true; }

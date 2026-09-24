@@ -27,7 +27,7 @@ public class PortfelCommand implements CommandExecutor {
         }
 
         double kasa = economyService.getKasa(player.getUniqueId());
-        player.sendMessage(Component.text("Masz " + MoneyFormat.pelna(kasa) + "$ w portfelu.", NamedTextColor.GOLD));
+        player.sendMessage(Component.text("Masz " + MoneyFormat.zWaluta(kasa) + " w portfelu.", NamedTextColor.GOLD));
         return true;
     }
 }

@@ -21,7 +21,7 @@ menu:
   mailbox-count: "&7Czeka: &f{count}"
   mailbox-item-hint: "&eKliknij, aby odebrać"
 offer:
-  price: "&aCena: {price}$"
+  price: "&aCena: {price}{currency}"
   seller: "&7Sprzedawca: {seller}"
   expires: "&8Wygasa za: {days}d {hours}h"
   buy: "&eLPM, aby kupić!"
@@ -32,12 +32,12 @@ sell:
   bad-price: "&cCena musi być liczbą całkowitą od {min} do {max}!"
   empty-hand: "&cWeź do ręki przedmiot, który chcesz wystawić!"
   limit: "&cMasz już maksymalną liczbę ofert ({limit})! Wycofaj coś, żeby wystawić kolejny przedmiot."
-  listed: "&aWystawiono na targ za {price}$!"
+  listed: "&aWystawiono na targ za {price}{currency}!"
 buy:
   gone: "&cTen przedmiot został już sprzedany albo wycofany!"
   no-money: "&cNie masz wystarczająco pieniędzy, aby to kupić!"
-  bought: "&aKupiłeś przedmiot za {price}$!"
-  sold: "&6Ktoś kupił Twój przedmiot za {price}$! Dostajesz {payout}$."
+  bought: "&aKupiłeś przedmiot za {price}{currency}!"
+  sold: "&6Ktoś kupił Twój przedmiot za {price}{currency}! Dostajesz {payout}{currency}."
   to-mailbox: "&eMasz pełny ekwipunek - przedmiot czeka w \"Do odebrania\" (/targ)."
   dropped: "&eMasz pełny ekwipunek - przedmiot wypadł pod nogi."
 retract:
@@ -50,7 +50,7 @@ mailbox:
   full: "&cNajpierw zrób miejsce w ekwipunku!"
   waiting: "&eMasz {count} przedmiot(y) do odebrania w /targ."
 join:
-  earnings: "&6Pod Twoją nieobecność sprzedałeś {count} przedmiot(y) za {amount}$."
+  earnings: "&6Pod Twoją nieobecność sprzedałeś {count} przedmiot(y) za {amount}{currency}."
   returned: "&eTwoje wygasłe oferty wróciły do Ciebie."
 search:
   prompt: "&bWpisz na czacie, czego szukasz."
@@ -66,6 +66,6 @@ admin:
   reloaded: "&aUstawienia Targu wczytane ({offers} ofert na Targu)."
   player-not-found: "&cNie znaleziono gracza: {player}"
   list-header: "&e{player} ma {count} ofert(y):"
-  list-line: "&7- {item} &7za &f{price}$ &7({id})"
+  list-line: "&7- {item} &7za &f{price}{currency} &7({id})"
   list-empty: "&7{player} nie ma żadnych ofert."
   removed: "&aZdjęto z Targu {count} ofert(y) gracza {player}."

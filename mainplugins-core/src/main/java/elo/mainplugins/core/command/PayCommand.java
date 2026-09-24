@@ -1,5 +1,6 @@
 package elo.mainplugins.core.command;
 
+import elo.mainplugins.core.util.MoneyFormat;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.util.TabCompleteUtils;
 import net.kyori.adventure.text.Component;
@@ -84,9 +85,9 @@ public class PayCommand implements CommandExecutor, TabCompleter {
         economyService.dodajGrosze(target.getUniqueId(), grosze);
 
         String kwotaTekst = formatujGrosze(grosze);
-        player.sendMessage(Component.text("Przelano " + kwotaTekst + "$ dla " + targetName + ".", NamedTextColor.GREEN));
+        player.sendMessage(Component.text("Przelano " + kwotaTekst + MoneyFormat.waluta() + " dla " + targetName + ".", NamedTextColor.GREEN));
         if (online != null) {
-            online.sendMessage(Component.text("Otrzymałeś " + kwotaTekst + "$ od " + player.getName() + "!", NamedTextColor.GREEN));
+            online.sendMessage(Component.text("Otrzymałeś " + kwotaTekst + MoneyFormat.waluta() + " od " + player.getName() + "!", NamedTextColor.GREEN));
         }
         return true;
     }

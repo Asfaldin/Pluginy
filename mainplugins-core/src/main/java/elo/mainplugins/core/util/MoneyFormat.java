@@ -12,6 +12,22 @@ public final class MoneyFormat {
 
     private MoneyFormat() {}
 
+    /** Znaczek waluty serwera ("currency" w config.yml core), np. "$" albo " zł". Ustawia go core przy starcie i /@reloadlang. */
+    private static volatile String waluta = "$";
+
+    public static String waluta() {
+        return waluta;
+    }
+
+    public static void ustawWalute(String znaczek) {
+        waluta = znaczek == null ? "$" : znaczek;
+    }
+
+    /** Pełna kwota ze znaczkiem waluty: "100$", "100 zł". */
+    public static String zWaluta(double kwota) {
+        return pelna(kwota) + waluta;
+    }
+
     public static String kompaktowo(double kwota) {
         double abs = Math.abs(kwota);
         if (abs >= 1_000_000_000) return jednoMiejsce(kwota / 1_000_000_000) + "mld";

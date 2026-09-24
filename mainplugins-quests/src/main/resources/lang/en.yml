@@ -20,7 +20,7 @@ quest:
   requirement:
     free: "&eRequires: nothing - click to claim!"
     items: "&eRequires: {items}"
-    money: "&eRequires: {amount}$"
+    money: "&eRequires: {amount}{currency}"
     have-item: "&eRequires: having {items} (you keep it)"
   reward: "&6Reward: {reward}"
   reward-hidden: "&8Reward: ???"
@@ -35,7 +35,7 @@ quest:
     money: "&cYou don't have enough money!"
     have-item: "&cYou don't have the required item!"
 label:
-  money: "{amount}$"
+  money: "{amount}{currency}"
   crate: "crate {id}"
   key: "key {id}"
   title: "a chat title"

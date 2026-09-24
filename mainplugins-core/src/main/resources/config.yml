@@ -9,6 +9,11 @@ language: en
 #           The "richest players" ranking is not available in this mode.
 economy: own
 
+# Currency sign shown after every amount in every Mainplugins plugin: "$" -> 100$, " zł" -> 100 zł.
+# Start it with a space if you want a space between the number and the sign.
+# In language files it is the {currency} placeholder.
+currency: "$"
+
 # Admin helper: /@rewardtest <player> gives this list (handy for checking reward setups).
 test-rewards:
   - money: 100

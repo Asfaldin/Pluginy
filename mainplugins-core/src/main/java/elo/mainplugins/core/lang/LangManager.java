@@ -2,6 +2,7 @@ package elo.mainplugins.core.lang;
 
 import elo.mainplugins.core.api.LangService;
 import elo.mainplugins.core.api.PlaceholderService;
+import elo.mainplugins.core.util.MoneyFormat;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.command.CommandSender;
@@ -40,6 +41,12 @@ public final class LangManager implements LangService {
         this.core = core;
         this.placeholders = placeholders;
         this.language = readLanguage();
+        readCurrency();
+    }
+
+    /** Znaczek waluty w każdym tekście każdego pluginu: {currency} (albo po polsku {waluta}). */
+    private void readCurrency() {
+        MoneyFormat.ustawWalute(core.getConfig().getString("currency", "$"));
     }
 
     private String readLanguage() {
@@ -98,7 +105,8 @@ public final class LangManager implements LangService {
                     + "' without calling LangService.registerDefaults first.");
             return key;
         }
-        return catalog.resolve(key, placeholdersMap);
+        String currency = MoneyFormat.waluta();
+        return catalog.resolve(key, placeholdersMap).replace("{currency}", currency).replace("{waluta}", currency);
     }
 
     @Override
@@ -117,6 +125,7 @@ public final class LangManager implements LangService {
     public void reload() {
         core.reloadConfig();
         language = readLanguage();
+        readCurrency();
         for (Plugin owner : owners.values()) catalogs.put(owner.getName(), build(owner));
     }
 }

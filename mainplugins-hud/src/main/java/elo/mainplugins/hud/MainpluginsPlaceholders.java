@@ -134,9 +134,9 @@ public class MainpluginsPlaceholders {
     private String liniaTopGracza(int rank, int szerokoscPad) {
         TopGracz gracz = pobierzTopGraczaLubNull(rank);
         if (gracz == null) return szerokoscPad > 0 ? " ".repeat(szerokoscPad) : "";
-        String surowy = rank + ". " + gracz.nick() + " - " + MoneyFormat.kompaktowo(gracz.kasa()) + "$";
+        String surowy = rank + ". " + gracz.nick() + " - " + MoneyFormat.kompaktowo(gracz.kasa()) + MoneyFormat.waluta();
         String kolor = rank <= 3 ? "&a&l" : "&a";
-        String kolorowy = kolor + rank + ". &f" + gracz.nick() + " &7- " + kolor + MoneyFormat.kompaktowo(gracz.kasa()) + "&7$";
+        String kolorowy = kolor + rank + ". &f" + gracz.nick() + " &7- " + kolor + MoneyFormat.kompaktowo(gracz.kasa()) + "&7" + MoneyFormat.waluta();
         int brakujace = szerokoscPad - surowy.length();
         return brakujace > 0 ? kolorowy + " ".repeat(brakujace) : kolorowy;
     }

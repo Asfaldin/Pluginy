@@ -84,6 +84,28 @@ public final class ShopRules {
     }
 
     // =========================================================================
+    //  KATEGORIA Z KOMENDY (/sklep bloki, /@shop open Kasia "Rudy i Minerały")
+    // =========================================================================
+
+    /**
+     * Kategoria z tekstu gracza: id ("bloki") albo nazwa bez kolorów ("Rudy i Minerały"),
+     * bez znaczenia wielkie litery i polskie znaki. names = id -> nazwa z kolorami &. Null = nie ma takiej.
+     */
+    public static String matchCategory(String raw, Map<String, String> names) {
+        String want = plain(raw);
+        if (want.isEmpty()) return null;
+        for (String id : names.keySet()) if (plain(id).equals(want)) return id;
+        for (Map.Entry<String, String> e : names.entrySet()) if (plain(e.getValue()).equals(want)) return e.getKey();
+        return null;
+    }
+
+    /** "&e&lRudy i Minerały" -> "rudy i mineraly". */
+    static String plain(String s) {
+        String t = s.replaceAll("[&§][0-9a-fk-orA-FK-OR]", "").trim().toLowerCase(Locale.ROOT).replace('ł', 'l');
+        return java.text.Normalizer.normalize(t, java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", "");
+    }
+
+    // =========================================================================
     //  EVENTY: procenty i czas trwania
     // =========================================================================
 

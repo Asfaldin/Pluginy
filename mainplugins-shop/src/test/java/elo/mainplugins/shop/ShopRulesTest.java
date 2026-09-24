@@ -145,4 +145,18 @@ class ShopRulesTest {
         assertEquals("45s", ShopRules.formatDuration(45_000L));
         assertEquals("0s", ShopRules.formatDuration(-5));
     }
+
+    @Test
+    void matchesCategoryByIdOrNameWithoutColorsAndPolishLetters() {
+        Map<String, String> names = new LinkedHashMap<>();
+        names.put("bloki", "&e&lBloki");
+        names.put("mineraly", "&e&lRudy i Minerały");
+        names.put("roslinki", "&e&lRośliny");
+        assertEquals("bloki", ShopRules.matchCategory("BLOKI", names));
+        assertEquals("mineraly", ShopRules.matchCategory("rudy i minerały", names));
+        assertEquals("mineraly", ShopRules.matchCategory("Rudy i Mineraly", names));
+        assertEquals("roslinki", ShopRules.matchCategory("rosliny", names));
+        assertNull(ShopRules.matchCategory("drewno", names));
+        assertNull(ShopRules.matchCategory("  ", names));
+    }
 }

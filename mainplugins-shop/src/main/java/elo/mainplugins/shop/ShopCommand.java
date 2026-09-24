@@ -50,10 +50,16 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
     private final RotationManager rotation;
     private final ShopStats stats;
     private final ShopItems items;
+    private final ShopManager shop;
+    private final ShopPlaces places;
     private final Map<String, Pending> pending = new HashMap<>();
 
+    /** Słowa na "menu główne" zamiast kategorii: /@shop npc create main. */
+    private static final List<String> MAIN_WORDS = List.of("main", "menu", "glowne", "główne");
+
     ShopCommand(Plugin plugin, LangService lang, Supplier<ShopConfig> config, Runnable reload,
-                DynamicPriceManager prices, RotationManager rotation, ShopStats stats, ShopItems items) {
+                DynamicPriceManager prices, RotationManager rotation, ShopStats stats, ShopItems items,
+                ShopManager shop, ShopPlaces places) {
         this.plugin = plugin;
         this.lang = lang;
         this.config = config;
@@ -62,6 +68,8 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
         this.rotation = rotation;
         this.stats = stats;
         this.items = items;
+        this.shop = shop;
+        this.places = places;
     }
 
     private void send(CommandSender s, String key, Map<String, String> ph) {
@@ -171,9 +179,135 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
             case "event" -> event(sender, args);
             case "rotation" -> rotationCmd(sender, args);
             case "stats" -> statsCmd(sender, args);
+            case "open" -> openCmd(sender, args);
+            case "sign" -> signCmd(sender, args);
+            case "npc" -> npcCmd(sender, args);
             default -> send(sender, "admin.usage");
         }
         return true;
+    }
+
+    // ---------- open / sign / npc ----------
+
+    private static String join(String[] args, int from) {
+        return from >= args.length ? "" : String.join(" ", java.util.Arrays.copyOfRange(args, from, args.length));
+    }
+
+    /** "" = menu główne, id kategorii, null = nie ma takiej (komunikat już wysłany). */
+    private String target(CommandSender s, String raw) {
+        if (raw.isBlank() || MAIN_WORDS.contains(raw.toLowerCase(Locale.ROOT))) return "";
+        String id = shop.findCategory(raw);
+        if (id == null) send(s, "places.unknown-category", Map.of("value", raw));
+        return id;
+    }
+
+    /** /@shop open <gracz> [kategoria] - dla NPC z innych pluginów, menu serwera, bloków poleceń. Po cichu, gdy się uda. */
+    private void openCmd(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            send(sender, "admin.usage");
+            return;
+        }
+        Player target = Bukkit.getPlayerExact(args[1]);
+        if (target == null) {
+            send(sender, "places.unknown-player", Map.of("player", args[1]));
+            return;
+        }
+        String where = target(sender, join(args, 2));
+        if (where != null) shop.openFor(target, where.isEmpty() ? null : where);
+    }
+
+    private Player admin(CommandSender sender) {
+        if (sender instanceof Player p) return p;
+        send(sender, "admin.players-only");
+        return null;
+    }
+
+    /** /@shop sign <kategoria|main> albo /@shop sign remove - patrząc na tabliczkę. */
+    private void signCmd(CommandSender sender, String[] args) {
+        Player p = admin(sender);
+        if (p == null) return;
+        org.bukkit.block.Sign sign = places.lookedAtSign(p);
+        if (sign == null) {
+            send(p, "places.sign-none");
+            return;
+        }
+        if (args.length >= 2 && args[1].equalsIgnoreCase("remove")) {
+            send(p, places.unmarkSign(sign) ? "places.sign-removed" : "places.sign-not-shop");
+            return;
+        }
+        String where = target(p, join(args, 1));
+        if (where == null) return;
+        places.markSign(sign, where);
+        send(p, "places.sign-set", Map.of("target", places.describe(where)));
+    }
+
+    /** /@shop npc create|name|type|category|remove. */
+    private void npcCmd(CommandSender sender, String[] args) {
+        Player p = admin(sender);
+        if (p == null) return;
+        String action = args.length >= 2 ? args[1].toLowerCase(Locale.ROOT) : "";
+        if (action.equals("create")) {
+            String where = target(p, args.length >= 3 ? args[2] : "");
+            if (where == null) return;
+            String name = args.length >= 4 ? join(args, 3) : places.defaultName(where);
+            places.createNpc(p.getLocation(), org.bukkit.entity.EntityType.VILLAGER, where, name);
+            send(p, "places.npc-created", Map.of("target", places.describe(where)));
+            return;
+        }
+        if (!List.of("name", "type", "category", "remove").contains(action)) {
+            send(p, "admin.usage");
+            return;
+        }
+        org.bukkit.entity.LivingEntity npc = places.lookedAtNpc(p);
+        if (npc == null) {
+            send(p, "places.npc-none");
+            return;
+        }
+        switch (action) {
+            case "name" -> {
+                if (args.length < 3) {
+                    send(p, "admin.usage");
+                    return;
+                }
+                places.rename(npc, join(args, 2));
+                send(p, "places.npc-renamed", Map.of("name", join(args, 2)));
+            }
+            case "type" -> {
+                if (args.length < 3) {
+                    send(p, "admin.usage");
+                    return;
+                }
+                org.bukkit.entity.EntityType type = ShopPlaces.npcType(args[2]);
+                if (type == null) {
+                    send(p, "places.npc-bad-type", Map.of("value", args[2]));
+                    return;
+                }
+                org.bukkit.entity.Villager.Profession job = null;
+                if (args.length >= 4) {
+                    job = ShopPlaces.profession(args[3]);
+                    if (job == null || type != org.bukkit.entity.EntityType.VILLAGER) {
+                        send(p, "places.npc-bad-profession", Map.of("value", args[3]));
+                        return;
+                    }
+                }
+                org.bukkit.entity.LivingEntity fresh = npc.getType() == type ? npc : places.changeType(npc, type);
+                if (job != null && fresh instanceof org.bukkit.entity.Villager v) v.setProfession(job);
+                send(p, "places.npc-type-set", Map.of("type", args[2].toLowerCase(Locale.ROOT)));
+                if (fresh instanceof org.bukkit.entity.Monster && p.getWorld().getDifficulty() == org.bukkit.Difficulty.PEACEFUL) {
+                    send(p, "places.npc-peaceful");
+                }
+            }
+            case "category" -> {
+                String where = target(p, args.length >= 3 ? join(args, 2) : "");
+                if (where == null) return;
+                places.retarget(npc, where);
+                send(p, "places.npc-retargeted", Map.of("target", places.describe(where)));
+            }
+            default -> {
+                npc.remove();
+                send(p, "places.npc-removed");
+            }
+        }
     }
 
     private boolean inRange(CommandSender s, double x) {
@@ -471,9 +605,36 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String[] args) {
         if (args.length == 1) {
             return TabCompleteUtils.dopasuj(args[0], List.of("reload", "info", "price", "reset", "resetall", "confirm", "cancel",
-                    "multiplier", "event", "rotation", "stats"));
+                    "multiplier", "event", "rotation", "stats", "open", "sign", "npc"));
         }
         String sub = args[0].toLowerCase(Locale.ROOT);
+        List<String> targets = new ArrayList<>(config.get().categories().keySet());
+        targets.add(0, "main");
+        if (sub.equals("open")) {
+            if (args.length == 2) return null; // nicki graczy online
+            if (args.length == 3) return TabCompleteUtils.dopasuj(args[2], targets);
+            return TabCompleteUtils.PUSTA;
+        }
+        if (sub.equals("sign") && args.length == 2) {
+            List<String> opts = new ArrayList<>(targets);
+            opts.add("remove");
+            return TabCompleteUtils.dopasuj(args[1], opts);
+        }
+        if (sub.equals("npc")) {
+            if (args.length == 2) return TabCompleteUtils.dopasuj(args[1], List.of("create", "name", "type", "category", "remove"));
+            String act = args[1].toLowerCase(Locale.ROOT);
+            if (args.length == 3 && (act.equals("create") || act.equals("category"))) return TabCompleteUtils.dopasuj(args[2], targets);
+            if (args.length == 3 && act.equals("type")) {
+                return TabCompleteUtils.dopasuj(args[2], List.of("villager", "wandering_trader", "piglin", "iron_golem", "zombie",
+                        "skeleton", "allay", "fox", "cat", "armor_stand"));
+            }
+            if (args.length == 4 && act.equals("type") && args[2].equalsIgnoreCase("villager")) {
+                List<String> jobs = new ArrayList<>();
+                org.bukkit.Registry.VILLAGER_PROFESSION.forEach(j -> jobs.add(j.getKey().getKey()));
+                return TabCompleteUtils.dopasuj(args[3], jobs);
+            }
+            return TabCompleteUtils.PUSTA;
+        }
         if (args.length == 2) {
             switch (sub) {
                 case "info", "price", "reset", "multiplier", "event" -> {

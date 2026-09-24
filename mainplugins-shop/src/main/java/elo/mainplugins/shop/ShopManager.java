@@ -536,6 +536,29 @@ public final class ShopManager implements Listener {
         inv.setStorageContents(content);
     }
 
+    // ---------- otwieranie z zewnątrz (/sklep bloki, /@shop open, tabliczka, NPC) ----------
+
+    /** Id kategorii z tekstu (id albo nazwa bez kolorów) albo null. */
+    public String findCategory(String raw) {
+        Map<String, String> names = new LinkedHashMap<>();
+        config.get().categories().forEach((id, c) -> names.put(id, c.name()));
+        return ShopRules.matchCategory(raw, names);
+    }
+
+    /** Otwiera sklep od razu na kategorii; null albo nieznana kategoria = menu główne. */
+    public void openFor(Player player, String categoryId) {
+        fromMenu.put(player.getUniqueId(), false);
+        if (categoryId == null || !config.get().categories().containsKey(categoryId)) openMain(player, false);
+        else openCategory(player, categoryId, 0);
+    }
+
+    /** /sklep szukaj <nazwa> - wyniki bez klikania "Szukaj" i pisania na czacie. */
+    public void search(Player player, String query) {
+        fromMenu.put(player.getUniqueId(), false);
+        awaitingSearch.remove(player.getUniqueId());
+        openSearch(player, query);
+    }
+
     // ---------- wyszukiwarka ----------
 
     private void openSearch(Player player, String query) {

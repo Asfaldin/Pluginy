@@ -73,6 +73,11 @@ public final class MainpluginsShop extends JavaPlugin {
         rotation.check();
         shop = new ShopManager(this, lang, CoreAPI.getEconomyService(), items, () -> config, prices, rotation, stats);
         getServer().getPluginManager().registerEvents(shop, this);
+        ShopPlaces places = new ShopPlaces(this, lang, shop, id -> {
+            Category c = config.categories().get(id);
+            return c == null ? null : c.name();
+        });
+        getServer().getPluginManager().registerEvents(places, this);
         CoreAPI.getPlaceholderService().register(this, new ShopPlaceholders(this, lang, prices));
 
         // Co 10 minut: nowe rotacje i zapis statystyk.
@@ -96,7 +101,7 @@ public final class MainpluginsShop extends JavaPlugin {
                 return true;
             }
             switch (command.getName().toLowerCase()) {
-                case "sklep" -> shop.openMain(p, MenuBridge.isZMenu(args));
+                case "sklep" -> shopCommand(p, args);
                 case "sprzedaj" -> shop.sellHand(p);
                 case "sprzedajwszystko" -> shop.sellAll(p);
                 default -> { }
@@ -106,10 +111,15 @@ public final class MainpluginsShop extends JavaPlugin {
         for (String name : List.of("sklep", "sprzedaj", "sprzedajwszystko")) {
             if (getCommand(name) == null) continue;
             getCommand(name).setExecutor(player);
-            getCommand(name).setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
+            getCommand(name).setTabCompleter((sender, command, alias, args) -> {
+                if (!name.equals("sklep") || args.length != 1) return TabCompleteUtils.PUSTA;
+                List<String> opts = new java.util.ArrayList<>(config.categories().keySet());
+                opts.add(0, searchWord());
+                return TabCompleteUtils.dopasuj(args[0], opts);
+            });
         }
         if (getCommand("@shop") != null) {
-            ShopCommand admin = new ShopCommand(this, lang, () -> config, this::reload, prices, rotation, stats, items);
+            ShopCommand admin = new ShopCommand(this, lang, () -> config, this::reload, prices, rotation, stats, items, shop, places);
             getCommand("@shop").setExecutor(admin);
             getCommand("@shop").setTabCompleter(admin);
         }
@@ -122,6 +132,32 @@ public final class MainpluginsShop extends JavaPlugin {
         if (rotation != null) rotation.close();
         if (prices != null) prices.zamknij();
         if (stats != null) stats.zapisz();
+    }
+
+    /** Słowo "szukaj" w języku serwera (lang: command.search-word). */
+    private String searchWord() {
+        return net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                .serialize(lang.msg(this, "command.search-word")).trim().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    /** /sklep | /sklep <kategoria> | /sklep szukaj <nazwa>. */
+    private void shopCommand(Player p, String[] args) {
+        if (args.length == 0 || MenuBridge.isZMenu(args)) {
+            shop.openMain(p, MenuBridge.isZMenu(args));
+            return;
+        }
+        String first = args[0].toLowerCase(java.util.Locale.ROOT);
+        if (first.equals(searchWord()) || first.equals("search")) {
+            if (args.length < 2) lang.send(p, this, "command.search-usage");
+            else shop.search(p, String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length)));
+            return;
+        }
+        String id = shop.findCategory(String.join(" ", args));
+        if (id == null) {
+            lang.send(p, this, "command.unknown-category", Map.of("value", String.join(" ", args)));
+            return;
+        }
+        shop.openFor(p, id);
     }
 
     /** /@shop reload - pliki od nowa, nowe ustawienia cen dynamicznych i statystyk. */

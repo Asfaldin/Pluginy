@@ -234,7 +234,8 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
         ph.put("state", net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand().serialize(lang.msg(plugin, state)));
         ph.put("norm", String.format(Locale.US, "%.1f", prices.getNorma(key)));
         ph.put("drought", String.valueOf(prices.getLicznikSuszy(key)));
-        ph.put("days", String.valueOf(prices.dniDoResetu()));
+        ph.put("days", prices.resetWlaczony() ? String.valueOf(prices.dniDoResetu())
+                : net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand().serialize(lang.msg(plugin, "admin.info-reset-off")));
         send(sender, "admin.info", ph);
         if (!prices.enabled()) send(sender, "admin.dynamic-off");
     }

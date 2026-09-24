@@ -9,6 +9,7 @@ import elo.mainplugins.shop.model.Category;
 import elo.mainplugins.shop.model.MenuScreen;
 import elo.mainplugins.shop.model.ShopConfig;
 import elo.mainplugins.shop.model.ShopItem;
+import elo.mainplugins.shop.model.ShopSettings;
 import elo.mainplugins.shop.model.SlotEntry;
 import elo.mainplugins.shop.model.SlotRole;
 import io.papermc.paper.event.player.AsyncChatEvent;
@@ -62,7 +63,8 @@ public final class ShopManager implements Listener {
     private final ShopStats stats;
 
     /** true = sortowanie po najwyższym skupie, false = po najtańszym kupnie. */
-    private final Map<UUID, Boolean> sortBySell = new HashMap<>();
+    /** Sortowanie wybrane lejkiem przez gracza; brak wpisu = domyślne z shop.yml (category-page-sort). */
+    private final Map<UUID, ShopSettings.CategorySort> sortChoice = new HashMap<>();
     private final Set<UUID> awaitingSearch = new HashSet<>();
     private final Map<UUID, Boolean> fromMenu = new HashMap<>();
 
@@ -245,7 +247,8 @@ public final class ShopManager implements Listener {
         boolean menu = fromMenu.getOrDefault(player.getUniqueId(), false);
         MenuScreen s = screen("category-page");
         List<SlotEntry> itemSlots = s.withRole(SlotRole.ITEM_SLOT);
-        List<ShopGuiHolder.Ref> refs = sorted(refsOf(c), sortBySell.getOrDefault(player.getUniqueId(), false));
+        ShopSettings.CategorySort sortMode = sortChoice.getOrDefault(player.getUniqueId(), config.get().settings().categorySort());
+        List<ShopGuiHolder.Ref> refs = sorted(refsOf(c), sortMode);
 
         int per = Math.max(1, itemSlots.size());
         int pages = Math.max(1, (refs.size() + per - 1) / per);
@@ -257,7 +260,8 @@ public final class ShopManager implements Listener {
 
         int start = page * per;
         int end = Math.min(start + per, refs.size());
-        List<Integer> slots = pageSlots(itemSlots.stream().map(SlotEntry::slot).toList(), refs.size(), pages == 1);
+        List<Integer> slots = pageSlots(itemSlots.stream().map(SlotEntry::slot).toList(), refs.size(),
+                pages == 1 && config.get().settings().centerSmallCategories());
         for (int i = start; i < end; i++) {
             ShopGuiHolder.Ref ref = refs.get(i);
             ShopItem it = resolve(ref);
@@ -281,11 +285,14 @@ public final class ShopManager implements Listener {
         }
         Integer sort = s.first(SlotRole.SORT);
         if (sort != null) {
-            boolean bySell = sortBySell.getOrDefault(player.getUniqueId(), false);
+            boolean bySell = sortMode == ShopSettings.CategorySort.SELL;
+            boolean byBuy = sortMode == ShopSettings.CategorySort.BUY;
+            String now = bySell ? "menu.sort-now-sell" : byBuy ? "menu.sort-now-buy" : "menu.sort-now-order";
             gui.setItem(sort, button(bySell ? "sort-sell" : "sort", bySell ? Material.GOLD_INGOT : Material.HOPPER, t("menu.sort"),
-                    t(bySell ? "menu.sort-now-sell" : "menu.sort-now-buy"), Component.empty(),
-                    SER.deserialize((bySell ? "&7" : "&e") + PlainTextComponentSerializer.plainText().serialize(t("menu.sort-lmb"))).decoration(TextDecoration.ITALIC, false),
-                    SER.deserialize((bySell ? "&e" : "&7") + PlainTextComponentSerializer.plainText().serialize(t("menu.sort-rmb"))).decoration(TextDecoration.ITALIC, false)));
+                    t(now), Component.empty(),
+                    SER.deserialize((byBuy ? "&e" : "&7") + PlainTextComponentSerializer.plainText().serialize(t("menu.sort-lmb"))).decoration(TextDecoration.ITALIC, false),
+                    SER.deserialize((bySell ? "&e" : "&7") + PlainTextComponentSerializer.plainText().serialize(t("menu.sort-rmb"))).decoration(TextDecoration.ITALIC, false),
+                    t("menu.sort-again")));
             holder.buttons().put(sort, "SORT");
         }
         Integer back = s.first(SlotRole.NAV_BACK);
@@ -303,7 +310,10 @@ public final class ShopManager implements Listener {
         return m;
     }
 
-    private List<ShopGuiHolder.Ref> sorted(List<ShopGuiHolder.Ref> refs, boolean bySell) {
+    private List<ShopGuiHolder.Ref> sorted(List<ShopGuiHolder.Ref> refs, ShopSettings.CategorySort mode) {
+        // Kolejność sklepu: dokładnie tak, jak ułożył właściciel (np. szachownica z pól na przedmioty).
+        if (mode == ShopSettings.CategorySort.ORDER) return refs;
+        boolean bySell = mode == ShopSettings.CategorySort.SELL;
         var rounding = config.get().settings().rounding();
         Map<ShopGuiHolder.Ref, Double> value = new LinkedHashMap<>();
         for (ShopGuiHolder.Ref r : refs) {
@@ -621,7 +631,10 @@ public final class ShopManager implements Listener {
                 if (button != null) {
                     switch (button) {
                         case "SORT" -> {
-                            sortBySell.put(player.getUniqueId(), event.isRightClick());
+                            // LPM - od najtańszego kupna, PPM - od najwyższego skupu; to samo jeszcze raz - kolejność sklepu.
+                            ShopSettings.CategorySort want = event.isRightClick() ? ShopSettings.CategorySort.SELL : ShopSettings.CategorySort.BUY;
+                            ShopSettings.CategorySort cur = sortChoice.getOrDefault(player.getUniqueId(), config.get().settings().categorySort());
+                            sortChoice.put(player.getUniqueId(), cur == want ? ShopSettings.CategorySort.ORDER : want);
                             openCategory(player, holder.category(), 0);
                         }
                         case "NAV_PREV" -> openCategory(player, holder.category(), holder.page() - 1);
@@ -691,7 +704,7 @@ public final class ShopManager implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         UUID id = event.getPlayer().getUniqueId();
-        sortBySell.remove(id);
+        sortChoice.remove(id);
         awaitingSearch.remove(id);
         fromMenu.remove(id);
     }

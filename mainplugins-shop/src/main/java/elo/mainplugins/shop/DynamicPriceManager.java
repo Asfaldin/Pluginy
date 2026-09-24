@@ -97,6 +97,11 @@ public class DynamicPriceManager {
         return settings.enabled();
     }
 
+    /** Czy automatyczny reset cen jest włączony (reset-days > 0). */
+    public boolean resetWlaczony() {
+        return settings.resetDays() > 0;
+    }
+
     private int cykliDoResetuLacznie() {
         return Math.max(1, settings.resetDays() * 1440 / settings.cycleMinutes());
     }
@@ -170,7 +175,8 @@ public class DynamicPriceManager {
 
     private void wykonajCykl() {
         // Reset globalny co reset-days. Bez niego farmowalne itemy utknęłyby na dnie na zawsze.
-        if (++cykliOdResetu >= cykliDoResetuLacznie()) {
+        // reset-days: 0 = właściciel świadomie wyłączył reset - wtedy ceny same nie wracają.
+        if (resetWlaczony() && ++cykliOdResetu >= cykliDoResetuLacznie()) {
             resetujWszystko();
             return;
         }
@@ -391,8 +397,9 @@ public class DynamicPriceManager {
         return najlepszy == null ? null : new Deviation(najlepszy, nameOf.apply(najlepszy), mnozniki.get(najlepszy));
     }
 
-    /** Ile dni do globalnego resetu cen. */
+    /** Ile dni do globalnego resetu cen; -1 = reset wyłączony. */
     public int dniDoResetu() {
+        if (!resetWlaczony()) return -1;
         int cykliZostalo = cykliDoResetuLacznie() - cykliOdResetu;
         return Math.max(0, cykliZostalo * settings.cycleMinutes() / 1440);
     }

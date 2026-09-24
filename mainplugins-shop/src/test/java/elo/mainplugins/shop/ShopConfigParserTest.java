@@ -194,6 +194,45 @@ class ShopConfigParserTest {
     }
 
     @Test
+    void categoryPageSortAndCentering() throws Exception {
+        List<String> w = new ArrayList<>();
+        ShopSettings s = ShopConfigParser.parseSettings(yml("""
+                category-page-sort: buy
+                center-small-categories: false
+                """), MATERIAL, w::add);
+        assertTrue(w.isEmpty(), w.toString());
+        assertEquals(ShopSettings.CategorySort.BUY, s.categorySort());
+        assertFalse(s.centerSmallCategories());
+        ShopSettings d = ShopConfigParser.parseSettings(yml("stats: {enabled: false}"), MATERIAL, w::add);
+        assertEquals(ShopSettings.CategorySort.ORDER, d.categorySort());
+        assertFalse(d.centerSmallCategories());
+        List<String> w2 = new ArrayList<>();
+        ShopSettings bad = ShopConfigParser.parseSettings(yml("category-page-sort: chaos"), MATERIAL, w2::add);
+        assertEquals(ShopSettings.CategorySort.ORDER, bad.categorySort());
+        assertFalse(w2.isEmpty());
+    }
+
+    @Test
+    void resetDaysZeroTurnsResetOffAndNoGrowthIsAllowed() throws Exception {
+        List<String> w = new ArrayList<>();
+        ShopSettings s = ShopConfigParser.parseSettings(yml("""
+                dynamic-prices:
+                  max-multiplier: 1
+                  reset-days: 0
+                """), MATERIAL, w::add);
+        assertTrue(w.isEmpty(), w.toString());
+        assertEquals(0, s.dynamic().resetDays());
+        assertEquals(1.0, s.dynamic().maxMultiplier());
+        List<String> w2 = new ArrayList<>();
+        ShopSettings bad = ShopConfigParser.parseSettings(yml("""
+                dynamic-prices:
+                  reset-days: -3
+                """), MATERIAL, w2::add);
+        assertEquals(ShopSettings.defaults().dynamic().resetDays(), bad.dynamic().resetDays());
+        assertFalse(w2.isEmpty());
+    }
+
+    @Test
     void badSettingsAreFixedWithWarnings() throws Exception {
         List<String> w = new ArrayList<>();
         ShopSettings s = ShopConfigParser.parseSettings(yml("""

@@ -64,8 +64,9 @@ public final class ShopConfigParser {
                 max = dd.maxMultiplier();
             }
             int reset = dyn.getInt("reset-days", dd.resetDays());
-            if (reset < 1) {
-                warn.accept("shop.yml dynamic-prices.reset-days: must be at least 1 - using " + dd.resetDays() + ".");
+            // 0 = automatyczny reset wyłączony (ceny same nie wracają do normy).
+            if (reset < 0) {
+                warn.accept("shop.yml dynamic-prices.reset-days: must be 0 (reset off) or more - using " + dd.resetDays() + ".");
                 reset = dd.resetDays();
             }
             double share = dyn.getDouble("max-sell-share", dd.maxSellShare());
@@ -99,8 +100,18 @@ public final class ShopConfigParser {
             }
         }
 
+        // category-page-sort: order (kolejność z pliku) | buy | sell - co widać, zanim gracz kliknie lejek.
+        ShopSettings.CategorySort sort = d.categorySort();
+        String sortRaw = root.getString("category-page-sort");
+        if (sortRaw != null) {
+            try {
+                sort = ShopSettings.CategorySort.valueOf(sortRaw.trim().toUpperCase(java.util.Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                warn.accept("shop.yml category-page-sort: '" + sortRaw + "' - use order, buy or sell - using " + sort.name().toLowerCase(java.util.Locale.ROOT) + ".");
+            }
+        }
         return new ShopSettings(List.copyOf(order), rounding, dynamic, root.getBoolean("stats.enabled", d.statsEnabled()),
-                Map.copyOf(menus), Map.copyOf(buttons));
+                Map.copyOf(menus), Map.copyOf(buttons), sort, root.getBoolean("center-small-categories", d.centerSmallCategories()));
     }
 
     private static MenuScreen parseScreen(String screen, ConfigurationSection s, MenuScreen def,
@@ -321,7 +332,8 @@ public final class ShopConfigParser {
             warn.accept("categories/" + e.getKey() + ".yml: not in shop.yml 'categories' - it has no icon in the menu (selling still works) - '" + e.getKey() + "'.");
             sorted.put(e.getKey(), e.getValue());
         }
-        ShopSettings fixed = new ShopSettings(List.copyOf(order), s.rounding(), s.dynamic(), s.statsEnabled(), s.menus(), s.buttonMaterials());
+        ShopSettings fixed = new ShopSettings(List.copyOf(order), s.rounding(), s.dynamic(), s.statsEnabled(), s.menus(), s.buttonMaterials(),
+                s.categorySort(), s.centerSmallCategories());
         return new ShopConfig(fixed, Collections.unmodifiableMap(sorted));
     }
 }

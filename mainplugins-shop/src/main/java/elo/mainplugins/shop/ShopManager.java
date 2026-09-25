@@ -61,6 +61,8 @@ public final class ShopManager implements Listener {
     private final DynamicPriceManager prices;
     private final RotationManager rotation;
     private final ShopStats stats;
+    private final ShopDeals deals;
+    private final ShopHistory history;
 
     /** true = sortowanie po najwyższym skupie, false = po najtańszym kupnie. */
     /** Sortowanie wybrane lejkiem przez gracza; brak wpisu = domyślne z shop.yml (category-page-sort). */
@@ -69,7 +71,7 @@ public final class ShopManager implements Listener {
     private final Map<UUID, Boolean> fromMenu = new HashMap<>();
 
     public ShopManager(Plugin plugin, LangService lang, EconomyService economy, ShopItems items, Supplier<ShopConfig> config,
-                       DynamicPriceManager prices, RotationManager rotation, ShopStats stats) {
+                       DynamicPriceManager prices, RotationManager rotation, ShopStats stats, ShopDeals deals, ShopHistory history) {
         this.plugin = plugin;
         this.lang = lang;
         this.economy = economy;
@@ -78,6 +80,8 @@ public final class ShopManager implements Listener {
         this.prices = prices;
         this.rotation = rotation;
         this.stats = stats;
+        this.deals = deals;
+        this.history = history;
     }
 
     // ---------- teksty ----------
@@ -161,13 +165,39 @@ public final class ShopManager implements Listener {
         return it.key().equals(ref.key()) ? it : null;
     }
 
-    private double sellPerLot(ShopItem it) {
+    /** Skup jednej paczki dla gracza (z premią rangi; null = bez premii, np. do sortowania). */
+    private double sellPerLot(ShopItem it, Player player) {
         var d = config.get().settings().dynamic();
-        return ShopRules.sellPerLot(it, prices.getMnoznik(it.key()), d.maxSellShare(), config.get().settings().rounding());
+        double factor = player == null ? 1.0 : deals.sellFactor(player);
+        return ShopRules.sellPerLot(it, prices.getMnoznik(it.key()) * factor, d.maxSellShare(), config.get().settings().rounding());
     }
 
-    /** Ikona pozycji w siatce: sam przedmiot (1 szt.) + ceny i podpowiedzi. */
-    private ItemStack itemIcon(ShopGuiHolder.Ref ref, ShopItem it, boolean withCategory) {
+    /** Cena kupna `pieces` sztuk dla gracza: z promocją (przedmiot/kategoria/sklep) i rabatem rangi. */
+    private double buyPriceFor(Player player, ShopItem it, String categoryId, int pieces) {
+        return ShopRules.buyPrice(it, pieces, config.get().settings().rounding(), deals.buyFactor(player, it.key(), categoryId));
+    }
+
+    /** Linijki promocji i rabatu rangi pod ceną kupna (puste, gdy nic nie obniża ceny). */
+    private List<Component> dealLines(Player player, ShopItem it, String categoryId) {
+        List<Component> out = new ArrayList<>();
+        double sale = deals.salePercent(it.key(), categoryId);
+        if (sale > 0) {
+            Long left = deals.saleTimeLeft(it.key(), categoryId);
+            out.add(left == null ? t("item.sale", Map.of("percent", pct(sale)))
+                    : t("item.sale-timed", Map.of("percent", pct(sale), "time", ShopRules.formatDuration(left))));
+        }
+        double rank = deals.rankDiscount(player);
+        if (rank > 0) out.add(t("item.rank-discount", Map.of("percent", pct(rank))));
+        return out;
+    }
+
+    /** 20.0 -> "20", 2.5 -> "2.5". */
+    static String pct(double v) {
+        return v == Math.rint(v) ? String.valueOf((long) v) : String.valueOf(Math.round(v * 10) / 10.0);
+    }
+
+    /** Ikona pozycji w siatce: sam przedmiot (1 szt.) + ceny i podpowiedzi - dla konkretnego gracza. */
+    private ItemStack itemIcon(Player player, ShopGuiHolder.Ref ref, ShopItem it, boolean withCategory) {
         ItemStack icon = items.icon(it);
         if (icon == null) return null;
         icon.setAmount(1);
@@ -180,9 +210,16 @@ public final class ShopManager implements Listener {
         }
         if (ref.rotating()) lore.add(t("item.rotating", Map.of("days", String.valueOf(rotation.daysLeft(ref.category())))));
         var rounding = config.get().settings().rounding();
-        if (it.buyable()) lore.add(t("item.buy", Map.of("price", money(ShopRules.buyPrice(it, 1, rounding)))));
+        if (it.buyable()) {
+            double base = ShopRules.buyPrice(it, 1, rounding);
+            double mine = buyPriceFor(player, it, ref.category(), 1);
+            // Taniej niż w cenniku - stara cena przekreślona obok nowej.
+            lore.add(mine < base ? t("item.buy-discounted", Map.of("old", money(base), "price", money(mine)))
+                    : t("item.buy", Map.of("price", money(mine))));
+            lore.addAll(dealLines(player, it, ref.category()));
+        }
         if (it.sellable()) {
-            Component line = t("item.sell", Map.of("price", money(sellPerLot(it)), "amount", String.valueOf(it.sellAmount())));
+            Component line = t("item.sell", Map.of("price", money(sellPerLot(it, player)), "amount", String.valueOf(it.sellAmount())));
             if (prices.enabled()) {
                 if (prices.czyZablokowany(it.key())) {
                     Long left = prices.zostaloEventu(it.key());
@@ -279,7 +316,7 @@ public final class ShopManager implements Listener {
         for (int i = start; i < end && i - start < slots.size(); i++) {
             ShopGuiHolder.Ref ref = refs.get(i);
             ShopItem it = resolve(ref);
-            ItemStack icon = it == null ? null : itemIcon(ref, it, false);
+            ItemStack icon = it == null ? null : itemIcon(player, ref, it, false);
             if (icon == null) continue;
             int slot = slots.get(i - start);
             gui.setItem(slot, icon);
@@ -290,7 +327,7 @@ public final class ShopManager implements Listener {
             for (int i = 0; i < rotating.size() && i < rotationSlots.size(); i++) {
                 ShopGuiHolder.Ref ref = rotating.get(i);
                 ShopItem it = resolve(ref);
-                ItemStack icon = it == null ? null : itemIcon(ref, it, false);
+                ItemStack icon = it == null ? null : itemIcon(player, ref, it, false);
                 if (icon == null) continue;
                 int slot = rotationSlots.get(i).slot();
                 gui.setItem(slot, icon);
@@ -346,7 +383,7 @@ public final class ShopManager implements Listener {
             ShopItem it = resolve(r);
             double v;
             if (it == null) v = Double.MAX_VALUE;
-            else if (bySell) v = it.sellable() ? -(sellPerLot(it) / it.sellAmount()) : Double.MAX_VALUE;
+            else if (bySell) v = it.sellable() ? -(sellPerLot(it, null) / it.sellAmount()) : Double.MAX_VALUE;
             else v = it.buyable() ? ShopRules.buyPrice(it, 1, rounding) : Double.MAX_VALUE;
             value.put(r, v);
         }
@@ -393,10 +430,10 @@ public final class ShopManager implements Listener {
         ShopGuiHolder holder = new ShopGuiHolder(ShopGuiHolder.Kind.PICKER, ref.category(), returnPage, fromMenu.getOrDefault(player.getUniqueId(), false), ref);
         Inventory gui = holder.create(s.size(), lang.msg(plugin, "menu.picker-title"));
         background(gui, s);
-        var rounding = config.get().settings().rounding();
         double balance = economy.getKasa(player.getUniqueId());
+        List<Component> deal = dealLines(player, it, ref.category());
         for (SlotEntry e : s.withRole(SlotRole.AMOUNT_SLOT)) {
-            double price = ShopRules.buyPrice(it, e.amount(), rounding);
+            double price = buyPriceFor(player, it, ref.category(), e.amount());
             boolean afford = balance >= price;
             ItemStack option = sample.clone();
             option.setAmount(Math.max(1, Math.min(e.amount(), option.getMaxStackSize())));
@@ -404,7 +441,8 @@ public final class ShopManager implements Listener {
             meta.displayName(t(afford ? "picker.amount-ok" : "picker.amount-no", Map.of("amount", String.valueOf(e.amount()))));
             List<Component> lore = new ArrayList<>();
             lore.add(t("picker.price", Map.of("price", money(price))));
-            if (e.amount() > 1) lore.add(t("picker.per-piece", Map.of("price", money(ShopRules.buyPrice(it, 1, rounding)))));
+            if (e.amount() > 1) lore.add(t("picker.per-piece", Map.of("price", money(buyPriceFor(player, it, ref.category(), 1)))));
+            lore.addAll(deal);
             lore.add(Component.empty());
             lore.add(t(afford ? "picker.click" : "picker.no-money"));
             lore.add(t("picker.shift"));
@@ -432,27 +470,28 @@ public final class ShopManager implements Listener {
         return free;
     }
 
-    private void buy(Player player, ShopItem it, int pieces, boolean max) {
+    private void buy(Player player, ShopItem it, String categoryId, int pieces, boolean max) {
         ItemStack sample = items.create(it, 1, player);
         if (sample == null) {
             send(player, "buy.unavailable");
             return;
         }
         var rounding = config.get().settings().rounding();
+        double factor = deals.buyFactor(player, it.key(), categoryId);
         int free = freeSpace(player, sample);
         if (max) {
             if (free <= 0) {
                 send(player, "buy.no-space-any");
                 return;
             }
-            pieces = ShopRules.maxBuyPieces(it, economy.getKasa(player.getUniqueId()), free, rounding);
+            pieces = ShopRules.maxBuyPieces(it, economy.getKasa(player.getUniqueId()), free, rounding, factor);
             if (pieces <= 0) {
                 send(player, "buy.cannot-afford-one");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 return;
             }
         }
-        double price = ShopRules.buyPrice(it, pieces, rounding);
+        double price = ShopRules.buyPrice(it, pieces, rounding, factor);
         if (!economy.maWystarczajaco(player.getUniqueId(), price)) {
             send(player, "buy.no-money", Map.of("price", money(price)));
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
@@ -473,6 +512,52 @@ public final class ShopManager implements Listener {
             left -= n;
         }
         sendWithItem(player, "buy.bought", Map.of("amount", String.valueOf(pieces), "price", money(price)), it);
+    }
+
+    // ---------- /cena ----------
+
+    /** /cena (/price): ile gracz zapłaci i ile dostanie za przedmiot w ręce - z jego rabatami i premią. */
+    public void priceCheck(Player player) {
+        ItemStack hand = player.getInventory().getItemInMainHand();
+        if (hand.getType().isAir()) {
+            send(player, "price-check.empty-hand");
+            return;
+        }
+        String key = items.keyOf(hand);
+        String categoryId = null;
+        ShopItem buyOffer = null;
+        for (Category c : config.get().categories().values()) {
+            for (ShopItem it : c.items()) if (buyOffer == null && it.buyable() && it.key().equals(key)) { buyOffer = it; categoryId = c.id(); }
+            for (ShopItem it : rotation.active(c)) if (buyOffer == null && it.buyable() && it.key().equals(key)) { buyOffer = it; categoryId = c.id(); }
+        }
+        ShopItem sellOffer = ShopRules.sellOffer(config.get(), rotation.allActive(), key);
+        if (buyOffer == null && sellOffer == null) {
+            send(player, "price-check.not-in-shop");
+            return;
+        }
+        ShopItem any = buyOffer != null ? buyOffer : sellOffer;
+        sendWithItem(player, "price-check.header", Map.of(), any);
+        if (buyOffer != null) {
+            double base = ShopRules.buyPrice(buyOffer, 1, config.get().settings().rounding());
+            double mine = buyPriceFor(player, buyOffer, categoryId, 1);
+            player.sendMessage(mine < base ? t("price-check.buy-discounted", Map.of("old", money(base), "price", money(mine)))
+                    : t("price-check.buy", Map.of("price", money(mine))));
+            for (Component line : dealLines(player, buyOffer, categoryId)) player.sendMessage(line);
+        } else {
+            send(player, "price-check.cannot-buy");
+        }
+        if (sellOffer != null) {
+            Component line = t("price-check.sell", Map.of("price", money(sellPerLot(sellOffer, player)), "amount", String.valueOf(sellOffer.sellAmount())));
+            if (prices.enabled() && prices.czyZablokowany(key)) {
+                Long left = prices.zostaloEventu(key);
+                line = line.append(left == null ? t("item.event") : t("item.event-timed", Map.of("time", ShopRules.formatDuration(left))));
+            }
+            player.sendMessage(line);
+            double bonus = deals.rankSellBonus(player);
+            if (bonus > 0) send(player, "price-check.rank-sell-bonus", Map.of("percent", pct(bonus)));
+        } else {
+            send(player, "price-check.cannot-sell");
+        }
     }
 
     // ---------- sprzedaż ----------
@@ -514,7 +599,9 @@ public final class ShopManager implements Listener {
             return;
         }
         var d = config.get().settings().dynamic();
-        ShopRules.SellResult r = ShopRules.sell(offer, owned, prices.getMnoznik(key), d.maxSellShare(), config.get().settings().rounding());
+        // Premia rangi podnosi skup, ale sufit (max-sell-share ceny kupna) i tak obowiązuje.
+        ShopRules.SellResult r = ShopRules.sell(offer, owned, prices.getMnoznik(key) * deals.sellFactor(player), d.maxSellShare(),
+                config.get().settings().rounding());
         if (r.lots() == 0) {
             send(player, "sell.not-enough", Map.of("amount", String.valueOf(offer.sellAmount()), "have", String.valueOf(owned)));
             return;
@@ -529,6 +616,9 @@ public final class ShopManager implements Listener {
         economy.dodajKase(player.getUniqueId(), r.money());
         prices.zarejestrujSprzedaz(key, r.pieces());
         stats.zapiszTransakcje(key, r.pieces(), r.money());
+        if (config.get().settings().statsEnabled()) {
+            history.record(java.time.LocalDate.now(), key, player.getUniqueId().toString(), player.getName(), r.pieces(), r.money());
+        }
 
         Component msg = lang.msg(plugin, "sell.sold", Map.of("amount", String.valueOf(r.pieces()), "price", money(r.money())))
                 .replaceText(TextReplacementConfig.builder().matchLiteral("{item}").replacement(items.name(offer)).build());
@@ -616,7 +706,7 @@ public final class ShopManager implements Listener {
         int shown = Math.min(hits.size(), slots.size());
         for (int i = 0; i < shown; i++) {
             ShopGuiHolder.Ref ref = hits.get(i);
-            ItemStack icon = itemIcon(ref, resolve(ref), true);
+            ItemStack icon = itemIcon(player, ref, resolve(ref), true);
             if (icon == null) continue;
             gui.setItem(slots.get(i).slot(), icon);
             holder.items().put(slots.get(i).slot(), ref);
@@ -719,7 +809,7 @@ public final class ShopManager implements Listener {
                     return;
                 }
                 // Shift+LPM = kup ile się da (kasa + miejsce), zamiast liczby z przycisku.
-                buy(player, it, amount, event.isShiftClick() && event.isLeftClick());
+                buy(player, it, holder.picked().category(), amount, event.isShiftClick() && event.isLeftClick());
                 openPicker(player, holder.picked(), holder.page());
             }
         }

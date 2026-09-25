@@ -6,6 +6,7 @@ import elo.mainplugins.shop.model.MenuScreen;
 import elo.mainplugins.shop.model.Rotation;
 import elo.mainplugins.shop.model.Rounding;
 import elo.mainplugins.shop.model.ShopConfig;
+import elo.mainplugins.shop.model.ShopExtras;
 import elo.mainplugins.shop.model.ShopItem;
 import elo.mainplugins.shop.model.ShopSettings;
 import elo.mainplugins.shop.model.SlotEntry;
@@ -111,7 +112,42 @@ public final class ShopConfigParser {
             }
         }
         return new ShopSettings(List.copyOf(order), rounding, dynamic, root.getBoolean("stats.enabled", d.statsEnabled()),
-                Map.copyOf(menus), Map.copyOf(buttons), sort, root.getBoolean("center-small-categories", d.centerSmallCategories()));
+                Map.copyOf(menus), Map.copyOf(buttons), sort, root.getBoolean("center-small-categories", d.centerSmallCategories()),
+                parseExtras(root, warn));
+    }
+
+    /**
+     * rank-bonuses: {vip: {buy-discount: 2, sell-bonus: 1}} - procenty 0-90;
+     * sales.announce; stats.history-days (1-365).
+     */
+    private static ShopExtras parseExtras(ConfigurationSection root, Consumer<String> warn) {
+        ShopExtras d = ShopExtras.defaults();
+        Map<String, ShopExtras.RankBonus> ranks = new LinkedHashMap<>();
+        ConfigurationSection rb = root.getConfigurationSection("rank-bonuses");
+        if (rb != null) {
+            for (String rank : rb.getKeys(false)) {
+                ConfigurationSection r = rb.getConfigurationSection(rank);
+                if (r == null) {
+                    warn.accept("shop.yml rank-bonuses." + rank + ": needs buy-discount and/or sell-bonus - skipping it.");
+                    continue;
+                }
+                ranks.put(rank.toLowerCase(Locale.ROOT), new ShopExtras.RankBonus(
+                        bonusPercent(r, "buy-discount", rank, warn), bonusPercent(r, "sell-bonus", rank, warn)));
+            }
+        }
+        int days = root.getInt("stats.history-days", d.historyDays());
+        if (days < 1 || days > 365) {
+            warn.accept("shop.yml stats.history-days: must be 1-365 - using " + d.historyDays() + ".");
+            days = d.historyDays();
+        }
+        return new ShopExtras(Map.copyOf(ranks), root.getBoolean("sales.announce", d.announceSales()), days);
+    }
+
+    private static double bonusPercent(ConfigurationSection r, String key, String rank, Consumer<String> warn) {
+        double v = r.getDouble(key, 0);
+        if (v >= 0 && v <= 90) return v;
+        warn.accept("shop.yml rank-bonuses." + rank + "." + key + ": must be 0-90 (percent) - using 0.");
+        return 0;
     }
 
     private static MenuScreen parseScreen(String where, ConfigurationSection s, MenuScreen def,
@@ -336,7 +372,7 @@ public final class ShopConfigParser {
             sorted.put(e.getKey(), e.getValue());
         }
         ShopSettings fixed = new ShopSettings(List.copyOf(order), s.rounding(), s.dynamic(), s.statsEnabled(), s.menus(), s.buttonMaterials(),
-                s.categorySort(), s.centerSmallCategories());
+                s.categorySort(), s.centerSmallCategories(), s.extras());
         return new ShopConfig(fixed, Collections.unmodifiableMap(sorted));
     }
 }

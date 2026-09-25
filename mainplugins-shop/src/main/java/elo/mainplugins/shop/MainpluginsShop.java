@@ -43,6 +43,9 @@ public final class MainpluginsShop extends JavaPlugin {
     private DynamicPriceManager prices;
     private RotationManager rotation;
     private ShopManager shop;
+    private ShopDeals deals;
+    private ShopHistory history;
+    private ShopCommand admin;
     private BukkitTask timer;
     private BukkitTask eventTimer;
 
@@ -71,7 +74,9 @@ public final class MainpluginsShop extends JavaPlugin {
                 });
         rotation = new RotationManager(this, lang, items, () -> config);
         rotation.check();
-        shop = new ShopManager(this, lang, CoreAPI.getEconomyService(), items, () -> config, prices, rotation, stats);
+        deals = new ShopDeals(this, () -> config);
+        history = new ShopHistory(new File(getDataFolder(), "history.yml"), getLogger()::warning);
+        shop = new ShopManager(this, lang, CoreAPI.getEconomyService(), items, () -> config, prices, rotation, stats, deals, history);
         getServer().getPluginManager().registerEvents(shop, this);
         ShopPlaces places = new ShopPlaces(this, lang, shop, id -> {
             Category c = config.categories().get(id);
@@ -84,6 +89,8 @@ public final class MainpluginsShop extends JavaPlugin {
         timer = getServer().getScheduler().runTaskTimer(this, () -> {
             rotation.check();
             stats.zapisz();
+            history.prune(java.time.LocalDate.now(), config.settings().extras().historyDays());
+            history.save();
         }, 12_000L, 12_000L);
 
         // Co 10 sekund: eventy, którym minął czas (/@shop event <item> <procent> <czas>).
@@ -92,6 +99,10 @@ public final class MainpluginsShop extends JavaPlugin {
                 if (!config.settings().dynamic().announceEvents()) continue;
                 Bukkit.getOnlinePlayers().forEach(p ->
                         lang.send(p, this, "event.broadcast-off", Map.of("item", nameOf(items, key))));
+            }
+            // Promocje, którym minął czas (/@shop sale <cel> <procent> <czas>).
+            for (String target : deals.expired()) {
+                if (admin != null) admin.broadcastSale("sale.broadcast-end", target, Map.of());
             }
         }, 200L, 200L);
 
@@ -104,11 +115,12 @@ public final class MainpluginsShop extends JavaPlugin {
                 case "sklep" -> shopCommand(p, args);
                 case "sprzedaj" -> shop.sellHand(p);
                 case "sprzedajwszystko" -> shop.sellAll(p);
+                case "cena" -> shop.priceCheck(p);
                 default -> { }
             }
             return true;
         };
-        for (String name : List.of("sklep", "sprzedaj", "sprzedajwszystko")) {
+        for (String name : List.of("sklep", "sprzedaj", "sprzedajwszystko", "cena")) {
             if (getCommand(name) == null) continue;
             getCommand(name).setExecutor(player);
             getCommand(name).setTabCompleter((sender, command, alias, args) -> {
@@ -119,7 +131,7 @@ public final class MainpluginsShop extends JavaPlugin {
             });
         }
         if (getCommand("@shop") != null) {
-            ShopCommand admin = new ShopCommand(this, lang, () -> config, this::reload, prices, rotation, stats, items, shop, places);
+            admin = new ShopCommand(this, lang, () -> config, this::reload, prices, rotation, stats, items, shop, places, deals, history);
             getCommand("@shop").setExecutor(admin);
             getCommand("@shop").setTabCompleter(admin);
         }
@@ -132,6 +144,7 @@ public final class MainpluginsShop extends JavaPlugin {
         if (rotation != null) rotation.close();
         if (prices != null) prices.zamknij();
         if (stats != null) stats.zapisz();
+        if (history != null) history.save();
     }
 
     /** Słowo "szukaj" w języku serwera (lang: command.search-word). */

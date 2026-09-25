@@ -7,11 +7,11 @@ import java.util.Map;
 
 /**
  * shop.yml bez kategorii. menus: main-menu, category-page, buy-picker, search-results.
- * buttonMaterials: wygląd przycisków (teksty są w lang).
+ * buttonMaterials: wygląd przycisków (teksty są w lang). extras: premie rang, promocje, historia.
  */
 public record ShopSettings(List<String> categoryOrder, Rounding rounding, DynamicSettings dynamic, boolean statsEnabled,
                            Map<String, MenuScreen> menus, Map<String, String> buttonMaterials,
-                           CategorySort categorySort, boolean centerSmallCategories) {
+                           CategorySort categorySort, boolean centerSmallCategories, ShopExtras extras) {
 
     /**
      * Kolejność przedmiotów na stronie kategorii, zanim gracz kliknie lejek.
@@ -23,7 +23,7 @@ public record ShopSettings(List<String> categoryOrder, Rounding rounding, Dynami
     /** Stary zestaw pól - kolejność sklepu, bez wyśrodkowania (przedmioty stoją tam, gdzie ustawił je właściciel). */
     public ShopSettings(List<String> categoryOrder, Rounding rounding, DynamicSettings dynamic, boolean statsEnabled,
                         Map<String, MenuScreen> menus, Map<String, String> buttonMaterials) {
-        this(categoryOrder, rounding, dynamic, statsEnabled, menus, buttonMaterials, CategorySort.ORDER, false);
+        this(categoryOrder, rounding, dynamic, statsEnabled, menus, buttonMaterials, CategorySort.ORDER, false, ShopExtras.defaults());
     }
 
     public static final List<String> SCREENS = List.of("main-menu", "category-page", "buy-picker", "search-results");

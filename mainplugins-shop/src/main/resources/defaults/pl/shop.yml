@@ -32,8 +32,22 @@ dynamic-prices:
     norm-learn-rate: 0.02      # jak szybko sklep zapomina stare cykle (0.02 = jakiś tydzień historii)
 
 # Statystyki sprzedaży (stats.yml + stats.csv do Excela) z podpowiedziami, które ceny zmienić.
+# Razem z nimi sklep zapisuje historię (history.yml): ile sprzedano i kto ile zarobił - /@shop history i /@shop top.
 stats:
   enabled: false
+  history-days: 30         # ile dni historii pamiętać
+
+# Promocje na kupno (/@shop sale): czy ogłaszać początek i koniec na czacie.
+sales:
+  announce: true
+
+# Premie rang. Gracz ma rangę, gdy ma uprawnienie mainplugins.shop.rank.<nazwa> (np. mainplugins.shop.rank.vip).
+# buy-discount = tyle procent taniej przy kupnie, sell-bonus = tyle procent więcej za sprzedaż.
+# Promocja i rabat rangi się sumują. Gracz z kilkoma rangami dostaje największą premię.
+rank-bonuses:
+  vip:
+    buy-discount: 2
+    sell-bonus: 1
 
 # Co leży gdzie w każdym oknie. size = 9, 18, 27, 36, 45 albo 54.
 # Role: CATEGORY_SLOT (menu główne), ITEM_SLOT, ROTATION_SLOT (miejsce na przedmiot z rotacji), AMOUNT_SLOT (wybór ilości, amount = sztuki),

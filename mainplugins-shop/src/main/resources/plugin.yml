@@ -14,9 +14,12 @@ commands:
   sprzedajwszystko:
     description: Sell all items of the type in your hand
     aliases: [sellall]
+  cena:
+    description: Shop prices of the item in your hand
+    aliases: [price]
   "@shop":
-    description: (Admin) Shop - reload, prices, dynamic prices, events, rotation, statistics
-    usage: /<command> reload | info | price | reset | resetall | multiplier | event | rotation | stats | open | sign | npc
+    description: (Admin) Shop - reload, prices, dynamic prices, events, sales, history, rotation, statistics
+    usage: /<command> reload | info | price | reset | resetall | multiplier | event | sale | history | top | rotation | stats | open | sign | npc
     permission: mainplugins.shop.admin
     permission-message: "&cNie masz permisji do tej komendy!"
 

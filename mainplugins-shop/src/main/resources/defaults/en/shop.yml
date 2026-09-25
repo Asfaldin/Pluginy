@@ -32,8 +32,22 @@ dynamic-prices:
     norm-learn-rate: 0.02      # how fast the shop forgets old cycles (0.02 = about a week of history)
 
 # Sales statistics (stats.yml + stats.csv for Excel) with hints which prices to change.
+# Together with them the shop keeps a history (history.yml): how much was sold and who earned what - /@shop history and /@shop top.
 stats:
   enabled: false
+  history-days: 30         # how many days of history to keep
+
+# Sales on buying (/@shop sale): announce their start and end in chat.
+sales:
+  announce: true
+
+# Rank bonuses. A player has a rank when they have the permission mainplugins.shop.rank.<name> (e.g. mainplugins.shop.rank.vip).
+# buy-discount = that many percent cheaper when buying, sell-bonus = that many percent more when selling.
+# A sale and a rank discount add up. A player with several ranks gets the biggest bonus.
+rank-bonuses:
+  vip:
+    buy-discount: 2
+    sell-bonus: 1
 
 # Where things are in each window. size = 9, 18, 27, 36, 45 or 54.
 # Roles: CATEGORY_SLOT (main menu), ITEM_SLOT, ROTATION_SLOT (place for a rotating item), AMOUNT_SLOT (buy-picker, amount = pieces),

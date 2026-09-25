@@ -33,6 +33,29 @@ class ShopConfigParserTest {
     }
 
     @Test
+    void readsRankBonusesSalesAndHistory() throws Exception {
+        List<String> w = new ArrayList<>();
+        ShopSettings s = ShopConfigParser.parseSettings(yml("""
+                sales:
+                  announce: false
+                stats:
+                  history-days: 7
+                rank-bonuses:
+                  VIP: {buy-discount: 2, sell-bonus: 1}
+                  svip: {buy-discount: 150}
+                  broken: 5
+                """), MATERIAL, w::add);
+        assertFalse(s.extras().announceSales());
+        assertEquals(7, s.extras().historyDays());
+        assertEquals(2, s.extras().rankBonuses().get("vip").buyDiscount());
+        assertEquals(1, s.extras().rankBonuses().get("vip").sellBonus());
+        assertEquals(0, s.extras().rankBonuses().get("svip").buyDiscount(), "150% to za dużo");
+        assertFalse(s.extras().rankBonuses().containsKey("broken"));
+        assertEquals(2, w.size(), w.toString());
+        assertTrue(ShopConfigParser.parseSettings(yml(""), MATERIAL, x -> { }).extras().rankBonuses().isEmpty());
+    }
+
+    @Test
     void categoryHasItsOwnLayoutWithRotationSlots() throws Exception {
         List<String> w = new ArrayList<>();
         Category c = cat("kolekcja", """

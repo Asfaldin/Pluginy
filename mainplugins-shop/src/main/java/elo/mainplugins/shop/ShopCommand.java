@@ -52,14 +52,21 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
     private final ShopItems items;
     private final ShopManager shop;
     private final ShopPlaces places;
+    private final ShopDeals deals;
+    private final ShopHistory history;
     private final Map<String, Pending> pending = new HashMap<>();
+
+    /** Słowa na "cały sklep" w /@shop sale. */
+    private static final List<String> ALL_WORDS = List.of("all", "wszystko", "sklep", "shop");
 
     /** Słowa na "menu główne" zamiast kategorii: /@shop npc create main. */
     private static final List<String> MAIN_WORDS = List.of("main", "menu", "glowne", "główne");
 
     ShopCommand(Plugin plugin, LangService lang, Supplier<ShopConfig> config, Runnable reload,
                 DynamicPriceManager prices, RotationManager rotation, ShopStats stats, ShopItems items,
-                ShopManager shop, ShopPlaces places) {
+                ShopManager shop, ShopPlaces places, ShopDeals deals, ShopHistory history) {
+        this.deals = deals;
+        this.history = history;
         this.plugin = plugin;
         this.lang = lang;
         this.config = config;
@@ -182,6 +189,9 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
             case "open" -> openCmd(sender, args);
             case "sign" -> signCmd(sender, args);
             case "npc" -> npcCmd(sender, args);
+            case "sale" -> saleCmd(sender, args);
+            case "history" -> historyCmd(sender, args);
+            case "top" -> topCmd(sender, args);
             default -> send(sender, "admin.usage");
         }
         return true;
@@ -555,6 +565,166 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
         Bukkit.getOnlinePlayers().forEach(p -> p.sendMessage(line));
     }
 
+    // ---------- promocje: /@shop sale ----------
+
+    /** Nazwa celu promocji: przedmiot (w języku gracza), kategoria (z kolorami) albo "cały sklep". */
+    Component saleTargetName(String saleKey) {
+        if (saleKey.equals(ShopRules.SALE_ALL)) return lang.msg(plugin, "sale.target-all");
+        if (saleKey.startsWith("category:")) {
+            Category c = config.get().categories().get(saleKey.substring("category:".length()));
+            return net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand()
+                    .deserialize(c == null ? saleKey.substring("category:".length()) : c.name());
+        }
+        String key = saleKey.substring("item:".length());
+        Loc loc = find(key);
+        return loc == null ? Component.text(key) : items.name(loc.item());
+    }
+
+    private String plainTarget(String saleKey) {
+        return net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(saleTargetName(saleKey));
+    }
+
+    /** "all" / kategoria (id albo nazwa) / przedmiot -> klucz promocji; null = nic takiego (komunikat już wysłany). */
+    private String saleKey(CommandSender s, String arg) {
+        if (ALL_WORDS.contains(arg.toLowerCase(Locale.ROOT))) return ShopRules.SALE_ALL;
+        String cat = shop.findCategory(arg);
+        if (cat != null) return ShopRules.saleKeyCategory(cat);
+        Loc loc = find(normalize(arg));
+        if (loc != null) return ShopRules.saleKeyItem(loc.item().key());
+        send(s, "admin.sale-unknown-target", Map.of("value", arg));
+        return null;
+    }
+
+    /** Ogłasza promocję wszystkim (shop.yml sales.announce: false wyłącza). {target} jako komponent. */
+    void broadcastSale(String textKey, String saleKey, Map<String, String> ph) {
+        if (!config.get().settings().extras().announceSales()) return;
+        Component line = lang.msg(plugin, textKey, ph).replaceText(
+                TextReplacementConfig.builder().matchLiteral("{target}").replacement(saleTargetName(saleKey)).build());
+        Bukkit.getOnlinePlayers().forEach(p -> p.sendMessage(line));
+    }
+
+    private void saleCmd(CommandSender sender, String[] args) {
+        if (args.length >= 2 && args[1].equalsIgnoreCase("list")) {
+            Map<String, ShopRules.Sale> active = deals.active();
+            if (active.isEmpty()) {
+                send(sender, "admin.sale-list-empty");
+                return;
+            }
+            send(sender, "admin.sale-list-header");
+            long now = System.currentTimeMillis();
+            active.forEach((k, s) -> {
+                Map<String, String> ph = new LinkedHashMap<>();
+                ph.put("target", plainTarget(k));
+                ph.put("percent", ShopManager.pct(s.percent()));
+                if (s.until() > 0) ph.put("time", ShopRules.formatDuration(s.until() - now));
+                send(sender, s.until() > 0 ? "admin.sale-list-line-timed" : "admin.sale-list-line", ph);
+            });
+            return;
+        }
+        if (args.length >= 2 && args[1].equalsIgnoreCase("offall")) {
+            int n = deals.stopAll();
+            if (n == 0) {
+                send(sender, "admin.sale-list-empty");
+                return;
+            }
+            send(sender, "admin.sale-offall", Map.of("count", String.valueOf(n)));
+            if (config.get().settings().extras().announceSales()) {
+                Bukkit.getOnlinePlayers().forEach(p -> lang.send(p, plugin, "sale.broadcast-all-end"));
+            }
+            return;
+        }
+        if (args.length < 3) {
+            send(sender, "admin.usage");
+            return;
+        }
+        String key = saleKey(sender, args[1]);
+        if (key == null) return;
+        if (args[2].equalsIgnoreCase("off")) {
+            if (!deals.stop(key)) {
+                send(sender, "admin.sale-not-active", Map.of("target", plainTarget(key)));
+                return;
+            }
+            send(sender, "admin.sale-off", Map.of("target", plainTarget(key)));
+            broadcastSale("sale.broadcast-end", key, Map.of());
+            return;
+        }
+        // "-20", "20" i "20%" znaczą to samo: 20% taniej.
+        Double x = ShopRules.percentToMultiplier(args[2]);
+        double percent = x == null ? -1 : Math.abs(ShopRules.multiplierToPercent(x));
+        if (percent < 1 || percent > 90) {
+            send(sender, "admin.sale-bad-percent", Map.of("value", args[2]));
+            return;
+        }
+        long until = 0L;
+        String timeText = null;
+        if (args.length >= 4) {
+            Long span = ShopRules.parseDuration(args[3]);
+            if (span == null) {
+                send(sender, "admin.not-a-duration", Map.of("value", args[3]));
+                return;
+            }
+            until = System.currentTimeMillis() + span;
+            timeText = ShopRules.formatDuration(span);
+        }
+        deals.start(key, percent, until);
+        Map<String, String> ph = new LinkedHashMap<>();
+        ph.put("target", plainTarget(key));
+        ph.put("percent", ShopManager.pct(percent));
+        if (timeText != null) ph.put("time", timeText);
+        send(sender, timeText == null ? "admin.sale-set" : "admin.sale-set-timed", ph);
+        Map<String, String> bc = new LinkedHashMap<>();
+        bc.put("percent", ShopManager.pct(percent));
+        if (timeText != null) bc.put("time", timeText);
+        broadcastSale(timeText == null ? "sale.broadcast-start" : "sale.broadcast-start-timed", key, bc);
+    }
+
+    // ---------- historia i ranking ----------
+
+    private void historyCmd(CommandSender sender, String[] args) {
+        if (!config.get().settings().statsEnabled()) {
+            send(sender, "admin.stats-disabled");
+            return;
+        }
+        if (args.length < 2) {
+            send(sender, "admin.usage");
+            return;
+        }
+        Loc loc = findOrWarn(sender, args[1]);
+        if (loc == null) return;
+        int days = Math.min(14, config.get().settings().extras().historyDays());
+        List<ShopHistory.DayLine> lines = history.itemHistory(loc.item().key(), java.time.LocalDate.now(), days);
+        send(sender, "admin.history-header", Map.of("item", items.plainName(loc.item()), "days", String.valueOf(days)));
+        if (lines.isEmpty()) {
+            send(sender, "admin.history-empty");
+            return;
+        }
+        java.time.format.DateTimeFormatter f = java.time.format.DateTimeFormatter.ofPattern("dd.MM");
+        for (ShopHistory.DayLine l : lines) {
+            send(sender, "admin.history-line", Map.of("date", l.day().format(f), "amount", String.valueOf(l.amount()),
+                    "money", ShopManager.money(l.money()), "price", ShopManager.money(l.money() / Math.max(1, l.amount()))));
+        }
+    }
+
+    private void topCmd(CommandSender sender, String[] args) {
+        if (!config.get().settings().statsEnabled()) {
+            send(sender, "admin.stats-disabled");
+            return;
+        }
+        String when = args.length >= 2 ? args[1].toLowerCase(Locale.ROOT) : "";
+        boolean week = when.startsWith("tydz") || when.startsWith("week") || when.equals("7");
+        List<ShopHistory.TopLine> top = history.top(java.time.LocalDate.now(), week ? 7 : 1, 10);
+        send(sender, week ? "admin.top-header-week" : "admin.top-header-today");
+        if (top.isEmpty()) {
+            send(sender, "admin.top-empty");
+            return;
+        }
+        int nr = 1;
+        for (ShopHistory.TopLine l : top) {
+            send(sender, "admin.top-line", Map.of("nr", String.valueOf(nr++), "player", l.name(), "money", ShopManager.money(l.money()),
+                    "amount", String.valueOf(l.amount())));
+        }
+    }
+
     private void rotationCmd(CommandSender sender, String[] args) {
         if (args.length >= 2 && args[1].equalsIgnoreCase("force")) {
             int n = rotation.force(args.length >= 3 ? args[2] : null);
@@ -605,7 +775,7 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String[] args) {
         if (args.length == 1) {
             return TabCompleteUtils.dopasuj(args[0], List.of("reload", "info", "price", "reset", "resetall", "confirm", "cancel",
-                    "multiplier", "event", "rotation", "stats", "open", "sign", "npc"));
+                    "multiplier", "event", "sale", "history", "top", "rotation", "stats", "open", "sign", "npc"));
         }
         String sub = args[0].toLowerCase(Locale.ROOT);
         List<String> targets = new ArrayList<>(config.get().categories().keySet());
@@ -637,11 +807,15 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 2) {
             switch (sub) {
-                case "info", "price", "reset", "multiplier", "event" -> {
+                case "info", "price", "reset", "multiplier", "event", "sale", "history" -> {
                     List<String> keys = new ArrayList<>();
-                    if (sub.equals("event")) {
+                    if (sub.equals("event") || sub.equals("sale")) {
                         keys.add("list");
                         keys.add("offall");
+                    }
+                    if (sub.equals("sale")) {
+                        keys.add("all");
+                        keys.addAll(config.get().categories().keySet());
                     }
                     for (Category c : config.get().categories().values()) {
                         for (ShopItem it : c.items()) keys.add(it.key());
@@ -655,6 +829,9 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
                 case "stats" -> {
                     return TabCompleteUtils.dopasuj(args[1], List.of("snapshot"));
                 }
+                case "top" -> {
+                    return TabCompleteUtils.dopasuj(args[1], List.of("dzis", "tydzien"));
+                }
                 default -> {
                     return TabCompleteUtils.PUSTA;
                 }
@@ -663,6 +840,8 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
         if (args.length == 3 && sub.equals("price")) return TabCompleteUtils.dopasuj(args[2], List.of("buy", "sell"));
         if (args.length == 3 && sub.equals("event")) return TabCompleteUtils.dopasuj(args[2], List.of("off", "-20", "+20", "+50"));
         if (args.length == 4 && sub.equals("event")) return TabCompleteUtils.dopasuj(args[3], List.of("30m", "2h", "6h", "1d", "3d"));
+        if (args.length == 3 && sub.equals("sale")) return TabCompleteUtils.dopasuj(args[2], List.of("off", "-10", "-20", "-50"));
+        if (args.length == 4 && sub.equals("sale")) return TabCompleteUtils.dopasuj(args[3], List.of("30m", "2h", "6h", "1d", "3d"));
         if (args.length == 3 && sub.equals("rotation")) return TabCompleteUtils.dopasuj(args[2], config.get().categories().keySet());
         return TabCompleteUtils.PUSTA;
     }

@@ -31,8 +31,6 @@ import java.util.function.Predicate;
 /** Sklep serwerowy - działa z samym core. Treść w shop.yml + categories/, teksty w lang/. */
 public final class MainpluginsShop extends JavaPlugin {
 
-    /** Kategorie treści startowej (defaults/<język>/categories/<id>.yml). */
-    private static final List<String> DEFAULT_CATEGORIES = List.of("blocks", "farming", "ores", "mob-drops", "food");
     /** Pliki starego sklepu - przy pierwszym starcie nowej wersji idą do old/. */
     private static final List<String> OLD_FILES = List.of("sklep.yml", "sklep-gui.yml", "pula-rotacyjna.yml", "categories",
             "ceny-dynamiczne.yml", "statystyki-sklepu.yml", "statystyki-sklepu.csv", "archiwum-statystyk", "rotacja.yml");
@@ -225,7 +223,8 @@ public final class MainpluginsShop extends JavaPlugin {
         String language = lang.language();
         if (getResource("defaults/" + language + "/shop.yml") == null) language = "en";
         copy("defaults/" + language + "/shop.yml", new File(dir, "shop.yml"));
-        for (String id : DEFAULT_CATEGORIES) {
+        // Kategorie treści startowej = lista "categories" z dołączonego shop.yml (każdy język może mieć inne).
+        for (String id : YamlConfiguration.loadConfiguration(new File(dir, "shop.yml")).getStringList("categories")) {
             copy("defaults/" + language + "/categories/" + id + ".yml", new File(dir, "categories/" + id + ".yml"));
         }
     }

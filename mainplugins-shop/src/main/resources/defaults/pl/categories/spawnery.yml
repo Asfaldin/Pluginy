@@ -1,0 +1,16 @@
+# Jedna kategoria sklepu. Ceny są za paczkę: buy = cena za 'amount' sztuk (domyślnie 1),
+# dynamic: false przy pozycji = cena stała, ceny dynamiczne jej nie ruszają.
+# sell = cena za 'sell-amount' sztuk (domyślnie 1). Bez buy = nie do kupienia, bez sell = nie do sprzedania.
+# Zamiast 'item' możesz użyć 'custom: <id>' (przedmiot z katalogu itemów).
+name: '&e&lSpawnery'
+icon: SPAWNER
+items:
+  - {custom: spawner_zombie, buy: 20000}
+  - {custom: spawner_pig, buy: 25000}
+  - {custom: spawner_skeleton, buy: 30000}
+  - {custom: spawner_cow, buy: 40000}
+  - {custom: spawner_spider, buy: 45000}
+  - {custom: spawner_chicken, buy: 55000}
+  - {custom: spawner_creeper, buy: 60000}
+  - {custom: spawner_sheep, buy: 67000}
+  - {custom: spawner_breeze, buy: 100000}

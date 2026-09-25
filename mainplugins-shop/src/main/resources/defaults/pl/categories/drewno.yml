@@ -1,0 +1,29 @@
+# Jedna kategoria sklepu. Ceny są za paczkę: buy = cena za 'amount' sztuk (domyślnie 1),
+# dynamic: false przy pozycji = cena stała, ceny dynamiczne jej nie ruszają.
+# sell = cena za 'sell-amount' sztuk (domyślnie 1). Bez buy = nie do kupienia, bez sell = nie do sprzedania.
+# Zamiast 'item' możesz użyć 'custom: <id>' (przedmiot z katalogu itemów).
+name: '&e&lDrewno'
+icon: OAK_LOG
+items:
+  - {item: OAK_PLANKS, buy: 512, amount: 64, sell: 375, sell-amount: 64, name: '&d&lDębowe Deski'}
+  - {item: BIRCH_PLANKS, buy: 512, amount: 64, sell: 375, sell-amount: 64, name: '&d&lBrzozowe Deski'}
+  - {item: CRIMSON_PLANKS, buy: 576, amount: 64, sell: 375, sell-amount: 64, name: '&d&lSzkarłatne Deski'}
+  - {item: WARPED_PLANKS, buy: 576, amount: 64, sell: 375, sell-amount: 64, name: '&d&lSpaczone Deski'}
+  - {item: JUNGLE_PLANKS, buy: 704, amount: 64, sell: 375, sell-amount: 64, name: '&d&lTropikalne Deski'}
+  - {item: ACACIA_PLANKS, buy: 704, amount: 64, sell: 375, sell-amount: 64, name: '&d&lAkacjowe Deski'}
+  - {item: SPRUCE_PLANKS, buy: 768, amount: 64, sell: 375, sell-amount: 64, name: '&d&lŚwierkowe Deski'}
+  - {item: DARK_OAK_PLANKS, buy: 768, amount: 64, sell: 375, sell-amount: 64, name: '&d&lCiemnodębowe Deski'}
+  - {item: MANGROVE_PLANKS, buy: 832, amount: 64, sell: 375, sell-amount: 64, name: '&d&lNamorzynowe Deski'}
+  - {item: CHERRY_PLANKS, buy: 832, amount: 64, sell: 375, sell-amount: 64, name: '&d&lWiśniowe Deski'}
+  - {item: PALE_OAK_PLANKS, buy: 832, amount: 64, sell: 375, sell-amount: 64, name: '&d&lBladodębowe Deski'}
+  - {item: OAK_LOG, buy: 1920, amount: 64, sell: 1300, sell-amount: 64, name: '&d&lDębowy Pień'}
+  - {item: BIRCH_LOG, buy: 1920, amount: 64, sell: 1300, sell-amount: 64, name: '&d&lBrzozowy Pień'}
+  - {item: CRIMSON_STEM, buy: 2240, amount: 64, sell: 1500, sell-amount: 64, name: '&d&lSzkarłatny Trzon'}
+  - {item: WARPED_STEM, buy: 2240, amount: 64, sell: 1500, sell-amount: 64, name: '&d&lSpaczony Trzon'}
+  - {item: JUNGLE_LOG, buy: 2560, amount: 64, sell: 400, sell-amount: 64, name: '&d&lTropikalny Pień'}
+  - {item: ACACIA_LOG, buy: 2560, amount: 64, sell: 1500, sell-amount: 64, name: '&d&lAkacjowy Pień'}
+  - {item: SPRUCE_LOG, buy: 2880, amount: 64, sell: 400, sell-amount: 64, name: '&d&lŚwierkowy Pień'}
+  - {item: DARK_OAK_LOG, buy: 2880, amount: 64, sell: 400, sell-amount: 64, name: '&d&lCiemnodębowy Pień'}
+  - {item: CHERRY_LOG, buy: 3200, amount: 64, sell: 1500, sell-amount: 64, name: '&d&lWiśniowy Pień'}
+  - {item: PALE_OAK_LOG, buy: 3200, amount: 64, sell: 1500, sell-amount: 64, name: '&d&lBladodębowy Pień'}
+  - {item: MANGROVE_LOG, buy: 22400, amount: 64, sell: 1500, sell-amount: 64, name: '&d&lNamorzynowy Pień'}

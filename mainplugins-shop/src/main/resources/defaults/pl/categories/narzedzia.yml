@@ -1,0 +1,40 @@
+# Jedna kategoria sklepu. Ceny są za paczkę: buy = cena za 'amount' sztuk (domyślnie 1),
+# dynamic: false przy pozycji = cena stała, ceny dynamiczne jej nie ruszają.
+# sell = cena za 'sell-amount' sztuk (domyślnie 1). Bez buy = nie do kupienia, bez sell = nie do sprzedania.
+# Zamiast 'item' możesz użyć 'custom: <id>' (przedmiot z katalogu itemów).
+name: '&e&lNarzędzia i Mechanizmy'
+icon: FISHING_ROD
+items:
+  - {item: SMITHING_TABLE, buy: 20, name: '&d&lStół Kowalski'}
+  - {item: BUNDLE, buy: 100, name: '&d&lSakwa'}
+  - {item: FISHING_ROD, buy: 110, name: '&d&lWędka'}
+  - {item: WIND_CHARGE, buy: 200, name: '&d&lWietrzna Kula'}
+  - {item: CARTOGRAPHY_TABLE, buy: 200, name: '&d&lStół Kartograficzny'}
+  - {item: COMPOSTER, buy: 200, name: '&d&lKompostownik'}
+  - {item: LOOM, buy: 200, name: '&d&lKrosno'}
+  - {item: WATER_BUCKET, buy: 200, name: '&d&lWiadro Wody'}
+  - {item: BARREL, buy: 200, name: '&d&lBeczka'}
+  - {item: SMOKER, buy: 200, name: '&d&lWędzarnia'}
+  - {item: STONECUTTER, buy: 200, name: '&d&lPrzecinarka'}
+  - {item: BLAST_FURNACE, buy: 200, name: '&d&lPiec Hutniczy'}
+  - {item: GRINDSTONE, buy: 300, name: '&d&lSzlifierka'}
+  - {item: BRUSH, buy: 300, name: '&d&lPędzel'}
+  - {item: DISPENSER, buy: 350, name: '&d&lPodajnik'}
+  - {item: LEAD, buy: 400, name: '&d&lSmycz'}
+  - {item: DROPPER, buy: 450, name: '&d&lDozownik'}
+  - {item: LEATHER_HORSE_ARMOR, buy: 500, name: '&d&lSkórzana Zbroja dla Konia'}
+  - {item: CLOCK, buy: 500, name: '&d&lZegar'}
+  - {item: COMPASS, buy: 500, name: '&d&lKompas'}
+  - {item: PISTON, buy: 500, name: '&d&lTłok'}
+  - {item: REPEATER, buy: 600, name: '&d&lPrzekaźnik'}
+  - {item: SCULK_SENSOR, buy: 800, name: '&d&lSculkowy Czujnik'}
+  - {item: HOPPER, buy: 900, name: '&d&lLejek'}
+  - {item: LAVA_BUCKET, buy: 1000, name: '&d&lWiadro Lawy'}
+  - {item: OBSERVER, buy: 1300, name: '&d&lObserwator'}
+  - {item: IRON_HORSE_ARMOR, buy: 1500, name: '&d&lŻelazna Zbroja dla Konia'}
+  - {item: COMPARATOR, buy: 1500, name: '&d&lKomparator'}
+  - {item: SADDLE, buy: 2500, name: '&d&lSiodło'}
+  - {item: GOLDEN_HORSE_ARMOR, buy: 2500, name: '&d&lZłota Zbroja dla Konia'}
+  - {item: NAME_TAG, buy: 3000, name: '&d&lImienniczek'}
+  - {item: DIAMOND_HORSE_ARMOR, buy: 6000, name: '&d&lDiamentowa Zbroja dla Konia'}
+  - {item: GOAT_HORN, buy: 25000, name: '&d&lKozi Róg'}

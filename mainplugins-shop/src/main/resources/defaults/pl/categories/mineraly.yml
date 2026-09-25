@@ -1,0 +1,26 @@
+# Jedna kategoria sklepu. Ceny są za paczkę: buy = cena za 'amount' sztuk (domyślnie 1),
+# dynamic: false przy pozycji = cena stała, ceny dynamiczne jej nie ruszają.
+# sell = cena za 'sell-amount' sztuk (domyślnie 1). Bez buy = nie do kupienia, bez sell = nie do sprzedania.
+# Zamiast 'item' możesz użyć 'custom: <id>' (przedmiot z katalogu itemów).
+name: '&e&lRudy i Minerały'
+icon: DIAMOND
+items:
+  - {item: BONE_MEAL, buy: 16, sell: 4, name: '&d&lMączka Kostna'}
+  - {item: CLAY_BALL, buy: 20, name: '&d&lGlina'}
+  - {item: FLINT, buy: 30, sell: 20, name: '&d&lKrzemień'}
+  - {item: COAL, buy: 50, sell: 40, name: '&d&lWęgiel'}
+  - {item: COPPER_INGOT, buy: 70, sell: 50, name: '&d&lSztabka Miedzi'}
+  - {item: LAPIS_LAZULI, buy: 70, sell: 60, name: '&d&lLazuryt'}
+  - {item: IRON_INGOT, buy: 150, sell: 60, name: '&d&lSztabka Żelaza'}
+  - {item: GOLD_INGOT, buy: 160, sell: 140, name: '&d&lSztabka Złota'}
+  - {item: REDSTONE, buy: 170, sell: 80, name: '&d&lRedstone'}
+  - {item: RESIN_CLUMP, buy: 200, name: '&d&lGruda Żywicy'}
+  - {item: GLOWSTONE_DUST, buy: 250, name: '&d&lJasnopył'}
+  - {item: QUARTZ, buy: 750, sell: 640, name: '&d&lKwarc'}
+  - {item: DIAMOND, buy: 1450, sell: 1280, name: '&d&lDiament'}
+  - {item: PRISMARINE_SHARD, buy: 1500, name: '&d&lOdłamek Pryzmarynu'}
+  - {item: PRISMARINE_CRYSTALS, buy: 1500, name: '&d&lKryształy Pryzmarynu'}
+  - {item: AMETHYST_SHARD, buy: 1500, sell: 320, name: '&d&lOdłamek Ametystu'}
+  - {item: EMERALD, buy: 2000, sell: 1280, name: '&d&lSzmaragd'}
+  - {custom: GENERATOR_BRUK_T1, buy: 8000}
+  - {item: NETHERITE_SCRAP, buy: 40000, sell: 2000, name: '&d&lZłom Netherytu'}

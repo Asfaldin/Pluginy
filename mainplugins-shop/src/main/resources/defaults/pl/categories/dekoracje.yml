@@ -1,0 +1,64 @@
+# Jedna kategoria sklepu. Ceny są za paczkę: buy = cena za 'amount' sztuk (domyślnie 1),
+# dynamic: false przy pozycji = cena stała, ceny dynamiczne jej nie ruszają.
+# sell = cena za 'sell-amount' sztuk (domyślnie 1). Bez buy = nie do kupienia, bez sell = nie do sprzedania.
+# Zamiast 'item' możesz użyć 'custom: <id>' (przedmiot z katalogu itemów).
+name: '&e&lDekoracje'
+icon: PAINTING
+items:
+  - {item: WHITE_DYE, buy: 70, name: '&d&lBarwnik Biały'}
+  - {item: ORANGE_DYE, buy: 70, name: '&d&lBarwnik Pomarańczowy'}
+  - {item: MAGENTA_DYE, buy: 70, name: '&d&lBarwnik Karmazynowy'}
+  - {item: LIGHT_BLUE_DYE, buy: 70, name: '&d&lBarwnik Jasnoniebieski'}
+  - {item: YELLOW_DYE, buy: 70, name: '&d&lBarwnik Żółty'}
+  - {item: LIME_DYE, buy: 70, name: '&d&lBarwnik Jasnozielony'}
+  - {item: PINK_DYE, buy: 70, name: '&d&lBarwnik Różowy'}
+  - {item: GRAY_DYE, buy: 70, name: '&d&lBarwnik Szary'}
+  - {item: LIGHT_GRAY_DYE, buy: 70, name: '&d&lBarwnik Jasnoszary'}
+  - {item: CYAN_DYE, buy: 70, name: '&d&lBarwnik Turkusowy'}
+  - {item: PURPLE_DYE, buy: 70, name: '&d&lBarwnik Fioletowy'}
+  - {item: BLUE_DYE, buy: 70, name: '&d&lBarwnik Niebieski'}
+  - {item: BROWN_DYE, buy: 70, name: '&d&lBarwnik Brązowy'}
+  - {item: GREEN_DYE, buy: 70, name: '&d&lBarwnik Zielony'}
+  - {item: RED_DYE, buy: 70, name: '&d&lBarwnik Czerwony'}
+  - {item: BLACK_DYE, buy: 70, name: '&d&lBarwnik Czarny'}
+  - {item: PAINTING, buy: 100, name: '&d&lObraz'}
+  - {item: ITEM_FRAME, buy: 100, name: '&d&lRamka'}
+  - {item: FLOWER_POT, buy: 100, name: '&d&lDoniczka'}
+  - {item: WHITE_GLAZED_TERRACOTTA, buy: 120, name: '&d&lGlazurowana Terakota Biały'}
+  - {item: ORANGE_GLAZED_TERRACOTTA, buy: 120, name: '&d&lGlazurowana Terakota Pomarańczowy'}
+  - {item: MAGENTA_GLAZED_TERRACOTTA, buy: 120, name: '&d&lGlazurowana Terakota Karmazynowy'}
+  - {item: LIGHT_BLUE_GLAZED_TERRACOTTA, buy: 120, name: '&d&lGlazurowana Terakota Jasnoniebieski'}
+  - {item: YELLOW_GLAZED_TERRACOTTA, buy: 120, name: '&d&lGlazurowana Terakota Żółty'}
+  - {item: LIME_GLAZED_TERRACOTTA, buy: 120, name: '&d&lGlazurowana Terakota Jasnozielony'}
+  - {item: PINK_GLAZED_TERRACOTTA, buy: 120, name: '&d&lGlazurowana Terakota Różowy'}
+  - {item: GRAY_GLAZED_TERRACOTTA, buy: 120, name: '&d&lGlazurowana Terakota Szary'}
+  - {item: LIGHT_GRAY_GLAZED_TERRACOTTA, buy: 120, name: '&d&lGlazurowana Terakota Jasnoszary'}
+  - {item: CYAN_GLAZED_TERRACOTTA, buy: 120, name: '&d&lGlazurowana Terakota Turkusowy'}
+  - {item: PURPLE_GLAZED_TERRACOTTA, buy: 120, name: '&d&lGlazurowana Terakota Fioletowy'}
+  - {item: BLUE_GLAZED_TERRACOTTA, buy: 120, name: '&d&lGlazurowana Terakota Niebieski'}
+  - {item: BROWN_GLAZED_TERRACOTTA, buy: 120, name: '&d&lGlazurowana Terakota Brązowy'}
+  - {item: GREEN_GLAZED_TERRACOTTA, buy: 120, name: '&d&lGlazurowana Terakota Zielony'}
+  - {item: RED_GLAZED_TERRACOTTA, buy: 120, name: '&d&lGlazurowana Terakota Czerwony'}
+  - {item: BLACK_GLAZED_TERRACOTTA, buy: 120, name: '&d&lGlazurowana Terakota Czarny'}
+  - {item: ARMOR_STAND, buy: 150, name: '&d&lStojak na Zbroję'}
+  - {item: SCAFFOLDING, buy: 150, name: '&d&lRusztowanie'}
+  - {item: IRON_CHAIN, buy: 160, name: '&d&lŻelazny Łańcuch'}
+  - {item: POINTED_DRIPSTONE, buy: 200, name: '&d&lSpiczasty Naciek'}
+  - {item: END_ROD, buy: 200, name: '&d&lEndowy Słupek'}
+  - {item: SULFUR_SPIKE, buy: 200, name: '&d&lSiarkowe Kolce'}
+  - {item: CANDLE, buy: 200, name: '&d&lŚwieca'}
+  - {item: SOUL_LANTERN, buy: 250, name: '&d&lLatarnia Dusz'}
+  - {item: LANTERN, buy: 250, name: '&d&lLatarnia'}
+  - {item: DECORATED_POT, buy: 400, name: '&d&lDekorowany Garniec'}
+  - {item: SCULK_SHRIEKER, buy: 1000, name: '&d&lSculkowe Wrzeszczadło'}
+  - {item: PEARLESCENT_FROGLIGHT, buy: 1000, name: '&d&lPerłowa Żabia Lampa'}
+  - {item: VERDANT_FROGLIGHT, buy: 1000, name: '&d&lZielona Żabia Lampa'}
+  - {item: OCHRE_FROGLIGHT, buy: 1000, name: '&d&lOchrowa Żabia Lampa'}
+  - {item: BELL, buy: 2000, name: '&d&lDzwon'}
+  - {item: SKELETON_SKULL, buy: 3000, name: '&d&lCzaszka Szkieleta'}
+  - {item: ZOMBIE_HEAD, buy: 3000, name: '&d&lGłowa Zombie'}
+  - {item: CREEPER_HEAD, buy: 3000, name: '&d&lGłowa Creepera'}
+  - {item: PIGLIN_HEAD, buy: 3000, name: '&d&lGłowa Piglina'}
+  - {item: PLAYER_HEAD, buy: 3000, name: '&d&lGłowa Gracza'}
+  - {item: WITHER_SKELETON_SKULL, buy: 3000, name: '&d&lCzaszka Witherowego Szkieletu'}
+  - {item: DRAGON_HEAD, buy: 5000, name: '&d&lGłowa Smoka'}

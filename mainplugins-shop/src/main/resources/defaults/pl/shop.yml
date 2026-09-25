@@ -3,12 +3,12 @@
 # Wczytanie bez restartu: /@shop reload
 
 # Kolejność kategorii w menu głównym (nazwy plików z categories/ bez .yml).
-categories: [blocks, farming, ores, mob-drops, food]
+categories: [bloki, roslinki, drewno, mineraly, moby, narzedzia, jedzenie, dekoracje, kolekcja, spawnery]
 
 # Jak zaokrąglać ceny, gdy gracz kupuje część paczki albo ceny dynamiczne je zmieniają:
 #   whole = pełne złotówki (1 sztuka z paczki "64 za 10" kosztuje 1)
 #   cents = grosze (1 sztuka z paczki "64 za 10" kosztuje 0.16)
-price-rounding: cents
+price-rounding: whole
 
 # Ceny skupu reagują na sprzedaż: dużo sprzedaży -> cena spada, nikt nie sprzedaje -> rośnie.
 dynamic-prices:
@@ -34,7 +34,7 @@ dynamic-prices:
 # Statystyki sprzedaży (stats.yml + stats.csv do Excela) z podpowiedziami, które ceny zmienić.
 # Razem z nimi sklep zapisuje historię (history.yml): ile sprzedano i kto ile zarobił - /@shop history i /@shop top.
 stats:
-  enabled: false
+  enabled: true
   history-days: 30         # ile dni historii pamiętać
 
 # Promocje na kupno (/@shop sale): czy ogłaszać początek i koniec na czacie.
@@ -44,10 +44,9 @@ sales:
 # Premie rang. Gracz ma rangę, gdy ma uprawnienie mainplugins.shop.rank.<nazwa> (np. mainplugins.shop.rank.vip).
 # buy-discount = tyle procent taniej przy kupnie, sell-bonus = tyle procent więcej za sprzedaż.
 # Promocja i rabat rangi się sumują. Gracz z kilkoma rangami dostaje największą premię.
-rank-bonuses:
-  vip:
-    buy-discount: 2
-    sell-bonus: 1
+rank-bonuses: {}
+# Przykład:
+#   vip: {buy-discount: 2, sell-bonus: 1}
 
 # Co leży gdzie w każdym oknie. size = 9, 18, 27, 36, 45 albo 54.
 # Role: CATEGORY_SLOT (menu główne), ITEM_SLOT, ROTATION_SLOT (miejsce na przedmiot z rotacji), AMOUNT_SLOT (wybór ilości, amount = sztuki),
@@ -65,13 +64,9 @@ menus:
       - {slot: 23, role: CATEGORY_SLOT}
       - {slot: 24, role: CATEGORY_SLOT}
       - {slot: 25, role: CATEGORY_SLOT}
-      - {slot: 28, role: CATEGORY_SLOT}
-      - {slot: 29, role: CATEGORY_SLOT}
       - {slot: 30, role: CATEGORY_SLOT}
       - {slot: 31, role: CATEGORY_SLOT}
       - {slot: 32, role: CATEGORY_SLOT}
-      - {slot: 33, role: CATEGORY_SLOT}
-      - {slot: 34, role: CATEGORY_SLOT}
   category-page:
     size: 54
     layout:
@@ -148,8 +143,7 @@ menus:
       - {slot: 41, role: ITEM_SLOT}
       - {slot: 42, role: ITEM_SLOT}
       - {slot: 43, role: ITEM_SLOT}
-      - {slot: 48, role: NAV_BACK}
-  # Wygląd przycisków (ich teksty są w plikach językowych).
+      - {slot: 49, role: NAV_BACK}
   buttons:
     search: OAK_SIGN
     exit: BARRIER

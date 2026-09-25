@@ -1,0 +1,66 @@
+# Jedna kategoria sklepu. Ceny są za paczkę: buy = cena za 'amount' sztuk (domyślnie 1),
+# dynamic: false przy pozycji = cena stała, ceny dynamiczne jej nie ruszają.
+# sell = cena za 'sell-amount' sztuk (domyślnie 1). Bez buy = nie do kupienia, bez sell = nie do sprzedania.
+# Zamiast 'item' możesz użyć 'custom: <id>' (przedmiot z katalogu itemów).
+name: '&e&lKolekcja'
+icon: CHEST_MINECART
+items: []
+rotation:
+  enabled: true
+  show: 5
+  every-days: 14
+  announce: true
+  pool:
+    - {item: MUSIC_DISC_13, buy: 10000, name: '&d&lPłyta: 13'}
+    - {item: MUSIC_DISC_CAT, buy: 20000, name: '&d&lPłyta: Cat'}
+    - {item: MUSIC_DISC_BLOCKS, buy: 30000, name: '&d&lPłyta: Blocks'}
+    - {item: MUSIC_DISC_CHIRP, buy: 40000, name: '&d&lPłyta: Chirp'}
+    - {item: MUSIC_DISC_FAR, buy: 50000, name: '&d&lPłyta: Far'}
+    - {item: MUSIC_DISC_MALL, buy: 60000, name: '&d&lPłyta: Mall'}
+    - {item: MUSIC_DISC_MELLOHI, buy: 70000, name: '&d&lPłyta: Mellohi'}
+    - {item: MUSIC_DISC_STAL, buy: 80000, name: '&d&lPłyta: Stal'}
+    - {item: MUSIC_DISC_STRAD, buy: 90000, name: '&d&lPłyta: Strad'}
+    - {item: MUSIC_DISC_WARD, buy: 100000, name: '&d&lPłyta: Ward'}
+    - {item: MUSIC_DISC_11, buy: 110000, name: '&d&lPłyta: 11'}
+    - {item: MUSIC_DISC_WAIT, buy: 120000, name: '&d&lPłyta: Wait'}
+    - {item: MUSIC_DISC_RELIC, buy: 130000, name: '&d&lPłyta: Relic'}
+    - {item: MUSIC_DISC_CREATOR, buy: 140000, name: '&d&lPłyta: Creator'}
+    - {item: MUSIC_DISC_CREATOR_MUSIC_BOX, buy: 150000, name: '&d&lPłyta: Creator Music Box'}
+    - {item: PLAYER_HEAD, buy: 5000, name: '&d&lGłowa Gracza'}
+    - {item: ZOMBIE_HEAD, buy: 15000, name: '&d&lGłowa Zombie'}
+    - {item: SKELETON_SKULL, buy: 15000, name: '&d&lCzaszka Szkieleta'}
+    - {item: CREEPER_HEAD, buy: 15000, name: '&d&lGłowa Creepera'}
+    - {item: WITHER_SKELETON_SKULL, buy: 15000, name: '&d&lCzaszka Witherowego Szkieleta'}
+    - {item: DRAGON_HEAD, buy: 150000, name: '&d&lGłowa Smoka'}
+    - {item: GOAT_HORN, buy: 20000, name: '&d&lRóg Kozi: Ponder', instrument: ponder_goat_horn}
+    - {item: GOAT_HORN, buy: 20000, name: '&d&lRóg Kozi: Sing', instrument: sing_goat_horn}
+    - {item: GOAT_HORN, buy: 20000, name: '&d&lRóg Kozi: Seek', instrument: seek_goat_horn}
+    - {item: GOAT_HORN, buy: 20000, name: '&d&lRóg Kozi: Feel', instrument: feel_goat_horn}
+    - {item: GOAT_HORN, buy: 40000, name: '&d&lRóg Kozi: Admire', instrument: admire_goat_horn}
+    - {item: ARMADILLO_SCUTE, buy: 5000, name: '&d&lTarczka Pancernika'}
+    - {item: SHULKER_SHELL, buy: 7500, name: '&d&lSkorupa Shulkera'}
+    - {item: FROGSPAWN, buy: 10000, name: '&d&lŻabi Skrzek'}
+    - {item: ELYTRA, buy: 75000, name: '&d&lElytra'}
+    - {item: TURTLE_SCUTE, buy: 25000, name: '&d&lTarczka Żółwia'}
+    - {item: RABBIT_SPAWN_EGG, buy: 25000, name: '&d&lJajko: Królik'}
+    - {item: CAT_SPAWN_EGG, buy: 25000, name: '&d&lJajko: Kot'}
+    - {item: OCELOT_SPAWN_EGG, buy: 25000, name: '&d&lJajko: Ocelot'}
+    - {item: FOX_SPAWN_EGG, buy: 30000, name: '&d&lJajko: Lis'}
+    - {item: BEE_SPAWN_EGG, buy: 35000, name: '&d&lJajko: Pszczoła'}
+    - {item: WOLF_SPAWN_EGG, buy: 35000, name: '&d&lJajko: Wilk'}
+    - {item: PARROT_SPAWN_EGG, buy: 40000, name: '&d&lJajko: Papuga'}
+    - {item: LLAMA_SPAWN_EGG, buy: 40000, name: '&d&lJajko: Lama'}
+    - {item: HORSE_SPAWN_EGG, buy: 40000, name: '&d&lJajko: Koń'}
+    - {item: PANDA_SPAWN_EGG, buy: 50000, name: '&d&lJajko: Panda'}
+    - {item: POLAR_BEAR_SPAWN_EGG, buy: 50000, name: '&d&lJajko: Niedźwiedź Polarny'}
+    - {item: DOLPHIN_SPAWN_EGG, buy: 55000, name: '&d&lJajko: Delfin'}
+    - {item: CAMEL_SPAWN_EGG, buy: 55000, name: '&d&lJajko: Wielbłąd'}
+    - {item: AXOLOTL_SPAWN_EGG, buy: 60000, name: '&d&lJajko: Aksolotl'}
+    - {item: SNIFFER_SPAWN_EGG, buy: 70000, name: '&d&lJajko: Sniffer'}
+    - {item: MOOSHROOM_SPAWN_EGG, buy: 70000, name: '&d&lJajko: Muuchomor'}
+    - {item: COD_BUCKET, buy: 8000, name: '&d&lWiadro z Dorszem'}
+    - {item: SALMON_BUCKET, buy: 8000, name: '&d&lWiadro z Łososiem'}
+    - {item: TADPOLE_BUCKET, buy: 10000, name: '&d&lWiadro z Kijanką'}
+    - {item: TROPICAL_FISH_BUCKET, buy: 12000, name: '&d&lWiadro z Rybą Tropikalną'}
+    - {item: PUFFERFISH_BUCKET, buy: 12000, name: '&d&lWiadro z Rozdymką'}
+    - {item: AXOLOTL_BUCKET, buy: 25000, name: '&d&lWiadro z Aksolotlem'}

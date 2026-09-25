@@ -83,7 +83,7 @@ public final class ShopConfigParser {
         Map<String, MenuScreen> menus = new LinkedHashMap<>();
         for (String screen : ShopSettings.SCREENS) {
             ConfigurationSection s = root.getConfigurationSection("menus." + screen);
-            menus.put(screen, s == null ? d.menu(screen) : parseScreen(screen, s, d.menu(screen), materialExists, warn));
+            menus.put(screen, s == null ? d.menu(screen) : parseScreen("shop.yml menus." + screen, s, d.menu(screen), materialExists, warn));
         }
 
         Map<String, String> buttons = new LinkedHashMap<>(ShopSettings.defaultButtons());
@@ -114,9 +114,8 @@ public final class ShopConfigParser {
                 Map.copyOf(menus), Map.copyOf(buttons), sort, root.getBoolean("center-small-categories", d.centerSmallCategories()));
     }
 
-    private static MenuScreen parseScreen(String screen, ConfigurationSection s, MenuScreen def,
+    private static MenuScreen parseScreen(String where, ConfigurationSection s, MenuScreen def,
                                           Predicate<String> materialExists, Consumer<String> warn) {
-        String where = "shop.yml menus." + screen;
         int size = s.getInt("size", def.size());
         if (size < 9 || size > 54 || size % 9 != 0) {
             warn.accept(where + ".size: must be 9, 18, 27, 36, 45 or 54 - using " + def.size() + ".");
@@ -203,7 +202,11 @@ public final class ShopConfigParser {
             rotation = new Rotation(rot.getBoolean("enabled", true), show, every, rot.getBoolean("announce", true),
                     parseItems(rot.getList("pool", List.of()), file + " rotation.pool", materialExists, warn));
         }
-        return new Category(id, name, iconMaterial, iconCustom, items, rotation);
+        // Własny układ strony tej kategorii (size + layout jak w shop.yml menus.category-page); brak = wspólny.
+        ConfigurationSection lay = root.getConfigurationSection("layout");
+        MenuScreen layout = lay == null ? null
+                : parseScreen(file + " layout", lay, ShopSettings.defaults().menu("category-page"), materialExists, warn);
+        return new Category(id, name, iconMaterial, iconCustom, items, rotation, layout);
     }
 
     private static List<ShopItem> parseItems(List<?> raw, String where, Predicate<String> materialExists, Consumer<String> warn) {

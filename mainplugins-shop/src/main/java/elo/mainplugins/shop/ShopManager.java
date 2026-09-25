@@ -133,8 +133,19 @@ public final class ShopManager implements Listener {
 
     /** Pozycje kategorii: stałe + aktualnie rotujące (z oznaczeniem). */
     private List<ShopGuiHolder.Ref> refsOf(Category c) {
+        List<ShopGuiHolder.Ref> out = fixedRefsOf(c);
+        out.addAll(rotatingRefsOf(c));
+        return out;
+    }
+
+    private List<ShopGuiHolder.Ref> fixedRefsOf(Category c) {
         List<ShopGuiHolder.Ref> out = new ArrayList<>();
         for (int i = 0; i < c.items().size(); i++) out.add(new ShopGuiHolder.Ref(c.id(), false, i, c.items().get(i).key()));
+        return out;
+    }
+
+    private List<ShopGuiHolder.Ref> rotatingRefsOf(Category c) {
+        List<ShopGuiHolder.Ref> out = new ArrayList<>();
         List<ShopItem> active = rotation.active(c);
         for (int i = 0; i < active.size(); i++) out.add(new ShopGuiHolder.Ref(c.id(), true, i, active.get(i).key()));
         return out;
@@ -245,10 +256,13 @@ public final class ShopManager implements Listener {
             return;
         }
         boolean menu = fromMenu.getOrDefault(player.getUniqueId(), false);
-        MenuScreen s = screen("category-page");
+        MenuScreen s = c.layout() != null ? c.layout() : screen("category-page");
         List<SlotEntry> itemSlots = s.withRole(SlotRole.ITEM_SLOT);
+        // Są pola rotacji = rotacja stoi na nich (na każdej stronie, po kolei od pierwszego), osobno od stałych.
+        // Brak = jak dawniej: rotacja za stałymi przedmiotami.
+        List<SlotEntry> rotationSlots = s.withRole(SlotRole.ROTATION_SLOT).stream().sorted(Comparator.comparingInt(SlotEntry::slot)).toList();
         ShopSettings.CategorySort sortMode = sortChoice.getOrDefault(player.getUniqueId(), config.get().settings().categorySort());
-        List<ShopGuiHolder.Ref> refs = sorted(refsOf(c), sortMode);
+        List<ShopGuiHolder.Ref> refs = sorted(rotationSlots.isEmpty() ? refsOf(c) : fixedRefsOf(c), sortMode);
 
         int per = Math.max(1, itemSlots.size());
         int pages = Math.max(1, (refs.size() + per - 1) / per);
@@ -262,7 +276,7 @@ public final class ShopManager implements Listener {
         int end = Math.min(start + per, refs.size());
         List<Integer> slots = pageSlots(itemSlots.stream().map(SlotEntry::slot).toList(), refs.size(),
                 pages == 1 && config.get().settings().centerSmallCategories());
-        for (int i = start; i < end; i++) {
+        for (int i = start; i < end && i - start < slots.size(); i++) {
             ShopGuiHolder.Ref ref = refs.get(i);
             ShopItem it = resolve(ref);
             ItemStack icon = it == null ? null : itemIcon(ref, it, false);
@@ -270,6 +284,18 @@ public final class ShopManager implements Listener {
             int slot = slots.get(i - start);
             gui.setItem(slot, icon);
             holder.items().put(slot, ref);
+        }
+        if (!rotationSlots.isEmpty()) {
+            List<ShopGuiHolder.Ref> rotating = rotatingRefsOf(c);
+            for (int i = 0; i < rotating.size() && i < rotationSlots.size(); i++) {
+                ShopGuiHolder.Ref ref = rotating.get(i);
+                ShopItem it = resolve(ref);
+                ItemStack icon = it == null ? null : itemIcon(ref, it, false);
+                if (icon == null) continue;
+                int slot = rotationSlots.get(i).slot();
+                gui.setItem(slot, icon);
+                holder.items().put(slot, ref);
+            }
         }
 
         Map<String, String> pageInfo = Map.of("pages", String.valueOf(pages));

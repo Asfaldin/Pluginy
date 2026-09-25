@@ -33,6 +33,26 @@ class ShopConfigParserTest {
     }
 
     @Test
+    void categoryHasItsOwnLayoutWithRotationSlots() throws Exception {
+        List<String> w = new ArrayList<>();
+        Category c = cat("kolekcja", """
+                name: K
+                icon: CHEST
+                layout:
+                  size: 27
+                  layout:
+                    - {slot: 10, role: ITEM_SLOT}
+                    - {slot: 13, role: ROTATION_SLOT}
+                    - {slot: 14, role: ROTATION_SLOT}
+                    - {slot: 40, role: ROTATION_SLOT}
+                """, w);
+        assertEquals(1, w.size(), w.toString()); // slot 40 poza oknem 27
+        assertEquals(27, c.layout().size());
+        assertEquals(List.of(13, 14), c.layout().withRole(SlotRole.ROTATION_SLOT).stream().map(e -> e.slot()).toList());
+        assertNull(cat("b", "name: B\nicon: STONE", new ArrayList<>()).layout(), "bez layout = wspólny układ");
+    }
+
+    @Test
     void readsAFullCategory() throws Exception {
         List<String> w = new ArrayList<>();
         Category c = cat("ores", """

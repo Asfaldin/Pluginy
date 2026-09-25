@@ -36,7 +36,7 @@ stats:
   enabled: false
 
 # Co leży gdzie w każdym oknie. size = 9, 18, 27, 36, 45 albo 54.
-# Role: CATEGORY_SLOT (menu główne), ITEM_SLOT, AMOUNT_SLOT (wybór ilości, amount = sztuki),
+# Role: CATEGORY_SLOT (menu główne), ITEM_SLOT, ROTATION_SLOT (miejsce na przedmiot z rotacji), AMOUNT_SLOT (wybór ilości, amount = sztuki),
 #       NAV_BACK, NAV_PREV, NAV_NEXT, EXIT, SEARCH, SORT, FILLER (opcjonalnie material).
 menus:
   main-menu:

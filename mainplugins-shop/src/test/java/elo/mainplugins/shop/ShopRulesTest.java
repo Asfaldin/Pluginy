@@ -77,8 +77,8 @@ class ShopRulesTest {
         ShopItem custom = new ShopItem(null, "gem", 5.0, 3.0, 1, 1, null, List.of(), null, true);
         ShopItem rotating = new ShopItem("ELYTRA", null, 100.0, 50.0, 1, 1, null, List.of(), null, true);
         Map<String, Category> cats = new LinkedHashMap<>();
-        cats.put("a", new Category("a", "A", "STONE", null, List.of(stoneA, custom), null));
-        cats.put("b", new Category("b", "B", "STONE", null, List.of(stoneB), null));
+        cats.put("a", new Category("a", "A", "STONE", null, List.of(stoneA, custom), null, null));
+        cats.put("b", new Category("b", "B", "STONE", null, List.of(stoneB), null, null));
         ShopConfig cfg = new ShopConfig(ShopSettings.defaults(), cats);
         assertSame(stoneA, ShopRules.sellOffer(cfg, Map.of(), "STONE"));
         assertSame(custom, ShopRules.sellOffer(cfg, Map.of(), "custom:gem"));

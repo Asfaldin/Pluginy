@@ -61,6 +61,22 @@ public final class ListingStore {
         yml.set(p + "item", l.item());
     }
 
+    /**
+     * Czytelny opis przedmiotu obok zakodowanego (dla aplikacji - lista „Oferty na żywo”): typ, ilość, nazwa.
+     * Plugin tego nie czyta, tylko zapisuje.
+     */
+    public void describe(String id, String type, int amount, String name) {
+        if (!listings.containsKey(id)) return;
+        String p = "listings." + id + ".";
+        yml.set(p + "type", type);
+        yml.set(p + "amount", amount);
+        yml.set(p + "name", name);
+    }
+
+    public boolean described(String id) {
+        return yml.getString("listings." + id + ".type") != null;
+    }
+
     public Listing remove(String id) {
         Listing l = listings.remove(id);
         if (l != null) yml.set("listings." + id, null);

@@ -5,6 +5,9 @@ limits:
   # How many offers a player can have at once.
   # More with the permission mainplugins.market.limit.<number>, e.g. mainplugins.market.limit.15 (highest wins).
   default: 10
+  # More offers for ranks: rank name -> how many offers. A player has the rank with the permission
+  # mainplugins.market.rank.<name>, e.g. mainplugins.market.rank.vip. Example:  ranks: {vip: 15, svip: 25}
+  ranks: {}
 
 min-price: 1
 max-price: 10000000
@@ -26,7 +29,11 @@ menu:
   # Window title - leave empty to use the text from the lang file.
   title: ""
   background: GRAY_STAINED_GLASS_PANE
-  # Offers use slots 10-16, 19-25 and 28-34. Buttons must use other slots (0-53).
+  # Window size: 9, 18, 27, 36, 45 or 54.
+  size: 54
+  # Slots for offers, filled in this order (also used by search results and "To collect").
+  offer-slots: [10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34]
+  # Buttons must use other slots than offers.
   buttons:
     prev: {slot: 45, material: SPECTRAL_ARROW}
     next: {slot: 53, material: SPECTRAL_ARROW}

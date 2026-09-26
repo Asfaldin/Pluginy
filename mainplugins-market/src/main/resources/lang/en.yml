@@ -61,7 +61,7 @@ search:
   found: "&bFound: {count}"
   found-cut: "&bFound: {count} (showing the first {shown})"
 admin:
-  usage: "&eUsage: /@market reload | list <player> | remove <player>"
+  usage: "&eUsage: /@market reload | list <player> | remove <player> | remove-offer <id>"
   players-only: "&cOnly a player can use the market."
   reloaded: "&aMarket settings reloaded ({offers} offers on the market)."
   player-not-found: "&cPlayer not found: {player}"
@@ -69,3 +69,5 @@ admin:
   list-line: "&7- {item} &7for &f{price}{currency} &7({id})"
   list-empty: "&7{player} has no offers."
   removed: "&aTook {count} offer(s) of {player} off the market."
+  offer-removed: "&aTook the offer of {player} for {price}{currency} off the market - the item went back to them."
+  offer-not-found: "&cNo such offer: {id} (maybe it was already sold)."

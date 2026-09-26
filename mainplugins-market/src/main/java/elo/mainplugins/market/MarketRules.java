@@ -6,6 +6,8 @@ import java.util.Collection;
 public final class MarketRules {
 
     private static final String LIMIT_PREFIX = "mainplugins.market.limit.";
+    /** Ranga z market.yml (limits.ranks) = uprawnienie mainplugins.market.rank.<nazwa>. */
+    public static final String RANK_PREFIX = "mainplugins.market.rank.";
     private static final long DAY_MS = 86_400_000L;
 
     private MarketRules() {}
@@ -23,7 +25,15 @@ public final class MarketRules {
 
     /** Limit ofert: najwyższe z domyślnego i uprawnień mainplugins.market.limit.<liczba>. */
     public static int limitFor(int defaultLimit, Collection<String> permissions) {
+        return limitFor(defaultLimit, permissions, java.util.Map.of());
+    }
+
+    /** Jak wyżej, plus limity rang z market.yml (limits.ranks: vip: 15 = uprawnienie mainplugins.market.rank.vip). */
+    public static int limitFor(int defaultLimit, Collection<String> permissions, java.util.Map<String, Integer> rankLimits) {
         int best = defaultLimit;
+        for (java.util.Map.Entry<String, Integer> r : rankLimits.entrySet()) {
+            if (permissions.contains(RANK_PREFIX + r.getKey())) best = Math.max(best, r.getValue());
+        }
         for (String p : permissions) {
             if (!p.startsWith(LIMIT_PREFIX)) continue;
             try {

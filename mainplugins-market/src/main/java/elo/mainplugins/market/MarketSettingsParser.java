@@ -4,7 +4,9 @@ import elo.mainplugins.market.model.ButtonDef;
 import elo.mainplugins.market.model.MarketSettings;
 import org.bukkit.configuration.ConfigurationSection;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -57,6 +59,30 @@ public final class MarketSettingsParser {
         String title = root.getString("menu.title", d.title());
         String background = material(root.getString("menu.background"), d.background(), "menu.background", materialExists, warn);
 
+        int size = root.getInt("menu.size", d.size());
+        if (size < 9 || size > 54 || size % 9 != 0) {
+            warn.accept(FILE + " menu.size: must be 9, 18, 27, 36, 45 or 54 - using " + d.size() + ".");
+            size = d.size();
+        }
+        // Pola na oferty: w oknie, bez powtórek. Brak listy = domyślny blok 7x3 (o ile mieści się w oknie).
+        List<Integer> offerSlots = new ArrayList<>();
+        if (root.isList("menu.offer-slots")) {
+            Set<Integer> seen = new HashSet<>();
+            for (Object o : root.getList("menu.offer-slots", List.of())) {
+                if (!(o instanceof Number n) || n.intValue() < 0 || n.intValue() >= size) {
+                    warn.accept(FILE + " menu.offer-slots: '" + o + "' is not a slot 0-" + (size - 1) + " - skipping it.");
+                    continue;
+                }
+                if (seen.add(n.intValue())) offerSlots.add(n.intValue());
+            }
+        } else {
+            for (int s : d.offerSlots()) if (s < size) offerSlots.add(s);
+        }
+        if (offerSlots.isEmpty()) {
+            warn.accept(FILE + " menu.offer-slots: no slots for offers - using the first row of the window.");
+            for (int s = 0; s < Math.min(9, size); s++) offerSlots.add(s);
+        }
+
         Map<String, ButtonDef> buttons = new LinkedHashMap<>();
         Set<Integer> used = new HashSet<>();
         Map<String, ButtonDef> defaults = MarketSettings.defaultButtons();
@@ -65,11 +91,11 @@ public final class MarketSettingsParser {
             ButtonDef def = defaults.get(id);
             int slot = root.getInt(where + ".slot", def.slot());
             String mat = material(root.getString(where + ".material"), def.material(), where + ".material", materialExists, warn);
-            if (slot < 0 || slot > 53) {
-                warn.accept(FILE + " " + where + ".slot: must be 0-53 - button hidden.");
+            if (slot < 0 || slot >= size) {
+                warn.accept(FILE + " " + where + ".slot: must be 0-" + (size - 1) + " - button hidden.");
                 continue;
             }
-            if (MarketSettings.OFFER_SLOTS.contains(slot)) {
+            if (offerSlots.contains(slot)) {
                 warn.accept(FILE + " " + where + ".slot: " + slot + " is used by offers - button hidden.");
                 continue;
             }
@@ -81,7 +107,23 @@ public final class MarketSettingsParser {
         }
 
         return new MarketSettings(limit, min, max, expire, root.getBoolean("mailbox", d.mailbox()), taxOn, tax,
-                title, background, Map.copyOf(buttons));
+                title, background, Map.copyOf(buttons), size, List.copyOf(offerSlots), rankLimits(root, warn));
+    }
+
+    /** limits.ranks: {vip: 15} - ile ofert naraz dla rangi; 1-10000, inaczej pominięta. */
+    private static Map<String, Integer> rankLimits(ConfigurationSection root, Consumer<String> warn) {
+        Map<String, Integer> out = new LinkedHashMap<>();
+        ConfigurationSection r = root.getConfigurationSection("limits.ranks");
+        if (r == null) return Map.of();
+        for (String rank : r.getKeys(false)) {
+            int n = r.getInt(rank, -1);
+            if (n < 1 || n > 10000) {
+                warn.accept(FILE + " limits.ranks." + rank + ": must be 1-10000 - skipping it.");
+                continue;
+            }
+            out.put(rank.toLowerCase(Locale.ROOT), n);
+        }
+        return Map.copyOf(out);
     }
 
     private static String material(String raw, String fallback, String where, Predicate<String> materialExists, Consumer<String> warn) {

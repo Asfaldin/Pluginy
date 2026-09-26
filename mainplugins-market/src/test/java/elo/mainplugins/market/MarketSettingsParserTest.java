@@ -130,6 +130,29 @@ class MarketSettingsParserTest {
     }
 
     @Test
+    void windowSizeAndOfferSlotsComeFromTheFile() throws Exception {
+        List<String> w = new ArrayList<>();
+        MarketSettings s = parse("""
+                menu:
+                  size: 27
+                  offer-slots: [10, 11, 11, 12, 40]
+                  buttons:
+                    close: {slot: 22, material: BARRIER}
+                    prev: {slot: 45, material: ARROW}
+                    mine: {slot: 11, material: HOPPER}
+                """, w);
+        assertEquals(27, s.size());
+        assertEquals(List.of(10, 11, 12), s.offerSlots());
+        assertEquals(22, s.buttons().get("close").slot());
+        assertNull(s.buttons().get("prev"), "45 poza oknem 27");
+        assertNull(s.buttons().get("mine"), "11 zajęte przez oferty");
+        assertTrue(w.stream().anyMatch(x -> x.contains("'40'")), w.toString());
+        assertTrue(w.stream().anyMatch(x -> x.contains("buttons.mine") && x.contains("used by offers")), w.toString());
+        // bez listy = domyślne pola, które mieszczą się w oknie
+        assertEquals(List.of(10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25), parse("menu:\n  size: 27", new ArrayList<>()).offerSlots());
+    }
+
+    @Test
     void unknownMaterialUsesDefault() throws Exception {
         List<String> w = new ArrayList<>();
         MarketSettings s = parse("menu:\n  background: not a material", w);

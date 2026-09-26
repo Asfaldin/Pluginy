@@ -61,7 +61,7 @@ search:
   found: "&bZnaleziono: {count}"
   found-cut: "&bZnaleziono: {count} (pokazano pierwsze {shown})"
 admin:
-  usage: "&eUżycie: /@market reload | list <gracz> | remove <gracz>"
+  usage: "&eUżycie: /@market reload | list <gracz> | remove <gracz> | remove-offer <id>"
   players-only: "&cTylko gracz może korzystać z Targu."
   reloaded: "&aUstawienia Targu wczytane ({offers} ofert na Targu)."
   player-not-found: "&cNie znaleziono gracza: {player}"
@@ -69,3 +69,5 @@ admin:
   list-line: "&7- {item} &7za &f{price}{currency} &7({id})"
   list-empty: "&7{player} nie ma żadnych ofert."
   removed: "&aZdjęto z Targu {count} ofert(y) gracza {player}."
+  offer-removed: "&aZdjęto ofertę gracza {player} za {price}{currency} - przedmiot wrócił do niego."
+  offer-not-found: "&cNie ma takiej oferty: {id} (może już się sprzedała)."

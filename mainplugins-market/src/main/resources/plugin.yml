@@ -10,7 +10,7 @@ commands:
     usage: /<command> [sell <price>]
   "@market":
     description: (Admin) Market - reload settings, list or remove a player's offers
-    usage: /<command> reload | list <player> | remove <player>
+    usage: /<command> reload | list <player> | remove <player> | remove-offer <id>
     permission: mainplugins.market.admin
     permission-message: "&cNie masz permisji do tej komendy!"
 

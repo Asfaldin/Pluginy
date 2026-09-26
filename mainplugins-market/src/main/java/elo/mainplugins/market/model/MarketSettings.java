@@ -4,13 +4,17 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Wszystko z market.yml. Przycisk, którego nie ma w mapie, po prostu się nie pokazuje. */
+/**
+ * Wszystko z market.yml. Przycisk, którego nie ma w mapie, po prostu się nie pokazuje.
+ * size = rozmiar okna (9-54), offerSlots = pola na oferty w kolejności wypełniania (to samo w wynikach
+ * szukania i w „Do odebrania”). rankLimits = limity ofert rang (limits.ranks).
+ */
 public record MarketSettings(int defaultLimit, long minPrice, long maxPrice, int expireDays,
                              boolean mailbox, boolean taxEnabled, int taxPercent, String title, String background,
-                             Map<String, ButtonDef> buttons) {
+                             Map<String, ButtonDef> buttons, int size, List<Integer> offerSlots, Map<String, Integer> rankLimits) {
 
-    /** Miejsca na oferty - blok 7x3 w środku okna 54. */
-    public static final List<Integer> OFFER_SLOTS = List.of(
+    /** Domyślne miejsca na oferty - blok 7x3 w środku okna 54. */
+    public static final List<Integer> DEFAULT_OFFER_SLOTS = List.of(
             10, 11, 12, 13, 14, 15, 16,
             19, 20, 21, 22, 23, 24, 25,
             28, 29, 30, 31, 32, 33, 34);
@@ -30,6 +34,7 @@ public record MarketSettings(int defaultLimit, long minPrice, long maxPrice, int
     }
 
     public static MarketSettings defaults() {
-        return new MarketSettings(10, 1, 10_000_000L, 7, true, false, 5, "", "GRAY_STAINED_GLASS_PANE", Map.copyOf(defaultButtons()));
+        return new MarketSettings(10, 1, 10_000_000L, 7, true, false, 5, "", "GRAY_STAINED_GLASS_PANE",
+                Map.copyOf(defaultButtons()), 54, DEFAULT_OFFER_SLOTS, Map.of());
     }
 }

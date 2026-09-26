@@ -155,10 +155,33 @@ final class ShopPlaces implements Listener {
         e.getPersistentDataContainer().set(key, PersistentDataType.STRING, target);
     }
 
-    /** NPC sklepu, na którego patrzy gracz, albo null. */
+    /**
+     * NPC sklepu, na którego patrzy gracz, albo null. Liczymy sami, zamiast getTargetEntity: NPC staje
+     * w miejscu gracza (/@shop npc create), a promień gry zaczynający się W ŚRODKU moba go nie widzi -
+     * gracz stojący w NPC albo tuż przy nim słyszał „patrz na NPC”. Tu: NPC w zasięgu, w którego ramkę
+     * (lekko powiększoną) trafia linia wzroku albo w której są oczy gracza; najbliższy wygrywa.
+     */
     LivingEntity lookedAtNpc(Player p) {
-        Entity e = p.getTargetEntity(REACH);
-        return e instanceof LivingEntity le && target(le.getPersistentDataContainer()) != null ? le : null;
+        org.bukkit.util.Vector eye = p.getEyeLocation().toVector();
+        org.bukkit.util.Vector dir = p.getEyeLocation().getDirection();
+        LivingEntity best = null;
+        double bestDist = Double.MAX_VALUE;
+        for (Entity e : p.getNearbyEntities(REACH, REACH, REACH)) {
+            if (!(e instanceof LivingEntity le) || !isNpc(le)) continue;
+            org.bukkit.util.BoundingBox box = le.getBoundingBox().clone().expand(0.2);
+            double dist;
+            if (box.contains(eye)) dist = 0;
+            else {
+                org.bukkit.util.RayTraceResult hit = box.rayTrace(eye, dir, REACH);
+                if (hit == null) continue;
+                dist = hit.getHitPosition().distance(eye);
+            }
+            if (dist < bestDist) {
+                bestDist = dist;
+                best = le;
+            }
+        }
+        return best;
     }
 
     String npcTarget(Entity e) {

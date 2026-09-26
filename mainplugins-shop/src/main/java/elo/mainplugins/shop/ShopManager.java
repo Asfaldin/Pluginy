@@ -167,9 +167,24 @@ public final class ShopManager implements Listener {
 
     /** Skup jednej paczki dla gracza (z premią rangi; null = bez premii, np. do sortowania). */
     private double sellPerLot(ShopItem it, Player player) {
-        var d = config.get().settings().dynamic();
         double factor = player == null ? 1.0 : deals.sellFactor(player);
-        return ShopRules.sellPerLot(it, prices.getMnoznik(it.key()) * factor, d.maxSellShare(), config.get().settings().rounding());
+        return ShopRules.sellPerLot(it, prices.getMnoznik(it.key()) * factor, sellShare(player, it.key()), config.get().settings().rounding());
+    }
+
+    /**
+     * Sufit skupu jako część ZWYKŁEJ ceny kupna: max-sell-share razy najniższy mnożnik kupna, jaki ten gracz
+     * ma teraz na ten przedmiot (promocja w którejś kategorii, rabat rangi). Bez tego event + promocja
+     * pozwalały kupić za 8 i sprzedać za 9 w kółko - skup ma być zawsze poniżej tego, za ile da się kupić.
+     */
+    private double sellShare(Player player, String key) {
+        double lowest = 1.0;
+        for (Category c : config.get().categories().values()) {
+            boolean here = false;
+            for (ShopItem i : c.items()) if (i.buyable() && i.key().equals(key)) here = true;
+            for (ShopItem i : rotation.active(c)) if (i.buyable() && i.key().equals(key)) here = true;
+            if (here) lowest = Math.min(lowest, deals.buyFactor(player, key, c.id()));
+        }
+        return config.get().settings().dynamic().maxSellShare() * lowest;
     }
 
     /** Cena kupna `pieces` sztuk dla gracza: z promocją (przedmiot/kategoria/sklep) i rabatem rangi. */
@@ -598,9 +613,8 @@ public final class ShopManager implements Listener {
             send(player, "sell.nothing");
             return;
         }
-        var d = config.get().settings().dynamic();
-        // Premia rangi podnosi skup, ale sufit (max-sell-share ceny kupna) i tak obowiązuje.
-        ShopRules.SellResult r = ShopRules.sell(offer, owned, prices.getMnoznik(key) * deals.sellFactor(player), d.maxSellShare(),
+        // Premia rangi podnosi skup, ale sufit (poniżej ceny kupna z promocją i rabatem) i tak obowiązuje.
+        ShopRules.SellResult r = ShopRules.sell(offer, owned, prices.getMnoznik(key) * deals.sellFactor(player), sellShare(player, key),
                 config.get().settings().rounding());
         if (r.lots() == 0) {
             send(player, "sell.not-enough", Map.of("amount", String.valueOf(offer.sellAmount()), "have", String.valueOf(owned)));

@@ -66,6 +66,17 @@ class ShopDealsRulesTest {
     }
 
     @Test
+    void eventPlusSaleNeverLetsYouSellForMoreThanYouBuy() {
+        // kupno 10, skup 5; event +500% i promocja -20% naraz
+        ShopItem it = item(10.0, 1, 5.0, 1);
+        double buyNow = ShopRules.buyPrice(it, 1, CENTS, ShopRules.buyFactor(20, 0));
+        double sellNow = ShopRules.sellPerLot(it, 6.0, 0.9 * ShopRules.buyFactor(20, 0), CENTS);
+        assertEquals(8, buyNow);
+        assertTrue(sellNow < buyNow, "skup " + sellNow + " >= kupno " + buyNow);
+        assertEquals(7.2, sellNow);
+    }
+
+    @Test
     void historyKeepsDaysPlayersAndTop() {
         ShopHistory h = new ShopHistory(null, w -> { });
         LocalDate today = LocalDate.of(2026, 9, 25);

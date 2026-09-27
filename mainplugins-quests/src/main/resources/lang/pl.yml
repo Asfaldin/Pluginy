@@ -20,7 +20,7 @@ quest:
   requirement:
     free: "&eWymaga: nic - kliknij, żeby odebrać!"
     items: "&eWymaga: {items}"
-    money: "&eWymaga: {amount}$"
+    money: "&eWymaga: {amount}{currency}"
     have-item: "&eWymaga: posiadania {items} (zostaje przy Tobie)"
   reward: "&6Nagroda: {reward}"
   reward-hidden: "&8Nagroda: ???"
@@ -35,7 +35,7 @@ quest:
     money: "&cNie masz wystarczająco pieniędzy!"
     have-item: "&cNie masz wymaganego przedmiotu!"
 label:
-  money: "{amount}$"
+  money: "{amount}{currency}"
   crate: "skrzynka {id}"
   key: "klucz {id}"
   title: "tytuł na czacie"

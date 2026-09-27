@@ -1,6 +1,7 @@
 package elo.mainplugins.shop;
 
 import elo.mainplugins.shop.model.Category;
+import elo.mainplugins.shop.model.DynamicSettings;
 import elo.mainplugins.shop.model.Rounding;
 import elo.mainplugins.shop.model.ShopConfig;
 import elo.mainplugins.shop.model.ShopItem;
@@ -29,6 +30,49 @@ class ShopConfigParserTest {
 
     private static Category cat(String id, String text, List<String> w) throws Exception {
         return ShopConfigParser.parseCategory(id, yml(text), MATERIAL, w::add);
+    }
+
+    @Test
+    void readsRankBonusesSalesAndHistory() throws Exception {
+        List<String> w = new ArrayList<>();
+        ShopSettings s = ShopConfigParser.parseSettings(yml("""
+                sales:
+                  announce: false
+                stats:
+                  history-days: 7
+                rank-bonuses:
+                  VIP: {buy-discount: 2, sell-bonus: 1}
+                  svip: {buy-discount: 150}
+                  broken: 5
+                """), MATERIAL, w::add);
+        assertFalse(s.extras().announceSales());
+        assertEquals(7, s.extras().historyDays());
+        assertEquals(2, s.extras().rankBonuses().get("vip").buyDiscount());
+        assertEquals(1, s.extras().rankBonuses().get("vip").sellBonus());
+        assertEquals(0, s.extras().rankBonuses().get("svip").buyDiscount(), "150% to za dużo");
+        assertFalse(s.extras().rankBonuses().containsKey("broken"));
+        assertEquals(2, w.size(), w.toString());
+        assertTrue(ShopConfigParser.parseSettings(yml(""), MATERIAL, x -> { }).extras().rankBonuses().isEmpty());
+    }
+
+    @Test
+    void categoryHasItsOwnLayoutWithRotationSlots() throws Exception {
+        List<String> w = new ArrayList<>();
+        Category c = cat("kolekcja", """
+                name: K
+                icon: CHEST
+                layout:
+                  size: 27
+                  layout:
+                    - {slot: 10, role: ITEM_SLOT}
+                    - {slot: 13, role: ROTATION_SLOT}
+                    - {slot: 14, role: ROTATION_SLOT}
+                    - {slot: 40, role: ROTATION_SLOT}
+                """, w);
+        assertEquals(1, w.size(), w.toString()); // slot 40 poza oknem 27
+        assertEquals(27, c.layout().size());
+        assertEquals(List.of(13, 14), c.layout().withRole(SlotRole.ROTATION_SLOT).stream().map(e -> e.slot()).toList());
+        assertNull(cat("b", "name: B\nicon: STONE", new ArrayList<>()).layout(), "bez layout = wspólny układ");
     }
 
     @Test
@@ -61,7 +105,7 @@ class ShopConfigParserTest {
         assertEquals("DIAMOND", c.iconMaterial());
         assertNull(c.rotation());
         assertEquals(5, c.items().size());
-        assertEquals(new ShopItem("DIAMOND", null, 150.0, 60.0, 1, 1, null, List.of(), null), c.items().get(0));
+        assertEquals(new ShopItem("DIAMOND", null, 150.0, 60.0, 1, 1, null, List.of(), null, true), c.items().get(0));
         ShopItem cobble = c.items().get(1);
         assertEquals(64, cobble.amount());
         assertEquals(64, cobble.sellAmount());
@@ -193,6 +237,45 @@ class ShopConfigParserTest {
     }
 
     @Test
+    void categoryPageSortAndCentering() throws Exception {
+        List<String> w = new ArrayList<>();
+        ShopSettings s = ShopConfigParser.parseSettings(yml("""
+                category-page-sort: buy
+                center-small-categories: false
+                """), MATERIAL, w::add);
+        assertTrue(w.isEmpty(), w.toString());
+        assertEquals(ShopSettings.CategorySort.BUY, s.categorySort());
+        assertFalse(s.centerSmallCategories());
+        ShopSettings d = ShopConfigParser.parseSettings(yml("stats: {enabled: false}"), MATERIAL, w::add);
+        assertEquals(ShopSettings.CategorySort.ORDER, d.categorySort());
+        assertFalse(d.centerSmallCategories());
+        List<String> w2 = new ArrayList<>();
+        ShopSettings bad = ShopConfigParser.parseSettings(yml("category-page-sort: chaos"), MATERIAL, w2::add);
+        assertEquals(ShopSettings.CategorySort.ORDER, bad.categorySort());
+        assertFalse(w2.isEmpty());
+    }
+
+    @Test
+    void resetDaysZeroTurnsResetOffAndNoGrowthIsAllowed() throws Exception {
+        List<String> w = new ArrayList<>();
+        ShopSettings s = ShopConfigParser.parseSettings(yml("""
+                dynamic-prices:
+                  max-multiplier: 1
+                  reset-days: 0
+                """), MATERIAL, w::add);
+        assertTrue(w.isEmpty(), w.toString());
+        assertEquals(0, s.dynamic().resetDays());
+        assertEquals(1.0, s.dynamic().maxMultiplier());
+        List<String> w2 = new ArrayList<>();
+        ShopSettings bad = ShopConfigParser.parseSettings(yml("""
+                dynamic-prices:
+                  reset-days: -3
+                """), MATERIAL, w2::add);
+        assertEquals(ShopSettings.defaults().dynamic().resetDays(), bad.dynamic().resetDays());
+        assertFalse(w2.isEmpty());
+    }
+
+    @Test
     void badSettingsAreFixedWithWarnings() throws Exception {
         List<String> w = new ArrayList<>();
         ShopSettings s = ShopConfigParser.parseSettings(yml("""
@@ -233,5 +316,57 @@ class ShopConfigParserTest {
         assertEquals(List.of("a"), cfg.settings().categoryOrder());
         assertTrue(w.stream().anyMatch(x -> x.contains("ghost")), w.toString());
         assertTrue(w.stream().anyMatch(x -> x.contains("'b'")), w.toString());
+    }
+
+    @Test
+    void itemsHaveMovingPricesUnlessTurnedOff() throws Exception {
+        List<String> w = new ArrayList<>();
+        Category c = cat("ores", """
+                name: "Ores"
+                icon: DIAMOND
+                items:
+                  - {item: DIAMOND, buy: 100, sell: 50}
+                  - {item: COBBLESTONE, buy: 10, sell: 5, dynamic: false}
+                """, w);
+        assertTrue(c.items().get(0).dynamic(), "brak wpisu = ceny dynamiczne dzialaja jak dotad");
+        assertFalse(c.items().get(1).dynamic(), "dynamic: false = cena stala");
+        assertTrue(w.isEmpty(), w.toString());
+    }
+
+    @Test
+    void readsDynamicTuningAndResetAnnouncement() throws Exception {
+        List<String> w = new ArrayList<>();
+        ShopSettings s = ShopConfigParser.parseSettings(yml("""
+                dynamic-prices:
+                  announce-reset: false
+                  tuning:
+                    max-drop-per-cycle: 0.1
+                    drop-at-top: 3.0
+                    cycles-to-rise: 4
+                """), MATERIAL, w::add);
+        assertFalse(s.dynamic().announceReset());
+        assertEquals(0.1, s.dynamic().tuning().maxDropPerCycle());
+        assertEquals(3.0, s.dynamic().tuning().dropAtTop());
+        assertEquals(4, s.dynamic().tuning().cyclesToRise());
+        // Niepodane zostaja domyslne.
+        assertEquals(DynamicSettings.Tuning.defaults().risePerCycle(), s.dynamic().tuning().risePerCycle());
+        assertTrue(w.isEmpty(), w.toString());
+    }
+
+    @Test
+    void badTuningFallsBackWithAWarning() throws Exception {
+        List<String> w = new ArrayList<>();
+        ShopSettings s = ShopConfigParser.parseSettings(yml("""
+                dynamic-prices:
+                  tuning:
+                    quiet-threshold: 5
+                    cycles-frozen: -2
+                    drop-at-top: 0.5
+                """), MATERIAL, w::add);
+        DynamicSettings.Tuning d = DynamicSettings.Tuning.defaults();
+        assertEquals(d.quietThreshold(), s.dynamic().tuning().quietThreshold());
+        assertEquals(d.cyclesFrozen(), s.dynamic().tuning().cyclesFrozen());
+        assertEquals(d.dropAtTop(), s.dynamic().tuning().dropAtTop());
+        assertEquals(3, w.size(), w.toString());
     }
 }

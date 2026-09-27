@@ -31,8 +31,6 @@ import java.util.function.Predicate;
 /** Sklep serwerowy - działa z samym core. Treść w shop.yml + categories/, teksty w lang/. */
 public final class MainpluginsShop extends JavaPlugin {
 
-    /** Kategorie treści startowej (defaults/<język>/categories/<id>.yml). */
-    private static final List<String> DEFAULT_CATEGORIES = List.of("blocks", "farming", "ores", "mob-drops", "food");
     /** Pliki starego sklepu - przy pierwszym starcie nowej wersji idą do old/. */
     private static final List<String> OLD_FILES = List.of("sklep.yml", "sklep-gui.yml", "pula-rotacyjna.yml", "categories",
             "ceny-dynamiczne.yml", "statystyki-sklepu.yml", "statystyki-sklepu.csv", "archiwum-statystyk", "rotacja.yml");
@@ -43,6 +41,9 @@ public final class MainpluginsShop extends JavaPlugin {
     private DynamicPriceManager prices;
     private RotationManager rotation;
     private ShopManager shop;
+    private ShopDeals deals;
+    private ShopHistory history;
+    private ShopCommand admin;
     private BukkitTask timer;
     private BukkitTask eventTimer;
 
@@ -64,17 +65,30 @@ public final class MainpluginsShop extends JavaPlugin {
         ShopItems items = new ShopItems(this, CoreAPI.getCustomItemService(), CoreAPI.getItemNameService());
         stats = new ShopStats(this, config.settings().statsEnabled());
         prices = new DynamicPriceManager(this, config.settings().dynamic(), stats, key -> nameOf(items, key),
-                () -> Bukkit.getOnlinePlayers().forEach(p -> lang.send(p, this, "dynamic.reset-broadcast")));
+                this::dynamicFor,
+                () -> {
+                    if (!config.settings().dynamic().announceReset()) return;
+                    Bukkit.getOnlinePlayers().forEach(p -> lang.send(p, this, "dynamic.reset-broadcast"));
+                });
         rotation = new RotationManager(this, lang, items, () -> config);
         rotation.check();
-        shop = new ShopManager(this, lang, CoreAPI.getEconomyService(), items, () -> config, prices, rotation, stats);
+        deals = new ShopDeals(this, () -> config);
+        history = new ShopHistory(new File(getDataFolder(), "history.yml"), getLogger()::warning);
+        shop = new ShopManager(this, lang, CoreAPI.getEconomyService(), items, () -> config, prices, rotation, stats, deals, history);
         getServer().getPluginManager().registerEvents(shop, this);
+        ShopPlaces places = new ShopPlaces(this, lang, shop, id -> {
+            Category c = config.categories().get(id);
+            return c == null ? null : c.name();
+        });
+        getServer().getPluginManager().registerEvents(places, this);
         CoreAPI.getPlaceholderService().register(this, new ShopPlaceholders(this, lang, prices));
 
         // Co 10 minut: nowe rotacje i zapis statystyk.
         timer = getServer().getScheduler().runTaskTimer(this, () -> {
             rotation.check();
             stats.zapisz();
+            history.prune(java.time.LocalDate.now(), config.settings().extras().historyDays());
+            history.save();
         }, 12_000L, 12_000L);
 
         // Co 10 sekund: eventy, którym minął czas (/@shop event <item> <procent> <czas>).
@@ -84,6 +98,10 @@ public final class MainpluginsShop extends JavaPlugin {
                 Bukkit.getOnlinePlayers().forEach(p ->
                         lang.send(p, this, "event.broadcast-off", Map.of("item", nameOf(items, key))));
             }
+            // Promocje, którym minął czas (/@shop sale <cel> <procent> <czas>).
+            for (String target : deals.expired()) {
+                if (admin != null) admin.broadcastSale("sale.broadcast-end", target, Map.of());
+            }
         }, 200L, 200L);
 
         CommandExecutor player = (sender, command, label, args) -> {
@@ -92,20 +110,26 @@ public final class MainpluginsShop extends JavaPlugin {
                 return true;
             }
             switch (command.getName().toLowerCase()) {
-                case "sklep" -> shop.openMain(p, MenuBridge.isZMenu(args));
+                case "sklep" -> shopCommand(p, args);
                 case "sprzedaj" -> shop.sellHand(p);
                 case "sprzedajwszystko" -> shop.sellAll(p);
+                case "cena" -> shop.priceCheck(p);
                 default -> { }
             }
             return true;
         };
-        for (String name : List.of("sklep", "sprzedaj", "sprzedajwszystko")) {
+        for (String name : List.of("sklep", "sprzedaj", "sprzedajwszystko", "cena")) {
             if (getCommand(name) == null) continue;
             getCommand(name).setExecutor(player);
-            getCommand(name).setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
+            getCommand(name).setTabCompleter((sender, command, alias, args) -> {
+                if (!name.equals("sklep") || args.length != 1) return TabCompleteUtils.PUSTA;
+                List<String> opts = new java.util.ArrayList<>(config.categories().keySet());
+                opts.add(0, searchWord());
+                return TabCompleteUtils.dopasuj(args[0], opts);
+            });
         }
         if (getCommand("@shop") != null) {
-            ShopCommand admin = new ShopCommand(this, lang, () -> config, this::reload, prices, rotation, stats, items);
+            admin = new ShopCommand(this, lang, () -> config, this::reload, prices, rotation, stats, items, shop, places, deals, history);
             getCommand("@shop").setExecutor(admin);
             getCommand("@shop").setTabCompleter(admin);
         }
@@ -118,6 +142,33 @@ public final class MainpluginsShop extends JavaPlugin {
         if (rotation != null) rotation.close();
         if (prices != null) prices.zamknij();
         if (stats != null) stats.zapisz();
+        if (history != null) history.save();
+    }
+
+    /** Słowo "szukaj" w języku serwera (lang: command.search-word). */
+    private String searchWord() {
+        return net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                .serialize(lang.msg(this, "command.search-word")).trim().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    /** /sklep | /sklep <kategoria> | /sklep szukaj <nazwa>. */
+    private void shopCommand(Player p, String[] args) {
+        if (args.length == 0 || MenuBridge.isZMenu(args)) {
+            shop.openMain(p, MenuBridge.isZMenu(args));
+            return;
+        }
+        String first = args[0].toLowerCase(java.util.Locale.ROOT);
+        if (first.equals(searchWord()) || first.equals("search")) {
+            if (args.length < 2) lang.send(p, this, "command.search-usage");
+            else shop.search(p, String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length)));
+            return;
+        }
+        String id = shop.findCategory(String.join(" ", args));
+        if (id == null) {
+            lang.send(p, this, "command.unknown-category", Map.of("value", String.join(" ", args)));
+            return;
+        }
+        shop.openFor(p, id);
     }
 
     /** /@shop reload - pliki od nowa, nowe ustawienia cen dynamicznych i statystyk. */
@@ -126,6 +177,18 @@ public final class MainpluginsShop extends JavaPlugin {
         prices.applySettings(config.settings().dynamic());
         stats.setEnabled(config.settings().statsEnabled());
         rotation.check();
+    }
+
+    /**
+     * Czy przedmiot o tym kluczu ma wahające się ceny. Przedmiot z "dynamic: false" (np. rzeczy,
+     * które da się farmić bez końca) trzyma cenę z cennika. Nieznany klucz = tak, jak dawniej.
+     */
+    private boolean dynamicFor(String key) {
+        for (Category c : config.categories().values()) {
+            for (ShopItem it : c.items()) if (it.key().equals(key)) return it.dynamic();
+            if (c.rotation() != null) for (ShopItem it : c.rotation().pool()) if (it.key().equals(key)) return it.dynamic();
+        }
+        return true;
     }
 
     private String nameOf(ShopItems items, String key) {
@@ -160,7 +223,8 @@ public final class MainpluginsShop extends JavaPlugin {
         String language = lang.language();
         if (getResource("defaults/" + language + "/shop.yml") == null) language = "en";
         copy("defaults/" + language + "/shop.yml", new File(dir, "shop.yml"));
-        for (String id : DEFAULT_CATEGORIES) {
+        // Kategorie treści startowej = lista "categories" z dołączonego shop.yml (każdy język może mieć inne).
+        for (String id : YamlConfiguration.loadConfiguration(new File(dir, "shop.yml")).getStringList("categories")) {
             copy("defaults/" + language + "/categories/" + id + ".yml", new File(dir, "categories/" + id + ".yml"));
         }
     }

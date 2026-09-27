@@ -17,11 +17,13 @@ import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Treść startowa "Mały" (EN i PL) czyta się bez ostrzeżeń i ma w obu językach te same pozycje i ceny. */
+/**
+ * Treść startowa (to, co plugin wgrywa sam na nowym serwerze): PL = Duży sklep z aplikacji, EN = dawny Mały.
+ * Czyta się bez ostrzeżeń, każda kategoria z listy ma swój plik, nic nie skupuje drożej, niż sprzedaje.
+ */
 class DefaultContentTest {
 
     private static final Predicate<String> MATERIAL = m -> m.matches("[A-Z0-9_]+");
-    static final List<String> CATEGORIES = List.of("blocks", "farming", "ores", "mob-drops", "food");
 
     private YamlConfiguration yaml(String resource) throws Exception {
         InputStream in = getClass().getClassLoader().getResourceAsStream(resource);
@@ -35,20 +37,20 @@ class DefaultContentTest {
         return ShopConfigParser.parseSettings(yaml("defaults/" + lang + "/shop.yml"), MATERIAL, w::add);
     }
 
-    private Category category(String lang, String id, List<String> w) throws Exception {
-        return ShopConfigParser.parseCategory(id, yaml("defaults/" + lang + "/categories/" + id + ".yml"), MATERIAL, w::add);
-    }
-
     @Test
-    void settingsAreCleanAndMatchTheCodeDefaults() throws Exception {
+    void settingsAreClean() throws Exception {
         List<String> w = new ArrayList<>();
-        for (String lang : List.of("en", "pl")) {
-            ShopSettings s = settings(lang, w);
-            assertEquals(CATEGORIES, s.categoryOrder());
-            assertEquals(Rounding.CENTS, s.rounding());
-            assertEquals(ShopSettings.defaults().menus(), s.menus(), lang);
-            assertEquals(ShopSettings.defaults().buttonMaterials(), s.buttonMaterials(), lang);
-            assertEquals(ShopSettings.defaults().dynamic(), s.dynamic(), lang);
+        ShopSettings pl = settings("pl", w);
+        assertEquals(10, pl.categoryOrder().size());
+        assertEquals(Rounding.WHOLE, pl.rounding());
+        assertTrue(pl.statsEnabled());
+        assertTrue(pl.extras().rankBonuses().isEmpty());
+        ShopSettings en = settings("en", w);
+        assertEquals(List.of("blocks", "farming", "ores", "mob-drops", "food"), en.categoryOrder());
+        assertEquals(ShopSettings.defaults().menus(), en.menus());
+        for (ShopSettings s : List.of(pl, en)) {
+            assertEquals(ShopSettings.defaults().buttonMaterials(), s.buttonMaterials());
+            assertEquals(ShopSettings.defaults().dynamic(), s.dynamic());
         }
         assertTrue(w.isEmpty(), w.toString());
     }
@@ -59,18 +61,20 @@ class DefaultContentTest {
     }
 
     @Test
-    void categoriesAreCleanAndTheSameInBothLanguages() throws Exception {
+    void everyListedCategoryIsCleanAndNeverBuysBackForMore() throws Exception {
         List<String> w = new ArrayList<>();
-        for (String id : CATEGORIES) {
-            Category en = category("en", id, w);
-            Category pl = category("pl", id, w);
-            assertEquals(en.items(), pl.items(), id);
-            assertEquals(en.iconMaterial(), pl.iconMaterial(), id);
-            assertNotEquals(en.name(), pl.name(), id);
-            assertEquals(8, en.items().size(), id);
-            for (ShopItem it : en.items()) {
-                assertTrue(it.buyable(), id + " " + it.key());
-                if (it.sellable()) assertTrue(it.sell() < it.buy(), id + " " + it.key() + " sells for more than it costs");
+        for (String lang : List.of("pl", "en")) {
+            for (String id : settings(lang, w).categoryOrder()) {
+                Category c = ShopConfigParser.parseCategory(id, yaml("defaults/" + lang + "/categories/" + id + ".yml"), MATERIAL, w::add);
+                List<ShopItem> all = new ArrayList<>(c.items());
+                if (c.rotation() != null) all.addAll(c.rotation().pool());
+                assertFalse(all.isEmpty(), lang + "/" + id);
+                for (ShopItem it : all) {
+                    if (!it.buyable() || !it.sellable() || it.buy() == 0) continue;
+                    double buyEach = it.buy() / it.amount();
+                    double sellEach = it.sell() / it.sellAmount();
+                    assertTrue(sellEach < buyEach, lang + "/" + id + " " + it.key() + " sells for more than it costs");
+                }
             }
         }
         assertTrue(w.isEmpty(), w.toString());

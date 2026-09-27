@@ -1,0 +1,25 @@
+# Jedna kategoria sklepu. Ceny są za paczkę: buy = cena za 'amount' sztuk (domyślnie 1),
+# dynamic: false przy pozycji = cena stała, ceny dynamiczne jej nie ruszają.
+# sell = cena za 'sell-amount' sztuk (domyślnie 1). Bez buy = nie do kupienia, bez sell = nie do sprzedania.
+# Zamiast 'item' możesz użyć 'custom: <id>' (przedmiot z katalogu itemów).
+name: '&e&lDropy z Mobów'
+icon: BONE
+items:
+  - {item: ROTTEN_FLESH, buy: 10, sell: 200, sell-amount: 64, name: '&d&lZgniłe Mięso'}
+  - {item: ARROW, buy: 20, sell: 150, sell-amount: 64, name: '&d&lStrzała'}
+  - {item: WHITE_WOOL, buy: 25, sell: 270, sell-amount: 64, name: '&d&lBiała Wełna'}
+  - {item: FEATHER, buy: 25, sell: 280, sell-amount: 64, name: '&d&lPióro'}
+  - {item: BONE, buy: 30, sell: 150, sell-amount: 64, name: '&d&lKość'}
+  - {item: STRING, buy: 30, sell: 340, sell-amount: 64, name: '&d&lNić'}
+  - {item: EGG, buy: 30, sell: 150, sell-amount: 16, name: '&d&lJajko'}
+  - {item: LEATHER, buy: 40, sell: 130, sell-amount: 64, name: '&d&lSkóra'}
+  - {item: SPIDER_EYE, buy: 100, sell: 340, sell-amount: 64, name: '&d&lPajęcze Oko'}
+  - {item: INK_SAC, buy: 150, name: '&d&lWoreczek Atramentu'}
+  - {item: BREEZE_ROD, buy: 150, sell: 670, sell-amount: 64, name: '&d&lRóżdżka Powiewu'}
+  - {item: GUNPOWDER, buy: 200, sell: 600, sell-amount: 64, name: '&d&lProch'}
+  - {item: ENDER_PEARL, buy: 300, name: '&d&lPerła Endu'}
+  - {item: SLIME_BALL, buy: 500, name: '&d&lKula Szlamu'}
+  - {item: MAGMA_CREAM, buy: 1500, name: '&d&lMagmowy Krem'}
+  - {item: GLOW_INK_SAC, buy: 2500, name: '&d&lŚwiecący Woreczek'}
+  - {item: BLAZE_ROD, buy: 5000, name: '&d&lRóżdżka Płomyka'}
+  - {item: GHAST_TEAR, buy: 25000, name: '&d&lŁza Ghasta'}

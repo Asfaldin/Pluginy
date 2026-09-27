@@ -1,5 +1,6 @@
 package elo.mainplugins.core.command;
 
+import elo.mainplugins.core.util.MoneyFormat;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.util.TabCompleteUtils;
 import net.kyori.adventure.text.Component;
@@ -56,7 +57,7 @@ public class MoneyAddCommand implements CommandExecutor, TabCompleter {
         }
 
         economyService.dodajKase(target.getUniqueId(), kwota);
-        sender.sendMessage(Component.text("Dodano " + kwota + " $ dla " + targetName + ".", NamedTextColor.GREEN));
+        sender.sendMessage(Component.text("Dodano " + kwota + MoneyFormat.waluta() + " dla " + targetName + ".", NamedTextColor.GREEN));
         return true;
     }
 

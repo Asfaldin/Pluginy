@@ -6,6 +6,7 @@ import elo.mainplugins.shop.model.MenuScreen;
 import elo.mainplugins.shop.model.Rotation;
 import elo.mainplugins.shop.model.Rounding;
 import elo.mainplugins.shop.model.ShopConfig;
+import elo.mainplugins.shop.model.ShopExtras;
 import elo.mainplugins.shop.model.ShopItem;
 import elo.mainplugins.shop.model.ShopSettings;
 import elo.mainplugins.shop.model.SlotEntry;
@@ -64,8 +65,9 @@ public final class ShopConfigParser {
                 max = dd.maxMultiplier();
             }
             int reset = dyn.getInt("reset-days", dd.resetDays());
-            if (reset < 1) {
-                warn.accept("shop.yml dynamic-prices.reset-days: must be at least 1 - using " + dd.resetDays() + ".");
+            // 0 = automatyczny reset wyłączony (ceny same nie wracają do normy).
+            if (reset < 0) {
+                warn.accept("shop.yml dynamic-prices.reset-days: must be 0 (reset off) or more - using " + dd.resetDays() + ".");
                 reset = dd.resetDays();
             }
             double share = dyn.getDouble("max-sell-share", dd.maxSellShare());
@@ -74,13 +76,15 @@ public final class ShopConfigParser {
                 share = dd.maxSellShare();
             }
             dynamic = new DynamicSettings(dyn.getBoolean("enabled", dd.enabled()), cycle, min, max, reset, share,
-                    dyn.getBoolean("announce-events", dd.announceEvents()));
+                    dyn.getBoolean("announce-events", dd.announceEvents()),
+                    dyn.getBoolean("announce-reset", dd.announceReset()),
+                    parseTuning(dyn.getConfigurationSection("tuning"), warn));
         }
 
         Map<String, MenuScreen> menus = new LinkedHashMap<>();
         for (String screen : ShopSettings.SCREENS) {
             ConfigurationSection s = root.getConfigurationSection("menus." + screen);
-            menus.put(screen, s == null ? d.menu(screen) : parseScreen(screen, s, d.menu(screen), materialExists, warn));
+            menus.put(screen, s == null ? d.menu(screen) : parseScreen("shop.yml menus." + screen, s, d.menu(screen), materialExists, warn));
         }
 
         Map<String, String> buttons = new LinkedHashMap<>(ShopSettings.defaultButtons());
@@ -97,13 +101,57 @@ public final class ShopConfigParser {
             }
         }
 
+        // category-page-sort: order (kolejność z pliku) | buy | sell - co widać, zanim gracz kliknie lejek.
+        ShopSettings.CategorySort sort = d.categorySort();
+        String sortRaw = root.getString("category-page-sort");
+        if (sortRaw != null) {
+            try {
+                sort = ShopSettings.CategorySort.valueOf(sortRaw.trim().toUpperCase(java.util.Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                warn.accept("shop.yml category-page-sort: '" + sortRaw + "' - use order, buy or sell - using " + sort.name().toLowerCase(java.util.Locale.ROOT) + ".");
+            }
+        }
         return new ShopSettings(List.copyOf(order), rounding, dynamic, root.getBoolean("stats.enabled", d.statsEnabled()),
-                Map.copyOf(menus), Map.copyOf(buttons));
+                Map.copyOf(menus), Map.copyOf(buttons), sort, root.getBoolean("center-small-categories", d.centerSmallCategories()),
+                parseExtras(root, warn));
     }
 
-    private static MenuScreen parseScreen(String screen, ConfigurationSection s, MenuScreen def,
+    /**
+     * rank-bonuses: {vip: {buy-discount: 2, sell-bonus: 1}} - procenty 0-90;
+     * sales.announce; stats.history-days (1-365).
+     */
+    private static ShopExtras parseExtras(ConfigurationSection root, Consumer<String> warn) {
+        ShopExtras d = ShopExtras.defaults();
+        Map<String, ShopExtras.RankBonus> ranks = new LinkedHashMap<>();
+        ConfigurationSection rb = root.getConfigurationSection("rank-bonuses");
+        if (rb != null) {
+            for (String rank : rb.getKeys(false)) {
+                ConfigurationSection r = rb.getConfigurationSection(rank);
+                if (r == null) {
+                    warn.accept("shop.yml rank-bonuses." + rank + ": needs buy-discount and/or sell-bonus - skipping it.");
+                    continue;
+                }
+                ranks.put(rank.toLowerCase(Locale.ROOT), new ShopExtras.RankBonus(
+                        bonusPercent(r, "buy-discount", rank, warn), bonusPercent(r, "sell-bonus", rank, warn)));
+            }
+        }
+        int days = root.getInt("stats.history-days", d.historyDays());
+        if (days < 1 || days > 365) {
+            warn.accept("shop.yml stats.history-days: must be 1-365 - using " + d.historyDays() + ".");
+            days = d.historyDays();
+        }
+        return new ShopExtras(Map.copyOf(ranks), root.getBoolean("sales.announce", d.announceSales()), days);
+    }
+
+    private static double bonusPercent(ConfigurationSection r, String key, String rank, Consumer<String> warn) {
+        double v = r.getDouble(key, 0);
+        if (v >= 0 && v <= 90) return v;
+        warn.accept("shop.yml rank-bonuses." + rank + "." + key + ": must be 0-90 (percent) - using 0.");
+        return 0;
+    }
+
+    private static MenuScreen parseScreen(String where, ConfigurationSection s, MenuScreen def,
                                           Predicate<String> materialExists, Consumer<String> warn) {
-        String where = "shop.yml menus." + screen;
         int size = s.getInt("size", def.size());
         if (size < 9 || size > 54 || size % 9 != 0) {
             warn.accept(where + ".size: must be 9, 18, 27, 36, 45 or 54 - using " + def.size() + ".");
@@ -190,7 +238,11 @@ public final class ShopConfigParser {
             rotation = new Rotation(rot.getBoolean("enabled", true), show, every, rot.getBoolean("announce", true),
                     parseItems(rot.getList("pool", List.of()), file + " rotation.pool", materialExists, warn));
         }
-        return new Category(id, name, iconMaterial, iconCustom, items, rotation);
+        // Własny układ strony tej kategorii (size + layout jak w shop.yml menus.category-page); brak = wspólny.
+        ConfigurationSection lay = root.getConfigurationSection("layout");
+        MenuScreen layout = lay == null ? null
+                : parseScreen(file + " layout", lay, ShopSettings.defaults().menu("category-page"), materialExists, warn);
+        return new Category(id, name, iconMaterial, iconCustom, items, rotation, layout);
     }
 
     private static List<ShopItem> parseItems(List<?> raw, String where, Predicate<String> materialExists, Consumer<String> warn) {
@@ -232,9 +284,52 @@ public final class ShopConfigParser {
         int sellAmount = count(m.get("sell-amount"), at + " sell-amount", warn);
         List<String> lore = new ArrayList<>();
         if (m.get("lore") instanceof List<?> l) for (Object o : l) lore.add(String.valueOf(o));
+        // Brak wpisu "dynamic" = ceny dynamiczne działają (tak było, zanim ta opcja powstała).
+        boolean dynamic = !(m.get("dynamic") instanceof Boolean b) || b;
         return new ShopItem(material, custom, buy, sell, amount, sellAmount,
                 m.get("name") == null ? null : String.valueOf(m.get("name")), Collections.unmodifiableList(lore),
-                m.get("instrument") == null ? null : String.valueOf(m.get("instrument")));
+                m.get("instrument") == null ? null : String.valueOf(m.get("instrument")), dynamic);
+    }
+
+
+    /**
+     * Strojenie cyklu cen dynamicznych. Zła wartość = ostrzeżenie i wartość domyślna, jak wszędzie
+     * w tym pliku - serwer ma wstać nawet z popsutym configiem.
+     */
+    private static DynamicSettings.Tuning parseTuning(ConfigurationSection t, Consumer<String> warn) {
+        DynamicSettings.Tuning d = DynamicSettings.Tuning.defaults();
+        if (t == null) return d;
+        return new DynamicSettings.Tuning(
+                part(t, "max-drop-per-cycle", d.maxDropPerCycle(), warn),
+                above(t, "drop-at-top", d.dropAtTop(), 1.0, warn),
+                part(t, "recover-from-below", d.recoverFromBelow(), warn),
+                part(t, "rise-per-cycle", d.risePerCycle(), warn),
+                part(t, "quiet-threshold", d.quietThreshold(), warn),
+                atLeast(t, "cycles-to-rise", d.cyclesToRise(), 1, warn),
+                atLeast(t, "cycles-frozen", d.cyclesFrozen(), 0, warn),
+                part(t, "norm-learn-rate", d.normLearnRate(), warn));
+    }
+
+    /** Ułamek: musi być powyżej 0 i najwyżej 1. */
+    private static double part(ConfigurationSection t, String key, double fallback, Consumer<String> warn) {
+        double v = t.getDouble(key, fallback);
+        if (v > 0 && v <= 1) return v;
+        warn.accept("shop.yml dynamic-prices.tuning." + key + ": must be above 0 and at most 1 - using " + fallback + ".");
+        return fallback;
+    }
+
+    private static double above(ConfigurationSection t, String key, double fallback, double min, Consumer<String> warn) {
+        double v = t.getDouble(key, fallback);
+        if (v >= min) return v;
+        warn.accept("shop.yml dynamic-prices.tuning." + key + ": must be at least " + min + " - using " + fallback + ".");
+        return fallback;
+    }
+
+    private static int atLeast(ConfigurationSection t, String key, int fallback, int min, Consumer<String> warn) {
+        int v = t.getInt(key, fallback);
+        if (v >= min) return v;
+        warn.accept("shop.yml dynamic-prices.tuning." + key + ": must be at least " + min + " - using " + fallback + ".");
+        return fallback;
     }
 
     /** null = brak ceny; -1 = zła cena (pozycja do pominięcia, ostrzeżenie już wysłane). */
@@ -276,7 +371,8 @@ public final class ShopConfigParser {
             warn.accept("categories/" + e.getKey() + ".yml: not in shop.yml 'categories' - it has no icon in the menu (selling still works) - '" + e.getKey() + "'.");
             sorted.put(e.getKey(), e.getValue());
         }
-        ShopSettings fixed = new ShopSettings(List.copyOf(order), s.rounding(), s.dynamic(), s.statsEnabled(), s.menus(), s.buttonMaterials());
+        ShopSettings fixed = new ShopSettings(List.copyOf(order), s.rounding(), s.dynamic(), s.statsEnabled(), s.menus(), s.buttonMaterials(),
+                s.categorySort(), s.centerSmallCategories(), s.extras());
         return new ShopConfig(fixed, Collections.unmodifiableMap(sorted));
     }
 }

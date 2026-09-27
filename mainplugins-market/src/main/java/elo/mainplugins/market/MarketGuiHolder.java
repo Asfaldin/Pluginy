@@ -31,8 +31,8 @@ final class MarketGuiHolder implements InventoryHolder {
         this.fromMenu = fromMenu;
     }
 
-    Inventory create(Component title) {
-        inventory = Bukkit.createInventory(this, 54, title);
+    Inventory create(int size, Component title) {
+        inventory = Bukkit.createInventory(this, size, title);
         return inventory;
     }
 

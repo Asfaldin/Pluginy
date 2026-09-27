@@ -1,6 +1,6 @@
 # Mainplugins Core - English messages. Colors: &a &e ...  Placeholders: {name}
 reward:
-  money: "&aYou received &e{amount}$&a."
+  money: "&aYou received &e{amount}{currency}&a."
   item: "&aYou received &e{amount}x {item}&a."
   custom: "&aYou received &e{amount}x {item}&a."
   unlock: "&aUnlocked: &e{name}&a."

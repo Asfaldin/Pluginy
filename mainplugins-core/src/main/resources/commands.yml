@@ -23,6 +23,9 @@ commands:
   sprzedajwszystko:
     name: sellall
     aliases: [sprzedajwszystko]
+  cena:
+    name: price
+    aliases: [cena]
   targ:
     name: market
     aliases: [targ]

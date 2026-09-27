@@ -34,7 +34,7 @@ final class ShopPlaceholders implements BiFunction<OfflinePlayer, String, String
     @Override
     public String apply(OfflinePlayer player, String name) {
         return switch (name) {
-            case "reset_cen_dni" -> prices.enabled() ? String.valueOf(prices.dniDoResetu()) : "-";
+            case "reset_cen_dni" -> prices.enabled() && prices.resetWlaczony() ? String.valueOf(prices.dniDoResetu()) : "-";
             case "event_info" -> {
                 if (!prices.enabled()) yield "";
                 List<String> locked = prices.getZablokowaneNazwy();

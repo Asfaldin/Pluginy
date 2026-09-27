@@ -1,0 +1,24 @@
+# Jedna kategoria sklepu. Ceny są za paczkę: buy = cena za 'amount' sztuk (domyślnie 1),
+# dynamic: false przy pozycji = cena stała, ceny dynamiczne jej nie ruszają.
+# sell = cena za 'sell-amount' sztuk (domyślnie 1). Bez buy = nie do kupienia, bez sell = nie do sprzedania.
+# Zamiast 'item' możesz użyć 'custom: <id>' (przedmiot z katalogu itemów).
+name: '&e&lJedzenie'
+icon: COOKED_CHICKEN
+items:
+  - {item: MUTTON, buy: 20, sell: 270, sell-amount: 64, name: '&d&lSurowa Baranina'}
+  - {item: BEEF, buy: 20, sell: 130, sell-amount: 64, name: '&d&lSurowa Wołowina'}
+  - {item: PORKCHOP, buy: 20, sell: 120, sell-amount: 64, name: '&d&lSurowa Wieprzowina'}
+  - {item: CHICKEN, buy: 20, sell: 280, sell-amount: 64, name: '&d&lSurowy Kurczak'}
+  - {item: COOKED_CHICKEN, buy: 40, sell: 450, sell-amount: 64, name: '&d&lPieczony Kurczak'}
+  - {item: COOKED_MUTTON, buy: 40, sell: 350, sell-amount: 64, name: '&d&lPieczona Baranina'}
+  - {item: COOKED_BEEF, buy: 45, sell: 350, sell-amount: 64, name: '&d&lStek'}
+  - {item: COOKED_PORKCHOP, buy: 45, sell: 450, sell-amount: 64, name: '&d&lPieczona Wieprzowina'}
+  - {item: APPLE, buy: 50, sell: 1500, sell-amount: 64, name: '&d&lJabłko'}
+  - {item: MUSHROOM_STEW, buy: 60, name: '&d&lZupa Grzybowa'}
+  - {item: BEETROOT_SOUP, buy: 60, name: '&d&lBarszcz'}
+  - {item: PUMPKIN_PIE, buy: 60, name: '&d&lTarta Dyniowa'}
+  - {item: RABBIT_STEW, buy: 60, name: '&d&lGulasz z Królika'}
+  - {item: SUSPICIOUS_STEW, buy: 60, name: '&d&lPodejrzana Zupa'}
+  - {item: HONEY_BOTTLE, buy: 150, name: '&d&lButelka Miodu'}
+  - {item: CAKE, buy: 400, name: '&d&lCiasto'}
+  - {item: GOLDEN_APPLE, buy: 2000, name: '&d&lZłote Jabłko'}

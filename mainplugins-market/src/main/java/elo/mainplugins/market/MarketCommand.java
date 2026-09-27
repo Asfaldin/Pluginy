@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/** Gracz: /market [sell|wystaw <cena>]. Admin: /@market reload | list <gracz> | remove <gracz>. */
+/** Gracz: /targ [sell|wystaw <cena>]. Admin: /@market reload | list <gracz> | remove <gracz> | remove-offer <id>. */
 final class MarketCommand {
 
     private MarketCommand() {}
@@ -86,6 +86,15 @@ final class MarketCommand {
                         list(sender, target, name);
                     }
                 }
+                case "remove-offer" -> {
+                    if (args.length < 2) {
+                        lang.send(sender, plugin, "admin.usage");
+                        return true;
+                    }
+                    Listing l = market.removeOne(args[1]);
+                    if (l == null) lang.send(sender, plugin, "admin.offer-not-found", Map.of("id", args[1]));
+                    else lang.send(sender, plugin, "admin.offer-removed", Map.of("player", l.sellerName(), "price", MoneyFormat.pelna(l.price())));
+                }
                 default -> lang.send(sender, plugin, "admin.usage");
             }
             return true;
@@ -108,7 +117,10 @@ final class MarketCommand {
 
         @Override
         public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String[] args) {
-            if (args.length == 1) return TabCompleteUtils.dopasuj(args[0], List.of("reload", "list", "remove"));
+            if (args.length == 1) return TabCompleteUtils.dopasuj(args[0], List.of("reload", "list", "remove", "remove-offer"));
+            if (args.length == 2 && args[0].equalsIgnoreCase("remove-offer")) {
+                return TabCompleteUtils.dopasuj(args[1], market.store().listings().stream().map(Listing::id).toList());
+            }
             if (args.length == 2 && !args[0].equalsIgnoreCase("reload")) return TabCompleteUtils.dopasujGraczy(args[1]);
             return TabCompleteUtils.PUSTA;
         }

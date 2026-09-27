@@ -19,13 +19,38 @@ dynamic-prices:
   reset-days: 14           # every N days all prices go back to normal
   max-sell-share: 0.9      # selling never pays more than 90% of the buy price
   announce-events: true    # tell everyone on chat when an event (/@shop event) starts or ends
+  announce-reset: true     # tell everyone on chat when all prices go back to normal (every reset-days)
+  # Tuning - the defaults are deliberate, change them only if you know what you are doing.
+  tuning:
+    max-drop-per-cycle: 0.05   # biggest sell-price drop in one cycle at the normal price (0.05 = 5%)
+    drop-at-top: 4.2           # how much stronger the drop is when the price sits at the maximum
+    recover-from-below: 0.8    # how much of the way back to normal is recovered in one quiet cycle
+    rise-per-cycle: 0.125      # how much the price rises per cycle while nobody sells the item
+    quiet-threshold: 0.1       # selling below this share of the norm counts as quiet
+    cycles-to-rise: 2          # quiet cycles before the price starts rising above normal
+    cycles-frozen: 2           # cycles the price stays at normal after coming down from the top
+    norm-learn-rate: 0.02      # how fast the shop forgets old cycles (0.02 = about a week of history)
 
 # Sales statistics (stats.yml + stats.csv for Excel) with hints which prices to change.
+# Together with them the shop keeps a history (history.yml): how much was sold and who earned what - /@shop history and /@shop top.
 stats:
   enabled: false
+  history-days: 30         # how many days of history to keep
+
+# Sales on buying (/@shop sale): announce their start and end in chat.
+sales:
+  announce: true
+
+# Rank bonuses. A player has a rank when they have the permission mainplugins.shop.rank.<name> (e.g. mainplugins.shop.rank.vip).
+# buy-discount = that many percent cheaper when buying, sell-bonus = that many percent more when selling.
+# A sale and a rank discount add up. A player with several ranks gets the biggest bonus.
+rank-bonuses:
+  vip:
+    buy-discount: 2
+    sell-bonus: 1
 
 # Where things are in each window. size = 9, 18, 27, 36, 45 or 54.
-# Roles: CATEGORY_SLOT (main menu), ITEM_SLOT, AMOUNT_SLOT (buy-picker, amount = pieces),
+# Roles: CATEGORY_SLOT (main menu), ITEM_SLOT, ROTATION_SLOT (place for a rotating item), AMOUNT_SLOT (buy-picker, amount = pieces),
 #        NAV_BACK, NAV_PREV, NAV_NEXT, EXIT, SEARCH, SORT, FILLER (optional material).
 menus:
   main-menu:

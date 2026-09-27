@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ShopRulesTest {
 
     private static ShopItem item(Double buy, int amount, Double sell, int sellAmount) {
-        return new ShopItem("STONE", null, buy, sell, amount, sellAmount, null, List.of(), null);
+        return new ShopItem("STONE", null, buy, sell, amount, sellAmount, null, List.of(), null, true);
     }
 
     @Test
@@ -74,11 +74,11 @@ class ShopRulesTest {
     void sellOfferPrefersFirstCategoryAndMatchesExactKeys() {
         ShopItem stoneA = item(1.0, 1, 1.0, 1);
         ShopItem stoneB = item(1.0, 1, 2.0, 1);
-        ShopItem custom = new ShopItem(null, "gem", 5.0, 3.0, 1, 1, null, List.of(), null);
-        ShopItem rotating = new ShopItem("ELYTRA", null, 100.0, 50.0, 1, 1, null, List.of(), null);
+        ShopItem custom = new ShopItem(null, "gem", 5.0, 3.0, 1, 1, null, List.of(), null, true);
+        ShopItem rotating = new ShopItem("ELYTRA", null, 100.0, 50.0, 1, 1, null, List.of(), null, true);
         Map<String, Category> cats = new LinkedHashMap<>();
-        cats.put("a", new Category("a", "A", "STONE", null, List.of(stoneA, custom), null));
-        cats.put("b", new Category("b", "B", "STONE", null, List.of(stoneB), null));
+        cats.put("a", new Category("a", "A", "STONE", null, List.of(stoneA, custom), null, null));
+        cats.put("b", new Category("b", "B", "STONE", null, List.of(stoneB), null, null));
         ShopConfig cfg = new ShopConfig(ShopSettings.defaults(), cats);
         assertSame(stoneA, ShopRules.sellOffer(cfg, Map.of(), "STONE"));
         assertSame(custom, ShopRules.sellOffer(cfg, Map.of(), "custom:gem"));
@@ -144,5 +144,19 @@ class ShopRulesTest {
         assertEquals("2d 3h", ShopRules.formatDuration(2 * 86_400_000L + 3 * 3_600_000L));
         assertEquals("45s", ShopRules.formatDuration(45_000L));
         assertEquals("0s", ShopRules.formatDuration(-5));
+    }
+
+    @Test
+    void matchesCategoryByIdOrNameWithoutColorsAndPolishLetters() {
+        Map<String, String> names = new LinkedHashMap<>();
+        names.put("bloki", "&e&lBloki");
+        names.put("mineraly", "&e&lRudy i Minerały");
+        names.put("roslinki", "&e&lRośliny");
+        assertEquals("bloki", ShopRules.matchCategory("BLOKI", names));
+        assertEquals("mineraly", ShopRules.matchCategory("rudy i minerały", names));
+        assertEquals("mineraly", ShopRules.matchCategory("Rudy i Mineraly", names));
+        assertEquals("roslinki", ShopRules.matchCategory("rosliny", names));
+        assertNull(ShopRules.matchCategory("drewno", names));
+        assertNull(ShopRules.matchCategory("  ", names));
     }
 }

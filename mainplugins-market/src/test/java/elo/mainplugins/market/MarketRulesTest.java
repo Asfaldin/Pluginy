@@ -32,4 +32,13 @@ class MarketRulesTest {
         assertEquals(15, MarketRules.limitFor(10, List.of("mainplugins.market.limit.15", "mainplugins.market.limit.12")));
         assertEquals(10, MarketRules.limitFor(10, List.of("mainplugins.market.limit.5", "mainplugins.market.limit.x", "other.perm")));
     }
+
+    @Test
+    void rankLimitsFromTheFileWinWhenHigher() {
+        java.util.Map<String, Integer> ranks = java.util.Map.of("vip", 15, "svip", 25);
+        assertEquals(10, MarketRules.limitFor(10, List.of(), ranks));
+        assertEquals(15, MarketRules.limitFor(10, List.of("mainplugins.market.rank.vip"), ranks));
+        assertEquals(25, MarketRules.limitFor(10, List.of("mainplugins.market.rank.vip", "mainplugins.market.rank.svip"), ranks));
+        assertEquals(30, MarketRules.limitFor(10, List.of("mainplugins.market.rank.vip", "mainplugins.market.limit.30"), ranks));
+    }
 }

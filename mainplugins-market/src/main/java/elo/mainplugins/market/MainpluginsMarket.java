@@ -23,6 +23,7 @@ public final class MainpluginsMarket extends JavaPlugin {
         lang.registerDefaults(this);
         market = new MarketManager(this, lang, CoreAPI.getItemNameService(), CoreAPI.getEconomyService());
         getServer().getPluginManager().registerEvents(market, this);
+        market.describeOldListings();
 
         if (getCommand("targ") != null) {
             getCommand("targ").setExecutor(MarketCommand.player(this, market, lang));

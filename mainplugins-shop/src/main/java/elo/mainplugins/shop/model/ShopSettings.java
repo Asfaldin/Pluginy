@@ -7,10 +7,24 @@ import java.util.Map;
 
 /**
  * shop.yml bez kategorii. menus: main-menu, category-page, buy-picker, search-results.
- * buttonMaterials: wygląd przycisków (teksty są w lang).
+ * buttonMaterials: wygląd przycisków (teksty są w lang). extras: premie rang, promocje, historia.
  */
 public record ShopSettings(List<String> categoryOrder, Rounding rounding, DynamicSettings dynamic, boolean statsEnabled,
-                           Map<String, MenuScreen> menus, Map<String, String> buttonMaterials) {
+                           Map<String, MenuScreen> menus, Map<String, String> buttonMaterials,
+                           CategorySort categorySort, boolean centerSmallCategories, ShopExtras extras) {
+
+    /**
+     * Kolejność przedmiotów na stronie kategorii, zanim gracz kliknie lejek.
+     * ORDER = kolejność z pliku (tak, jak ułożył właściciel - np. szachownica), BUY = od najtańszego kupna,
+     * SELL = od najwyższego skupu.
+     */
+    public enum CategorySort { ORDER, BUY, SELL }
+
+    /** Stary zestaw pól - kolejność sklepu, bez wyśrodkowania (przedmioty stoją tam, gdzie ustawił je właściciel). */
+    public ShopSettings(List<String> categoryOrder, Rounding rounding, DynamicSettings dynamic, boolean statsEnabled,
+                        Map<String, MenuScreen> menus, Map<String, String> buttonMaterials) {
+        this(categoryOrder, rounding, dynamic, statsEnabled, menus, buttonMaterials, CategorySort.ORDER, false, ShopExtras.defaults());
+    }
 
     public static final List<String> SCREENS = List.of("main-menu", "category-page", "buy-picker", "search-results");
     public static final List<String> BUTTONS = List.of("search", "exit", "back", "prev", "next", "sort", "sort-sell", "picker-back");

@@ -206,7 +206,7 @@ public final class MarketManager implements Listener {
         for (PermissionAttachmentInfo info : player.getEffectivePermissions()) {
             if (info.getValue()) perms.add(info.getPermission());
         }
-        int limit = MarketRules.limitFor(settings.defaultLimit(), perms);
+        int limit = MarketRules.limitFor(settings.defaultLimit(), perms, settings.rankLimits());
         if (store.countBy(player.getUniqueId()) >= limit) {
             send(player, "sell.limit", Map.of("limit", String.valueOf(limit)));
             return;
@@ -214,13 +214,14 @@ public final class MarketManager implements Listener {
         Listing listing = new Listing(UUID.randomUUID().toString(), player.getUniqueId(), player.getName(),
                 price, System.currentTimeMillis(), encode(hand.clone()));
         store.add(listing);
+        store.describe(listing.id(), hand.getType().name(), hand.getAmount(), itemName(hand));
         changed();
         player.getInventory().setItemInMainHand(null);
         send(player, "sell.listed", Map.of("price", money(price)));
 
         List<Listing> shown = visible(player);
         int index = shown.indexOf(listing);
-        openMain(player, Math.max(0, index) / MarketSettings.OFFER_SLOTS.size(), lastFromMenu.getOrDefault(player.getUniqueId(), false));
+        openMain(player, Math.max(0, index) / settings.offerSlots().size(), lastFromMenu.getOrDefault(player.getUniqueId(), false));
     }
 
     // ---------- menu ----------
@@ -239,7 +240,7 @@ public final class MarketManager implements Listener {
     public void openMain(Player player, int page, boolean fromMenu) {
         lastFromMenu.put(player.getUniqueId(), fromMenu);
         List<Listing> list = visible(player);
-        int per = MarketSettings.OFFER_SLOTS.size();
+        int per = settings.offerSlots().size();
         int pages = Math.max(1, (list.size() + per - 1) / per);
         page = Math.max(0, Math.min(page, pages - 1));
         boolean mine = onlyMine.getOrDefault(player.getUniqueId(), false);
@@ -248,14 +249,14 @@ public final class MarketManager implements Listener {
         Map<String, String> ph = Map.of("page", String.valueOf(page + 1));
         Component title = !settings.title().isEmpty() ? SER.deserialize(settings.title().replace("{page}", String.valueOf(page + 1)))
                 : lang.msg(plugin, mine ? "menu.title-mine" : "menu.title", ph);
-        Inventory gui = holder.create(title);
+        Inventory gui = holder.create(settings.size(), title);
         GuiUtils.fillBackground(gui, material(settings.background(), Material.GRAY_STAINED_GLASS_PANE));
 
         for (int i = 0; i < per && page * per + i < list.size(); i++) {
             Listing l = list.get(page * per + i);
             ItemStack shown = offerIcon(player, l);
             if (shown == null) continue;
-            int slot = MarketSettings.OFFER_SLOTS.get(i);
+            int slot = settings.offerSlots().get(i);
             gui.setItem(slot, shown);
             holder.offers().put(slot, l.id());
         }
@@ -324,14 +325,14 @@ public final class MarketManager implements Listener {
             openMain(player, 0, lastFromMenu.getOrDefault(player.getUniqueId(), false));
             return;
         }
-        int per = MarketSettings.OFFER_SLOTS.size();
+        int per = settings.offerSlots().size();
         MarketGuiHolder holder = new MarketGuiHolder(MarketGuiHolder.Kind.SEARCH, 0, lastFromMenu.getOrDefault(player.getUniqueId(), false));
-        Inventory gui = holder.create(lang.msg(plugin, "menu.search-title", Map.of("query", query)));
+        Inventory gui = holder.create(settings.size(), lang.msg(plugin, "menu.search-title", Map.of("query", query)));
         GuiUtils.fillBackground(gui, material(settings.background(), Material.GRAY_STAINED_GLASS_PANE));
         for (int i = 0; i < per && i < hits.size(); i++) {
             ItemStack icon = offerIcon(player, hits.get(i));
             if (icon == null) continue;
-            int slot = MarketSettings.OFFER_SLOTS.get(i);
+            int slot = settings.offerSlots().get(i);
             gui.setItem(slot, icon);
             holder.offers().put(slot, hits.get(i).id());
         }
@@ -362,10 +363,10 @@ public final class MarketManager implements Listener {
 
     private void openMailbox(Player player) {
         MarketGuiHolder holder = new MarketGuiHolder(MarketGuiHolder.Kind.MAILBOX, 0, lastFromMenu.getOrDefault(player.getUniqueId(), false));
-        Inventory gui = holder.create(lang.msg(plugin, "menu.mailbox-title"));
+        Inventory gui = holder.create(settings.size(), lang.msg(plugin, "menu.mailbox-title"));
         GuiUtils.fillBackground(gui, material(settings.background(), Material.GRAY_STAINED_GLASS_PANE));
         List<MailItem> mail = store.mailbox(player.getUniqueId());
-        for (int i = 0; i < MarketSettings.OFFER_SLOTS.size() && i < mail.size(); i++) {
+        for (int i = 0; i < settings.offerSlots().size() && i < mail.size(); i++) {
             ItemStack item = decode(mail.get(i).item());
             if (item == null) continue;
             ItemMeta meta = item.getItemMeta();
@@ -376,7 +377,7 @@ public final class MarketManager implements Listener {
                 meta.lore(lore);
                 item.setItemMeta(meta);
             }
-            int slot = MarketSettings.OFFER_SLOTS.get(i);
+            int slot = settings.offerSlots().get(i);
             gui.setItem(slot, item);
             holder.mail().put(slot, i);
         }
@@ -623,26 +624,54 @@ public final class MarketManager implements Listener {
     /** Zdejmuje wszystkie oferty gracza: do skrzynki, a przy wyłączonej - do ekwipunku (online) albo zwrotów. */
     public int removeAll(UUID seller) {
         int n = 0;
-        Player online = Bukkit.getPlayer(seller);
         for (Listing l : store.listings()) {
             if (!l.seller().equals(seller)) continue;
-            store.remove(l.id());
-            if (settings.mailbox()) {
-                store.addMail(seller, new MailItem(System.currentTimeMillis(), l.item()));
-            } else if (online != null) {
-                ItemStack item = decode(l.item());
-                if (item != null) {
-                    for (ItemStack rest : online.getInventory().addItem(item).values()) {
-                        online.getWorld().dropItemNaturally(online.getLocation(), rest);
-                    }
-                }
-            } else {
-                store.addPendingReturn(seller, l.item());
-            }
+            giveBack(l);
             n++;
         }
         if (n > 0) changed();
         return n;
+    }
+
+    /** Zdejmuje jedną ofertę (id z /@market list albo z aplikacji); null = nie ma takiej. */
+    public Listing removeOne(String id) {
+        Listing l = store.get(id);
+        if (l == null) return null;
+        giveBack(l);
+        changed();
+        return l;
+    }
+
+    /** Oferta schodzi z Targu, przedmiot wraca do sprzedającego (skrzynka, ekwipunek albo zwrot przy wejściu). */
+    private void giveBack(Listing l) {
+        UUID seller = l.seller();
+        store.remove(l.id());
+        Player online = Bukkit.getPlayer(seller);
+        if (settings.mailbox()) {
+            store.addMail(seller, new MailItem(System.currentTimeMillis(), l.item()));
+        } else if (online != null) {
+            ItemStack item = decode(l.item());
+            if (item != null) {
+                for (ItemStack rest : online.getInventory().addItem(item).values()) {
+                    online.getWorld().dropItemNaturally(online.getLocation(), rest);
+                }
+            }
+        } else {
+            store.addPendingReturn(seller, l.item());
+        }
+    }
+
+    /** Starsze oferty (sprzed opisu dla aplikacji) - dopisuje typ, ilość i nazwę. Wołane przy starcie. */
+    public void describeOldListings() {
+        int n = 0;
+        for (Listing l : store.listings()) {
+            if (store.described(l.id())) continue;
+            ItemStack item = decode(l.item());
+            if (item == null) continue;
+            store.describe(l.id(), item.getType().name(), item.getAmount(), itemName(item));
+            n++;
+        }
+        if (n > 0) changed();
     }
 
     /** Nazwa przedmiotu oferty do czatu (własna nazwa albo nazwa materiału). */

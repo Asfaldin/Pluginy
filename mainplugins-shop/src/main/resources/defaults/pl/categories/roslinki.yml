@@ -1,0 +1,92 @@
+# Jedna kategoria sklepu. Ceny są za paczkę: buy = cena za 'amount' sztuk (domyślnie 1),
+# dynamic: false przy pozycji = cena stała, ceny dynamiczne jej nie ruszają.
+# sell = cena za 'sell-amount' sztuk (domyślnie 1). Bez buy = nie do kupienia, bez sell = nie do sprzedania.
+# Zamiast 'item' możesz użyć 'custom: <id>' (przedmiot z katalogu itemów).
+name: '&e&lRośliny'
+icon: POPPY
+items:
+  - {item: AZALEA, buy: 320, amount: 64, sell-amount: 64, name: '&d&lSadzonka Azalii'}
+  - {item: FLOWERING_AZALEA, buy: 320, amount: 64, sell-amount: 64, name: '&d&lKwitnąca Sadzonka Azalii'}
+  - {item: MANGROVE_PROPAGULE, buy: 320, amount: 64, sell-amount: 64, name: '&d&lKiełek Mangrowca'}
+  - {item: GLOW_BERRIES, buy: 320, amount: 64, sell-amount: 64, name: '&d&lŚwiecące Jagody'}
+  - {item: TORCHFLOWER_SEEDS, buy: 832, amount: 64, sell-amount: 64, name: '&d&lNasiona Pochodnika'}
+  - {item: PITCHER_POD, buy: 832, amount: 64, sell-amount: 64, name: '&d&lStrąk Dzbanecznika'}
+  - {item: WHEAT_SEEDS, buy: 1280, amount: 64, sell: 10, sell-amount: 64, name: '&d&lNasiona Pszenicy'}
+  - {item: BEETROOT_SEEDS, buy: 1280, amount: 64, sell: 10, sell-amount: 64, name: '&d&lNasiona Buraka'}
+  - {item: MELON_SEEDS, buy: 1280, amount: 64, sell: 10, sell-amount: 64, name: '&d&lNasiona Arbuza'}
+  - {item: PUMPKIN_SEEDS, buy: 1280, amount: 64, sell: 10, sell-amount: 64, name: '&d&lNasiona Dyni'}
+  - {item: BEETROOT, buy: 1536, amount: 64, sell: 300, sell-amount: 64, name: '&d&lBurak'}
+  - {item: MELON_SLICE, buy: 1600, amount: 64, sell: 300, sell-amount: 64, name: '&d&lKawałek Arbuza'}
+  - {item: KELP, buy: 400, amount: 16, sell-amount: 16, name: '&d&lWodorosty'}
+  - {item: PUMPKIN, buy: 1920, amount: 64, sell: 500, sell-amount: 64, name: '&d&lDynia'}
+  - {item: WHEAT, buy: 1920, amount: 64, sell: 600, sell-amount: 64, name: '&d&lPszenica'}
+  - {item: POPPY, buy: 160, amount: 4, sell-amount: 4, name: '&d&lMak'}
+  - {item: DANDELION, buy: 160, amount: 4, sell-amount: 4, name: '&d&lMniszek'}
+  - {item: SEAGRASS, buy: 200, amount: 4, sell-amount: 4, name: '&d&lTrawa Morska'}
+  - {item: BLUE_ORCHID, buy: 240, amount: 4, sell-amount: 4, name: '&d&lBłękitna Orchidea'}
+  - {item: ALLIUM, buy: 240, amount: 4, sell-amount: 4, name: '&d&lCzosnek Ozdobny'}
+  - {item: AZURE_BLUET, buy: 240, amount: 4, sell-amount: 4, name: '&d&lBłękitek'}
+  - {item: OXEYE_DAISY, buy: 240, amount: 4, sell-amount: 4, name: '&d&lZłocień'}
+  - {item: CORNFLOWER, buy: 240, amount: 4, sell-amount: 4, name: '&d&lChaber'}
+  - {item: LILY_OF_THE_VALLEY, buy: 240, amount: 4, sell-amount: 4, name: '&d&lKonwalia'}
+  - {item: CRIMSON_ROOTS, buy: 320, amount: 4, sell-amount: 4, name: '&d&lNetherowe Kiełki'}
+  - {item: SUNFLOWER, buy: 320, amount: 4, sell-amount: 4, name: '&d&lSłonecznik'}
+  - {item: LILAC, buy: 320, amount: 4, sell-amount: 4, name: '&d&lBez'}
+  - {item: ROSE_BUSH, buy: 320, amount: 4, sell-amount: 4, name: '&d&lKrzew Różany'}
+  - {item: PEONY, buy: 320, amount: 4, sell-amount: 4, name: '&d&lPiwonia'}
+  - {item: VINE, buy: 320, amount: 4, sell-amount: 4, name: '&d&lPnącza'}
+  - {item: LEAF_LITTER, buy: 320, amount: 4, sell-amount: 4, name: '&d&lŚciółka'}
+  - {item: HANGING_ROOTS, buy: 320, amount: 4, sell-amount: 4, name: '&d&lZwisające Korzenie'}
+  - {item: WARPED_ROOTS, buy: 320, amount: 4, sell-amount: 4, name: '&d&lSpaczone Korzenie'}
+  - {item: CARROT, buy: 320, amount: 4, sell: 600, sell-amount: 64, name: '&d&lMarchewka'}
+  - {item: POTATO, buy: 320, amount: 4, sell: 600, sell-amount: 64, name: '&d&lZiemniak'}
+  - {item: SUGAR_CANE, buy: 1600, amount: 16, sell: 400, sell-amount: 64, name: '&d&lTrzcina Cukrowa'}
+  - {item: CACTUS, buy: 1600, amount: 16, sell: 400, sell-amount: 64, name: '&d&lKaktus'}
+  - {item: BAMBOO, buy: 6400, amount: 64, sell: 8, sell-amount: 64, name: '&d&lBambus'}
+  - {item: SWEET_BERRIES, buy: 6400, amount: 64, sell: 8, sell-amount: 64, name: '&d&lSłodkie Jagody'}
+  - {item: WEEPING_VINES, buy: 400, amount: 4, sell-amount: 4, name: '&d&lIskrzyłodyga'}
+  - {item: TWISTING_VINES, buy: 400, amount: 4, sell-amount: 4, name: '&d&lKrętołodyga'}
+  - {item: PALE_HANGING_MOSS, buy: 400, amount: 4, sell-amount: 4, name: '&d&lZwisający Blady Mech'}
+  - {item: PINK_PETALS, buy: 400, amount: 4, sell-amount: 4, name: '&d&lRóżowe Kwiatki'}
+  - {item: WILDFLOWERS, buy: 400, amount: 4, sell-amount: 4, name: '&d&lPolne Kwiaty'}
+  - {item: SMALL_DRIPLEAF, buy: 400, amount: 4, sell-amount: 4, name: '&d&lMały Spadoliść'}
+  - {item: OAK_SAPLING, buy: 9600, amount: 64, sell: 10, sell-amount: 64, name: '&d&lSadzonka Dębu'}
+  - {item: BIRCH_SAPLING, buy: 9600, amount: 64, sell: 10, sell-amount: 64, name: '&d&lSadzonka Brzozy'}
+  - {item: CRIMSON_FUNGUS, buy: 600, amount: 4, sell-amount: 4, name: '&d&lKarmazynowy Grzyb'}
+  - {item: WARPED_FUNGUS, buy: 600, amount: 4, sell-amount: 4, name: '&d&lSpaczony Grzyb'}
+  - {item: SEA_PICKLE, buy: 600, amount: 4, sell-amount: 4, name: '&d&lKrasnorosty'}
+  - {item: BIG_DRIPLEAF, buy: 600, amount: 4, sell-amount: 4, name: '&d&lWielki Spadoliść'}
+  - {item: GLOW_LICHEN, buy: 600, amount: 4, sell-amount: 4, name: '&d&lŚwiecący Porost'}
+  - {item: COCOA_BEANS, buy: 190, sell: 800, sell-amount: 64, name: '&d&lZiarna Kakao'}
+  - {item: CHORUS_FLOWER, buy: 200, name: '&d&lKwiat Chorusa'}
+  - {item: TUBE_CORAL, buy: 200, name: '&d&lKoralowiec Rurkowy'}
+  - {item: BRAIN_CORAL, buy: 200, name: '&d&lKoralowiec Mózgowy'}
+  - {item: BUBBLE_CORAL, buy: 200, name: '&d&lKoralowiec Bąbelkowy'}
+  - {item: FIRE_CORAL, buy: 200, name: '&d&lKoralowiec Ognisty'}
+  - {item: HORN_CORAL, buy: 200, name: '&d&lKoralowiec Rogowy'}
+  - {item: CACTUS_FLOWER, buy: 200, name: '&d&lKwiat Kaktusa'}
+  - {item: SPRUCE_SAPLING, buy: 16000, amount: 64, sell: 10, sell-amount: 64, name: '&d&lSadzonka Świerku'}
+  - {item: JUNGLE_SAPLING, buy: 16000, amount: 64, sell: 10, sell-amount: 64, name: '&d&lSadzonka Tropikalna'}
+  - {item: ACACIA_SAPLING, buy: 16000, amount: 64, sell: 10, sell-amount: 64, name: '&d&lSadzonka Akacji'}
+  - {item: DARK_OAK_SAPLING, buy: 16000, amount: 64, sell: 10, sell-amount: 64, name: '&d&lSadzonka Ciemnego Dębu'}
+  - {item: BROWN_MUSHROOM, buy: 250, sell: 400, sell-amount: 64, name: '&d&lBrązowy Grzyb'}
+  - {item: RED_MUSHROOM, buy: 250, sell: 400, sell-amount: 64, name: '&d&lCzerwony Grzyb'}
+  - {item: NETHER_WART, buy: 250, name: '&d&lNetherowa Brodawka'}
+  - {item: SPORE_BLOSSOM, buy: 250, name: '&d&lZarodnia'}
+  - {item: TUBE_CORAL_FAN, buy: 250, name: '&d&lWachlarz Koralowca Rurkowego'}
+  - {item: BRAIN_CORAL_FAN, buy: 250, name: '&d&lWachlarz Koralowca Mózgowego'}
+  - {item: BUBBLE_CORAL_FAN, buy: 250, name: '&d&lWachlarz Koralowca Bąbelkowego'}
+  - {item: FIRE_CORAL_FAN, buy: 250, name: '&d&lWachlarz Koralowca Ognistego'}
+  - {item: HORN_CORAL_FAN, buy: 250, name: '&d&lWachlarz Koralowca Rogowego'}
+  - {item: CLOSED_EYEBLOSSOM, buy: 250, name: '&d&lZamknięta Okrotka'}
+  - {item: OPEN_EYEBLOSSOM, buy: 250, name: '&d&lOtwarta Okrotka'}
+  - {item: TORCHFLOWER, buy: 300, name: '&d&lOgnisty Kwiat'}
+  - {item: FIREFLY_BUSH, buy: 300, name: '&d&lKrzew Świetlików'}
+  - {item: CHERRY_SAPLING, buy: 22400, amount: 64, sell: 10, sell-amount: 64, name: '&d&lSadzonka Wiśni'}
+  - {item: PALE_OAK_SAPLING, buy: 22400, amount: 64, sell: 10, sell-amount: 64, name: '&d&lSadzonka Bladego Dębu'}
+  - {item: PITCHER_PLANT, buy: 400, name: '&d&lDzbanecznik'}
+  - {item: TUBE_CORAL_BLOCK, buy: 600, name: '&d&lBlok Koralowca Rurkowego'}
+  - {item: BRAIN_CORAL_BLOCK, buy: 600, name: '&d&lBlok Koralowca Mózgowego'}
+  - {item: BUBBLE_CORAL_BLOCK, buy: 600, name: '&d&lBlok Koralowca Bąbelkowego'}
+  - {item: FIRE_CORAL_BLOCK, buy: 600, name: '&d&lBlok Koralowca Ognistego'}
+  - {item: HORN_CORAL_BLOCK, buy: 600, name: '&d&lBlok Koralowca Rogowego'}

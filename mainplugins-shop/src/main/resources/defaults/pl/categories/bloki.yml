@@ -1,0 +1,69 @@
+# Jedna kategoria sklepu. Ceny są za paczkę: buy = cena za 'amount' sztuk (domyślnie 1),
+# dynamic: false przy pozycji = cena stała, ceny dynamiczne jej nie ruszają.
+# sell = cena za 'sell-amount' sztuk (domyślnie 1). Bez buy = nie do kupienia, bez sell = nie do sprzedania.
+# Zamiast 'item' możesz użyć 'custom: <id>' (przedmiot z katalogu itemów).
+name: '&e&lBloki'
+icon: GRASS_BLOCK
+items:
+  - {item: MUD, buy: 640, amount: 64, sell-amount: 64, name: '&d&lBłoto'}
+  - {item: COBBLESTONE, buy: 640, amount: 64, sell: 50, sell-amount: 64, name: '&d&lBruk'}
+  - {item: SNOW_BLOCK, buy: 640, amount: 64, sell-amount: 64, name: '&d&lBlok Śniegu'}
+  - {item: STONE, buy: 960, amount: 64, sell: 70, sell-amount: 64, name: '&d&lKamień'}
+  - {item: GRANITE, buy: 1600, amount: 64, sell-amount: 64, name: '&d&lGranit'}
+  - {item: DIORITE, buy: 1600, amount: 64, sell-amount: 64, name: '&d&lDioryt'}
+  - {item: ANDESITE, buy: 1600, amount: 64, sell-amount: 64, name: '&d&lAndezyt'}
+  - {item: COBBLED_DEEPSLATE, buy: 1792, amount: 64, sell-amount: 64, name: '&d&lBruk Głębinowy'}
+  - {item: DIRT, buy: 1920, amount: 64, sell: 60, sell-amount: 64, name: '&d&lZiemia'}
+  - {item: STONE_BRICKS, buy: 1920, amount: 64, sell-amount: 64, name: '&d&lKamienne Cegły'}
+  - {item: SMOOTH_STONE, buy: 1920, amount: 64, sell-amount: 64, name: '&d&lGładki Kamień'}
+  - {item: ROOTED_DIRT, buy: 2240, amount: 64, sell-amount: 64, name: '&d&lZiemia z Korzeniami'}
+  - {item: NETHERRACK, buy: 2240, amount: 64, sell: 25, sell-amount: 64, name: '&d&lNetherrack'}
+  - {item: TUFF, buy: 640, amount: 16, sell-amount: 16, name: '&d&lTuf'}
+  - {item: DRIPSTONE_BLOCK, buy: 640, amount: 16, sell-amount: 16, name: '&d&lBlok Nacieku'}
+  - {item: NETHER_BRICKS, buy: 720, amount: 16, sell-amount: 16, name: '&d&lNetherowe Cegły'}
+  - {item: SULFUR, buy: 720, amount: 16, sell-amount: 16, name: '&d&lSiarka'}
+  - {item: MANGROVE_ROOTS, buy: 720, amount: 16, sell-amount: 16, name: '&d&lNamorzynowe Korzenie'}
+  - {item: DEEPSLATE, buy: 720, amount: 16, sell-amount: 16, name: '&d&lŁupek Głębinowy'}
+  - {item: BASALT, buy: 720, amount: 16, sell-amount: 16, name: '&d&lBazalt'}
+  - {item: PODZOL, buy: 720, amount: 16, sell-amount: 16, name: '&d&lBielica'}
+  - {item: MOSS_BLOCK, buy: 720, amount: 16, sell-amount: 16, name: '&d&lBlok Mchu'}
+  - {item: GRASS_BLOCK, buy: 720, amount: 16, sell-amount: 16, name: '&d&lBlok Trawy'}
+  - {item: CALCITE, buy: 720, amount: 16, sell-amount: 16, name: '&d&lKalcyt'}
+  - {item: END_STONE, buy: 720, amount: 16, sell-amount: 16, name: '&d&lKamień Endu'}
+  - {item: ICE, buy: 800, amount: 16, sell-amount: 16, name: '&d&lLód'}
+  - {item: CINNABAR, buy: 800, amount: 16, sell-amount: 16, name: '&d&lCynober'}
+  - {item: MUDDY_MANGROVE_ROOTS, buy: 800, amount: 16, sell-amount: 16, name: '&d&lZabłocone Namorzynowe Korzenie'}
+  - {item: BLACKSTONE, buy: 800, amount: 16, sell-amount: 16, name: '&d&lCzarny Kamień'}
+  - {item: MYCELIUM, buy: 800, amount: 16, sell-amount: 16, name: '&d&lGrzybnia'}
+  - {item: GRAVEL, buy: 800, amount: 16, sell: 110, sell-amount: 64, name: '&d&lŻwir'}
+  - {item: TERRACOTTA, buy: 880, amount: 16, sell-amount: 16, name: '&d&lTerakota'}
+  - {item: SOUL_SOIL, buy: 880, amount: 16, sell-amount: 16, name: '&d&lGleba Dusz'}
+  - {item: SMOOTH_BASALT, buy: 880, amount: 16, sell-amount: 16, name: '&d&lGładki Bazalt'}
+  - {item: SOUL_SAND, buy: 880, amount: 16, sell: 40, sell-amount: 64, name: '&d&lPiasek Dusz'}
+  - {item: PALE_MOSS_BLOCK, buy: 880, amount: 16, sell-amount: 16, name: '&d&lBlok Bladego Mchu'}
+  - {item: SAND, buy: 960, amount: 16, sell: 110, sell-amount: 64, name: '&d&lPiasek'}
+  - {item: BRICKS, buy: 960, amount: 16, sell-amount: 16, name: '&d&lCegły'}
+  - {item: MAGMA_BLOCK, buy: 960, amount: 16, sell-amount: 16, name: '&d&lBlok Magmy'}
+  - {item: PURPUR_BLOCK, buy: 960, amount: 16, sell-amount: 16, name: '&d&lBlok Purpuru'}
+  - {item: QUARTZ_BLOCK, buy: 960, amount: 16, sell-amount: 16, name: '&d&lBlok Kwarcu'}
+  - {item: NETHER_WART_BLOCK, buy: 1120, amount: 16, sell-amount: 16, name: '&d&lBlok Brodawki'}
+  - {item: RED_SAND, buy: 1440, amount: 16, sell-amount: 16, name: '&d&lCzerwony Piasek'}
+  - {item: CRIMSON_NYLIUM, buy: 1440, amount: 16, sell-amount: 16, name: '&d&lSzkarłatne Nylium'}
+  - {item: PRISMARINE, buy: 1440, amount: 16, sell-amount: 16, name: '&d&lPryzmaryn'}
+  - {item: WARPED_NYLIUM, buy: 1440, amount: 16, sell-amount: 16, name: '&d&lSpaczone Nylium'}
+  - {item: DARK_PRISMARINE, buy: 1600, amount: 16, sell-amount: 16, name: '&d&lCiemny Pryzmaryn'}
+  - {item: PACKED_ICE, buy: 400, amount: 4, sell-amount: 4, name: '&d&lZbity Lód'}
+  - {item: GLASS, buy: 1760, amount: 16, sell-amount: 16, name: '&d&lSzkło'}
+  - {item: SHROOMLIGHT, buy: 1760, amount: 16, sell-amount: 16, name: '&d&lGrzyboświetlik'}
+  - {item: WHITE_CONCRETE, buy: 1920, amount: 16, sell-amount: 16, name: '&d&lBiały Cement'}
+  - {item: BLUE_ICE, buy: 2400, amount: 16, sell-amount: 16, name: '&d&lBłękitny Lód'}
+  - {item: SEA_LANTERN, buy: 720, amount: 4, sell-amount: 4, name: '&d&lMorska Latarnia'}
+  - {item: OBSIDIAN, buy: 800, amount: 4, sell: 400, sell-amount: 64, name: '&d&lObsydian'}
+  - {item: SPONGE, buy: 1000, amount: 4, sell-amount: 4, name: '&d&lGąbka'}
+  - {item: CRYING_OBSIDIAN, buy: 1200, amount: 4, sell-amount: 4, name: '&d&lPłaczący Obsydian'}
+rotation:
+  enabled: false
+  show: 5
+  every-days: 14
+  announce: true
+  pool: []

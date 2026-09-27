@@ -1,6 +1,6 @@
 # Mainplugins Core - komunikaty po polsku. Kolory: &a &e ...  Placeholdery: {nazwa}
 reward:
-  money: "&aOtrzymujesz &e{amount}$&a."
+  money: "&aOtrzymujesz &e{amount}{currency}&a."
   item: "&aOtrzymujesz &e{amount}x {item}&a."
   custom: "&aOtrzymujesz &e{amount}x {item}&a."
   unlock: "&aOdblokowano: &e{name}&a."

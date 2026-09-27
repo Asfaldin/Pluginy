@@ -58,6 +58,10 @@ commands:
     description: Reload the item catalog (items/ folder) without a restart
     permission: mainplugins.core.reloadcustomitems
     permission-message: "&cNie masz permisji do tej komendy!"
+  "@reloadresourcepack":
+    description: Reload the server resource pack (resourcepack/pack.zip) and resend it to online players
+    permission: mainplugins.core.reloadresourcepack
+    permission-message: "&cNie masz permisji do tej komendy!"
   "@rewardtest":
     description: (Admin) Give the test-rewards list from config.yml to a player
     permission: mainplugins.core.rewardtest
@@ -85,6 +89,9 @@ permissions:
     default: op
   mainplugins.core.reloadcustomitems:
     description: Dostęp do przeładowania custom-items.yml
+    default: op
+  mainplugins.core.reloadresourcepack:
+    description: Dostęp do przeładowania paczki zasobów serwera
     default: op
   mainplugins.core.reloadlang:
     description: Access to /@reloadlang

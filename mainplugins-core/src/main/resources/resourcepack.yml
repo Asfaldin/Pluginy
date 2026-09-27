@@ -20,3 +20,20 @@
 url: "https://download.mc-packs.net/pack/d8d73d84d81f06197bef173d762de0bd496de364.zip"
 hash: "d8d73d84d81f06197bef173d762de0bd496de364"
 wymagany: false
+
+# --------------------------------------------------------------------------
+# Paczka SERWERA z Texturepack Creatora w aplikacji RSMCMANAGER.
+# Aplikacja wgrywa ja do plugins/MainpluginsCore/resourcepack/pack.zip i wywoluje
+# /@reloadresourcepack - Core sam udostepnia ja graczom (bez zewnetrznego hostingu
+# i bez server.properties). Naklada sie NA paczke powyzej, wiec tekstury
+# Mainplugins zostaja.
+#
+# port - musi byc otwarty na zewnatrz (na hostingu: dodatkowy port w panelu).
+# adres - IP/domena, pod ktora gracze widza serwer. Puste = server-ip z
+#         server.properties, a gdy go brak - publiczne IP wykryte automatycznie
+#         (jedno zapytanie do api.ipify.org przy starcie).
+# --------------------------------------------------------------------------
+wbudowany-hosting:
+  wlaczony: true
+  port: 8163
+  adres: ""

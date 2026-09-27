@@ -46,6 +46,8 @@ import java.io.File;
 public final class MainpluginsCore extends JavaPlugin {
 
     private EconomyManager economyManager;
+
+    private ResourcePackManager resourcePackManager;
     private EconomyService economyService;
     private LangManager langManager;
     private ItemNameManager itemNameManager;
@@ -103,7 +105,8 @@ public final class MainpluginsCore extends JavaPlugin {
             return true;
         });
 
-        getServer().getPluginManager().registerEvents(new ResourcePackManager(this), this);
+        resourcePackManager = new ResourcePackManager(this);
+        getServer().getPluginManager().registerEvents(resourcePackManager, this);
 
         if (getCommand("wszystkiekomendy") != null) {
             getCommand("wszystkiekomendy").setExecutor(new AdminHelpCommand());
@@ -177,6 +180,16 @@ public final class MainpluginsCore extends JavaPlugin {
             });
             getCommand("@reloadcustomitems").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
         }
+        // Aplikacja wgrywa resourcepack/pack.zip i wywołuje to przez RCON - gracze online
+        // dostają nową paczkę od razu.
+        if (getCommand("@reloadresourcepack") != null) {
+            getCommand("@reloadresourcepack").setExecutor((sender, command, label, args) -> {
+                resourcePackManager.przeladujIWyslij();
+                sender.sendMessage("§a[Mainplugins] Paczka zasobów przeładowana. §7" + resourcePackManager.opisStanu());
+                return true;
+            });
+            getCommand("@reloadresourcepack").setTabCompleter((sender, command, alias, args) -> TabCompleteUtils.PUSTA);
+        }
         if (getCommand("@rewardtest") != null) {
             getCommand("@rewardtest").setExecutor((sender, command, label, args) -> {
                 if (args.length < 1) {
@@ -216,6 +229,7 @@ public final class MainpluginsCore extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (resourcePackManager != null) resourcePackManager.zamknij();
         if (economyManager != null) economyManager.zamknij();   // <-- NOWE
         getServer().getServicesManager().unregisterAll(this);
         getLogger().info("Wyłączanie MainpluginsCore...");

@@ -7,6 +7,8 @@ crate:
   announce: "&6{player} won {prize} &6from {crate}&6! ✦"
   preview-title: "&8Rewards: {crate}"
   preview-chance: "&7Chance: &e{chance}%"
+  pointer-top: "&e&l▼"
+  pointer-bottom: "&e&l▲"
 placed:
   hint: "&7Right-click with a key &8• &7Left-click: rewards"
   protected: "&cThis is a crate. Admins can remove it with /@crate remove."
@@ -15,11 +17,12 @@ reward:
   crate: "&aYou received &e{amount}x {crate}&a."
   key: "&aYou received &e{amount}x {key}&a."
 admin:
-  usage: "&eUsage: /@crate give <player> <crate> [amount] | key <player> <key> [amount] | place <crate> | remove | list | reload"
+  usage: "&eUsage: /@crate give <player> <crate> [amount] | key <player> <key> [amount] | place <crate> | remove [world x y z] | list | reload"
   players-only: "&cOnly a player can use this."
   no-block: "&cLook at a block (max 6 blocks away)."
   already-placed: "&cThere is already a crate on this block."
   not-placed: "&cThere is no crate on this block."
+  not-placed-at: "&cThere is no crate at {world} {x} {y} {z}."
   placed: "&aThis block is now crate {crate}."
   removed: "&aCrate {crate} removed - the block is a normal block again."
   list-placed: "&ePlaced: &f{list}"

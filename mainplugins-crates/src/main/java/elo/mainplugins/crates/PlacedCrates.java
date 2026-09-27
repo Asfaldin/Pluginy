@@ -105,7 +105,12 @@ final class PlacedCrates implements Listener {
 
     /** Usuwa skrzynkę z bloku; null = tu nie było skrzynki. */
     PlacedCrate remove(Block b) {
-        PlacedCrate p = at(b);
+        return removeAt(b.getWorld().getName(), b.getX(), b.getY(), b.getZ());
+    }
+
+    /** Usuwa skrzynkę po miejscu (aplikacja: /@crate remove <świat> <x> <y> <z>); null = tam nie ma skrzynki. */
+    PlacedCrate removeAt(String world, int x, int y, int z) {
+        PlacedCrate p = placed.stream().filter(c -> c.at(world, x, y, z)).findFirst().orElse(null);
         if (p == null) return null;
         placed.remove(p);
         TextDisplay td = holograms.remove(p);

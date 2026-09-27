@@ -10,6 +10,14 @@
 settings:
   hologram-height: 0.6   # blocks above the top of a placed crate
   placed-block-from-item: true   # placed crate block turns into the crate's item (if that item is a block)
+  # Opening window: "roulette" of prizes. enabled: false = no animation, the prize is given at once.
+  animation:
+    enabled: true
+    speed: normal   # fast | normal | slow
+    background: BLACK_STAINED_GLASS_PANE
+    pointer: YELLOW_STAINED_GLASS_PANE   # the two arrows above and below the winning slot
+    tick-sound: ui.button.click   # Minecraft sound key, "" = silent
+    win-sound: entity.player.levelup
 keys:
   basic_key:
     name: "&e&lMystery Crate Key"

@@ -1,6 +1,7 @@
 package elo.mainplugins.crates;
 
 import elo.mainplugins.core.api.Reward;
+import elo.mainplugins.crates.model.CrateAnimation;
 import elo.mainplugins.crates.model.CrateConfig;
 import elo.mainplugins.crates.model.CrateDef;
 import elo.mainplugins.crates.model.ItemRef;
@@ -81,7 +82,30 @@ public final class CrateConfigParser {
             height = CrateConfig.DEFAULT_HOLOGRAM_HEIGHT;
         }
         boolean blockFromItem = root.getBoolean("settings.placed-block-from-item", true);
-        return new CrateConfig(Collections.unmodifiableMap(keys), Collections.unmodifiableMap(crates), height, blockFromItem);
+        return new CrateConfig(Collections.unmodifiableMap(keys), Collections.unmodifiableMap(crates), height, blockFromItem,
+                animation(root.getConfigurationSection("settings.animation"), materialExists, warn));
+    }
+
+    /** settings.animation - brak sekcji = domyślna ruletka; zły materiał/szybkość = domyślne z ostrzeżeniem. */
+    static CrateAnimation animation(ConfigurationSection s, Predicate<String> materialExists, Consumer<String> warn) {
+        CrateAnimation d = CrateAnimation.DEFAULT;
+        if (s == null) return d;
+        String where = "crates.yml settings.animation";
+        String speed = s.getString("speed", d.speed());
+        if (!speed.equals("fast") && !speed.equals("normal") && !speed.equals("slow")) {
+            warn.accept(where + ".speed must be fast, normal or slow - using normal.");
+            speed = "normal";
+        }
+        return new CrateAnimation(s.getBoolean("enabled", true), speed,
+                material(s.getString("background", d.background()), d.background(), where + ".background", materialExists, warn),
+                material(s.getString("pointer", d.pointer()), d.pointer(), where + ".pointer", materialExists, warn),
+                s.getString("tick-sound", d.tickSound()).trim(), s.getString("win-sound", d.winSound()).trim());
+    }
+
+    private static String material(String value, String fallback, String where, Predicate<String> materialExists, Consumer<String> warn) {
+        if (materialExists.test(value)) return value;
+        warn.accept(where + ": unknown material  + value +  - using " + fallback + ".");
+        return fallback;
     }
 
     private static List<Prize> parsePrizes(List<?> raw, String where,

@@ -14,10 +14,28 @@
     <packaging>jar</packaging>
     <name>Mainplugins - Menu</name>
 
-    <!--
-        Menu nie potrzebuje EconomyService ani żadnego innego serwisu Core - otwiera
-        tylko własne GUI i woła player.performCommand("sklep zmenu") itd. Dlatego
-        celowo NIE zależy nawet od mainplugins-core. To jest przykład modułu w pełni
-        hermetycznego: da się go wgrać/zdjąć z serwera niezależnie od reszty.
-    -->
+    <!-- Menu zależy od Core jak każdy nasz plugin: teksty (lang/), język serwera i @reloadlang. -->
+    <dependencies>
+        <dependency>
+            <groupId>elo</groupId>
+            <artifactId>mainplugins-core</artifactId>
+        </dependency>
+        <!-- Testy jednostkowe czystej logiki - nie trafiają do jara -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.11.4</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
+            </plugin>
+        </plugins>
+    </build>
 </project>

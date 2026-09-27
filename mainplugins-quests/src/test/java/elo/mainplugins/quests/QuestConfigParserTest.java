@@ -147,6 +147,19 @@ class QuestConfigParserTest {
     }
 
     @Test
+    void soundsComeFromSettings() throws Exception {
+        QuestConfig c = parse("""
+                settings:
+                  sounds:
+                    complete: ui.toast.challenge_complete
+                    deny: ""
+                """);
+        assertEquals("ui.toast.challenge_complete", c.sounds().complete());
+        assertEquals("", c.sounds().deny());
+        assertEquals(elo.mainplugins.quests.model.QuestSounds.DEFAULT, parse("").sounds());
+    }
+
+    @Test
     void badQuestsAreSkipped() throws Exception {
         QuestConfig c = parse("""
                 category-order: [a]

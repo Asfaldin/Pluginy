@@ -15,6 +15,10 @@ settings:
     back: { item: DARK_OAK_DOOR }
     prev: { item: ARROW }
     next: { item: ARROW }
+  # Sounds (Minecraft sound keys), "" = silent.
+  sounds:
+    complete: entity.player.levelup   # quest completed
+    deny: entity.villager.no          # something missing or locked
 
 main-menu:
   layout:

@@ -2,25 +2,17 @@ name: MainpluginsMenu
 version: ${project.version}
 main: elo.mainplugins.menu.MainpluginsMenu
 api-version: '1.20'
-# Opcjonalne - jesli AuthMe jest na serwerze, ma sie zaladowac PRZED tym pluginem, zeby
-# TrybManager przy starcie poprawnie wykryl je przez Bukkit.getPluginManager().getPlugin("AuthMe")
-# (patrz TrybManager#podlaczAuthMeAlboJoin - integracja przez refleksje, bez twardej
-# zaleznosci Maven). Bez AuthMe ten wpis jest nieszkodliwym no-opem.
-softdepend: [AuthMe]
+depend: [MainpluginsCore]
 
 commands:
   menu:
-    description: Panel pomocy
+    description: Main server menu
   "@reloadmenu":
-    description: Wczytaj menu-gui.yml na nowo, bez restartu serwera
-    permission: mainplugins.menu.reload
-    permission-message: "&cNie masz permisji do tej komendy!"
-  "@reloadtryb":
-    description: Wczytaj tryb-gui.yml (ekran wyboru trybu gry) na nowo, bez restartu serwera
+    description: (Admin) Reload menu.yml without a restart
     permission: mainplugins.menu.reload
     permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.menu.reload:
-    description: Pozwala przeładować układ Głównego Menu Serwera i ekranu wyboru trybu gry
+    description: Reload the main menu layout
     default: op

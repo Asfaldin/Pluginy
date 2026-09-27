@@ -44,7 +44,7 @@ public class AdminPomocCommand implements CommandExecutor {
                     new Wpis("/@reloadsklep", "Wczytaj konfigurację sklepu na nowo")
             )),
             new Sekcja("Menu", List.of(
-                    new Wpis("/@reloadmenu", "Wczytaj menu-gui.yml na nowo")
+                    new Wpis("/@reloadmenu", "Wczytaj menu na nowo")
             )),
             new Sekcja("Wyspy", List.of(
                     new Wpis("/@reloadwyspy", "Wczytaj wyspy-config.yml i wyspy-gui.yml na nowo")

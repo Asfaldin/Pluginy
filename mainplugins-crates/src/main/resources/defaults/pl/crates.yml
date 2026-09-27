@@ -1,0 +1,74 @@
+# Skrzynki - każda skrzynka, jej wygląd, klucze, które ją otwierają, i co można wygrać.
+# Edytuj w aplikacji (strona "Skrzynki") albo tutaj, potem /@crate reload.
+#   item / icon: { item: MATERIAŁ } albo { custom: ID_Z_KATALOGU_PRZEDMIOTÓW }, opcjonalnie amount
+#   keys: które klucze otwierają skrzynkę (jeden klucz może otwierać kilka skrzynek)
+#   prizes: weight = szansa (weight / suma wag), rewards = co gracz dostaje
+#           (money, item, custom, command, crate, key ... - ten sam zapis co wszędzie)
+#   hologram: (opcjonalnie) linijki nad skrzynką postawioną w świecie przez /@crate place;
+#             bez tego: nazwa skrzynki + podpowiedź z lang/<język>.yml (placed.hint)
+#   hologram-enabled: false  -> brak napisu nad tą skrzynką
+settings:
+  hologram-height: 0.6   # ile bloków nad postawioną skrzynką wisi napis
+  placed-block-from-item: true   # postawiony blok przyjmuje wygląd przedmiotu skrzynki (jeśli to blok)
+  # Okno otwierania: "ruletka" nagród. enabled: false = bez animacji, nagroda od razu.
+  animation:
+    enabled: true
+    speed: normal   # fast | normal | slow
+    background: BLACK_STAINED_GLASS_PANE
+    pointer: YELLOW_STAINED_GLASS_PANE   # dwie strzałki nad i pod wygraną
+    tick-sound: ui.button.click   # dźwięk z Minecrafta, "" = cicho
+    win-sound: entity.player.levelup
+keys:
+  basic_key:
+    name: "&e&lKlucz do Tajemniczej Skrzynki"
+    item: { item: TRIPWIRE_HOOK }
+    lore: ["&7Otwiera Tajemniczą Skrzynkę."]
+  abyss_key:
+    name: "&d&lKlucz do Skrzynki Otchłani"
+    item: { item: TRIPWIRE_HOOK }
+    lore: ["&7Otwiera Skrzynkę Otchłani."]
+  darkstar_key:
+    name: "&b&lKlucz do Skrzynki DARKSTAR"
+    item: { item: TRIPWIRE_HOOK }
+    lore: ["&7Otwiera Skrzynkę DARKSTAR."]
+  universal_key:
+    name: "&6&lKlucz Uniwersalny"
+    item: { item: TRIPWIRE_HOOK }
+    lore: ["&7Otwiera każdą skrzynkę."]
+
+crates:
+  basic:
+    name: "&6&lTajemnicza Skrzynka"
+    item: { item: ENDER_CHEST }
+    lore: ["&7Prawy klik z kluczem - otwórz.", "&7Lewy klik - zobacz nagrody."]
+    keys: [basic_key, universal_key]
+    prizes:
+      - { name: "&7Zwykła nagroda", icon: { item: DIRT, amount: 16 }, weight: 40, rewards: [ { item: DIRT, amount: 16 } ] }
+      - { name: "&fŻelazo", icon: { item: IRON_INGOT, amount: 8 }, weight: 30, rewards: [ { item: IRON_INGOT, amount: 8 } ] }
+      - { name: "&bDiamenty", icon: { item: DIAMOND, amount: 4 }, weight: 20, rewards: [ { item: DIAMOND, amount: 4 } ] }
+      - { name: "&dSztabka netherytu", icon: { item: NETHERITE_INGOT }, weight: 9, rewards: [ { item: NETHERITE_INGOT } ] }
+      - { name: "&6&l★ LEGENDARNA NAGRODA ★", icon: { item: NETHER_STAR }, weight: 1, announce: true, rewards: [ { item: NETHER_STAR } ] }
+  abyss:
+    name: "&d&lSkrzynka Otchłani"
+    item: { item: SHULKER_BOX }
+    lore: ["&7Prawy klik z kluczem - otwórz.", "&7Lewy klik - zobacz nagrody."]
+    keys: [abyss_key, universal_key]
+    prizes:
+      - { name: "&fBloki żelaza", icon: { item: IRON_BLOCK, amount: 2 }, weight: 30, rewards: [ { item: IRON_BLOCK, amount: 2 } ] }
+      - { name: "&bDiamenty", icon: { item: DIAMOND, amount: 4 }, weight: 25, rewards: [ { item: DIAMOND, amount: 4 } ] }
+      - { name: "&aButelki doświadczenia", icon: { item: EXPERIENCE_BOTTLE, amount: 32 }, weight: 20, rewards: [ { item: EXPERIENCE_BOTTLE, amount: 32 } ] }
+      - { name: "&dOdłamki netherytu", icon: { item: NETHERITE_SCRAP, amount: 2 }, weight: 15, rewards: [ { item: NETHERITE_SCRAP, amount: 2 } ] }
+      - { name: "&6&l★ ELYTRA ★", icon: { item: ELYTRA }, weight: 6, announce: true, rewards: [ { item: ELYTRA } ] }
+      - { name: "&6&l★ GWIAZDA NETHERU ★", icon: { item: NETHER_STAR }, weight: 4, announce: true, rewards: [ { item: NETHER_STAR } ] }
+  darkstar:
+    name: "&b&lSkrzynka DARKSTAR"
+    item: { item: BEACON }
+    lore: ["&7Prawy klik z kluczem - otwórz.", "&7Lewy klik - zobacz nagrody."]
+    keys: [darkstar_key, universal_key]
+    prizes:
+      - { name: "&dSztabki netherytu", icon: { item: NETHERITE_INGOT, amount: 2 }, weight: 30, rewards: [ { item: NETHERITE_INGOT, amount: 2 } ] }
+      - { name: "&6Zaklęte złote jabłka", icon: { item: ENCHANTED_GOLDEN_APPLE, amount: 2 }, weight: 20, rewards: [ { item: ENCHANTED_GOLDEN_APPLE, amount: 2 } ] }
+      - { name: "&d&l★ TOTEM NIEŚMIERTELNOŚCI ★", icon: { item: TOTEM_OF_UNDYING }, weight: 20, announce: true, rewards: [ { item: TOTEM_OF_UNDYING } ] }
+      - { name: "&6&l★ ELYTRA ★", icon: { item: ELYTRA }, weight: 15, announce: true, rewards: [ { item: ELYTRA } ] }
+      - { name: "&6&l★ GWIAZDY NETHERU ★", icon: { item: NETHER_STAR, amount: 2 }, weight: 10, announce: true, rewards: [ { item: NETHER_STAR, amount: 2 } ] }
+      - { name: "&b&l★★ MAGICZNA LATARNIA ★★", icon: { item: BEACON }, weight: 5, announce: true, rewards: [ { item: BEACON } ] }

@@ -15,6 +15,10 @@ settings:
     back: { item: DARK_OAK_DOOR }
     prev: { item: ARROW }
     next: { item: ARROW }
+  # Dźwięki (klucze z Minecrafta), "" = cicho.
+  sounds:
+    complete: entity.player.levelup   # zadanie zdane
+    deny: entity.villager.no          # czegoś brakuje albo zablokowane
 
 main-menu:
   layout:

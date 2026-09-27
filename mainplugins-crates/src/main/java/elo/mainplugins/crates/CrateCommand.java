@@ -19,7 +19,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/** /@crate give <gracz> <skrzynka> [ile] | key <gracz> <klucz> [ile] | place <skrzynka> | remove | list | reload */
+/** /@crate give <gracz> <skrzynka> [ile] | key <gracz> <klucz> [ile] | place <skrzynka> | remove [świat x y z] | list | reload */
 final class CrateCommand implements CommandExecutor, TabCompleter {
 
     private final Plugin plugin;
@@ -51,7 +51,10 @@ final class CrateCommand implements CommandExecutor, TabCompleter {
             }
             case "give", "key" -> give(sender, args, sub.equals("give"));
             case "place" -> place(sender, args);
-            case "remove" -> remove(sender);
+            case "remove" -> {
+                if (args.length >= 5) removeAt(sender, args);
+                else remove(sender);
+            }
             default -> lang.send(sender, plugin, "admin.usage");
         }
         return true;
@@ -88,6 +91,22 @@ final class CrateCommand implements CommandExecutor, TabCompleter {
             return;
         }
         lang.send(sender, plugin, "admin.placed", Map.of("crate", id));
+    }
+
+    /** Zdejmuje skrzynkę po miejscu - bez patrzenia na blok (np. z aplikacji albo konsoli). */
+    private void removeAt(CommandSender sender, String[] args) {
+        int x, y, z;
+        try {
+            x = Integer.parseInt(args[2]);
+            y = Integer.parseInt(args[3]);
+            z = Integer.parseInt(args[4]);
+        } catch (NumberFormatException e) {
+            lang.send(sender, plugin, "admin.usage");
+            return;
+        }
+        PlacedCrate p = crates.placed().removeAt(args[1], x, y, z);
+        if (p == null) lang.send(sender, plugin, "admin.not-placed-at", Map.of("world", args[1], "x", args[2], "y", args[3], "z", args[4]));
+        else lang.send(sender, plugin, "admin.removed", Map.of("crate", p.crate()));
     }
 
     private void remove(CommandSender sender) {

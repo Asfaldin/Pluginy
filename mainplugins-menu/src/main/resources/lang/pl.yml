@@ -1,0 +1,6 @@
+# Mainplugins Menu - komunikaty po polsku. Kolory: &a &e ...  Placeholdery: {nazwa}
+menu:
+  title: "&6&lMenu serwera"
+admin:
+  players-only: "&cMenu może otworzyć tylko gracz."
+  reloaded: "&aMenu wczytane od nowa ({buttons} przycisków)."

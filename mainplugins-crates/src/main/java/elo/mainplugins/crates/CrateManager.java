@@ -11,9 +11,12 @@ import elo.mainplugins.crates.model.KeyDef;
 import elo.mainplugins.crates.model.PlacedCrate;
 import elo.mainplugins.crates.model.Prize;
 import io.papermc.paper.datacomponent.DataComponentTypes;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
 import org.bukkit.Sound;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -30,6 +33,9 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -80,7 +86,7 @@ public class CrateManager implements Listener, CrateService {
 
     public void reload() {
         File file = new File(plugin.getDataFolder(), "crates.yml");
-        if (!file.exists()) plugin.saveResource("crates.yml", false);
+        if (!file.exists()) copyDefaults(file);
         for (String old : List.of("crate-rewards.yml", "crate-rewards-2.yml", "crate-rewards-3.yml")) {
             if (new File(plugin.getDataFolder(), old).exists()) {
                 plugin.getLogger().warning(old + " is no longer read - crates now live in crates.yml.");
@@ -90,6 +96,19 @@ public class CrateManager implements Listener, CrateService {
                 name -> Material.matchMaterial(name) != null, plugin.getLogger()::warning);
         plugin.getLogger().info("Loaded " + config.crates().size() + " crates and " + config.keys().size() + " keys.");
         placed.load();
+    }
+
+    /** Pierwszy start: domyślne skrzynki w języku serwera (defaults/<język>/crates.yml), brak = angielskie. */
+    private void copyDefaults(File file) {
+        String resource = "defaults/" + lang.language() + "/crates.yml";
+        if (plugin.getResource(resource) == null) resource = "defaults/en/crates.yml";
+        try (InputStream in = plugin.getResource(resource)) {
+            if (in == null) return;
+            file.getParentFile().mkdirs();
+            Files.copy(in, file.toPath());
+        } catch (IOException e) {
+            plugin.getLogger().warning("Could not write crates.yml: " + e.getMessage());
+        }
     }
 
     public CrateConfig config() {
@@ -188,7 +207,13 @@ public class CrateManager implements Listener, CrateService {
         }
         if (slotSkrzynki >= 0) zmniejsz(player, slotSkrzynki);
         zmniejsz(player, slotKlucza);
-        rozpocznijAnimacje(player, crate);
+        if (config.animation().enabled()) {
+            rozpocznijAnimacje(player, crate);
+            return;
+        }
+        // Bez animacji (settings.animation.enabled: false) - nagroda od razu.
+        wyplac(player, crate, CrateOdds.pick(crate, n -> ThreadLocalRandom.current().nextInt(n)));
+        zagraj(player, config.animation().winSound(), 1.0f);
     }
 
     private int znajdzSlotKlucza(Player player, CrateDef crate) {
@@ -236,10 +261,11 @@ public class CrateManager implements Listener, CrateService {
         pasek.set((liczbaKlatek - 1) + 4, crateItems.icon(wygrana, List.of()));
 
         Inventory gui = new CrateGuiHolder().create(27, lang.msg(plugin, "crate.opening-title", Map.of("crate", crate.name())));
-        ItemStack tlo = szyba(Material.BLACK_STAINED_GLASS_PANE, " ");
+        ItemStack tlo = szyba(material(config.animation().background(), Material.BLACK_STAINED_GLASS_PANE), " ");
         for (int i = 0; i < gui.getSize(); i++) gui.setItem(i, tlo);
-        gui.setItem(4, szyba(Material.YELLOW_STAINED_GLASS_PANE, "&e&l▼"));
-        gui.setItem(22, szyba(Material.YELLOW_STAINED_GLASS_PANE, "&e&l▲"));
+        Material wskaznik = material(config.animation().pointer(), Material.YELLOW_STAINED_GLASS_PANE);
+        gui.setItem(4, szyba(wskaznik, lang.msg(plugin, "crate.pointer-top", Map.of())));
+        gui.setItem(22, szyba(wskaznik, lang.msg(plugin, "crate.pointer-bottom", Map.of())));
         player.openInventory(gui);
         animujKlatke(player, gui, pasek, 0, crate, wygrana);
     }
@@ -248,11 +274,13 @@ public class CrateManager implements Listener, CrateService {
         // Gracz wyszedł - nagrodę dostał już w onQuit, animacja się kończy.
         if (!player.isOnline() || !otwierajacy.containsKey(player.getUniqueId())) return;
         for (int i = 0; i < SZEROKOSC_OKNA; i++) gui.setItem(WIERSZ_ANIMACJI + i, pasek.get(krok + i));
-        player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.6f, 1.0f);
+        zagraj(player, config.animation().tickSound(), 0.6f);
+        double tempo = config.animation().delayFactor();
         if (krok < OPOZNIENIA_TICK.length - 1) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> animujKlatke(player, gui, pasek, krok + 1, crate, wygrana), OPOZNIENIA_TICK[krok]);
+            long opoznienie = Math.max(1, Math.round(OPOZNIENIA_TICK[krok] * tempo));
+            Bukkit.getScheduler().runTaskLater(plugin, () -> animujKlatke(player, gui, pasek, krok + 1, crate, wygrana), opoznienie);
         } else {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> zakoncz(player, crate, wygrana), 30L);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> zakoncz(player, crate, wygrana), Math.max(10, Math.round(30 * tempo)));
         }
     }
 
@@ -261,7 +289,20 @@ public class CrateManager implements Listener, CrateService {
         if (otwierajacy.remove(player.getUniqueId()) == null || !player.isOnline()) return;
         player.closeInventory();
         wyplac(player, crate, wygrana);
-        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+        zagraj(player, config.animation().winSound(), 1.0f);
+    }
+
+    /** Dźwięk po kluczu Minecrafta z crates.yml (np. ui.button.click); pusty albo nieznany = cisza. */
+    private static void zagraj(Player player, String klucz, float glosnosc) {
+        if (klucz == null || klucz.isBlank()) return;
+        NamespacedKey key = NamespacedKey.fromString(klucz.toLowerCase(java.util.Locale.ROOT));
+        Sound dzwiek = key == null ? null : Registry.SOUNDS.get(key);
+        if (dzwiek != null) player.playSound(player.getLocation(), dzwiek, glosnosc, 1.0f);
+    }
+
+    private static Material material(String nazwa, Material zapas) {
+        Material m = Material.matchMaterial(nazwa);
+        return m != null ? m : zapas;
     }
 
     /** Gracz wychodzi/wylatuje w trakcie ruletki - dostaje wylosowaną nagrodę od razu. */
@@ -298,8 +339,12 @@ public class CrateManager implements Listener, CrateService {
     }
 
     private static ItemStack szyba(Material m, String nazwa) {
+        return szyba(m, CrateItems.text(nazwa));
+    }
+
+    private static ItemStack szyba(Material m, Component nazwa) {
         ItemStack item = new ItemStack(m);
-        item.setData(DataComponentTypes.CUSTOM_NAME, CrateItems.text(nazwa));
+        item.setData(DataComponentTypes.CUSTOM_NAME, nazwa);
         return item;
     }
 

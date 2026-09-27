@@ -2,6 +2,7 @@ package elo.mainplugins.crates;
 
 import elo.mainplugins.core.api.Reward;
 import elo.mainplugins.core.reward.RewardParser;
+import elo.mainplugins.crates.model.CrateAnimation;
 import elo.mainplugins.crates.model.CrateConfig;
 import elo.mainplugins.crates.model.CrateDef;
 import elo.mainplugins.crates.model.ItemRef;
@@ -144,19 +145,50 @@ class CrateConfigParserTest {
     }
 
     @Test
-    void defaultFileParsesWithoutWarnings() throws Exception {
+    void defaultFilesParseWithoutWarnings() throws Exception {
+        for (String language : List.of("en", "pl")) {
+            warnings.clear();
+            defaultFile(language);
+        }
+    }
+
+    @Test
+    void animationSettings() throws Exception {
+        CrateConfig c = parse("""
+                settings:
+                  animation:
+                    enabled: false
+                    speed: slow
+                    background: DIAMOND
+                    pointer: NOPE
+                    tick-sound: ""
+                """);
+        CrateAnimation a = c.animation();
+        assertFalse(a.enabled());
+        assertEquals(1.6, a.delayFactor());
+        assertEquals("DIAMOND", a.background());
+        assertEquals(CrateAnimation.DEFAULT.pointer(), a.pointer());
+        assertEquals("", a.tickSound());
+        assertEquals(CrateAnimation.DEFAULT.winSound(), a.winSound());
+        assertEquals(1, warnings.size(), warnings.toString());
+        assertEquals(CrateAnimation.DEFAULT, parse("").animation());
+    }
+
+    private void defaultFile(String language) throws Exception {
         YamlConfiguration y = new YamlConfiguration();
-        try (var in = getClass().getClassLoader().getResourceAsStream("crates.yml")) {
+        try (var in = getClass().getClassLoader().getResourceAsStream("defaults/" + language + "/crates.yml")) {
             y.load(new InputStreamReader(in, StandardCharsets.UTF_8));
         }
         Set<String> all = Set.of("ENDER_CHEST", "SHULKER_BOX", "BEACON", "TRIPWIRE_HOOK", "DIRT", "IRON_INGOT",
+                "BLACK_STAINED_GLASS_PANE", "YELLOW_STAINED_GLASS_PANE",
                 "DIAMOND", "NETHERITE_INGOT", "NETHER_STAR", "IRON_BLOCK", "EXPERIENCE_BOTTLE", "NETHERITE_SCRAP",
                 "ELYTRA", "ENCHANTED_GOLDEN_APPLE", "TOTEM_OF_UNDYING");
         RewardParser rp = new RewardParser(m -> all.contains(m.toUpperCase()), warnings::add);
         CrateConfig c = CrateConfigParser.parse(y, rp::parse, m -> all.contains(m.toUpperCase()), warnings::add);
         assertEquals(List.of("basic", "abyss", "darkstar"), c.crateIdsInOrder());
         assertEquals(4, c.keys().size());
-        assertTrue(warnings.isEmpty(), warnings.toString());
+        assertTrue(warnings.isEmpty(), language + ": " + warnings);
+        assertTrue(c.animation().enabled());
     }
 
     @Test

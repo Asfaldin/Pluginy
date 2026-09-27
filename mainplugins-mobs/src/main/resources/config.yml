@@ -1,0 +1,76 @@
+# Moby testowe - statystyki i umiejętności każdego moba (id jak w Kreatorze mobów).
+# Mob bez wpisu tutaj ma statystyki zwykłego zombie i żadnych umiejętności.
+#
+# Umiejętności: mob używa jednej naraz, gdy ma cel (gracza) w podanym zasięgu (kratki).
+# "co-ile-sekund" - odstęp między użyciami tej samej umiejętności.
+# "animacja" - nazwa animacji z Kreatora mobów, która gra w trakcie.
+# "moment" - sekunda animacji, w której dzieje się akcja (np. lecą igły).
+# "kosc" - część moba (id kości z Kreatora), z której coś wylatuje.
+# "dzwiek" - dźwięk z gry (np. entity.witch.throw), puste = bez dźwięku.
+#
+# Typy umiejętności:
+#   skok-na-gracza - doskok do gracza, lądowanie rani i odrzuca
+#   rzut-iglami    - mob staje i rzuca w gracza igłami
+#   ptaki          - mob wypuszcza ptaki, które lecą na gracza i go dziobią
+#   wielki-skok    - skok wysoko w górę, upadek (kurz, obrażenia wokół), mob siedzi oszołomiony
+#                    tak długo, jak trwa "animacja-upadku", potem wstaje
+moby:
+  bagienny_mutant:
+    zycie: 40
+    szybkosc: 0.25
+    obrazenia: 4
+    umiejetnosci:
+      skok:
+        typ: skok-na-gracza
+        animacja: jump
+        co-ile-sekund: 6
+        zasieg-od: 4
+        zasieg-do: 12
+        obrazenia: 6
+        wybicie: 0.25
+        ladowanie: 1.25
+        dzwiek: entity.slime.squish
+
+  drzewiec:
+    zycie: 150
+    szybkosc: 0.33
+    obrazenia: 9
+    odpornosc-na-odrzut: 0.8
+    umiejetnosci:
+      igly:
+        typ: rzut-iglami
+        animacja: rzut
+        co-ile-sekund: 7
+        zasieg-od: 5
+        zasieg-do: 20
+        ile: 6
+        obrazenia: 3
+        moment: 0.45
+        kosc: b_arm_r
+        dzwiek: entity.witch.throw
+      ptaki:
+        typ: ptaki
+        animacja: ptaki
+        co-ile-sekund: 16
+        zasieg-od: 0
+        zasieg-do: 20
+        ile: 3
+        obrazenia: 2
+        czas-zycia: 12
+        moment: 0.4
+        kosc: b_hollow
+        dzwiek: entity.parrot.imitate.ravager
+      wielki-skok:
+        typ: wielki-skok
+        animacja: skok
+        animacja-upadku: upadek
+        co-ile-sekund: 20
+        zasieg-od: 3
+        zasieg-do: 14
+        wybicie: 0.35
+        czas-lotu: 1.5
+        wysokosc: 7
+        zasieg-uderzenia: 5
+        obrazenia: 8
+        dzwiek: entity.generic.explode
+        dzwiek-oszolomienia: entity.ravager.stunned

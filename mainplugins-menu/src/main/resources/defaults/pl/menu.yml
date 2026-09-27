@@ -1,0 +1,50 @@
+# Główne menu serwera (/menu). Edytuj w aplikacji (strona "Menu") albo tutaj, potem /@reloadmenu.
+#   size: rozmiar okna (9, 18, 27, 36, 45 albo 54)
+#   background: przedmiot w wolnych polach ("" = puste pola)
+#   buttons: slot (pole 0 do size-1), item, name i lore (kolory &), command (komenda gracza bez "/"),
+#            requires (opcjonalnie): plugin, bez którego przycisk się nie pokazuje (np. MainpluginsShop)
+#   "zmenu" na końcu komendy = gracz przyszedł z menu (np. przycisk "Wróć do menu" w Sklepie).
+size: 27
+background: GRAY_STAINED_GLASS_PANE
+buttons:
+  - slot: 10
+    item: EMERALD
+    name: "&a&lSklep"
+    lore: ["&7Kupuj i sprzedawaj u serwera."]
+    command: "sklep zmenu"
+    requires: MainpluginsShop
+  - slot: 11
+    item: GOLD_INGOT
+    name: "&6&lTarg"
+    lore: ["&7Handluj z innymi graczami."]
+    command: "targ zmenu"
+    requires: MainpluginsMarket
+  - slot: 12
+    item: BOOK
+    name: "&e&lZadania"
+    lore: ["&7Rób zadania i odbieraj nagrody."]
+    command: "zadania zmenu"
+    requires: MainpluginsQuests
+  - slot: 13
+    item: GRASS_BLOCK
+    name: "&2&lTwoja wyspa"
+    lore: ["&7Zarządzaj swoją wyspą."]
+    command: "is menu zmenu"
+    requires: MainpluginsSkyblock
+  - slot: 14
+    item: HOPPER
+    name: "&b&lSzybka sprzedaż"
+    lore: ["&7Sprzedaj wszystko z ekwipunku", "&7jednym kliknięciem."]
+    command: "sprzedajwszystko"
+    requires: MainpluginsShop
+  - slot: 15
+    item: FISHING_ROD
+    name: "&3&lŁowienie"
+    lore: ["&7Twoja wędka i ranking łowców."]
+    command: "rybiemenu"
+    requires: MainpluginsFishing
+  - slot: 22
+    item: PAPER
+    name: "&f&lKomendy serwera"
+    lore: ["&7Lista wszystkich komend."]
+    command: "komendy"

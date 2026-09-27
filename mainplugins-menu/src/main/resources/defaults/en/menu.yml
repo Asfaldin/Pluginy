@@ -1,0 +1,38 @@
+# Main server menu (/menu). Edit in the app ("Menu" page) or here, then /@reloadmenu.
+#   size: window size (9, 18, 27, 36, 45 or 54)
+#   background: item in empty slots ("" = empty slots)
+#   buttons: slot (0 to size-1), item, name and lore (& colors), command (player command without "/"),
+#            requires (optional): plugin without which the button is hidden (e.g. MainpluginsShop)
+#   "zmenu" at the end of a command = the player came from the menu (e.g. "Back to menu" in the Shop).
+size: 27
+background: GRAY_STAINED_GLASS_PANE
+buttons:
+  - slot: 10
+    item: EMERALD
+    name: "&a&lShop"
+    lore: ["&7Buy from and sell to the server."]
+    command: "shop zmenu"
+    requires: MainpluginsShop
+  - slot: 11
+    item: GOLD_INGOT
+    name: "&6&lMarket"
+    lore: ["&7Trade with other players."]
+    command: "market zmenu"
+    requires: MainpluginsMarket
+  - slot: 12
+    item: BOOK
+    name: "&e&lQuests"
+    lore: ["&7Complete quests for rewards."]
+    command: "quests zmenu"
+    requires: MainpluginsQuests
+  - slot: 13
+    item: GRASS_BLOCK
+    name: "&2&lYour island"
+    lore: ["&7Manage your island."]
+    command: "is menu zmenu"
+    requires: MainpluginsSkyblock
+  - slot: 22
+    item: PAPER
+    name: "&f&lServer commands"
+    lore: ["&7List of all commands."]
+    command: "commands"

@@ -1,0 +1,6 @@
+# Mainplugins Menu - English messages. Colors: &a &e ...  Placeholders: {name}
+menu:
+  title: "&6&lServer menu"
+admin:
+  players-only: "&cOnly a player can open the menu."
+  reloaded: "&aMenu reloaded ({buttons} buttons)."

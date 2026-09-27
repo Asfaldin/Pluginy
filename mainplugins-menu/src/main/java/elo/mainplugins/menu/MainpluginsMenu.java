@@ -1,44 +1,35 @@
 package elo.mainplugins.menu;
 
+import elo.mainplugins.core.CoreAPI;
+import elo.mainplugins.core.api.LangService;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.List;
+import java.util.Map;
+
+/** Główne menu serwera: /menu (gracz) i /@reloadmenu (admin, także z konsoli). */
 public final class MainpluginsMenu extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        MenuPomocyManager menuPomocyManager = new MenuPomocyManager(this);
-        getServer().getPluginManager().registerEvents(menuPomocyManager, this);
-
-        TrybManager trybManager = new TrybManager(this);
-        getServer().getPluginManager().registerEvents(trybManager, this);
-
-        if (getCommand("@reloadtryb") != null) {
-            getCommand("@reloadtryb").setExecutor((sender, command, label, args) -> {
-                trybManager.przeladujKonfiguracje();
-                sender.sendMessage("§aTryb-gui.yml zostało przeładowane.");
-                return true;
-            });
-        }
+        LangService lang = CoreAPI.getLangService();
+        lang.registerDefaults(this);
+        MenuManager menu = new MenuManager(this, lang);
+        getServer().getPluginManager().registerEvents(menu, this);
 
         if (getCommand("menu") != null) {
             getCommand("menu").setExecutor((sender, command, label, args) -> {
-                if (!(sender instanceof Player player)) {
-                    sender.sendMessage("Tylko gracz moze uzyc tej komendy.");
-                    return true;
-                }
-                menuPomocyManager.otworzMenuPomocy(player);
+                if (sender instanceof Player player) menu.open(player);
+                else lang.send(sender, this, "admin.players-only");
                 return true;
             });
-            getCommand("menu").setTabCompleter((sender, command, alias, args) -> java.util.List.of());
+            getCommand("menu").setTabCompleter((sender, command, alias, args) -> List.of());
         }
-
-        // Osobny executor: /@reloadmenu ma sens też z konsoli, nie tylko od gracza.
-        // Uprawnienie (mainplugins.menu.reload, domyślnie op) pilnuje tego plugin.yml.
         if (getCommand("@reloadmenu") != null) {
             getCommand("@reloadmenu").setExecutor((sender, command, label, args) -> {
-                menuPomocyManager.przeladujKonfiguracje();
-                sender.sendMessage("§aMenu-gui.yml zostało przeładowane.");
+                menu.reload();
+                lang.send(sender, this, "admin.reloaded", Map.of("buttons", String.valueOf(menu.buttonCount())));
                 return true;
             });
         }

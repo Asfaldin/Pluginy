@@ -27,6 +27,8 @@ import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
 import org.bukkit.Sound;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -346,8 +348,16 @@ final class QuestManager implements Listener, TytulService {
         if (event.getInventory().getHolder() instanceof QuestGuiHolder) event.setCancelled(true);
     }
 
-    private static void deny(Player player) {
-        player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+    private void deny(Player player) {
+        play(player, config.sounds().deny());
+    }
+
+    /** Dźwięk po kluczu Minecrafta z quests.yml (settings.sounds); pusty albo nieznany = cisza. */
+    private static void play(Player player, String key) {
+        if (key == null || key.isBlank()) return;
+        NamespacedKey k = NamespacedKey.fromString(key.toLowerCase(java.util.Locale.ROOT));
+        Sound sound = k == null ? null : Registry.SOUNDS.get(k);
+        if (sound != null) player.playSound(player.getLocation(), sound, 1f, 1f);
     }
 
     private void clickCategory(Player player, String id) {
@@ -393,10 +403,11 @@ final class QuestManager implements Listener, TytulService {
             return;
         }
         p.doneIn(categoryId).add(q.id());
+        p.name(player.getName());
         saveProgress();
         lang.send(player, plugin, "quest.completed", Map.of("quest", q.title()));
         rewards.give(player, q.rewards());
-        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
+        play(player, config.sounds().complete());
         openCategory(player, categoryId, page);
     }
 

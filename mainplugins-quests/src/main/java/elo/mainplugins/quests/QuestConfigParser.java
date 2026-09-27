@@ -7,6 +7,7 @@ import elo.mainplugins.quests.model.ItemRef;
 import elo.mainplugins.quests.model.QuestConfig;
 import elo.mainplugins.quests.model.QuestDef;
 import elo.mainplugins.quests.model.QuestSettings;
+import elo.mainplugins.quests.model.QuestSounds;
 import elo.mainplugins.quests.model.Requirement;
 import elo.mainplugins.quests.model.SlotEntry;
 import elo.mainplugins.quests.model.SlotRole;
@@ -71,7 +72,9 @@ public final class QuestConfigParser {
             if (!order.contains(id)) warn.accept("quests.yml categories." + id + ": not in category-order - it will not show in the menu.");
         }
         return new QuestConfig(settings, List.copyOf(mainMenu), List.copyOf(order),
-                Collections.unmodifiableMap(titles), Collections.unmodifiableMap(categories));
+                Collections.unmodifiableMap(titles), Collections.unmodifiableMap(categories),
+                new QuestSounds(root.getString("settings.sounds.complete", QuestSounds.DEFAULT.complete()).trim(),
+                        root.getString("settings.sounds.deny", QuestSounds.DEFAULT.deny()).trim()));
     }
 
     private static CategoryDef parseCategory(String id, ConfigurationSection s, String where, QuestSettings defaults,

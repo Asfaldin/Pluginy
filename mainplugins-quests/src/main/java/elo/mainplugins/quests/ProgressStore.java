@@ -10,7 +10,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-/** progress.yml: players.<uuid>.done.<kategoria> = [id zadań], players.<uuid>.titles = [id tytułów]. */
+/** progress.yml: players.<uuid>.done.<kategoria> = [id zadań], .titles = [id tytułów], .name = ostatni nick (dla aplikacji). */
 public final class ProgressStore {
 
     private ProgressStore() {}
@@ -19,6 +19,16 @@ public final class ProgressStore {
     public static final class PlayerProgress {
         private final Map<String, Set<Integer>> done = new LinkedHashMap<>();
         private final Set<String> titles = new LinkedHashSet<>();
+        private String name;
+
+        /** Ostatni znany nick - tylko do podglądu w aplikacji (null = jeszcze nie zapisany). */
+        public String name() {
+            return name;
+        }
+
+        public void name(String name) {
+            this.name = name;
+        }
 
         /** Do zapisu - tworzy pusty zbiór, gdy go nie ma. */
         public Set<Integer> doneIn(String category) {
@@ -57,6 +67,7 @@ public final class ProgressStore {
                 for (String cat : done.getKeys(false)) p.doneIn(cat).addAll(done.getIntegerList(cat));
             }
             p.titles().addAll(players.getStringList(key + ".titles"));
+            p.name(players.getString(key + ".name"));
             out.put(uuid, p);
         }
         return out;
@@ -66,6 +77,7 @@ public final class ProgressStore {
         root.set("players", null);
         for (Map.Entry<UUID, PlayerProgress> e : all.entrySet()) {
             String base = "players." + e.getKey();
+            if (e.getValue().name() != null) root.set(base + ".name", e.getValue().name());
             for (Map.Entry<String, Set<Integer>> d : e.getValue().done().entrySet()) {
                 if (!d.getValue().isEmpty()) root.set(base + ".done." + d.getKey(), new ArrayList<>(d.getValue()));
             }

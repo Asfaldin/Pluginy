@@ -25,6 +25,7 @@ class ProgressStoreTest {
         pa.doneIn("main_path").add(2);
         pa.doneIn("mining").add(5);
         pa.titles().add("beginner");
+        pa.name("Steve");
         all.put(a, pa);
         ProgressStore.PlayerProgress pb = new ProgressStore.PlayerProgress();
         pb.doneIn("empty"); // pusta kategoria nie trafia do pliku
@@ -40,6 +41,7 @@ class ProgressStoreTest {
         assertEquals(Set.of(1, 2), read.get(a).doneView("main_path"));
         assertEquals(Set.of(5), read.get(a).doneView("mining"));
         assertEquals(Set.of("beginner"), read.get(a).titles());
+        assertEquals("Steve", read.get(a).name());
         assertFalse(read.containsKey(b));
         assertTrue(warnings.isEmpty());
     }

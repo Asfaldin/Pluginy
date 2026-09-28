@@ -7,8 +7,15 @@
 # to dwa niezalezne pliki opisujace te sama cene (jeden w sklepie, jeden tutaj jako baza
 # do liczenia kosztu ulepszen), zaden kod nie synchronizuje ich automatycznie.
 
+swiat:
+  # Nazwa swiata, w ktorym powstaja wyspy. Zmiana dziala dopiero po restarcie serwera,
+  # a istniejace wyspy zostaja w starym swiecie - zmieniaj tylko przed otwarciem serwera.
+  nazwa: skyblock_world
+
 tworzenie-wyspy:
   domyslny-rozmiar: 50
+  # Wysokosc (Y), na ktorej wklejana jest wyspa startowa. Gracz pojawia sie blok wyzej.
+  wysokosc: 100
   # Cooldown przed N-ta proba zalozenia wyspy w zyciu gracza (create+delete sie liczy).
   # Pierwsze dwie darmowe, potem kara rosnie schodkowo. Od "od-proby" w gore (wlacznie)
   # obowiazuje "sekundy" tego wpisu - wpisy MUSZA byc posortowane rosnaco po "od-proby".
@@ -29,6 +36,25 @@ border:
   max-rozmiar: 750
   # Odstep miedzy srodkami sasiednich wysp na siatce tworzenia.
   odstep-siatki-wysp: 10000
+
+# Ustawienia, z ktorymi startuje kazda NOWA wyspa. Wlasciciel zmienia je potem sam w
+# Ustawieniach i Permisjach Wyspy. Wszystko z dopiskiem "gosci" dotyczy tylko osob spoza wyspy -
+# wlasciciel i czlonkowie zawsze moga budowac i uzywac wszystkiego na swojej wyspie.
+nowa-wyspa:
+  potwory: true
+  pvp: false
+  budowanie-gosci: false
+  wizualny-border: true
+  zabijanie-mobow-gosci: false
+  zabieranie-itemow-gosci: false
+  skrzynie-gosci: false
+  drzwi-i-mechanizmy-gosci: false
+  zablokowana-pogoda: false
+
+pogoda-i-czas:
+  # Pora dnia na wyspie z wlaczona "Pogoda i czas" (w tickach gry: 0 = swit, 6000 = poludnie,
+  # 12000 = zachod, 18000 = polnoc).
+  pora-dnia: 6000
 
 teleport-bezpieczenstwo:
   # Ile blokow w dol szukamy gruntu pod punktem teleportu, zanim uznamy ze to za gleboka dziura.

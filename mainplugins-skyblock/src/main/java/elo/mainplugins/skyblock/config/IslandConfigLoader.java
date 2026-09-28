@@ -61,6 +61,17 @@ public final class IslandConfigLoader {
         Map<Integer, Integer> kosztBazowySzybkoscPoziomy = parsePoziomyKosztow(cfg, "spawnery.koszt-bazowy-szybkosc.poziomy", log);
         int kosztBazowySzybkoscDomyslny = cfg.getInt("spawnery.koszt-bazowy-szybkosc.domyslny", 24000);
 
+        String nazwaSwiata = cfg.getString("swiat.nazwa", "skyblock_world");
+        int wysokoscWyspy = cfg.getInt("tworzenie-wyspy.wysokosc", 100);
+        long czasPogodyTicks = cfg.getLong("pogoda-i-czas.pora-dnia", 6000L);
+        String n = "nowa-wyspa.";
+        IslandTuning.UstawieniaNowejWyspy nowaWyspa = new IslandTuning.UstawieniaNowejWyspy(
+                cfg.getBoolean(n + "potwory", true), cfg.getBoolean(n + "pvp", false),
+                cfg.getBoolean(n + "budowanie-gosci", false), cfg.getBoolean(n + "wizualny-border", true),
+                cfg.getBoolean(n + "zabijanie-mobow-gosci", false), cfg.getBoolean(n + "zabieranie-itemow-gosci", false),
+                cfg.getBoolean(n + "skrzynie-gosci", false), cfg.getBoolean(n + "drzwi-i-mechanizmy-gosci", false),
+                cfg.getBoolean(n + "zablokowana-pogoda", false));
+
         log.info("wyspy-config.yml: wczytano konfiguracje (" + spawnerTypy.size() + " typow spawnerow, "
                 + wartosciBlokow.size() + " wycenionych blokow).");
 
@@ -72,7 +83,8 @@ public final class IslandConfigLoader {
                 maxDlugoscNazwyWyspy, zapasNaSchemat, chunkiNaTick,
                 wartosciBlokow, spawnerMaxPoziom, spawnerTypy,
                 kosztBazowyIloscPoziomy, kosztBazowyIloscDomyslny,
-                kosztBazowySzybkoscPoziomy, kosztBazowySzybkoscDomyslny
+                kosztBazowySzybkoscPoziomy, kosztBazowySzybkoscDomyslny,
+                nazwaSwiata, wysokoscWyspy, czasPogodyTicks, nowaWyspa
         );
     }
 

@@ -31,8 +31,17 @@ public record IslandTuning(
         Map<Integer, Integer> kosztBazowyIloscPoziomy,
         int kosztBazowyIloscDomyslny,
         Map<Integer, Integer> kosztBazowySzybkoscPoziomy,
-        int kosztBazowySzybkoscDomyslny
+        int kosztBazowySzybkoscDomyslny,
+        String nazwaSwiata,
+        int wysokoscWyspy,
+        long czasPogodyTicks,
+        UstawieniaNowejWyspy nowaWyspa
 ) {
+    /** Ustawienia, z którymi startuje każda nowa wyspa (właściciel potem zmienia je w Ustawieniach/Permisjach Wyspy). */
+    public record UstawieniaNowejWyspy(boolean potwory, boolean pvp, boolean budowanieGosci, boolean wizualnyBorder,
+                                       boolean zabijanieMobowGosci, boolean zabieranieItemowGosci, boolean skrzynieGosci,
+                                       boolean interakcjeGosci, boolean zablokowanaPogoda) {}
+
     /** Od próby "odProby" (włącznie) w górę obowiązuje "milisekundy" - lista MUSI być posortowana rosnąco po odProby. */
     public record CooldownProg(int odProby, long milisekundy) {}
 

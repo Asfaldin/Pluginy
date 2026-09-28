@@ -74,7 +74,7 @@ public final class MainpluginsSkyblock extends JavaPlugin {
         if (getCommand("@reloadwyspy") != null) {
             getCommand("@reloadwyspy").setExecutor((sender, command, label, args) -> {
                 islandManager.przeladujKonfiguracje();
-                sender.sendMessage("§aKonfiguracja i uklad GUI wysp zostaly przeladowane.");
+                CoreAPI.getLangService().send(sender, MainpluginsSkyblock.this, "common.reloaded");
                 return true;
             });
         }
@@ -104,7 +104,7 @@ public final class MainpluginsSkyblock extends JavaPlugin {
         @Override
         public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
             if (!(sender instanceof Player player)) {
-                sender.sendMessage("Tylko gracz moze uzyc tej komendy.");
+                CoreAPI.getLangService().send(sender, islandManager.plugin(), "common.players-only");
                 return true;
             }
             // Nazwa komendy (nie alias) - odróżnia "/is" od "/dom"/"/home" przy pustych

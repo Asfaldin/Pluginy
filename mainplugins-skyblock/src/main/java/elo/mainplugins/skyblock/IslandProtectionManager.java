@@ -44,7 +44,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Egzekwuje ustawienia allowBreak/allowPvP/allowMobs z IslandManager.IslandData,
+ * Egzekwuje ustawienia allowBreak/allowPvP/allowMobs z IslandData,
  * które wcześniej istniały tylko jako gettery/settery bez żadnego realnego efektu -
  * każdy mógł wejść na cudzą wyspę i robić co chciał. Właściciel i członkowie wyspy
  * zawsze mają pełny dostęp do własnego terenu niezależnie od tych ustawień; dotyczą
@@ -60,7 +60,7 @@ public class IslandProtectionManager implements Listener {
         this.islandManager = islandManager;
     }
 
-    private boolean jestWlascicielemLubCzlonkiem(IslandManager.IslandData data, UUID uuid) {
+    private boolean jestWlascicielemLubCzlonkiem(IslandData data, UUID uuid) {
         return data.getOwnerUUID().equals(uuid) || data.getMembers().contains(uuid);
     }
 
@@ -70,8 +70,8 @@ public class IslandProtectionManager implements Listener {
         return null;
     }
 
-    private void odmowa(Player player, String komunikat) {
-        player.sendActionBar(Component.text(komunikat, NamedTextColor.RED));
+    private void odmowa(Player player, String key) {
+        islandManager.pasek(player, key);
     }
 
     /**
@@ -84,35 +84,35 @@ public class IslandProtectionManager implements Listener {
      */
     @EventHandler(ignoreCancelled = true)
     public void onBlockDamage(BlockDamageEvent event) {
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
         if (!data.isAllowBreak()) {
             event.setCancelled(true);
-            odmowa(event.getPlayer(), "Nie możesz tego zniszczyć!");
+            odmowa(event.getPlayer(), "protection.break");
         }
     }
 
     /** Zapasowa siatka bezpieczeństwa na wypadek, gdyby coś ominęło onBlockDamage wyżej. */
     @EventHandler(ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
         if (!data.isAllowBreak()) {
             event.setCancelled(true);
-            odmowa(event.getPlayer(), "Nie możesz tego zniszczyć!");
+            odmowa(event.getPlayer(), "protection.break");
         }
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
         if (!data.isAllowBreak()) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage(Component.text("Nie możesz stawiać bloków na cudzej wyspie!", NamedTextColor.RED));
+            islandManager.komunikat(event.getPlayer(), "protection.place");
         }
     }
 
@@ -215,14 +215,14 @@ public class IslandProtectionManager implements Listener {
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onWorthTrackBreak(BlockBreakEvent event) {
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
         if (data == null) return;
         data.dodajDoWartosci(-islandManager.wartoscBloku(event.getBlock().getType()));
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onWorthTrackPlace(BlockPlaceEvent event) {
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
         if (data == null) return;
         data.dodajDoWartosci(islandManager.wartoscBloku(event.getBlock().getType()));
     }
@@ -284,23 +284,23 @@ public class IslandProtectionManager implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onBucketEmpty(PlayerBucketEmptyEvent event) {
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
         if (!data.isAllowBreak()) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage(Component.text("Nie możesz wylewać cieczy na cudzej wyspie!", NamedTextColor.RED));
+            islandManager.komunikat(event.getPlayer(), "protection.fluid-place");
         }
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onBucketFill(PlayerBucketFillEvent event) {
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
         if (!data.isAllowBreak()) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage(Component.text("Nie możesz zbierać cieczy z cudzej wyspy!", NamedTextColor.RED));
+            islandManager.komunikat(event.getPlayer(), "protection.fluid-take");
         }
     }
 
@@ -311,18 +311,18 @@ public class IslandProtectionManager implements Listener {
         Player atakujacy = rozwiazAtakujacego(event.getDamager());
         if (atakujacy == null || atakujacy.equals(ofiara)) return;
 
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(ofiara.getLocation());
+        IslandData data = islandManager.znajdzWyspePod(ofiara.getLocation());
         if (data == null || data.isAllowPvP()) return;
 
         event.setCancelled(true);
-        atakujacy.sendMessage(Component.text("PvP jest wyłączone na tej wyspie!", NamedTextColor.RED));
+        islandManager.komunikat(atakujacy, "protection.pvp");
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onCreatureSpawn(CreatureSpawnEvent event) {
         if (!(event.getEntity() instanceof Monster)) return;
 
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getLocation());
+        IslandData data = islandManager.znajdzWyspePod(event.getLocation());
         if (data != null && !data.isAllowMobs()) {
             event.setCancelled(true);
         }
@@ -336,12 +336,12 @@ public class IslandProtectionManager implements Listener {
         Player atakujacy = rozwiazAtakujacego(event.getDamager());
         if (atakujacy == null) return;
 
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getEntity().getLocation());
+        IslandData data = islandManager.znajdzWyspePod(event.getEntity().getLocation());
         if (data == null || jestWlascicielemLubCzlonkiem(data, atakujacy.getUniqueId())) return;
 
         if (!data.isAllowGuestMobKill()) {
             event.setCancelled(true);
-            atakujacy.sendMessage(Component.text("Nie możesz zabijać mobów na cudzej wyspie!", NamedTextColor.RED));
+            islandManager.komunikat(atakujacy, "protection.mob-kill");
         }
     }
 
@@ -349,7 +349,7 @@ public class IslandProtectionManager implements Listener {
     public void onItemPickup(EntityPickupItemEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
 
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getItem().getLocation());
+        IslandData data = islandManager.znajdzWyspePod(event.getItem().getLocation());
         if (data == null || jestWlascicielemLubCzlonkiem(data, player.getUniqueId())) return;
 
         if (!data.isAllowItemPickup()) {
@@ -365,12 +365,12 @@ public class IslandProtectionManager implements Listener {
         Location lokalizacja = event.getInventory().getLocation();
         if (lokalizacja == null) return;
 
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(lokalizacja);
+        IslandData data = islandManager.znajdzWyspePod(lokalizacja);
         if (data == null || jestWlascicielemLubCzlonkiem(data, player.getUniqueId())) return;
 
         if (!data.isAllowContainerAccess()) {
             event.setCancelled(true);
-            player.sendMessage(Component.text("Nie możesz otwierać skrzyń/kontenerów na cudzej wyspie!", NamedTextColor.RED));
+            islandManager.komunikat(player, "protection.containers");
         }
     }
 
@@ -390,12 +390,12 @@ public class IslandProtectionManager implements Listener {
         Block block = event.getClickedBlock();
         if (block == null || !czyMechanizm(block.getType())) return;
 
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(block.getLocation());
+        IslandData data = islandManager.znajdzWyspePod(block.getLocation());
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
         if (!data.isAllowInteract()) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage(Component.text("Nie możesz używać drzwi/mechanizmów na cudzej wyspie!", NamedTextColor.RED));
+            islandManager.komunikat(event.getPlayer(), "protection.interact");
         }
     }
 

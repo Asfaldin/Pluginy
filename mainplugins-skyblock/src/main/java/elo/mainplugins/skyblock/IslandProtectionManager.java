@@ -1,5 +1,7 @@
 package elo.mainplugins.skyblock;
 
+import elo.mainplugins.skyblock.config.IslandTuning;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -49,7 +51,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Egzekwuje ustawienia allowBreak/allowPvP/allowMobs z IslandData,
+ * Egzekwuje ustawienia allowBreak/allowPvP z IslandData,
  * które wcześniej istniały tylko jako gettery/settery bez żadnego realnego efektu -
  * każdy mógł wejść na cudzą wyspę i robić co chciał. Właściciel i członkowie wyspy
  * zawsze mają pełny dostęp do własnego terenu niezależnie od tych ustawień; dotyczą
@@ -67,6 +69,11 @@ public class IslandProtectionManager implements Listener {
 
     private boolean jestWlascicielemLubCzlonkiem(IslandData data, UUID uuid) {
         return data.getOwnerUUID().equals(uuid) || data.getMembers().contains(uuid);
+    }
+
+    /** Zwykły członek bez prawa budowania (właściciel i admini wyspy budują zawsze). */
+    private boolean czlonekBezBudowania(IslandData data, Player player) {
+        return islandManager.zwyklyCzlonek(data, player.getUniqueId()) && !data.isMemberBuild();
     }
 
     private Player rozwiazAtakujacego(Entity damager) {
@@ -90,6 +97,11 @@ public class IslandProtectionManager implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onBlockDamage(BlockDamageEvent event) {
         IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        if (data != null && czlonekBezBudowania(data, event.getPlayer())) {
+            event.setCancelled(true);
+            odmowa(event.getPlayer(), "protection.member-build");
+            return;
+        }
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
         if (!data.isAllowBreak() && !(data.isAllowGuestFarming() && jestPlonem(event.getBlock().getType()))) {
@@ -102,6 +114,11 @@ public class IslandProtectionManager implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        if (data != null && czlonekBezBudowania(data, event.getPlayer())) {
+            event.setCancelled(true);
+            odmowa(event.getPlayer(), "protection.member-build");
+            return;
+        }
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
         if (!data.isAllowBreak() && !(data.isAllowGuestFarming() && jestPlonem(event.getBlock().getType()))) {
@@ -113,6 +130,11 @@ public class IslandProtectionManager implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
         IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        if (data != null && czlonekBezBudowania(data, event.getPlayer())) {
+            event.setCancelled(true);
+            islandManager.komunikat(event.getPlayer(), "protection.member-build");
+            return;
+        }
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
         if (!data.isAllowBreak() && !(data.isAllowGuestFarming() && jestPlonem(event.getBlock().getType()))) {
@@ -342,6 +364,11 @@ public class IslandProtectionManager implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onBucketEmpty(PlayerBucketEmptyEvent event) {
         IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        if (data != null && czlonekBezBudowania(data, event.getPlayer())) {
+            event.setCancelled(true);
+            islandManager.komunikat(event.getPlayer(), "protection.member-build");
+            return;
+        }
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
         if (!data.isAllowGuestBuckets()) {
@@ -353,6 +380,11 @@ public class IslandProtectionManager implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onBucketFill(PlayerBucketFillEvent event) {
         IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        if (data != null && czlonekBezBudowania(data, event.getPlayer())) {
+            event.setCancelled(true);
+            islandManager.komunikat(event.getPlayer(), "protection.member-build");
+            return;
+        }
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
         if (!data.isAllowGuestBuckets()) {
@@ -375,27 +407,24 @@ public class IslandProtectionManager implements Listener {
         islandManager.komunikat(atakujacy, "protection.pvp");
     }
 
+    /**
+     * Moby pojawiające się same na wyspach - ustawienie serwera (wyspy-config.yml: moby.potwory / moby.zwierzeta),
+     * domyślnie wyłączone, bo naturalny spawn na wielu wyspach mocno obciąża serwer. Spawnery, rozmnażanie,
+     * jajka i /summon działają zawsze. Potwory = wszystko wrogie (też slime'y, fantomy), zwierzęta = reszta żywych
+     * (krowy, ryby, kałamarnice, nietoperze...).
+     */
     @EventHandler(ignoreCancelled = true)
-    public void onCreatureSpawn(CreatureSpawnEvent event) {
-        if (!(event.getEntity() instanceof org.bukkit.entity.Monster)) return;
-
-        IslandData data = islandManager.znajdzWyspePod(event.getLocation());
-        if (data != null && !data.isAllowMobs()) {
-            event.setCancelled(true);
-        }
-    }
-
-    /** Zwierzęta pojawiające się same (naturalnie); rozmnażanie, jajka i spawnery nie są tu blokowane. */
-    @EventHandler(ignoreCancelled = true)
-    public void onAnimalSpawn(CreatureSpawnEvent event) {
-        if (!(event.getEntity() instanceof Animals)) return;
+    public void onNaturalSpawn(CreatureSpawnEvent event) {
+        if (!islandManager.jestSwiatemWysp(event.getLocation().getWorld())) return;
         CreatureSpawnEvent.SpawnReason r = event.getSpawnReason();
-        if (r != CreatureSpawnEvent.SpawnReason.NATURAL && r != CreatureSpawnEvent.SpawnReason.CHUNK_GEN) return;
-        IslandData data = islandManager.znajdzWyspePod(event.getLocation());
-        if (data != null && !data.isAllowAnimals()) event.setCancelled(true);
+        if (r != CreatureSpawnEvent.SpawnReason.NATURAL && r != CreatureSpawnEvent.SpawnReason.CHUNK_GEN
+                && r != CreatureSpawnEvent.SpawnReason.PATROL && r != CreatureSpawnEvent.SpawnReason.REINFORCEMENTS) return;
+        IslandTuning t = islandManager.getTuning();
+        boolean wrog = event.getEntity() instanceof org.bukkit.entity.Enemy;
+        if (wrog ? !t.mobyPotwory() : !t.mobyZwierzeta()) event.setCancelled(true);
     }
 
-    /** Osobne od allowMobs (który dotyczy TYLKO spawnu) - kontroluje, kto może polować na już zaspawnowane moby. */
+    /** Kto może polować na moby na cudzej wyspie. */
     @EventHandler(ignoreCancelled = true)
     public void onGuestMobKill(EntityDamageByEntityEvent event) {
         // Wszystkie moby: potwory i zwierzęta (bez graczy - to PvP - i stojaków na zbroję).
@@ -434,6 +463,11 @@ public class IslandProtectionManager implements Listener {
         if (lokalizacja == null) return;
 
         IslandData data = islandManager.znajdzWyspePod(lokalizacja);
+        if (data != null && islandManager.zwyklyCzlonek(data, player.getUniqueId()) && !data.isMemberContainers()) {
+            event.setCancelled(true);
+            islandManager.komunikat(player, "protection.member-containers");
+            return;
+        }
         if (data == null || jestWlascicielemLubCzlonkiem(data, player.getUniqueId())) return;
 
         if (!data.isAllowContainerAccess()) {
@@ -476,7 +510,7 @@ public class IslandProtectionManager implements Listener {
         if (event.getCause() != EntityDamageEvent.DamageCause.VOID || !(event.getEntity() instanceof Player player)) return;
         if (!islandManager.jestSwiatemWysp(player.getWorld())) return;
         IslandData data = islandManager.znajdzWyspePod(player.getLocation());
-        if (data == null || !data.isVoidReturn()) return;
+        if (data == null || !islandManager.getTuning().powrotZPustki()) return;
 
         event.setCancelled(true);
         player.setFallDistance(0);

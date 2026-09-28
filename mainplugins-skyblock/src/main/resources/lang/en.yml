@@ -51,8 +51,6 @@ settings:
   build-off: "&aBuilding for guests: closed"
   pvp-on: "&aPvP on the island: on"
   pvp-off: "&aPvP on the island: off"
-  mobs-on: "&aMonsters on the island: can spawn"
-  mobs-off: "&aMonsters on the island: blocked"
   guest-kill-on: "&aGuests killing mobs: allowed"
   guest-kill-off: "&aGuests killing mobs: blocked"
   pickup-on: "&aGuests picking up items: allowed"
@@ -71,10 +69,14 @@ settings:
   farming-off: "&aCrops and animals for guests: blocked"
   buckets-on: "&aBuckets for guests: allowed"
   buckets-off: "&aBuckets for guests: blocked"
-  animals-on: "&aAnimals on the island: spawn"
-  animals-off: "&aAnimals on the island: do not spawn by themselves"
-  void-on: "&aVoid return: on (falling does not kill)"
-  void-off: "&aVoid return: off (falling into the void kills)"
+  member-build-on: "&aMembers: building allowed"
+  member-build-off: "&aMembers: building blocked"
+  member-containers-on: "&aMembers: chests allowed"
+  member-containers-off: "&aMembers: chests blocked"
+  member-invite-on: "&aMembers: can invite players"
+  member-invite-off: "&aMembers: cannot invite players"
+  member-bank-on: "&aMembers: can withdraw from the bank and upgrade the island"
+  member-bank-off: "&aMembers: cannot withdraw from the bank or upgrade the island"
 
 home:
   not-on-island: "&cYou have to stand on your own island to set a teleport point here!"
@@ -206,6 +208,8 @@ protection:
   containers: "&cYou can't open chests/containers on someone else's island!"
   interact: "&cYou can't use doors/mechanisms on someone else's island!"
   farming: "&cYou can't do that with animals on someone else's island!"
+  member-build: "&cThe island owner does not let members build."
+  member-containers: "&cThe island owner does not let members open chests."
 
 gui:
   title:

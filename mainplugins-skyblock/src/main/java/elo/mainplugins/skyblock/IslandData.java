@@ -62,7 +62,6 @@ public class IslandData {
     // zawsze mogą budować/niszczyć na własnej wyspie niezależnie od tych ustawień
     // (patrz IslandProtectionManager). allowBreak domyślnie false - wyspa jest
     // prywatna od razu po stworzeniu, właściciel musi ją świadomie otworzyć.
-    private boolean allowMobs = true;
     private boolean allowPvP = false;
     private boolean allowBreak = false;
     private boolean visualBorder = true; // Nowa zmienna do wizualnego borderu
@@ -87,10 +86,12 @@ public class IslandData {
     private boolean allowGuestFarming = false;
     // Goście: wylewanie i nabieranie wody/lawy wiadrem.
     private boolean allowGuestBuckets = false;
-    // Kto spadnie z wyspy w pustkę, wraca na jej punkt /is zamiast ginąć (dotyczy też gości).
-    private boolean voidReturn = true;
-    // Czy zwierzęta (krowy, świnie...) pojawiają się same na wyspie; rozmnażanie i jajka działają zawsze.
-    private boolean allowAnimals = true;
+
+    // Co mogą zwykli członkowie (rola CZLONEK) - właściciel i admini wyspy mogą zawsze wszystko.
+    private boolean memberBuild = true;
+    private boolean memberContainers = true;
+    private boolean memberInvite = false;
+    private boolean memberBankUpgrade = false;
 
     // Kosmetyczna nazwa wyspy ustawiana przez właściciela/admina (przycisk "Nazwa Wyspy"
     // w Ustawieniach Wyspy) - null dopóki nikt jej nie ustawi, wtedy GUI pokazuje
@@ -160,8 +161,6 @@ public class IslandData {
     public void setBorderSize(int borderSize) { this.borderSize = borderSize; }
     public Set<UUID> getMembers() { return members; }
 
-    public boolean isAllowMobs() { return allowMobs; }
-    public void setAllowMobs(boolean allowMobs) { this.allowMobs = allowMobs; }
     public boolean isAllowPvP() { return allowPvP; }
     public void setAllowPvP(boolean allowPvP) { this.allowPvP = allowPvP; }
     public boolean isAllowBreak() { return allowBreak; }
@@ -185,10 +184,14 @@ public class IslandData {
     public void setAllowGuestFarming(boolean allowGuestFarming) { this.allowGuestFarming = allowGuestFarming; }
     public boolean isAllowGuestBuckets() { return allowGuestBuckets; }
     public void setAllowGuestBuckets(boolean allowGuestBuckets) { this.allowGuestBuckets = allowGuestBuckets; }
-    public boolean isAllowAnimals() { return allowAnimals; }
-    public void setAllowAnimals(boolean allowAnimals) { this.allowAnimals = allowAnimals; }
-    public boolean isVoidReturn() { return voidReturn; }
-    public void setVoidReturn(boolean voidReturn) { this.voidReturn = voidReturn; }
+    public boolean isMemberBuild() { return memberBuild; }
+    public void setMemberBuild(boolean v) { this.memberBuild = v; }
+    public boolean isMemberContainers() { return memberContainers; }
+    public void setMemberContainers(boolean v) { this.memberContainers = v; }
+    public boolean isMemberInvite() { return memberInvite; }
+    public void setMemberInvite(boolean v) { this.memberInvite = v; }
+    public boolean isMemberBankUpgrade() { return memberBankUpgrade; }
+    public void setMemberBankUpgrade(boolean v) { this.memberBankUpgrade = v; }
     public boolean isWeatherLocked() { return weatherLocked; }
     public void setWeatherLocked(boolean weatherLocked) { this.weatherLocked = weatherLocked; }
     public String getCustomName() { return customName; }

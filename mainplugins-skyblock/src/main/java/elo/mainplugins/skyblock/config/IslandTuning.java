@@ -43,7 +43,10 @@ public record IslandTuning(
         boolean napisPrzyWejsciu,
         List<WzorWyspy> wzoryWysp,
         Map<Material, Integer> limityBlokow,
-        int limitZwierzat
+        int limitZwierzat,
+        boolean mobyPotwory,
+        boolean mobyZwierzeta,
+        boolean powrotZPustki
 ) {
     /** Wzór wyspy do wyboru przy zakładaniu - pliki islands/<id>.nbt/.yml zapisuje /@islandtemplate save <id>. */
     public record WzorWyspy(String id, String nazwa, Material ikona, List<String> opis, List<org.bukkit.inventory.ItemStack> skrzynia) {}
@@ -54,11 +57,12 @@ public record IslandTuning(
     }
 
     /** Ustawienia, z którymi startuje każda nowa wyspa (właściciel potem zmienia je w Ustawieniach/Permisjach Wyspy). */
-    public record UstawieniaNowejWyspy(boolean potwory, boolean pvp, boolean budowanieGosci, boolean wizualnyBorder,
+    public record UstawieniaNowejWyspy(boolean pvp, boolean budowanieGosci, boolean wizualnyBorder,
                                        boolean zabijanieMobowGosci, boolean zabieranieItemowGosci, boolean skrzynieGosci,
                                        boolean interakcjeGosci, boolean zablokowanaPogoda, boolean ogien,
                                        boolean otwartaDlaOdwiedzajacych, boolean rolnictwoGosci, boolean wiadraGosci,
-                                       boolean powrotZPustki, boolean zwierzeta) {}
+                                       boolean czlonkowieBudowanie, boolean czlonkowieSkrzynie,
+                                       boolean czlonkowieZapraszanie, boolean czlonkowieBankIUlepszenia) {}
 
     /** Od próby "odProby" (włącznie) w górę obowiązuje "milisekundy" - lista MUSI być posortowana rosnąco po odProby. */
     public record CooldownProg(int odProby, long milisekundy) {}

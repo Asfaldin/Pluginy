@@ -7,8 +7,7 @@ import org.bukkit.event.entity.CreatureSpawnEvent;
 
 /**
  * Globalny zakaz spawnu Wardena, Withera i bałwana (Snow Golem) - wszędzie na
- * serwerze, niezależnie od ustawień danej wyspy (patrz IslandProtectionManager,
- * który kontroluje TYLKO moby na wyspach graczy przez allowMobs). Bałwan łapany
+ * serwerze (naturalny spawn na wyspach - patrz IslandProtectionManager.onNaturalSpawn). Bałwan łapany
  * jest tu samo jak reszta mimo że powstaje przez zbudowanie (SpawnReason.BUILD_SNOWMAN),
  * nie naturalny spawn - to nadal ten sam event. Nie dotyczy /summon admina
  * (SpawnReason.COMMAND) - to świadomy wyjątek do testów.

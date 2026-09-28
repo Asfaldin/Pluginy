@@ -51,8 +51,6 @@ settings:
   build-off: "&aBudowanie dla gości: zamknięte"
   pvp-on: "&aPvP na wyspie: włączone"
   pvp-off: "&aPvP na wyspie: wyłączone"
-  mobs-on: "&aPotwory na wyspie: mogą się pojawiać"
-  mobs-off: "&aPotwory na wyspie: zablokowane"
   guest-kill-on: "&aZabijanie mobów przez gości: dozwolone"
   guest-kill-off: "&aZabijanie mobów przez gości: zablokowane"
   pickup-on: "&aZabieranie itemów przez gości: dozwolone"
@@ -71,10 +69,14 @@ settings:
   farming-off: "&aPlony i zwierzęta dla gości: zablokowane"
   buckets-on: "&aWiadra dla gości: dozwolone"
   buckets-off: "&aWiadra dla gości: zablokowane"
-  animals-on: "&aZwierzęta na wyspie: pojawiają się"
-  animals-off: "&aZwierzęta na wyspie: nie pojawiają się same"
-  void-on: "&aPowrót z pustki: włączony (upadek nie zabija)"
-  void-off: "&aPowrót z pustki: wyłączony (upadek w pustkę zabija)"
+  member-build-on: "&aCzłonkowie: budowanie dozwolone"
+  member-build-off: "&aCzłonkowie: budowanie zablokowane"
+  member-containers-on: "&aCzłonkowie: skrzynie dozwolone"
+  member-containers-off: "&aCzłonkowie: skrzynie zablokowane"
+  member-invite-on: "&aCzłonkowie: mogą zapraszać graczy"
+  member-invite-off: "&aCzłonkowie: nie mogą zapraszać graczy"
+  member-bank-on: "&aCzłonkowie: mogą wypłacać z banku i ulepszać wyspę"
+  member-bank-off: "&aCzłonkowie: nie mogą wypłacać z banku ani ulepszać wyspy"
 
 home:
   not-on-island: "&cMusisz stać na własnej wyspie, żeby tu ustawić punkt teleportu!"
@@ -206,6 +208,8 @@ protection:
   containers: "&cNie możesz otwierać skrzyń/kontenerów na cudzej wyspie!"
   interact: "&cNie możesz używać drzwi/mechanizmów na cudzej wyspie!"
   farming: "&cNie możesz tego robić ze zwierzętami na cudzej wyspie!"
+  member-build: "&cWłaściciel wyspy nie pozwolił członkom budować."
+  member-containers: "&cWłaściciel wyspy nie pozwolił członkom otwierać skrzyń."
 
 gui:
   title:

@@ -193,6 +193,10 @@ final class IslandMenus implements Listener {
         ustawPrzelacznik(inv, screen, "INTERAKCJE", data.isAllowInteract());
         ustawPrzelacznik(inv, screen, "ROLNICTWO_GOSCI", data.isAllowGuestFarming());
         ustawPrzelacznik(inv, screen, "WIADRA_GOSCI", data.isAllowGuestBuckets());
+        ustawPrzelacznik(inv, screen, "CZLONKOWIE_BUDOWANIE", data.isMemberBuild());
+        ustawPrzelacznik(inv, screen, "CZLONKOWIE_SKRZYNIE", data.isMemberContainers());
+        ustawPrzelacznik(inv, screen, "CZLONKOWIE_ZAPRASZANIE", data.isMemberInvite());
+        ustawPrzelacznik(inv, screen, "CZLONKOWIE_BANK", data.isMemberBankUpgrade());
         ustawPrzycisk(inv, screen, "POWROT", null);
 
         player.openInventory(inv);
@@ -213,13 +217,10 @@ final class IslandMenus implements Listener {
         ustawPrzelacznik(inv, screen, "WIZUALNY_BORDER", data.isVisualBorder());
         ustawPrzelacznik(inv, screen, "BUDOWANIE_GOSCI", data.isAllowBreak());
         ustawPrzelacznik(inv, screen, "PVP", data.isAllowPvP());
-        ustawPrzelacznik(inv, screen, "POTWORY", data.isAllowMobs());
         ustawPrzelacznik(inv, screen, "ZABIJANIE_MOBOW_GOSCI", data.isAllowGuestMobKill());
         ustawPrzelacznik(inv, screen, "POGODA_CZAS", data.isWeatherLocked());
         ustawPrzelacznik(inv, screen, "OGIEN", data.isAllowFireSpread());
         ustawPrzelacznik(inv, screen, "ODWIEDZINY", data.isOpenForVisitors());
-        ustawPrzelacznik(inv, screen, "POWROT_Z_PUSTKI", data.isVoidReturn());
-        ustawPrzelacznik(inv, screen, "ZWIERZETA", data.isAllowAnimals());
 
         IslandGuiButton nazwaBtn = screen.przycisk("NAZWA_WYSPY");
         if (nazwaBtn != null) {
@@ -286,7 +287,7 @@ final class IslandMenus implements Listener {
     }
 
     public void otworzMenuUlepszen(Player player) {
-        IslandData data = m.wlasnaWyspaJakoZarzadca(player);
+        IslandData data = m.wlasnaWyspaZUprawnieniem(player, IslandData::isMemberBankUpgrade);
         if (data == null) return;
 
         int currentSize = data.getBorderSize();
@@ -529,6 +530,10 @@ final class IslandMenus implements Listener {
             else if (jestSlotem(screen, "INTERAKCJE", slot)) { m.przelaczInterakcje(player); otworzMenuPermisji(player); }
             else if (jestSlotem(screen, "ROLNICTWO_GOSCI", slot)) { m.przelaczRolnictwoGosci(player); otworzMenuPermisji(player); }
             else if (jestSlotem(screen, "WIADRA_GOSCI", slot)) { m.przelaczWiadraGosci(player); otworzMenuPermisji(player); }
+            else if (jestSlotem(screen, "CZLONKOWIE_BUDOWANIE", slot)) { m.przelaczCzlonkowieBudowanie(player); otworzMenuPermisji(player); }
+            else if (jestSlotem(screen, "CZLONKOWIE_SKRZYNIE", slot)) { m.przelaczCzlonkowieSkrzynie(player); otworzMenuPermisji(player); }
+            else if (jestSlotem(screen, "CZLONKOWIE_ZAPRASZANIE", slot)) { m.przelaczCzlonkowieZapraszanie(player); otworzMenuPermisji(player); }
+            else if (jestSlotem(screen, "CZLONKOWIE_BANK", slot)) { m.przelaczCzlonkowieBank(player); otworzMenuPermisji(player); }
             else if (jestSlotem(screen, "POWROT", slot)) { otworzMenuWyspy(player, zMenu); }
         }
         else if (ekran.equals("ustawienia")) {
@@ -538,13 +543,10 @@ final class IslandMenus implements Listener {
             if (jestSlotem(screen, "WIZUALNY_BORDER", slot)) { m.przelaczWizualnyBorder(player); otworzMenuUstawienWyspy(player); }
             else if (jestSlotem(screen, "BUDOWANIE_GOSCI", slot)) { m.przelaczBudowanieDlaGosci(player); otworzMenuUstawienWyspy(player); }
             else if (jestSlotem(screen, "PVP", slot)) { m.przelaczPvP(player); otworzMenuUstawienWyspy(player); }
-            else if (jestSlotem(screen, "POTWORY", slot)) { m.przelaczPotwory(player); otworzMenuUstawienWyspy(player); }
             else if (jestSlotem(screen, "ZABIJANIE_MOBOW_GOSCI", slot)) { m.przelaczZabijanieMobowPrzezGosci(player); otworzMenuUstawienWyspy(player); }
             else if (jestSlotem(screen, "POGODA_CZAS", slot)) { m.przelaczPogodeICzas(player); otworzMenuUstawienWyspy(player); }
             else if (jestSlotem(screen, "OGIEN", slot)) { m.przelaczOgien(player); otworzMenuUstawienWyspy(player); }
             else if (jestSlotem(screen, "ODWIEDZINY", slot)) { m.przelaczOdwiedziny(player); otworzMenuUstawienWyspy(player); }
-            else if (jestSlotem(screen, "POWROT_Z_PUSTKI", slot)) { m.przelaczPowrotZPustki(player); otworzMenuUstawienWyspy(player); }
-            else if (jestSlotem(screen, "ZWIERZETA", slot)) { m.przelaczZwierzeta(player); otworzMenuUstawienWyspy(player); }
             else if (jestSlotem(screen, "NAZWA_WYSPY", slot)) { m.chat.rozpocznijZmianeNazwyWyspy(player); }
             else if (jestSlotem(screen, "CZLONKOWIE", slot)) { otworzMenuCzlonkow(player); }
             else if (jestSlotem(screen, "POWROT", slot)) { otworzMenuWyspy(player, zMenu); }

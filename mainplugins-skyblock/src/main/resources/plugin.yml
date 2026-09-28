@@ -8,7 +8,7 @@ softdepend: [MainpluginsSpawn]
 commands:
   is:
     description: Wyspa
-    usage: "/is [menu|dom|ustawdom|ustawspawn|usun|granica|budowanie|pvp|potwory|ulepszenia|czlonkowie|ustawienia|permisje|zapros <gracz>|akceptuj|odrzuc|opusc|awansuj <gracz>|degraduj <gracz>|wyrzuc <gracz>|wplac <kwota>|wyplac <kwota>|odwiedz <gracz>|przekaz <gracz>|wypros <gracz>|zbanuj <gracz>|odbanuj <gracz>] - samo /is teleportuje do punktu z /is ustawspawn, /dom-/home zawsze do punktu z /is ustawdom (ang. aliasy: sethome/border/guests/mobs/upgrade/members/invite/accept/deny/leave/promote/demote/remove/deposit/withdraw/visit/transfer/expel/ban/unban)"
+    usage: "/is [menu|dom|ustawdom|ustawspawn|usun|granica|budowanie|pvp|ulepszenia|czlonkowie|ustawienia|permisje|zapros <gracz>|akceptuj|odrzuc|opusc|awansuj <gracz>|degraduj <gracz>|wyrzuc <gracz>|wplac <kwota>|wyplac <kwota>|odwiedz <gracz>|przekaz <gracz>|wypros <gracz>|zbanuj <gracz>|odbanuj <gracz>] - samo /is teleportuje do punktu z /is ustawspawn, /dom-/home zawsze do punktu z /is ustawdom (ang. aliasy: sethome/border/guests/upgrade/members/invite/accept/deny/leave/promote/demote/remove/deposit/withdraw/visit/transfer/expel/ban/unban)"
   dom:
     description: Teleport na wyspę - do punktu ustawionego przez "/is ustawdom" (niezależnego od "/is ustawspawn")
     aliases: [home]

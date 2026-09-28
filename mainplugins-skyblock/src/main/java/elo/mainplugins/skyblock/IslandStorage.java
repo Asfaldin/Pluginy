@@ -103,7 +103,6 @@ final class IslandStorage {
             int borderSize = configWysp.getInt(path + "borderSize", m.tuning.domyslnyRozmiarWyspy());
 
             IslandData data = new IslandData(id, ownerUUID, centerX, centerZ, borderSize);
-            data.setAllowMobs(configWysp.getBoolean(path + "allowMobs", false));
             data.setAllowPvP(configWysp.getBoolean(path + "allowPvP", false));
             data.setAllowBreak(configWysp.getBoolean(path + "allowBreak", false));
             data.setVisualBorder(configWysp.getBoolean(path + "visualBorder", true));
@@ -116,8 +115,10 @@ final class IslandStorage {
             data.setOpenForVisitors(configWysp.getBoolean(path + "openForVisitors", true));
             data.setAllowGuestFarming(configWysp.getBoolean(path + "allowGuestFarming", false));
             data.setAllowGuestBuckets(configWysp.getBoolean(path + "allowGuestBuckets", false));
-            data.setVoidReturn(configWysp.getBoolean(path + "voidReturn", true));
-            data.setAllowAnimals(configWysp.getBoolean(path + "allowAnimals", true));
+            data.setMemberBuild(configWysp.getBoolean(path + "memberBuild", true));
+            data.setMemberContainers(configWysp.getBoolean(path + "memberContainers", true));
+            data.setMemberInvite(configWysp.getBoolean(path + "memberInvite", false));
+            data.setMemberBankUpgrade(configWysp.getBoolean(path + "memberBankUpgrade", false));
             data.setCustomName(configWysp.getString(path + "customName"));
             data.setBankBalance(configWysp.getDouble(path + "bankBalance", 0.0));
             data.setWorth(configWysp.getDouble(path + "worth", 0.0));
@@ -197,7 +198,6 @@ final class IslandStorage {
             configWysp.set(path + "centerX", data.getCenterX());
             configWysp.set(path + "centerZ", data.getCenterZ());
             configWysp.set(path + "borderSize", data.getBorderSize());
-            configWysp.set(path + "allowMobs", data.isAllowMobs());
             configWysp.set(path + "allowPvP", data.isAllowPvP());
             configWysp.set(path + "allowBreak", data.isAllowBreak());
             configWysp.set(path + "visualBorder", data.isVisualBorder());
@@ -210,8 +210,10 @@ final class IslandStorage {
             configWysp.set(path + "openForVisitors", data.isOpenForVisitors());
             configWysp.set(path + "allowGuestFarming", data.isAllowGuestFarming());
             configWysp.set(path + "allowGuestBuckets", data.isAllowGuestBuckets());
-            configWysp.set(path + "voidReturn", data.isVoidReturn());
-            configWysp.set(path + "allowAnimals", data.isAllowAnimals());
+            configWysp.set(path + "memberBuild", data.isMemberBuild());
+            configWysp.set(path + "memberContainers", data.isMemberContainers());
+            configWysp.set(path + "memberInvite", data.isMemberInvite());
+            configWysp.set(path + "memberBankUpgrade", data.isMemberBankUpgrade());
             configWysp.set(path + "customName", data.getCustomName());
             configWysp.set(path + "bankBalance", data.getBankBalance());
             configWysp.set(path + "worth", data.getWorth());

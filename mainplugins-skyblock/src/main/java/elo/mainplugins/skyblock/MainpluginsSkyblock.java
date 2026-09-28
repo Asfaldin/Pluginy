@@ -104,7 +104,7 @@ public final class MainpluginsSkyblock extends JavaPlugin {
         // withdraw - patrz handleCommand) celowo pominięte tu, w podpowiedziach Tab liczy się
         // tylko polska forma główna, żeby nie dublować listy.
         private static final List<String> PODKOMENDY = List.of(
-                "menu", "ustawdom", "ustawspawn", "usun", "granica", "budowanie", "pvp", "potwory", "ulepszenia",
+                "menu", "ustawdom", "ustawspawn", "usun", "granica", "budowanie", "pvp", "ulepszenia",
                 "czlonkowie", "ustawienia", "permisje", "zapros", "akceptuj", "odrzuc", "opusc", "awansuj", "degraduj",
                 "wyrzuc", "dom", "wplac", "wyplac", "odwiedz", "przekaz", "wypros", "zbanuj", "odbanuj"
         );

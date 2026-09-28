@@ -106,7 +106,7 @@ final class IslandChat implements Listener {
             }
 
             // Ponowna walidacja uprawnień - stan mógł się zmienić w czasie, gdy okno czatu było otwarte.
-            IslandData data = m.wlasnaWyspaJakoZarzadca(player);
+            IslandData data = m.wlasnaWyspaZUprawnieniem(player, IslandData::isMemberInvite);
             if (data == null) return;
 
             Player target = Bukkit.getPlayer(targetName);

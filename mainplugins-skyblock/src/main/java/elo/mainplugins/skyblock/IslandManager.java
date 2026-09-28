@@ -174,7 +174,6 @@ public class IslandManager implements Listener, IslandService {
             case "granica", "border" -> przelaczWizualnyBorder(player);
             case "budowanie", "guests", "build" -> przelaczBudowanieDlaGosci(player);
             case "pvp" -> przelaczPvP(player);
-            case "potwory", "mobs" -> przelaczPotwory(player);
             case "odwiedz", "visit" -> odwiedzWyspe(player, args);
             case "przekaz", "transfer" -> przekazWyspe(player, args);
             case "wypros", "expel" -> wyprosGosciaKomenda(player, args);
@@ -293,14 +292,6 @@ public class IslandManager implements Listener, IslandService {
         msg(player, data.isAllowPvP() ? "settings.pvp-on" : "settings.pvp-off");
     }
 
-    public void przelaczPotwory(Player player) {
-        IslandData data = wlasnaWyspaJakoZarzadca(player);
-        if (data == null) return;
-        data.setAllowMobs(!data.isAllowMobs());
-        storage.zapiszWyspy();
-        msg(player, data.isAllowMobs() ? "settings.mobs-on" : "settings.mobs-off");
-    }
-
     public void przelaczZabijanieMobowPrzezGosci(Player player) {
         IslandData data = wlasnaWyspaJakoZarzadca(player);
         if (data == null) return;
@@ -358,21 +349,33 @@ public class IslandManager implements Listener, IslandService {
         }
     }
 
-    public void przelaczZwierzeta(Player player) {
-        IslandData data = wlasnaWyspaJakoZarzadca(player);
-        if (data == null) return;
-        data.setAllowAnimals(!data.isAllowAnimals());
-        storage.zapiszWyspy();
-        msg(player, data.isAllowAnimals() ? "settings.animals-on" : "settings.animals-off");
+    /** Zwykły członek (nie właściciel, nie admin wyspy) - jego uprawnienia ustawia się w Permisjach. */
+    boolean zwyklyCzlonek(IslandData data, UUID uuid) {
+        return data.getMembers().contains(uuid) && data.getRole(uuid) != IslandRole.ADMIN;
     }
 
-    public void przelaczPowrotZPustki(Player player) {
+    /** Właściciel/admin wyspy albo zwykły członek z danym uprawnieniem; inaczej komunikat i null. */
+    IslandData wlasnaWyspaZUprawnieniem(Player player, java.util.function.Predicate<IslandData> dlaCzlonka) {
+        IslandData data = wlasnaWyspaLubKomunikat(player);
+        if (data == null) return null;
+        if (mozeZarzadzac(player.getUniqueId(), data) || dlaCzlonka.test(data)) return data;
+        msg(player, "common.managers-only");
+        return null;
+    }
+
+    private void przelaczUprawnienie(Player player, java.util.function.Predicate<IslandData> get,
+                                     java.util.function.BiConsumer<IslandData, Boolean> set, String klucz) {
         IslandData data = wlasnaWyspaJakoZarzadca(player);
         if (data == null) return;
-        data.setVoidReturn(!data.isVoidReturn());
+        set.accept(data, !get.test(data));
         storage.zapiszWyspy();
-        msg(player, data.isVoidReturn() ? "settings.void-on" : "settings.void-off");
+        msg(player, "settings." + klucz + (get.test(data) ? "-on" : "-off"));
     }
+
+    public void przelaczCzlonkowieBudowanie(Player p) { przelaczUprawnienie(p, IslandData::isMemberBuild, IslandData::setMemberBuild, "member-build"); }
+    public void przelaczCzlonkowieSkrzynie(Player p) { przelaczUprawnienie(p, IslandData::isMemberContainers, IslandData::setMemberContainers, "member-containers"); }
+    public void przelaczCzlonkowieZapraszanie(Player p) { przelaczUprawnienie(p, IslandData::isMemberInvite, IslandData::setMemberInvite, "member-invite"); }
+    public void przelaczCzlonkowieBank(Player p) { przelaczUprawnienie(p, IslandData::isMemberBankUpgrade, IslandData::setMemberBankUpgrade, "member-bank"); }
 
     public void przelaczRolnictwoGosci(Player player) {
         IslandData data = wlasnaWyspaJakoZarzadca(player);
@@ -727,7 +730,7 @@ public class IslandManager implements Listener, IslandService {
             msg(player, "invite.usage");
             return;
         }
-        IslandData data = wlasnaWyspaJakoZarzadca(player);
+        IslandData data = wlasnaWyspaZUprawnieniem(player, IslandData::isMemberInvite);
         if (data == null) return;
 
         Player target = Bukkit.getPlayer(args[1]);
@@ -957,7 +960,6 @@ public class IslandManager implements Listener, IslandService {
 
         IslandData data = new IslandData(myIslandId, player.getUniqueId(), x, z, tuning.domyslnyRozmiarWyspy());
         IslandTuning.UstawieniaNowejWyspy start = tuning.nowaWyspa();
-        data.setAllowMobs(start.potwory());
         data.setAllowPvP(start.pvp());
         data.setAllowBreak(start.budowanieGosci());
         data.setVisualBorder(start.wizualnyBorder());
@@ -970,8 +972,10 @@ public class IslandManager implements Listener, IslandService {
         data.setOpenForVisitors(start.otwartaDlaOdwiedzajacych());
         data.setAllowGuestFarming(start.rolnictwoGosci());
         data.setAllowGuestBuckets(start.wiadraGosci());
-        data.setVoidReturn(start.powrotZPustki());
-        data.setAllowAnimals(start.zwierzeta());
+        data.setMemberBuild(start.czlonkowieBudowanie());
+        data.setMemberContainers(start.czlonkowieSkrzynie());
+        data.setMemberInvite(start.czlonkowieZapraszanie());
+        data.setMemberBankUpgrade(start.czlonkowieBankIUlepszenia());
         islandDatabase.put(player.getUniqueId(), data);
         playerIslandMap.put(player.getUniqueId(), player.getUniqueId());
         storage.zapiszWyspy();
@@ -1166,7 +1170,7 @@ public class IslandManager implements Listener, IslandService {
         double kwota = sparsujKwote(player, args[1]);
         if (Double.isNaN(kwota)) return;
 
-        IslandData data = wlasnaWyspaJakoZarzadca(player);
+        IslandData data = wlasnaWyspaZUprawnieniem(player, IslandData::isMemberBankUpgrade);
         if (data == null) return;
 
         if (!data.odejmijZBanku(kwota)) {
@@ -1262,7 +1266,7 @@ public class IslandManager implements Listener, IslandService {
     }
 
     void ulepszSpawnerStatystyke(Player player, String typId, String sufiks) {
-        IslandData data = wlasnaWyspaLubKomunikat(player);
+        IslandData data = wlasnaWyspaZUprawnieniem(player, IslandData::isMemberBankUpgrade);
         if (data == null) return;
 
         String klucz = typId + sufiks;
@@ -1325,6 +1329,10 @@ public class IslandManager implements Listener, IslandService {
             return;
         }
 
+        if (!mozeZarzadzac(player.getUniqueId(), data) && !data.isMemberBankUpgrade()) {
+            msg(player, "common.managers-only");
+            return;
+        }
         if (data.getBorderSize() >= tuning.borderMaxRozmiar()) {
             msg(player, "upgrade.max-size", "max", String.valueOf(tuning.borderMaxRozmiar()));
             return;

@@ -37,7 +37,7 @@ public final class IslandConfigLoader {
         List<IslandTuning.CooldownProg> cooldownProb = parseCooldownProb(cfg, log);
 
         int borderPrzyrost = cfg.getInt("border.przyrost-na-ulepszenie", 10);
-        int borderKosztPierwszego = cfg.getInt("border.koszt-pierwszego-powiekszenia", 1000);
+        int borderKosztPierwszego = cfg.getInt("border.koszt-pierwszego-powiekszenia", 2250);
         double borderWzrostKosztu = Math.max(0, cfg.getDouble("border.wzrost-kosztu-procent", 35));
         int borderMaxRozmiar = cfg.getInt("border.max-rozmiar", 150);
         int odstepSiatkiWysp = cfg.getInt("border.odstep-siatki-wysp", 2000);
@@ -69,14 +69,15 @@ public final class IslandConfigLoader {
         long czasPogodyTicks = cfg.getLong("pogoda-i-czas.pora-dnia", 6000L);
         String n = "nowa-wyspa.";
         IslandTuning.UstawieniaNowejWyspy nowaWyspa = new IslandTuning.UstawieniaNowejWyspy(
-                cfg.getBoolean(n + "potwory", false), cfg.getBoolean(n + "pvp", false),
+                cfg.getBoolean(n + "pvp", false),
                 cfg.getBoolean(n + "budowanie-gosci", false), cfg.getBoolean(n + "wizualny-border", true),
                 cfg.getBoolean(n + "zabijanie-mobow-gosci", false), cfg.getBoolean(n + "zabieranie-itemow-gosci", false),
                 cfg.getBoolean(n + "skrzynie-gosci", false), cfg.getBoolean(n + "drzwi-i-mechanizmy-gosci", false),
                 cfg.getBoolean(n + "zablokowana-pogoda", false), cfg.getBoolean(n + "ogien", false),
                 cfg.getBoolean(n + "otwarta-dla-odwiedzajacych", true), cfg.getBoolean(n + "rolnictwo-gosci", false),
-                cfg.getBoolean(n + "wiadra-gosci", false), cfg.getBoolean(n + "powrot-z-pustki", true),
-                cfg.getBoolean(n + "zwierzeta", true));
+                cfg.getBoolean(n + "wiadra-gosci", false),
+                cfg.getBoolean(n + "czlonkowie-budowanie", true), cfg.getBoolean(n + "czlonkowie-skrzynie", true),
+                cfg.getBoolean(n + "czlonkowie-zapraszanie", false), cfg.getBoolean(n + "czlonkowie-bank-i-ulepszenia", false));
 
         // Ilu graczy (razem z właścicielem) może mieć jedna wyspa; 0 = bez limitu.
         int limitCzlonkow = Math.max(0, cfg.getInt("czlonkowie.limit", 6));
@@ -99,7 +100,11 @@ public final class IslandConfigLoader {
                 limitCzlonkow, nagrodyNaStart,
                 cfg.getBoolean("napis-przy-wejsciu", true),
                 parseWzory(cfg, log), parseLimityBlokow(cfg, log),
-                Math.max(0, cfg.getInt("limity.zwierzeta", 50))
+                Math.max(0, cfg.getInt("limity.zwierzeta", 50)),
+                // Moby pojawiające się same na wyspach - ustawienie całego serwera (domyślnie wyłączone, mniej lagów).
+                cfg.getBoolean("moby.potwory", false), cfg.getBoolean("moby.zwierzeta", false),
+                // Upadek w pustkę wraca na wyspę zamiast zabijać - ustawienie całego serwera.
+                cfg.getBoolean("powrot-z-pustki", true)
         );
     }
 

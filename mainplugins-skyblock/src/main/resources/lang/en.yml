@@ -2,11 +2,17 @@
 # Amounts ({amount}, {balance}, {cost}, {worth}) already include the server currency (e.g. "100$").
 template:
   missing: "&cIslands are not set up yet - an admin has to save an island template first (/@islandtemplate)."
-  usage: "&eUsage: /@islandtemplate pos1 | pos2 | save &7- fly to two opposite corners around the island for pos1/pos2, then stand where players should appear and use save."
+  usage: "&eUsage: /@islandtemplate rozdzka | pos1 | pos2 | save [name] &7- with the wand left-click one corner of the island and right-click the opposite one (or pos1/pos2 where you fly), then stand where players should appear and use save. Without a name it saves the 'default' template."
   pos-set: "&aCorner {n} set to {x} {y} {z}."
-  need-corners: "&cSet both corners first: /@islandtemplate pos1 and /@islandtemplate pos2."
+  need-corners: "&cSelect both corners first: with the wand (/@islandtemplate rozdzka) or /@islandtemplate pos1 and pos2."
+  wand-given: "&aYou got the island template wand: left-click a block = corner 1, right-click = corner 2."
+  wand-name: "&6&lIsland Template Wand"
+  wand-lore-1: "&7Left-click a block - corner 1"
+  wand-lore-2: "&7Right-click a block - corner 2"
+  wand-lore-3: "&8Then: /@islandtemplate save <name>"
+  selected: "&aSelected {sx}x{sy}x{sz} blocks. Stand where players should appear and type /@islandtemplate save <name>."
   other-world: "&cBoth corners and you must be in the same world."
-  saved: "&aIsland template saved ({sx}x{sy}x{sz} blocks). New islands will use it."
+  saved: "&aIsland template '{id}' saved ({sx}x{sy}x{sz} blocks). New islands will use it."
   save-failed: "&cCould not save the island template - see the server log."
 
 common:
@@ -57,6 +63,18 @@ settings:
   interact-off: "&aDoors/levers/buttons for guests: blocked"
   weather-on: "&aWeather and time on the island: locked (always noon, clear)"
   weather-off: "&aWeather and time on the island: natural"
+  fire-on: "&aFire on the island: spreads"
+  fire-off: "&aFire on the island: does not spread"
+  visit-on: "&aIsland open to visitors (/is visit)"
+  visit-off: "&aIsland closed to visitors"
+  farming-on: "&aCrops and animals for guests: allowed"
+  farming-off: "&aCrops and animals for guests: blocked"
+  buckets-on: "&aBuckets for guests: allowed"
+  buckets-off: "&aBuckets for guests: blocked"
+  animals-on: "&aAnimals on the island: spawn"
+  animals-off: "&aAnimals on the island: do not spawn by themselves"
+  void-on: "&aVoid return: on (falling does not kill)"
+  void-off: "&aVoid return: off (falling into the void kills)"
 
 home:
   not-on-island: "&cYou have to stand on your own island to set a teleport point here!"
@@ -78,8 +96,59 @@ invite:
   accepted-notice: "&a{player} accepted the invite and joined the island!"
   declined: "&eInvite declined."
   declined-notice: "&c{player} declined the island invite."
+  full: "&cThe island is full, at most {max} players can be on it."
   chat-prompt: "&eType the name of the player you want to invite in chat (or type '{cancel}'):"
   chat-cancelled: "&cInvite cancelled."
+
+void:
+  returned: "&eYou fell into the void, back to the island."
+
+limit:
+  block: "&cThis island already has the most blocks of this kind allowed ({max})."
+  animals: "&cThis island already has the most animals allowed ({max})."
+
+transfer:
+  usage: "&cUsage: /is transfer <player>"
+  owner-only: "&cOnly the owner can transfer the island."
+  confirm: "&eReally give the island to {player}? Type the same command again within {seconds} s. You will stay on the island as an admin."
+  done: "&aThe island now belongs to {player}. You are an island admin."
+  received: "&a{player} gave you the island. You are its owner now!"
+
+guest:
+  expel-usage: "&cUsage: /is expel <player>"
+  not-here: "&c{player} is not on your island as a guest right now."
+  expelled: "&a{player} was sent off your island."
+  expelled-notice: "&eYou were sent off the island."
+  ban-usage: "&cUsage: /is ban <player>"
+  unban-usage: "&cUsage: /is unban <player>"
+  ban-member: "&cYou can't ban an island member. Remove them first (/is remove)."
+  banned: "&a{player} can no longer enter your island."
+  banned-notice: "&cYou are banned from this island."
+  banned-here: "&cYou are banned from this island!"
+  not-banned: "&c{player} is not banned on your island."
+  unbanned: "&a{player} can enter your island again."
+
+enter:
+  title: "&b{name}"
+  subtitle: "&7owner: {owner}"
+  # Island name when the owner has not set one.
+  default-name: "{owner}'s island"
+
+admin:
+  usage: "&eUsage: /@is tp <player> | usun <player> | rozmiar <player> <radius> | bank <player> [ustaw|dodaj <amount>]"
+  teleported: "&bTeleported to {player}'s island."
+  deleted: "&aDeleted {player}'s island."
+  deleted-notice: "&cAn admin deleted your island."
+  size-set: "&a{player}'s island now has a radius of {size} blocks."
+  bank: "&e{player}'s island bank: {balance}"
+
+visit:
+  banned: "&cYou are banned from {player}'s island."
+  usage: "&cUsage: /is visit <player>"
+  no-island: "&c{player} has no island."
+  closed: "&c{player}'s island is closed to visitors."
+  done: "&bYou are visiting {player}'s island."
+  kicked-closed: "&eThe owner closed the island to visitors, you are back at spawn."
 
 leave:
   not-member: "&cYou are not a member of any island!"
@@ -136,9 +205,11 @@ protection:
   mob-kill: "&cYou can't kill mobs on someone else's island!"
   containers: "&cYou can't open chests/containers on someone else's island!"
   interact: "&cYou can't use doors/mechanisms on someone else's island!"
+  farming: "&cYou can't do that with animals on someone else's island!"
 
 gui:
   title:
+    choose-template: "&2&lChoose your island"
     panel: "&2&lIsland Panel"
     permissions: "&c&lIsland Permissions"
     settings: "&9&lIsland Settings"
@@ -147,6 +218,8 @@ gui:
     spawners: "&d&lSpawner Upgrades"
     spawner: "&d&lSpawner: {type}"
     members: "&e&lIsland Members"
+  choose-template:
+    click: "&aClick to create this island"
   toggle:
     on: "&aState: On"
     off: "&cState: Off"

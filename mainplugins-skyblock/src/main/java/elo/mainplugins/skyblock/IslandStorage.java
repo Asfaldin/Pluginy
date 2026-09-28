@@ -83,7 +83,7 @@ final class IslandStorage {
      * po każdym restarcie serwera, mimo że same bloki zostawały w świecie.
      */
     void wczytajWyspy() {
-        m.nextIslandId = configWysp.getInt("m.nextIslandId", 0);
+        m.nextIslandId = configWysp.getInt("nextIslandId", 0);
 
         ConfigurationSection sekcja = configWysp.getConfigurationSection("wyspy");
         if (sekcja == null) return;
@@ -103,7 +103,7 @@ final class IslandStorage {
             int borderSize = configWysp.getInt(path + "borderSize", m.tuning.domyslnyRozmiarWyspy());
 
             IslandData data = new IslandData(id, ownerUUID, centerX, centerZ, borderSize);
-            data.setAllowMobs(configWysp.getBoolean(path + "allowMobs", true));
+            data.setAllowMobs(configWysp.getBoolean(path + "allowMobs", false));
             data.setAllowPvP(configWysp.getBoolean(path + "allowPvP", false));
             data.setAllowBreak(configWysp.getBoolean(path + "allowBreak", false));
             data.setVisualBorder(configWysp.getBoolean(path + "visualBorder", true));
@@ -112,9 +112,20 @@ final class IslandStorage {
             data.setAllowContainerAccess(configWysp.getBoolean(path + "allowContainerAccess", false));
             data.setAllowInteract(configWysp.getBoolean(path + "allowInteract", false));
             data.setWeatherLocked(configWysp.getBoolean(path + "weatherLocked", false));
+            data.setAllowFireSpread(configWysp.getBoolean(path + "allowFireSpread", false));
+            data.setOpenForVisitors(configWysp.getBoolean(path + "openForVisitors", true));
+            data.setAllowGuestFarming(configWysp.getBoolean(path + "allowGuestFarming", false));
+            data.setAllowGuestBuckets(configWysp.getBoolean(path + "allowGuestBuckets", false));
+            data.setVoidReturn(configWysp.getBoolean(path + "voidReturn", true));
+            data.setAllowAnimals(configWysp.getBoolean(path + "allowAnimals", true));
             data.setCustomName(configWysp.getString(path + "customName"));
             data.setBankBalance(configWysp.getDouble(path + "bankBalance", 0.0));
             data.setWorth(configWysp.getDouble(path + "worth", 0.0));
+
+            ConfigurationSection licznikiSekcja = configWysp.getConfigurationSection(path + "blockCounts");
+            if (licznikiSekcja != null) {
+                for (String blok : licznikiSekcja.getKeys(false)) data.getBlockCounts().put(blok, licznikiSekcja.getInt(blok));
+            }
 
             ConfigurationSection spawnerSekcja = configWysp.getConfigurationSection(path + "spawnerLevels");
             if (spawnerSekcja != null) {
@@ -151,6 +162,12 @@ final class IslandStorage {
                 } catch (IllegalArgumentException ignored) {}
             }
 
+            for (String banStr : configWysp.getStringList(path + "zbanowani")) {
+                try {
+                    data.getBanned().add(UUID.fromString(banStr));
+                } catch (IllegalArgumentException ignored) {}
+            }
+
             ConfigurationSection roleSekcja = configWysp.getConfigurationSection(path + "role");
             if (roleSekcja != null) {
                 for (String memberStr : roleSekcja.getKeys(false)) {
@@ -170,7 +187,7 @@ final class IslandStorage {
     /** Zapisuje pełny, aktualny stan wszystkich wysp na dysk. Wołane po każdej zmianie. */
     void zapiszWyspy() {
         configWysp.set("wyspy", null); // czyścimy stare wpisy, żeby usunięte wyspy nie zostawały w pliku
-        configWysp.set("m.nextIslandId", m.nextIslandId);
+        configWysp.set("nextIslandId", m.nextIslandId);
 
         for (Map.Entry<UUID, IslandData> entry : m.islandDatabase.entrySet()) {
             String path = "wyspy." + entry.getKey() + ".";
@@ -189,6 +206,12 @@ final class IslandStorage {
             configWysp.set(path + "allowContainerAccess", data.isAllowContainerAccess());
             configWysp.set(path + "allowInteract", data.isAllowInteract());
             configWysp.set(path + "weatherLocked", data.isWeatherLocked());
+            configWysp.set(path + "allowFireSpread", data.isAllowFireSpread());
+            configWysp.set(path + "openForVisitors", data.isOpenForVisitors());
+            configWysp.set(path + "allowGuestFarming", data.isAllowGuestFarming());
+            configWysp.set(path + "allowGuestBuckets", data.isAllowGuestBuckets());
+            configWysp.set(path + "voidReturn", data.isVoidReturn());
+            configWysp.set(path + "allowAnimals", data.isAllowAnimals());
             configWysp.set(path + "customName", data.getCustomName());
             configWysp.set(path + "bankBalance", data.getBankBalance());
             configWysp.set(path + "worth", data.getWorth());
@@ -209,6 +232,10 @@ final class IslandStorage {
                 configWysp.set(path + "spawn.pitch", data.getSpawnPitch());
             }
 
+            for (Map.Entry<String, Integer> licznik : data.getBlockCounts().entrySet()) {
+                configWysp.set(path + "blockCounts." + licznik.getKey(), licznik.getValue());
+            }
+
             for (Map.Entry<String, Integer> lvl : data.getSpawnerLevels().entrySet()) {
                 configWysp.set(path + "spawnerLevels." + lvl.getKey(), lvl.getValue());
             }
@@ -216,6 +243,9 @@ final class IslandStorage {
             List<String> czlonkowie = new ArrayList<>();
             for (UUID member : data.getMembers()) czlonkowie.add(member.toString());
             configWysp.set(path + "czlonkowie", czlonkowie);
+            List<String> zbanowani = new ArrayList<>();
+            for (UUID ban : data.getBanned()) zbanowani.add(ban.toString());
+            configWysp.set(path + "zbanowani", zbanowani);
 
             configWysp.set(path + "role", null); // czyścimy, tak samo jak "wyspy" wyżej - usunięci/zdegradowani członkowie nie mają zostawać
             for (Map.Entry<UUID, IslandRole> role : data.getMemberRoles().entrySet()) {

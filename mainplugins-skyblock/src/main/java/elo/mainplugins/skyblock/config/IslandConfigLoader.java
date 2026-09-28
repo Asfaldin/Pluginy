@@ -1,5 +1,7 @@
 package elo.mainplugins.skyblock.config;
 
+import elo.mainplugins.core.CoreAPI;
+import elo.mainplugins.core.api.Reward;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -31,13 +33,14 @@ public final class IslandConfigLoader {
         YamlConfiguration cfg = YamlConfiguration.loadConfiguration(file);
         Logger log = plugin.getLogger();
 
-        int domyslnyRozmiarWyspy = cfg.getInt("tworzenie-wyspy.domyslny-rozmiar", 50);
+        int domyslnyRozmiarWyspy = cfg.getInt("tworzenie-wyspy.domyslny-rozmiar", 15);
         List<IslandTuning.CooldownProg> cooldownProb = parseCooldownProb(cfg, log);
 
-        int borderPrzyrost = cfg.getInt("border.przyrost-na-ulepszenie", 25);
-        int borderKosztZaBlok = cfg.getInt("border.koszt-za-blok", 1000);
-        int borderMaxRozmiar = cfg.getInt("border.max-rozmiar", 750);
-        int odstepSiatkiWysp = cfg.getInt("border.odstep-siatki-wysp", 10000);
+        int borderPrzyrost = cfg.getInt("border.przyrost-na-ulepszenie", 10);
+        int borderKosztPierwszego = cfg.getInt("border.koszt-pierwszego-powiekszenia", 1000);
+        double borderWzrostKosztu = Math.max(0, cfg.getDouble("border.wzrost-kosztu-procent", 35));
+        int borderMaxRozmiar = cfg.getInt("border.max-rozmiar", 150);
+        int odstepSiatkiWysp = cfg.getInt("border.odstep-siatki-wysp", 2000);
 
         int maxGlebokoscSzukaniaWDol = cfg.getInt("teleport-bezpieczenstwo.max-glebokosc-szukania-w-dol", 10);
         int promienSzukaniaObok = cfg.getInt("teleport-bezpieczenstwo.promien-szukania-obok", 5);
@@ -66,26 +69,90 @@ public final class IslandConfigLoader {
         long czasPogodyTicks = cfg.getLong("pogoda-i-czas.pora-dnia", 6000L);
         String n = "nowa-wyspa.";
         IslandTuning.UstawieniaNowejWyspy nowaWyspa = new IslandTuning.UstawieniaNowejWyspy(
-                cfg.getBoolean(n + "potwory", true), cfg.getBoolean(n + "pvp", false),
+                cfg.getBoolean(n + "potwory", false), cfg.getBoolean(n + "pvp", false),
                 cfg.getBoolean(n + "budowanie-gosci", false), cfg.getBoolean(n + "wizualny-border", true),
                 cfg.getBoolean(n + "zabijanie-mobow-gosci", false), cfg.getBoolean(n + "zabieranie-itemow-gosci", false),
                 cfg.getBoolean(n + "skrzynie-gosci", false), cfg.getBoolean(n + "drzwi-i-mechanizmy-gosci", false),
-                cfg.getBoolean(n + "zablokowana-pogoda", false));
+                cfg.getBoolean(n + "zablokowana-pogoda", false), cfg.getBoolean(n + "ogien", false),
+                cfg.getBoolean(n + "otwarta-dla-odwiedzajacych", true), cfg.getBoolean(n + "rolnictwo-gosci", false),
+                cfg.getBoolean(n + "wiadra-gosci", false), cfg.getBoolean(n + "powrot-z-pustki", true),
+                cfg.getBoolean(n + "zwierzeta", true));
+
+        // Ilu graczy (razem z właścicielem) może mieć jedna wyspa; 0 = bez limitu.
+        int limitCzlonkow = Math.max(0, cfg.getInt("czlonkowie.limit", 6));
+        // Co gracz dostaje przy założeniu wyspy - wspólny format nagród z core (item/money/command...).
+        List<Reward> nagrodyNaStart = CoreAPI.getRewardService().parse(cfg.getList("przedmioty-na-start"), "wyspy-config.yml przedmioty-na-start");
 
         log.info("wyspy-config.yml: wczytano konfiguracje (" + spawnerTypy.size() + " typow spawnerow, "
                 + wartosciBlokow.size() + " wycenionych blokow).");
 
         return new IslandTuning(
                 domyslnyRozmiarWyspy, cooldownProb,
-                borderPrzyrost, borderKosztZaBlok, borderMaxRozmiar, odstepSiatkiWysp,
+                borderPrzyrost, borderKosztPierwszego, borderWzrostKosztu, borderMaxRozmiar, odstepSiatkiWysp,
                 maxGlebokoscSzukaniaWDol, promienSzukaniaObok,
                 timeoutPotwierdzeniaTicks, timeoutZaproszeniaTicks, maxLotPerlyTicks,
                 maxDlugoscNazwyWyspy, zapasNaSchemat, chunkiNaTick,
                 wartosciBlokow, spawnerMaxPoziom, spawnerTypy,
                 kosztBazowyIloscPoziomy, kosztBazowyIloscDomyslny,
                 kosztBazowySzybkoscPoziomy, kosztBazowySzybkoscDomyslny,
-                nazwaSwiata, wysokoscWyspy, czasPogodyTicks, nowaWyspa
+                nazwaSwiata, wysokoscWyspy, czasPogodyTicks, nowaWyspa,
+                limitCzlonkow, nagrodyNaStart,
+                cfg.getBoolean("napis-przy-wejsciu", true),
+                parseWzory(cfg, log), parseLimityBlokow(cfg, log),
+                Math.max(0, cfg.getInt("limity.zwierzeta", 50))
         );
+    }
+
+    private static List<IslandTuning.WzorWyspy> parseWzory(YamlConfiguration cfg, Logger log) {
+        List<IslandTuning.WzorWyspy> lista = new ArrayList<>();
+        for (Map<?, ?> m : cfg.getMapList("wzory-wysp")) {
+            Object id = m.get("id");
+            if (id == null) {
+                log.warning("wyspy-config.yml: wpis w wzory-wysp bez 'id' - pomijam.");
+                continue;
+            }
+            Material ikona = m.get("ikona") != null ? Material.matchMaterial(String.valueOf(m.get("ikona"))) : null;
+            List<String> opis = new ArrayList<>();
+            if (m.get("opis") instanceof List<?> linie) for (Object l : linie) opis.add(String.valueOf(l));
+            // Zawartość skrzyni we wzorze: [{item: MATERIAL, amount: ile}], pusta = to, co zapisano w grze.
+            List<org.bukkit.inventory.ItemStack> skrzynia = new ArrayList<>();
+            if (m.get("skrzynia") instanceof List<?> przedmioty) {
+                for (Object o : przedmioty) {
+                    if (!(o instanceof Map<?, ?> p) || p.get("item") == null) continue;
+                    Material mat = Material.matchMaterial(String.valueOf(p.get("item")));
+                    if (mat == null || !mat.isItem()) {
+                        log.warning("wyspy-config.yml: wzory-wysp '" + id + "' skrzynia ma nieznany przedmiot '" + p.get("item") + "' - pomijam.");
+                        continue;
+                    }
+                    int ile = p.get("amount") instanceof Number n ? Math.max(1, n.intValue()) : 1;
+                    skrzynia.add(new org.bukkit.inventory.ItemStack(mat, ile));
+                }
+            }
+            lista.add(new IslandTuning.WzorWyspy(
+                    elo.mainplugins.skyblock.template.IslandTemplate.czysteId(String.valueOf(id)),
+                    m.get("nazwa") != null ? String.valueOf(m.get("nazwa")) : String.valueOf(id),
+                    ikona != null ? ikona : Material.GRASS_BLOCK, opis, skrzynia));
+        }
+        if (lista.isEmpty()) lista.add(new IslandTuning.WzorWyspy("default", "Wyspa", Material.GRASS_BLOCK, List.of(), List.of()));
+        return lista;
+    }
+
+    private static Map<Material, Integer> parseLimityBlokow(YamlConfiguration cfg, Logger log) {
+        Map<Material, Integer> mapa = new LinkedHashMap<>();
+        ConfigurationSection sekcja = cfg.getConfigurationSection("limity.bloki");
+        if (sekcja == null) return mapa;
+        for (String key : sekcja.getKeys(false)) {
+            Material material = Material.matchMaterial(key);
+            if (material == null) {
+                log.warning("wyspy-config.yml: limity.bloki ma nieznany blok '" + key + "' - pomijam.");
+                continue;
+            }
+            // Przedmioty stawiane jako inny blok: limit liczy postawiony blok.
+            if (material == Material.REDSTONE) material = Material.REDSTONE_WIRE;
+            else if (material == Material.STRING) material = Material.TRIPWIRE;
+            mapa.put(material, Math.max(0, sekcja.getInt(key)));
+        }
+        return mapa;
     }
 
     private static List<IslandTuning.CooldownProg> parseCooldownProb(YamlConfiguration cfg, Logger log) {

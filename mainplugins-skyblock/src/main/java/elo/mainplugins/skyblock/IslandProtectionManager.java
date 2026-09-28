@@ -11,7 +11,9 @@ import org.bukkit.block.Container;
 import org.bukkit.entity.EnderPearl;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LightningStrike;
-import org.bukkit.entity.Monster;
+import org.bukkit.entity.Animals;
+import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
@@ -19,6 +21,9 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockBurnEvent;
+import org.bukkit.event.block.BlockSpreadEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockIgniteEvent;
@@ -87,7 +92,7 @@ public class IslandProtectionManager implements Listener {
         IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
-        if (!data.isAllowBreak()) {
+        if (!data.isAllowBreak() && !(data.isAllowGuestFarming() && jestPlonem(event.getBlock().getType()))) {
             event.setCancelled(true);
             odmowa(event.getPlayer(), "protection.break");
         }
@@ -99,7 +104,7 @@ public class IslandProtectionManager implements Listener {
         IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
-        if (!data.isAllowBreak()) {
+        if (!data.isAllowBreak() && !(data.isAllowGuestFarming() && jestPlonem(event.getBlock().getType()))) {
             event.setCancelled(true);
             odmowa(event.getPlayer(), "protection.break");
         }
@@ -110,7 +115,7 @@ public class IslandProtectionManager implements Listener {
         IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
-        if (!data.isAllowBreak()) {
+        if (!data.isAllowBreak() && !(data.isAllowGuestFarming() && jestPlonem(event.getBlock().getType()))) {
             event.setCancelled(true);
             islandManager.komunikat(event.getPlayer(), "protection.place");
         }
@@ -225,6 +230,58 @@ public class IslandProtectionManager implements Listener {
         IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
         if (data == null) return;
         data.dodajDoWartosci(islandManager.wartoscBloku(event.getBlock().getType()));
+        if (islandManager.getTuning().limitBloku(event.getBlock().getType()) > 0) data.addBlockCount(event.getBlock().getType(), 1);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onLimitTrackBreak(BlockBreakEvent event) {
+        IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        if (data == null || islandManager.getTuning().limitBloku(event.getBlock().getType()) <= 0) return;
+        data.addBlockCount(event.getBlock().getType(), -1);
+    }
+
+    /** Limit bloków na wyspę (np. lejów) - dotyczy wszystkich, też właściciela. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onLimitPlace(BlockPlaceEvent event) {
+        Material typ = event.getBlock().getType();
+        int limit = islandManager.getTuning().limitBloku(typ);
+        if (limit <= 0) return;
+        IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        if (data == null || data.getBlockCount(typ) < limit) return;
+        event.setCancelled(true);
+        islandManager.msg(event.getPlayer(), "limit.block", "max", String.valueOf(limit));
+    }
+
+    /** Limit zwierząt na wyspę: rozmnażanie. */
+    @EventHandler(ignoreCancelled = true)
+    public void onBreedLimit(org.bukkit.event.entity.EntityBreedEvent event) {
+        if (!zaDuzoZwierzat(event.getEntity().getLocation())) return;
+        event.setCancelled(true);
+        if (event.getBreeder() instanceof Player p) {
+            islandManager.msg(p, "limit.animals", "max", String.valueOf(islandManager.getTuning().limitZwierzat()));
+        }
+    }
+
+    /** Limit zwierząt na wyspę: jajka i jajka spawnu. */
+    @EventHandler(ignoreCancelled = true)
+    public void onEggLimit(CreatureSpawnEvent event) {
+        if (!(event.getEntity() instanceof Animals)) return;
+        CreatureSpawnEvent.SpawnReason r = event.getSpawnReason();
+        if (r != CreatureSpawnEvent.SpawnReason.EGG && r != CreatureSpawnEvent.SpawnReason.SPAWNER_EGG
+                && r != CreatureSpawnEvent.SpawnReason.DISPENSE_EGG) return;
+        if (zaDuzoZwierzat(event.getLocation())) event.setCancelled(true);
+    }
+
+    private boolean zaDuzoZwierzat(Location loc) {
+        int limit = islandManager.getTuning().limitZwierzat();
+        if (limit <= 0) return false;
+        IslandData data = islandManager.znajdzWyspePod(loc);
+        if (data == null) return false;
+        int r = data.getBorderSize();
+        org.bukkit.util.BoundingBox teren = new org.bukkit.util.BoundingBox(
+                data.getCenterX() - r, loc.getWorld().getMinHeight(), data.getCenterZ() - r,
+                data.getCenterX() + r + 1, loc.getWorld().getMaxHeight(), data.getCenterZ() + r + 1);
+        return loc.getWorld().getNearbyEntities(teren, e -> e instanceof Animals).size() >= limit;
     }
 
     /**
@@ -287,7 +344,7 @@ public class IslandProtectionManager implements Listener {
         IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
-        if (!data.isAllowBreak()) {
+        if (!data.isAllowGuestBuckets()) {
             event.setCancelled(true);
             islandManager.komunikat(event.getPlayer(), "protection.fluid-place");
         }
@@ -298,7 +355,7 @@ public class IslandProtectionManager implements Listener {
         IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
-        if (!data.isAllowBreak()) {
+        if (!data.isAllowGuestBuckets()) {
             event.setCancelled(true);
             islandManager.komunikat(event.getPlayer(), "protection.fluid-take");
         }
@@ -320,7 +377,7 @@ public class IslandProtectionManager implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onCreatureSpawn(CreatureSpawnEvent event) {
-        if (!(event.getEntity() instanceof Monster)) return;
+        if (!(event.getEntity() instanceof org.bukkit.entity.Monster)) return;
 
         IslandData data = islandManager.znajdzWyspePod(event.getLocation());
         if (data != null && !data.isAllowMobs()) {
@@ -328,10 +385,21 @@ public class IslandProtectionManager implements Listener {
         }
     }
 
+    /** Zwierzęta pojawiające się same (naturalnie); rozmnażanie, jajka i spawnery nie są tu blokowane. */
+    @EventHandler(ignoreCancelled = true)
+    public void onAnimalSpawn(CreatureSpawnEvent event) {
+        if (!(event.getEntity() instanceof Animals)) return;
+        CreatureSpawnEvent.SpawnReason r = event.getSpawnReason();
+        if (r != CreatureSpawnEvent.SpawnReason.NATURAL && r != CreatureSpawnEvent.SpawnReason.CHUNK_GEN) return;
+        IslandData data = islandManager.znajdzWyspePod(event.getLocation());
+        if (data != null && !data.isAllowAnimals()) event.setCancelled(true);
+    }
+
     /** Osobne od allowMobs (który dotyczy TYLKO spawnu) - kontroluje, kto może polować na już zaspawnowane moby. */
     @EventHandler(ignoreCancelled = true)
     public void onGuestMobKill(EntityDamageByEntityEvent event) {
-        if (!(event.getEntity() instanceof Monster)) return;
+        // Wszystkie moby: potwory i zwierzęta (bez graczy - to PvP - i stojaków na zbroję).
+        if (!(event.getEntity() instanceof LivingEntity) || event.getEntity() instanceof Player || event.getEntity() instanceof ArmorStand) return;
 
         Player atakujacy = rozwiazAtakujacego(event.getDamager());
         if (atakujacy == null) return;
@@ -400,6 +468,90 @@ public class IslandProtectionManager implements Listener {
     }
 
     /**
+     * Upadek w pustkę: zamiast śmierci (i utraty rzeczy) gracz wraca na punkt /is wyspy, z której spadł.
+     * Obrażenia od pustki pojawiają się dopiero sporo pod światem, więc spadający ich nie odczuje.
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onVoidFall(EntityDamageEvent event) {
+        if (event.getCause() != EntityDamageEvent.DamageCause.VOID || !(event.getEntity() instanceof Player player)) return;
+        if (!islandManager.jestSwiatemWysp(player.getWorld())) return;
+        IslandData data = islandManager.znajdzWyspePod(player.getLocation());
+        if (data == null || !data.isVoidReturn()) return;
+
+        event.setCancelled(true);
+        player.setFallDistance(0);
+        islandManager.teleportNaSpawnWyspy(player, data);
+        islandManager.komunikat(player, "void.returned");
+    }
+
+    /** Teleport (np. /tpa) na wyspę, na której gracz ma bana - blokowany; udany teleport pokazuje napis wyspy. */
+    @EventHandler(ignoreCancelled = true)
+    public void onTeleportBan(org.bukkit.event.player.PlayerTeleportEvent event) {
+        if (!islandManager.jestSwiatemWysp(event.getTo().getWorld())) return;
+        if (islandManager.zbanowanyTutaj(event.getPlayer(), event.getTo())) {
+            event.setCancelled(true);
+            islandManager.komunikat(event.getPlayer(), "guest.banned-here");
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onTeleportTitle(org.bukkit.event.player.PlayerTeleportEvent event) {
+        if (!islandManager.jestSwiatemWysp(event.getTo().getWorld())) return;
+        Player player = event.getPlayer();
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (player.isOnline()) islandManager.sprawdzWejscie(player, player.getLocation());
+        });
+    }
+
+    /** Plony, które gość z włączonym „rolnictwem” może zebrać i posadzić. */
+    private boolean jestPlonem(Material material) {
+        if (Tag.CROPS.isTagged(material)) return true;
+        return switch (material) {
+            case NETHER_WART, COCOA, SWEET_BERRY_BUSH, MELON, PUMPKIN, SUGAR_CANE, CACTUS, BAMBOO -> true;
+            default -> material == Material.MELON_STEM || material == Material.PUMPKIN_STEM;
+        };
+    }
+
+    /** Karmienie, rozmnażanie, strzyżenie, dojenie i smycz na zwierzętach - dla gości tylko z „rolnictwem”. */
+    @EventHandler(ignoreCancelled = true)
+    public void onAnimalInteract(PlayerInteractEntityEvent event) {
+        if (!(event.getRightClicked() instanceof Animals zwierze)) return;
+        IslandData data = islandManager.znajdzWyspePod(zwierze.getLocation());
+        if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
+
+        if (!data.isAllowGuestFarming()) {
+            event.setCancelled(true);
+            islandManager.komunikat(event.getPlayer(), "protection.farming");
+        }
+    }
+
+    /** Ogień przeskakujący na sąsiednie bloki. */
+    @EventHandler(ignoreCancelled = true)
+    public void onFireSpread(BlockSpreadEvent event) {
+        if (event.getSource().getType() != Material.FIRE && event.getSource().getType() != Material.SOUL_FIRE) return;
+        if (ogienZablokowany(event.getBlock().getLocation())) event.setCancelled(true);
+    }
+
+    /** Blok spalony przez ogień. */
+    @EventHandler(ignoreCancelled = true)
+    public void onBlockBurn(BlockBurnEvent event) {
+        if (ogienZablokowany(event.getBlock().getLocation())) event.setCancelled(true);
+    }
+
+    /** Podpalenie od lawy albo od innego ognia (zapalniczka gracza działa zawsze). */
+    @EventHandler(ignoreCancelled = true)
+    public void onFireIgnite(BlockIgniteEvent event) {
+        BlockIgniteEvent.IgniteCause cause = event.getCause();
+        if (cause != BlockIgniteEvent.IgniteCause.SPREAD && cause != BlockIgniteEvent.IgniteCause.LAVA) return;
+        if (ogienZablokowany(event.getBlock().getLocation())) event.setCancelled(true);
+    }
+
+    private boolean ogienZablokowany(Location lokalizacja) {
+        IslandData data = islandManager.znajdzWyspePod(lokalizacja);
+        return data != null && !data.isAllowFireSpread();
+    }
+
+    /**
      * Twarde zamknięcie granic świata wysp - niezależne od kosmetycznego przełącznika
      * "Wizualny Border" w panelu wyspy. WorldBorder w Minecraftcie to tylko ostrzeżenie
      * i obrażenia w czasie, a NIE fizyczna ściana - wystarczająco odporny gracz zawsze
@@ -420,7 +572,16 @@ public class IslandProtectionManager implements Listener {
         // przez plugin permisji, a nie przez literalne /op (domyślnie: op ma je i tak).
         if (player.hasPermission("mainplugins.skyblock.bypass")) return;
 
-        if (islandManager.znajdzWyspePod(to) != null) return; // w granicach jakiejkolwiek wyspy - OK
+        if (islandManager.znajdzWyspePod(to) != null) {
+            // w granicach jakiejkolwiek wyspy - OK, chyba że gracz ma na niej bana
+            if (islandManager.zbanowanyTutaj(player, to) && !islandManager.zbanowanyTutaj(player, from)) {
+                event.setTo(from);
+                odmowa(player, "guest.banned-here");
+                return;
+            }
+            islandManager.sprawdzWejscie(player, to);
+            return;
+        }
 
         event.setTo(from);
     }

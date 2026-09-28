@@ -13,7 +13,8 @@ swiat:
   nazwa: skyblock_world
 
 tworzenie-wyspy:
-  domyslny-rozmiar: 50
+  # Promien nowej wyspy (bloki w kazda strone od srodka) - 15 = teren 30x30.
+  domyslny-rozmiar: 15
   # Wysokosc (Y), na ktorej wklejana jest wyspa startowa. Gracz pojawia sie blok wyzej.
   wysokosc: 100
   # Cooldown przed N-ta proba zalozenia wyspy w zyciu gracza (create+delete sie liczy).
@@ -29,19 +30,23 @@ tworzenie-wyspy:
 
 border:
   # O ile blokow (promienia) powieksza sie wyspa za jedno ulepszenie w panelu.
-  przyrost-na-ulepszenie: 25
-  # Koszt jednego ulepszenia = aktualny promien (przed ulepszeniem) * ta wartosc.
-  koszt-za-blok: 1000
+  przyrost-na-ulepszenie: 10
+  # Koszt pierwszego powiekszenia (z rozmiaru startowego).
+  koszt-pierwszego-powiekszenia: 1000
+  # O ile procent drozsze jest kazde kolejne powiekszenie (35 = 1000, 1350, 1820, 2460...).
+  wzrost-kosztu-procent: 35
   # Twardy limit promienia wyspy, niezalezny od tego ile gracz ma pieniedzy.
-  max-rozmiar: 750
-  # Odstep miedzy srodkami sasiednich wysp na siatce tworzenia.
-  odstep-siatki-wysp: 10000
+  max-rozmiar: 150
+  # Odstep miedzy srodkami sasiednich wysp. Wyspy ukladaja sie spirala wokol pustego srodka swiata,
+  # pierwsze stoja jeden odstep od (0, 0). Powinien byc co najmniej 2 * max-rozmiar + 1000, wtedy
+  # wyspy sie nie stykaja, a gracze nie widza cudzych wysp (Minecraft pokazuje najwyzej ok. 512 blokow).
+  odstep-siatki-wysp: 2000
 
 # Ustawienia, z ktorymi startuje kazda NOWA wyspa. Wlasciciel zmienia je potem sam w
 # Ustawieniach i Permisjach Wyspy. Wszystko z dopiskiem "gosci" dotyczy tylko osob spoza wyspy -
 # wlasciciel i czlonkowie zawsze moga budowac i uzywac wszystkiego na swojej wyspie.
 nowa-wyspa:
-  potwory: true
+  potwory: false
   pvp: false
   budowanie-gosci: false
   wizualny-border: true
@@ -50,6 +55,59 @@ nowa-wyspa:
   skrzynie-gosci: false
   drzwi-i-mechanizmy-gosci: false
   zablokowana-pogoda: false
+  # Ogien i lawa podpalaja bloki na wyspie.
+  ogien: false
+  # Inni gracze moga wejsc na wyspe komenda /is odwiedz <gracz>.
+  otwarta-dla-odwiedzajacych: true
+  # Goscie moga zbierac i sadzic plony, karmic, rozmnazac i strzyc zwierzeta.
+  rolnictwo-gosci: false
+  # Goscie moga wylewac i nabierac wode i lawe wiadrem.
+  wiadra-gosci: false
+  # Kto spadnie z wyspy w pustke, wraca na wyspe zamiast ginac i tracic rzeczy.
+  powrot-z-pustki: true
+  # Zwierzeta (krowy, swinie...) pojawiaja sie same na wyspie. Rozmnazanie i jajka dzialaja zawsze.
+  zwierzeta: true
+
+# Wzory wyspy startowej do wyboru przy zakladaniu. Kazdy wzor admin buduje w grze i zapisuje:
+# /@islandtemplate pos1, pos2, potem /@islandtemplate save <id>. Gdy zapisany jest tylko jeden wzor,
+# gracz nie widzi okna wyboru. "nazwa" moze miec kolory (&a, &e...).
+# "skrzynia": co lezy w skrzyni wzoru po zalozeniu wyspy; pusta lista = to, co wlozono przy budowie w grze.
+wzory-wysp:
+  - id: default
+    nazwa: "Klasyczna"
+    ikona: GRASS_BLOCK
+    opis: ["Drzewo, trochę ziemi i skrzynka"]
+    skrzynia: []
+
+# Limity na jedna wyspe (przeciw lagom). Dotycza wszystkich, tez wlasciciela. 0 = bez limitu.
+limity:
+  # Ile sztuk danego bloku moze stac na wyspie.
+  bloki:
+    HOPPER: 32
+    OBSERVER: 32
+    PISTON: 32
+    STICKY_PISTON: 32
+    REDSTONE: 256
+    REPEATER: 64
+    COMPARATOR: 64
+    DISPENSER: 16
+    DROPPER: 16
+    CRAFTER: 16
+  # Ile zwierzat moze zyc na wyspie (rozmnazanie i jajka sie zatrzymuja).
+  zwierzeta: 50
+
+# Napis na ekranie ("Wyspa gracza X"), gdy gracz wchodzi na wyspe. Tresc w lang (enter.title/subtitle).
+napis-przy-wejsciu: true
+
+czlonkowie:
+  # Ilu graczy (razem z wlascicielem) moze byc na jednej wyspie. 0 = bez limitu.
+  limit: 6
+
+# Co gracz dostaje przy zalozeniu wyspy. Format jak nagrody w innych pluginach:
+# - item: MATERIAL, amount: ile  |  - money: kwota  |  - command: "komenda {player}"
+przedmioty-na-start:
+  - { item: LAVA_BUCKET, amount: 1 }
+  - { item: ICE, amount: 1 }
 
 pogoda-i-czas:
   # Pora dnia na wyspie z wlaczona "Pogoda i czas" (w tickach gry: 0 = swit, 6000 = poludnie,

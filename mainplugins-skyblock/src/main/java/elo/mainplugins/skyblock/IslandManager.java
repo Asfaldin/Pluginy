@@ -10,6 +10,7 @@ import elo.mainplugins.core.api.IslandSummary;
 import elo.mainplugins.core.api.SpawnService;
 import elo.mainplugins.core.world.VoidGenerator;
 import elo.mainplugins.skyblock.config.IslandConfigLoader;
+import elo.mainplugins.skyblock.config.IslandGrid;
 import elo.mainplugins.skyblock.config.IslandTuning;
 import elo.mainplugins.skyblock.config.SpawnerTyp;
 import elo.mainplugins.skyblock.event.IslandBankDepositEvent;
@@ -174,6 +175,11 @@ public class IslandManager implements Listener, IslandService {
             case "budowanie", "guests", "build" -> przelaczBudowanieDlaGosci(player);
             case "pvp" -> przelaczPvP(player);
             case "potwory", "mobs" -> przelaczPotwory(player);
+            case "odwiedz", "visit" -> odwiedzWyspe(player, args);
+            case "przekaz", "transfer" -> przekazWyspe(player, args);
+            case "wypros", "expel" -> wyprosGosciaKomenda(player, args);
+            case "zbanuj", "ban" -> zbanujKomenda(player, args);
+            case "odbanuj", "unban" -> odbanujKomenda(player, args);
             case "ulepszenia", "upgrade" -> menus.otworzMenuUlepszen(player);
             case "czlonkowie", "members" -> menus.otworzMenuCzlonkow(player);
             case "ustawienia", "settings" -> menus.otworzMenuUstawienWyspy(player);
@@ -327,6 +333,321 @@ public class IslandManager implements Listener, IslandService {
         msg(player, data.isAllowInteract() ? "settings.interact-on" : "settings.interact-off");
     }
 
+    public void przelaczOgien(Player player) {
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
+        if (data == null) return;
+        data.setAllowFireSpread(!data.isAllowFireSpread());
+        storage.zapiszWyspy();
+        msg(player, data.isAllowFireSpread() ? "settings.fire-on" : "settings.fire-off");
+    }
+
+    /** Zamknięcie wyspy od razu odsyła na spawn obcych graczy, którzy na niej stoją. */
+    public void przelaczOdwiedziny(Player player) {
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
+        if (data == null) return;
+        data.setOpenForVisitors(!data.isOpenForVisitors());
+        storage.zapiszWyspy();
+        msg(player, data.isOpenForVisitors() ? "settings.visit-on" : "settings.visit-off");
+        if (data.isOpenForVisitors()) return;
+        for (Player inny : skyblockWorld.getPlayers()) {
+            if (inny.hasPermission("mainplugins.skyblock.bypass")) continue;
+            if (data.getOwnerUUID().equals(inny.getUniqueId()) || data.getMembers().contains(inny.getUniqueId())) continue;
+            if (znajdzWyspePod(inny.getLocation()) != data) continue;
+            inny.teleport(spawnLokalizacja());
+            msg(inny, "visit.kicked-closed");
+        }
+    }
+
+    public void przelaczZwierzeta(Player player) {
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
+        if (data == null) return;
+        data.setAllowAnimals(!data.isAllowAnimals());
+        storage.zapiszWyspy();
+        msg(player, data.isAllowAnimals() ? "settings.animals-on" : "settings.animals-off");
+    }
+
+    public void przelaczPowrotZPustki(Player player) {
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
+        if (data == null) return;
+        data.setVoidReturn(!data.isVoidReturn());
+        storage.zapiszWyspy();
+        msg(player, data.isVoidReturn() ? "settings.void-on" : "settings.void-off");
+    }
+
+    public void przelaczRolnictwoGosci(Player player) {
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
+        if (data == null) return;
+        data.setAllowGuestFarming(!data.isAllowGuestFarming());
+        storage.zapiszWyspy();
+        msg(player, data.isAllowGuestFarming() ? "settings.farming-on" : "settings.farming-off");
+    }
+
+    public void przelaczWiadraGosci(Player player) {
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
+        if (data == null) return;
+        data.setAllowGuestBuckets(!data.isAllowGuestBuckets());
+        storage.zapiszWyspy();
+        msg(player, data.isAllowGuestBuckets() ? "settings.buckets-on" : "settings.buckets-off");
+    }
+
+    /** /is odwiedz <gracz> - teleport na punkt /is ustawspawn wyspy tego gracza, jeśli jest otwarta. */
+    void odwiedzWyspe(Player player, String[] args) {
+        if (args.length < 2) {
+            msg(player, "visit.usage");
+            return;
+        }
+        IslandData data = wyspaGracza(args[1]);
+        if (data == null) {
+            msg(player, "visit.no-island", "player", args[1]);
+            return;
+        }
+        UUID uuid = player.getUniqueId();
+        boolean swoja = data.getOwnerUUID().equals(uuid) || data.getMembers().contains(uuid);
+        if (!swoja && data.getBanned().contains(uuid) && !player.hasPermission("mainplugins.skyblock.bypass")) {
+            msg(player, "visit.banned", "player", args[1]);
+            return;
+        }
+        if (!swoja && !data.isOpenForVisitors() && !player.hasPermission("mainplugins.skyblock.bypass")) {
+            msg(player, "visit.closed", "player", args[1]);
+            return;
+        }
+        teleportNaSpawnWyspy(player, data);
+        msg(player, "visit.done", "player", args[1]);
+    }
+
+    /** Wyspa (własna albo ta, na której jest członkiem) gracza o podanym nicku - online albo offline. */
+    private IslandData wyspaGracza(String nick) {
+        Player online = Bukkit.getPlayerExact(nick);
+        UUID ownerUUID = null;
+        if (online != null) {
+            ownerUUID = playerIslandMap.get(online.getUniqueId());
+        } else {
+            for (Map.Entry<UUID, UUID> e : playerIslandMap.entrySet()) {
+                String name = Bukkit.getOfflinePlayer(e.getKey()).getName();
+                if (nick.equalsIgnoreCase(name)) {
+                    ownerUUID = e.getValue();
+                    break;
+                }
+            }
+        }
+        return ownerUUID != null ? islandDatabase.get(ownerUUID) : null;
+    }
+
+    // ---- Przekazanie wyspy ----
+
+    /** Właściciel -> gracz, któremu chce oddać wyspę (czeka na drugie wpisanie tej samej komendy). */
+    final Map<UUID, UUID> pendingTransfer = new HashMap<>();
+
+    /** /is przekaz <gracz> - właściciel oddaje wyspę członkowi; sam zostaje na niej adminem. Wymaga wpisania dwa razy. */
+    void przekazWyspe(Player player, String[] args) {
+        if (args.length < 2) {
+            msg(player, "transfer.usage");
+            return;
+        }
+        IslandData data = wlasnaWyspaLubKomunikat(player);
+        if (data == null) return;
+        UUID uuid = player.getUniqueId();
+        if (!data.getOwnerUUID().equals(uuid)) {
+            msg(player, "transfer.owner-only");
+            return;
+        }
+        UUID target = null;
+        for (UUID member : data.getMembers()) {
+            if (args[1].equalsIgnoreCase(Bukkit.getOfflinePlayer(member).getName())) {
+                target = member;
+                break;
+            }
+        }
+        if (target == null) {
+            msg(player, "common.not-member");
+            return;
+        }
+        if (!target.equals(pendingTransfer.get(uuid))) {
+            pendingTransfer.put(uuid, target);
+            UUID oczekujacy = target;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> pendingTransfer.remove(uuid, oczekujacy), tuning.timeoutPotwierdzeniaTicks());
+            msg(player, "transfer.confirm", "player", args[1], "seconds", String.valueOf(tuning.timeoutPotwierdzeniaTicks() / 20));
+            return;
+        }
+        pendingTransfer.remove(uuid);
+
+        islandDatabase.remove(uuid);
+        data.getMembers().remove(target);
+        data.getMemberRoles().remove(target);
+        data.getMembers().add(uuid);
+        data.setRole(uuid, IslandRole.ADMIN);
+        data.setOwnerUUID(target);
+        islandDatabase.put(target, data);
+        playerIslandMap.put(target, target);
+        for (UUID member : data.getMembers()) playerIslandMap.put(member, target);
+        storage.zapiszWyspy();
+
+        msg(player, "transfer.done", "player", args[1]);
+        Player nowy = Bukkit.getPlayer(target);
+        if (nowy != null) msg(nowy, "transfer.received", "player", player.getName());
+    }
+
+    // ---- Goście: wypraszanie i bany ----
+
+    boolean jestSwoj(IslandData data, UUID uuid) {
+        return data.getOwnerUUID().equals(uuid) || data.getMembers().contains(uuid);
+    }
+
+    /** /is wypros <gracz> - gość stojący na wyspie wraca na spawn. */
+    void wyprosGosciaKomenda(Player player, String[] args) {
+        if (args.length < 2) {
+            msg(player, "guest.expel-usage");
+            return;
+        }
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
+        if (data == null) return;
+        Player gosc = Bukkit.getPlayerExact(args[1]);
+        if (gosc == null || jestSwoj(data, gosc.getUniqueId()) || znajdzWyspePod(gosc.getLocation()) != data) {
+            msg(player, "guest.not-here", "player", args[1]);
+            return;
+        }
+        gosc.teleport(spawnLokalizacja());
+        msg(gosc, "guest.expelled-notice");
+        msg(player, "guest.expelled", "player", gosc.getName());
+    }
+
+    /** /is zbanuj <gracz> - gracz nie wejdzie na wyspę (pieszo, teleportem ani przez /is odwiedz). */
+    void zbanujKomenda(Player player, String[] args) {
+        if (args.length < 2) {
+            msg(player, "guest.ban-usage");
+            return;
+        }
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
+        if (data == null) return;
+        org.bukkit.OfflinePlayer cel = Bukkit.getOfflinePlayerIfCached(args[1]);
+        if (cel == null) {
+            msg(player, "common.player-not-found");
+            return;
+        }
+        if (jestSwoj(data, cel.getUniqueId())) {
+            msg(player, "guest.ban-member");
+            return;
+        }
+        data.getBanned().add(cel.getUniqueId());
+        storage.zapiszWyspy();
+        msg(player, "guest.banned", "player", args[1]);
+        Player online = cel.getPlayer();
+        if (online != null && znajdzWyspePod(online.getLocation()) == data) {
+            online.teleport(spawnLokalizacja());
+            msg(online, "guest.banned-notice");
+        }
+    }
+
+    void odbanujKomenda(Player player, String[] args) {
+        if (args.length < 2) {
+            msg(player, "guest.unban-usage");
+            return;
+        }
+        IslandData data = wlasnaWyspaJakoZarzadca(player);
+        if (data == null) return;
+        org.bukkit.OfflinePlayer cel = Bukkit.getOfflinePlayerIfCached(args[1]);
+        if (cel == null || !data.getBanned().remove(cel.getUniqueId())) {
+            msg(player, "guest.not-banned", "player", args[1]);
+            return;
+        }
+        storage.zapiszWyspy();
+        msg(player, "guest.unbanned", "player", args[1]);
+    }
+
+    /** Czy gracz ma bana na wyspie w tym miejscu (admin z bypass nigdy). */
+    boolean zbanowanyTutaj(Player player, Location loc) {
+        if (player.hasPermission("mainplugins.skyblock.bypass")) return false;
+        IslandData data = znajdzWyspePod(loc);
+        return data != null && data.getBanned().contains(player.getUniqueId());
+    }
+
+    // ---- Napis przy wejściu na wyspę ----
+
+    private final Map<UUID, Integer> ostatniaWyspa = new HashMap<>();
+
+    /** Pokazuje „Wyspa gracza X” na ekranie, gdy gracz wchodzi na inną wyspę niż przed chwilą. */
+    void sprawdzWejscie(Player player, Location loc) {
+        IslandData data = znajdzWyspePod(loc);
+        int id = data == null ? -1 : data.getId();
+        Integer poprzednia = ostatniaWyspa.put(player.getUniqueId(), id);
+        if (data == null || !tuning.napisPrzyWejsciu() || (poprzednia != null && poprzednia == id)) return;
+        String wlasciciel = Bukkit.getOfflinePlayer(data.getOwnerUUID()).getName();
+        String nazwa = data.getCustomName() != null ? data.getCustomName() : PlainTextComponentSerializer.plainText().serialize(CoreAPI.getLangService().msg(plugin, "enter.default-name", IslandTexts.pary("owner", wlasciciel != null ? wlasciciel : "?")));
+        player.showTitle(net.kyori.adventure.title.Title.title(
+                CoreAPI.getLangService().msg(plugin, "enter.title", IslandTexts.pary("name", nazwa)),
+                CoreAPI.getLangService().msg(plugin, "enter.subtitle", IslandTexts.pary("owner", wlasciciel != null ? wlasciciel : "?"))));
+    }
+
+    // ---- Komendy admina: /@is ----
+
+    /** /@is tp|usun|rozmiar|bank <gracz> ... - działa też z konsoli (poza tp). */
+    public void komendaAdmina(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            msg(sender, "admin.usage");
+            return;
+        }
+        IslandData data = wyspaGracza(args[1]);
+        if (data == null) {
+            msg(sender, "visit.no-island", "player", args[1]);
+            return;
+        }
+        switch (args[0].toLowerCase()) {
+            case "tp" -> {
+                if (!(sender instanceof Player p)) {
+                    msg(sender, "common.players-only");
+                    return;
+                }
+                teleportNaSpawnWyspy(p, data);
+                msg(p, "admin.teleported", "player", args[1]);
+            }
+            case "usun", "delete" -> {
+                Player wlasciciel = Bukkit.getPlayer(data.getOwnerUUID());
+                usunWyspeCalkowicie(data);
+                if (wlasciciel != null) msg(wlasciciel, "admin.deleted-notice");
+                msg(sender, "admin.deleted", "player", args[1]);
+            }
+            case "rozmiar", "size" -> {
+                if (args.length < 3) {
+                    msg(sender, "admin.usage");
+                    return;
+                }
+                int rozmiar;
+                try {
+                    rozmiar = Math.max(1, Integer.parseInt(args[2]));
+                } catch (NumberFormatException e) {
+                    msg(sender, "bank.invalid-amount");
+                    return;
+                }
+                data.setBorderSize(rozmiar);
+                storage.zapiszWyspy();
+                for (Player p : skyblockWorld.getPlayers()) {
+                    if (znajdzWyspePod(p.getLocation()) == data) aplikujBorderDlaLokalizacji(p, p.getLocation());
+                }
+                msg(sender, "admin.size-set", "player", args[1], "size", String.valueOf(rozmiar));
+            }
+            case "bank" -> {
+                if (args.length >= 4) {
+                    double kwota;
+                    try {
+                        kwota = Double.parseDouble(args[3].replace(",", "."));
+                    } catch (NumberFormatException e) {
+                        msg(sender, "bank.invalid-amount");
+                        return;
+                    }
+                    if (args[2].equalsIgnoreCase("ustaw") || args[2].equalsIgnoreCase("set")) data.setBankBalance(Math.max(0, kwota));
+                    else if (args[2].equalsIgnoreCase("dodaj") || args[2].equalsIgnoreCase("add")) data.setBankBalance(Math.max(0, data.getBankBalance() + kwota));
+                    else {
+                        msg(sender, "admin.usage");
+                        return;
+                    }
+                    storage.zapiszWyspy();
+                }
+                msg(sender, "admin.bank", "player", args[1], "balance", IslandTexts.kasa(data.getBankBalance()));
+            }
+            default -> msg(sender, "admin.usage");
+        }
+    }
+
     public void przelaczPogodeICzas(Player player) {
         IslandData data = wlasnaWyspaJakoZarzadca(player);
         if (data == null) return;
@@ -384,6 +705,11 @@ public class IslandManager implements Listener, IslandService {
         }
 
         UUID ownerUUID = playerIslandMap.get(inviter.getUniqueId());
+        IslandData wyspa = ownerUUID != null ? islandDatabase.get(ownerUUID) : null;
+        if (wyspa != null && wyspaPelna(wyspa)) {
+            msg(inviter, "invite.full", "max", String.valueOf(tuning.limitCzlonkow()));
+            return;
+        }
         pendingInvites.put(targetUUID, new PendingInvite(ownerUUID, inviter.getUniqueId()));
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (pendingInvites.remove(targetUUID) != null) {
@@ -413,6 +739,12 @@ public class IslandManager implements Listener, IslandService {
         wykonajZaproszenie(player, target);
     }
 
+    /** Limit liczy właściciela + członków; 0 w configu = bez limitu. */
+    boolean wyspaPelna(IslandData data) {
+        int limit = tuning.limitCzlonkow();
+        return limit > 0 && 1 + data.getMembers().size() >= limit;
+    }
+
     public void zaakceptujZaproszenie(Player player) {
         UUID uuid = player.getUniqueId();
         PendingInvite invite = pendingInvites.remove(uuid);
@@ -429,6 +761,10 @@ public class IslandManager implements Listener, IslandService {
         IslandData data = islandDatabase.get(invite.ownerUUID());
         if (data == null) {
             msg(player, "invite.island-gone");
+            return;
+        }
+        if (wyspaPelna(data)) {
+            msg(player, "invite.full", "max", String.valueOf(tuning.limitCzlonkow()));
             return;
         }
 
@@ -559,28 +895,64 @@ public class IslandManager implements Listener, IslandService {
         usunCzlonka(player, targetUUID);
     }
 
+    /** Wzory z configu, dla których admin zapisał już pliki w grze (/@islandtemplate save <id>). */
+    List<IslandTuning.WzorWyspy> dostepneWzory() {
+        List<IslandTuning.WzorWyspy> out = new ArrayList<>();
+        for (IslandTuning.WzorWyspy w : tuning.wzoryWysp()) if (template.exists(w.id())) out.add(w);
+        return out;
+    }
+
+    /** Czas do końca kary za zakładanie od nowa (0 = można zakładać). */
+    private long pozostalyCooldown(Player player) {
+        IslandStorage.HistoriaTworzenia historia = historiaTworzeniaWysp.computeIfAbsent(player.getUniqueId(), k -> new IslandStorage.HistoriaTworzenia());
+        long cooldown = tuning.cooldownDlaProby(historia.ilosc + 1);
+        long odMillis = System.currentTimeMillis() - historia.ostatnieMillis;
+        return cooldown > 0 && odMillis < cooldown ? cooldown - odMillis : 0;
+    }
+
+    /** Zakładanie wyspy: przy kilku wzorach najpierw okno wyboru, przy jednym od razu. */
     void stworzWyspe(Player player, boolean zMenu) {
-        if (!template.exists()) {
+        List<IslandTuning.WzorWyspy> wzory = dostepneWzory();
+        if (wzory.isEmpty()) {
             msg(player, "template.missing");
             plugin.getLogger().warning(player.getName() + " tried to create an island, but there is no island template yet - save one with /@islandtemplate.");
             return;
         }
-
-        IslandStorage.HistoriaTworzenia historia = historiaTworzeniaWysp.computeIfAbsent(player.getUniqueId(), k -> new IslandStorage.HistoriaTworzenia());
-        long cooldown = tuning.cooldownDlaProby(historia.ilosc + 1);
-        long odMillis = System.currentTimeMillis() - historia.ostatnieMillis;
-        if (cooldown > 0 && odMillis < cooldown) {
-            msg(player, "create.cooldown", "time", teksty.formatujCzasOczekiwania(cooldown - odMillis));
+        long czekaj = pozostalyCooldown(player);
+        if (czekaj > 0) {
+            msg(player, "create.cooldown", "time", teksty.formatujCzasOczekiwania(czekaj));
             return;
         }
+        if (wzory.size() == 1) utworzWyspe(player, zMenu, wzory.get(0).id());
+        else menus.otworzWyborWzoru(player, zMenu, wzory);
+    }
+
+    void utworzWyspe(Player player, boolean zMenu, String wzor) {
+        if (playerIslandMap.containsKey(player.getUniqueId())) return; // np. drugi klik w oknie wyboru
+        if (!template.exists(wzor)) {
+            msg(player, "template.missing");
+            return;
+        }
+        long czekaj = pozostalyCooldown(player);
+        if (czekaj > 0) {
+            msg(player, "create.cooldown", "time", teksty.formatujCzasOczekiwania(czekaj));
+            return;
+        }
+        IslandStorage.HistoriaTworzenia historia = historiaTworzeniaWysp.get(player.getUniqueId());
         historia.ilosc++;
         historia.ostatnieMillis = System.currentTimeMillis();
 
         msg(player, "create.creating");
 
-        int myIslandId = nextIslandId++;
-        int x = (myIslandId % 100) * tuning.odstepSiatkiWysp();
-        int z = (myIslandId / 100) * tuning.odstepSiatkiWysp();
+        // Kolejne pole spirali wokół pustego środka świata; pole zajęte przez istniejącą wyspę
+        // (np. po zmianie odstępu w configu) jest pomijane.
+        int myIslandId, x, z;
+        do {
+            myIslandId = nextIslandId++;
+            int[] pole = IslandGrid.pole(myIslandId);
+            x = pole[0] * tuning.odstepSiatkiWysp();
+            z = pole[1] * tuning.odstepSiatkiWysp();
+        } while (poleZajete(x, z));
         int y = tuning.wysokoscWyspy();
 
         IslandData data = new IslandData(myIslandId, player.getUniqueId(), x, z, tuning.domyslnyRozmiarWyspy());
@@ -594,6 +966,12 @@ public class IslandManager implements Listener, IslandService {
         data.setAllowContainerAccess(start.skrzynieGosci());
         data.setAllowInteract(start.interakcjeGosci());
         data.setWeatherLocked(start.zablokowanaPogoda());
+        data.setAllowFireSpread(start.ogien());
+        data.setOpenForVisitors(start.otwartaDlaOdwiedzajacych());
+        data.setAllowGuestFarming(start.rolnictwoGosci());
+        data.setAllowGuestBuckets(start.wiadraGosci());
+        data.setVoidReturn(start.powrotZPustki());
+        data.setAllowAnimals(start.zwierzeta());
         islandDatabase.put(player.getUniqueId(), data);
         playerIslandMap.put(player.getUniqueId(), player.getUniqueId());
         storage.zapiszWyspy();
@@ -601,7 +979,9 @@ public class IslandManager implements Listener, IslandService {
         // Wbudowane struktury Minecrafta wklejamy na wątku głównym (API serwera nie jest
         // bezpieczne wątkowo) - wyspa startowa jest mała, więc to chwila.
         try {
-            template.paste(skyblockWorld, x, y, z);
+            List<org.bukkit.inventory.ItemStack> skrzynia = List.of();
+            for (IslandTuning.WzorWyspy w : tuning.wzoryWysp()) if (w.id().equals(wzor)) skrzynia = w.skrzynia();
+            template.paste(wzor, skyblockWorld, x, y, z, skrzynia);
         } catch (IOException | RuntimeException e) {
             plugin.getLogger().log(java.util.logging.Level.WARNING, "Could not paste the island template.", e);
             msg(player, "create.error");
@@ -609,12 +989,22 @@ public class IslandManager implements Listener, IslandService {
         }
         teleportDoWyspy(player);
         msg(player, "create.done");
+        if (!tuning.nagrodyNaStart().isEmpty()) CoreAPI.getRewardService().give(player, tuning.nagrodyNaStart());
         Bukkit.getPluginManager().callEvent(new IslandCreatedEvent(player, data));
         // Most do mainplugins-announcer (events.island-created) - broadcast serwerowy
         // sterowany z ogloszenia.yml; bez announcera event przelatuje bez efektu.
         Bukkit.getPluginManager().callEvent(new elo.mainplugins.core.api.ServerAnnounceEvent(
                 "island-created", player, java.util.Map.of()));
         menus.otworzMenuWyspy(player, zMenu);
+    }
+
+    /** Czy nowa wyspa w (x, z) weszłaby na teren już istniejącej (liczony z największym możliwym rozmiarem). */
+    private boolean poleZajete(int x, int z) {
+        int zasieg = 2 * tuning.borderMaxRozmiar();
+        for (IslandData inna : islandDatabase.values()) {
+            if (Math.abs(inna.getCenterX() - x) < zasieg && Math.abs(inna.getCenterZ() - z) < zasieg) return true;
+        }
+        return false;
     }
 
     /** Cel /is dom (i /dom, /home) - punkt ustawiony przez /is ustawdom, fallback = środek wyspy. */
@@ -661,6 +1051,12 @@ public class IslandManager implements Listener, IslandService {
             return;
         }
 
+        teleportNaSpawnWyspy(player, data);
+        msg(player, "common.teleported");
+    }
+
+    /** Teleport na punkt /is ustawspawn danej wyspy (albo jej środek) - własnej albo odwiedzanej. */
+    void teleportNaSpawnWyspy(Player player, IslandData data) {
         Location loc = data.hasCustomSpawn()
                 ? new Location(skyblockWorld, data.getSpawnX(), data.getSpawnY(), data.getSpawnZ(), data.getSpawnYaw(), data.getSpawnPitch())
                 : new Location(skyblockWorld, data.getCenterX() + 0.5, tuning.wysokoscWyspy() + 1, data.getCenterZ() + 0.5);
@@ -668,7 +1064,6 @@ public class IslandManager implements Listener, IslandService {
         player.teleport(loc);
         ustawWizualnyBorder(player, data);
         aplikujPogodeICzas(player, data);
-        msg(player, "common.teleported");
     }
 
     /**
@@ -935,7 +1330,7 @@ public class IslandManager implements Listener, IslandService {
             return;
         }
 
-        int cost = data.getBorderSize() * tuning.borderKosztZaBlok();
+        int cost = tuning.kosztPowiekszenia(data.getBorderSize());
         if (!data.odejmijZBanku(cost)) {
             msg(player, "bank.upgrade-no-money", "cost", IslandTexts.kasa(cost), "balance", IslandTexts.kasa(data.getBankBalance()));
             return;
@@ -965,34 +1360,35 @@ public class IslandManager implements Listener, IslandService {
         if (!pendingDeleteConfirmation.contains(uuid)) return;
 
         pendingDeleteConfirmation.remove(uuid);
-        UUID ownerUUID = playerIslandMap.remove(uuid);
-        IslandData data = islandDatabase.remove(ownerUUID);
-
+        IslandData data = islandDatabase.get(playerIslandMap.get(uuid));
         if (data != null) {
-            Location spawnLoc = spawnLokalizacja();
-
-            // Usuń z mapy i teleportuj na spawn wszystkich obecnie online członków - ich
-            // przynależność do tej wyspy właśnie znika, więc nie mogą zostać "uwięzieni"
-            // na terenie, który za chwilę jest czyszczony (patrz wyczyscTerenWyspy niżej).
-            for (UUID memberUUID : data.getMembers()) {
-                playerIslandMap.remove(memberUUID);
-                Player memberOnline = Bukkit.getPlayer(memberUUID);
-                if (memberOnline != null) {
-                    memberOnline.teleport(spawnLoc);
-                    msg(memberOnline, "delete.member-notice");
-                }
-            }
-            storage.zapiszWyspy(); // wyspa usunięta z islandDatabase wcześniej - ten zapis usuwa ją też z wyspy.yml
-
-            player.teleport(spawnLoc);
-            // Border (zarówno właściciela, jak i przeteleportowanych wyżej członków) jest
-            // teraz obsługiwany automatycznie przez BorderManager.onWorldChange - spawn jest
-            // w innym świecie niż skyblockWorld, więc ta zmiana świata sama wyczyści border.
-
-            wyczyscTerenWyspy(data);
-
+            usunWyspeCalkowicie(data);
             msg(player, "delete.done");
         }
+    }
+
+    /**
+     * Usuwa wyspę z bazy i ze świata: członkowie tracą przynależność, a wszyscy, którzy stoją
+     * na jej terenie (też goście), wracają na spawn, zanim teren zostanie wyczyszczony.
+     * Border odświeża BorderManager.onWorldChange (spawn jest w innym świecie).
+     */
+    void usunWyspeCalkowicie(IslandData data) {
+        islandDatabase.remove(data.getOwnerUUID());
+        playerIslandMap.remove(data.getOwnerUUID());
+        Location spawnLoc = spawnLokalizacja();
+        for (UUID memberUUID : data.getMembers()) {
+            playerIslandMap.remove(memberUUID);
+            Player memberOnline = Bukkit.getPlayer(memberUUID);
+            if (memberOnline != null) msg(memberOnline, "delete.member-notice");
+        }
+        for (Player p : skyblockWorld.getPlayers()) {
+            int r = data.getBorderSize() + tuning.zapasNaSchemat();
+            if (Math.abs(p.getLocation().getBlockX() - data.getCenterX()) <= r && Math.abs(p.getLocation().getBlockZ() - data.getCenterZ()) <= r) {
+                p.teleport(spawnLoc);
+            }
+        }
+        storage.zapiszWyspy();
+        wyczyscTerenWyspy(data);
     }
 
     /**

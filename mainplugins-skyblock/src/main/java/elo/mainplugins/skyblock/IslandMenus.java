@@ -92,9 +92,9 @@ final class IslandMenus implements Listener {
         ItemMeta meta = item.getItemMeta();
         meta.displayName(Component.text(btn.nazwa(), btn.kolor(), TextDecoration.BOLD));
         List<Component> lore = new ArrayList<>();
-        lore.add(m.txt(on ? "m.gui.toggle.on" : "m.gui.toggle.off"));
+        lore.add(m.txt(on ? "gui.toggle.on" : "gui.toggle.off"));
         for (String linia : btn.lore()) lore.add(Component.text(linia, NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
-        lore.add(m.txt("m.gui.toggle.click"));
+        lore.add(m.txt("gui.toggle.click"));
         meta.lore(lore);
         item.setItemMeta(meta);
         return item;
@@ -125,7 +125,7 @@ final class IslandMenus implements Listener {
         boolean canManage = m.mozeZarzadzac(player.getUniqueId(), data);
 
         IslandScreen screen = m.gui.panelWyspy();
-        Inventory inv = IslandGuiHolder.create("panel", screen.size(), m.txt("m.gui.title.panel"));
+        Inventory inv = IslandGuiHolder.create("panel", screen.size(), m.txt("gui.title.panel"));
         wypelnijTlo(inv, screen);
 
         // Kolejność kafelków w panelu odzwierciedla częstotliwość użycia (najczęstsze
@@ -141,11 +141,11 @@ final class IslandMenus implements Listener {
         IslandGuiButton bank = screen.przycisk("BANK");
         if (bank != null) {
             List<Component> loreBank = new ArrayList<>();
-            loreBank.add(m.txt("m.gui.bank.balance", "balance", IslandTexts.kasa(data.getBankBalance())));
-            loreBank.add(m.txt("m.gui.bank.note"));
+            loreBank.add(m.txt("gui.bank.balance", "balance", IslandTexts.kasa(data.getBankBalance())));
+            loreBank.add(m.txt("gui.bank.note"));
             loreBank.add(Component.empty());
-            loreBank.add(m.txt("m.gui.bank.deposit"));
-            loreBank.add(m.txt("m.gui.bank.withdraw"));
+            loreBank.add(m.txt("gui.bank.deposit"));
+            loreBank.add(m.txt("gui.bank.withdraw"));
             inv.setItem(bank.slot(), ikonaZPrzycisku(bank, loreBank));
         }
 
@@ -153,16 +153,16 @@ final class IslandMenus implements Listener {
         if (info != null) {
             List<Component> loreInfo = new ArrayList<>();
             Player owner = Bukkit.getPlayer(data.getOwnerUUID());
-            String ownerName = owner != null ? owner.getName() : m.plain("m.gui.info.unknown-owner");
+            String ownerName = owner != null ? owner.getName() : m.plain("gui.info.unknown-owner");
             String nazwaRoliGracza = m.plain(isOwner ? "role.owner" : (data.getRole(player.getUniqueId()) == IslandRole.ADMIN ? "role.admin" : "role.member"));
             if (data.getCustomName() != null) {
-                loreInfo.add(m.txt("m.gui.info.name", "name", data.getCustomName()));
+                loreInfo.add(m.txt("gui.info.name", "name", data.getCustomName()));
             }
-            loreInfo.add(m.txt("m.gui.info.owner", "player", ownerName));
-            loreInfo.add(m.txt("m.gui.info.size", "size", String.valueOf(data.getBorderSize())));
-            loreInfo.add(m.txt("m.gui.info.members", "count", String.valueOf(data.getMembers().size())));
-            loreInfo.add(m.txt("m.gui.info.worth", "worth", IslandTexts.kasa(data.getWorth())));
-            loreInfo.add(m.txt("m.gui.info.role", "role", nazwaRoliGracza));
+            loreInfo.add(m.txt("gui.info.owner", "player", ownerName));
+            loreInfo.add(m.txt("gui.info.size", "size", String.valueOf(data.getBorderSize())));
+            loreInfo.add(m.txt("gui.info.members", "count", String.valueOf(data.getMembers().size())));
+            loreInfo.add(m.txt("gui.info.worth", "worth", IslandTexts.kasa(data.getWorth())));
+            loreInfo.add(m.txt("gui.info.role", "role", nazwaRoliGracza));
             inv.setItem(info.slot(), ikonaZPrzycisku(info, loreInfo));
         }
 
@@ -185,12 +185,14 @@ final class IslandMenus implements Listener {
         if (data == null) return;
 
         IslandScreen screen = m.gui.permisjeWyspy();
-        Inventory inv = IslandGuiHolder.create("permisje", screen.size(), m.txt("m.gui.title.permissions"));
+        Inventory inv = IslandGuiHolder.create("permisje", screen.size(), m.txt("gui.title.permissions"));
         wypelnijTlo(inv, screen);
 
         ustawPrzelacznik(inv, screen, "ZABIERANIE_ITEMOW", data.isAllowItemPickup());
         ustawPrzelacznik(inv, screen, "DOSTEP_KONTENEROW", data.isAllowContainerAccess());
         ustawPrzelacznik(inv, screen, "INTERAKCJE", data.isAllowInteract());
+        ustawPrzelacznik(inv, screen, "ROLNICTWO_GOSCI", data.isAllowGuestFarming());
+        ustawPrzelacznik(inv, screen, "WIADRA_GOSCI", data.isAllowGuestBuckets());
         ustawPrzycisk(inv, screen, "POWROT", null);
 
         player.openInventory(inv);
@@ -205,7 +207,7 @@ final class IslandMenus implements Listener {
         if (data == null) return;
 
         IslandScreen screen = m.gui.ustawieniaWyspy();
-        Inventory inv = IslandGuiHolder.create("ustawienia", screen.size(), m.txt("m.gui.title.settings"));
+        Inventory inv = IslandGuiHolder.create("ustawienia", screen.size(), m.txt("gui.title.settings"));
         wypelnijTlo(inv, screen);
 
         ustawPrzelacznik(inv, screen, "WIZUALNY_BORDER", data.isVisualBorder());
@@ -214,12 +216,16 @@ final class IslandMenus implements Listener {
         ustawPrzelacznik(inv, screen, "POTWORY", data.isAllowMobs());
         ustawPrzelacznik(inv, screen, "ZABIJANIE_MOBOW_GOSCI", data.isAllowGuestMobKill());
         ustawPrzelacznik(inv, screen, "POGODA_CZAS", data.isWeatherLocked());
+        ustawPrzelacznik(inv, screen, "OGIEN", data.isAllowFireSpread());
+        ustawPrzelacznik(inv, screen, "ODWIEDZINY", data.isOpenForVisitors());
+        ustawPrzelacznik(inv, screen, "POWROT_Z_PUSTKI", data.isVoidReturn());
+        ustawPrzelacznik(inv, screen, "ZWIERZETA", data.isAllowAnimals());
 
         IslandGuiButton nazwaBtn = screen.przycisk("NAZWA_WYSPY");
         if (nazwaBtn != null) {
             List<Component> lore = List.of(
-                    m.txt("m.gui.settings.name-current", "name", data.getCustomName() != null ? data.getCustomName() : m.plain("m.gui.settings.name-none")),
-                    m.txt("m.gui.settings.name-click")
+                    m.txt("gui.settings.name-current", "name", data.getCustomName() != null ? data.getCustomName() : m.plain("gui.settings.name-none")),
+                    m.txt("gui.settings.name-click")
             );
             inv.setItem(nazwaBtn.slot(), ikonaZPrzycisku(nazwaBtn, lore));
         }
@@ -227,8 +233,8 @@ final class IslandMenus implements Listener {
         IslandGuiButton czlonkowieBtn = screen.przycisk("CZLONKOWIE");
         if (czlonkowieBtn != null) {
             List<Component> lore = List.of(
-                    m.txt("m.gui.settings.members-current", "count", String.valueOf(data.getMembers().size())),
-                    m.txt("m.gui.settings.members-click")
+                    m.txt("gui.settings.members-current", "count", String.valueOf(data.getMembers().size())),
+                    m.txt("gui.settings.members-click")
             );
             inv.setItem(czlonkowieBtn.slot(), ikonaZPrzycisku(czlonkowieBtn, lore));
         }
@@ -245,7 +251,7 @@ final class IslandMenus implements Listener {
      */
     public void otworzMenuTopkiWysp(Player player) {
         IslandScreen screen = m.gui.topkaWysp();
-        Inventory inv = IslandGuiHolder.create("topka", screen.size(), m.txt("m.gui.title.top"));
+        Inventory inv = IslandGuiHolder.create("topka", screen.size(), m.txt("gui.title.top"));
         wypelnijTlo(inv, screen);
 
         List<IslandData> top = new ArrayList<>(m.islandDatabase.values());
@@ -264,12 +270,12 @@ final class IslandMenus implements Listener {
             ItemStack glowa = new ItemStack(Material.PLAYER_HEAD);
             SkullMeta meta = (SkullMeta) glowa.getItemMeta();
             meta.setOwningPlayer(ownerOffline);
-            meta.displayName(m.txt(miejsce <= 3 ? "m.gui.top.place-" + miejsce : "m.gui.top.place-other",
+            meta.displayName(m.txt(miejsce <= 3 ? "gui.top.place-" + miejsce : "gui.top.place-other",
                     "place", String.valueOf(miejsce), "name", nazwaWyswietlana));
             meta.lore(List.of(
-                    m.txt("m.gui.top.worth", "worth", IslandTexts.kasa(wyspa.getWorth())),
-                    m.txt("m.gui.top.size", "size", String.valueOf(wyspa.getBorderSize())),
-                    m.txt("m.gui.top.members", "count", String.valueOf(wyspa.getMembers().size()))
+                    m.txt("gui.top.worth", "worth", IslandTexts.kasa(wyspa.getWorth())),
+                    m.txt("gui.top.size", "size", String.valueOf(wyspa.getBorderSize())),
+                    m.txt("gui.top.members", "count", String.valueOf(wyspa.getMembers().size()))
             ));
             glowa.setItemMeta(meta);
             inv.setItem(sloty[i], glowa);
@@ -284,27 +290,27 @@ final class IslandMenus implements Listener {
         if (data == null) return;
 
         int currentSize = data.getBorderSize();
-        int cost = currentSize * m.tuning.borderKosztZaBlok();
+        int cost = m.tuning.kosztPowiekszenia(currentSize);
         boolean maksimum = currentSize >= m.tuning.borderMaxRozmiar();
 
         IslandScreen screen = m.gui.ulepszeniaWyspy();
-        Inventory inv = IslandGuiHolder.create("ulepszenia", screen.size(), m.txt("m.gui.title.upgrades"));
+        Inventory inv = IslandGuiHolder.create("ulepszenia", screen.size(), m.txt("gui.title.upgrades"));
         wypelnijTlo(inv, screen);
 
         IslandGuiButton powieksz = screen.przycisk("POWIEKSZ_TEREN");
         if (powieksz != null) {
             List<Component> lore = maksimum
                     ? List.of(
-                            m.txt("m.gui.upgrades.radius", "size", String.valueOf(currentSize)),
+                            m.txt("gui.upgrades.radius", "size", String.valueOf(currentSize)),
                             Component.empty(),
-                            m.txt("m.gui.upgrades.max")
+                            m.txt("gui.upgrades.max")
                     )
                     : List.of(
-                            m.txt("m.gui.upgrades.radius", "size", String.valueOf(currentSize)),
-                            m.txt("m.gui.upgrades.cost", "cost", IslandTexts.kasa(cost)),
-                            m.txt("m.gui.upgrades.bank", "balance", IslandTexts.kasa(data.getBankBalance())),
+                            m.txt("gui.upgrades.radius", "size", String.valueOf(currentSize)),
+                            m.txt("gui.upgrades.cost", "cost", IslandTexts.kasa(cost)),
+                            m.txt("gui.upgrades.bank", "balance", IslandTexts.kasa(data.getBankBalance())),
                             Component.empty(),
-                            m.txt("m.gui.upgrades.click", "step", String.valueOf(m.tuning.borderPrzyrostNaUlepszenie()))
+                            m.txt("gui.upgrades.click", "step", String.valueOf(m.tuning.borderPrzyrostNaUlepszenie()))
                     );
             Material material = (maksimum && powieksz.materialWylaczone() != null) ? powieksz.materialWylaczone() : powieksz.material();
             inv.setItem(powieksz.slot(), ikonaZPrzycisku(powieksz, material, lore));
@@ -335,7 +341,7 @@ final class IslandMenus implements Listener {
         if (data == null) return;
 
         IslandScreen screen = m.gui.ulepszenieSpawnerow();
-        Inventory inv = IslandGuiHolder.create("spawnery", screen.size(), m.txt("m.gui.title.spawners"));
+        Inventory inv = IslandGuiHolder.create("spawnery", screen.size(), m.txt("gui.title.spawners"));
         wypelnijTlo(inv, screen);
 
         int[] sloty = m.gui.ulepszenieSpawnerowSlotyTypow();
@@ -347,14 +353,14 @@ final class IslandMenus implements Listener {
 
             ItemStack item = new ItemStack(typ.ikona());
             ItemMeta meta = item.getItemMeta();
-            meta.displayName(m.txt("m.gui.spawners.name", "type", typ.nazwaOdmieniona()));
+            meta.displayName(m.txt("gui.spawners.name", "type", typ.nazwaOdmieniona()));
 
             String max = String.valueOf(m.tuning.spawnerMaxPoziom());
             List<Component> lore = new ArrayList<>();
-            lore.add(m.txt("m.gui.spawners.amount", "level", String.valueOf(poziomIlosci), "max", max));
-            lore.add(m.txt("m.gui.spawners.speed", "level", String.valueOf(poziomSzybkosci), "max", max));
+            lore.add(m.txt("gui.spawners.amount", "level", String.valueOf(poziomIlosci), "max", max));
+            lore.add(m.txt("gui.spawners.speed", "level", String.valueOf(poziomSzybkosci), "max", max));
             lore.add(Component.empty());
-            lore.add(m.txt("m.gui.spawners.manage"));
+            lore.add(m.txt("gui.spawners.manage"));
             meta.lore(lore);
             item.setItemMeta(meta);
 
@@ -376,7 +382,7 @@ final class IslandMenus implements Listener {
         m.otwartySpawnerTyp.put(player.getUniqueId(), typId);
 
         IslandScreen screen = m.gui.spawnerPodmenu();
-        Inventory inv = IslandGuiHolder.create("spawner", screen.size(), m.txt("m.gui.title.spawner", "type", typ.nazwaOdmieniona()));
+        Inventory inv = IslandGuiHolder.create("spawner", screen.size(), m.txt("gui.title.spawner", "type", typ.nazwaOdmieniona()));
         wypelnijTlo(inv, screen);
 
         int poziomIlosci = data.getSpawnerLevel(typId + IslandManager.SUFIKS_ILOSC);
@@ -406,17 +412,44 @@ final class IslandMenus implements Listener {
 
         List<Component> lore = new ArrayList<>();
         for (String linia : btn.lore()) lore.add(Component.text(linia, NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
-        lore.add(m.txt("m.gui.spawners.level", "level", String.valueOf(level), "max", String.valueOf(m.tuning.spawnerMaxPoziom())));
+        lore.add(m.txt("gui.spawners.level", "level", String.valueOf(level), "max", String.valueOf(m.tuning.spawnerMaxPoziom())));
         lore.add(Component.empty());
         if (maksimum) {
-            lore.add(m.txt("m.gui.spawners.max"));
+            lore.add(m.txt("gui.spawners.max"));
         } else {
-            lore.add(m.txt("m.gui.spawners.cost", "cost", IslandTexts.kasa(m.tuning.kosztUlepszeniaSpawnera(typId, ilosc, level))));
-            lore.add(m.txt("m.gui.spawners.click"));
+            lore.add(m.txt("gui.spawners.cost", "cost", IslandTexts.kasa(m.tuning.kosztUlepszeniaSpawnera(typId, ilosc, level))));
+            lore.add(m.txt("gui.spawners.click"));
         }
         meta.lore(lore);
         item.setItemMeta(meta);
         return item;
+    }
+
+    /** Sloty wzorów w oknie wyboru: środek rzędów, po 7 w rzędzie. */
+    private static int slotWzoru(int i) {
+        return 10 + (i / 7) * 9 + (i % 7);
+    }
+
+    /** Okno wyboru wzoru wyspy - przy zakładaniu, gdy admin zapisał więcej niż jeden wzór. */
+    void otworzWyborWzoru(Player player, boolean zMenu, List<elo.mainplugins.skyblock.config.IslandTuning.WzorWyspy> wzory) {
+        m.otwartoZMenu.put(player.getUniqueId(), zMenu);
+        int rzedy = Math.min(6, 2 + (wzory.size() + 6) / 7);
+        Inventory inv = IslandGuiHolder.create("wzory", rzedy * 9, m.txt("gui.title.choose-template"));
+        for (int i = 0; i < wzory.size() && slotWzoru(i) < rzedy * 9; i++) {
+            var w = wzory.get(i);
+            ItemStack item = new ItemStack(w.ikona());
+            ItemMeta meta = item.getItemMeta();
+            meta.displayName(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand()
+                    .deserialize("&e&l" + w.nazwa()).decoration(TextDecoration.ITALIC, false));
+            List<Component> lore = new ArrayList<>();
+            for (String linia : w.opis()) lore.add(Component.text(linia, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.empty());
+            lore.add(m.txt("gui.choose-template.click"));
+            meta.lore(lore);
+            item.setItemMeta(meta);
+            inv.setItem(slotWzoru(i), item);
+        }
+        player.openInventory(inv);
     }
 
     @EventHandler
@@ -426,6 +459,19 @@ final class IslandMenus implements Listener {
         String ekran = holder.ekran();
 
         boolean zMenu = m.otwartoZMenu.getOrDefault(player.getUniqueId(), false);
+
+        if (ekran.equals("wzory")) {
+            event.setCancelled(true);
+            var wzory = m.dostepneWzory();
+            for (int i = 0; i < wzory.size(); i++) {
+                if (slotWzoru(i) == event.getRawSlot()) {
+                    player.closeInventory();
+                    m.utworzWyspe(player, zMenu, wzory.get(i).id());
+                    return;
+                }
+            }
+            return;
+        }
 
         if (ekran.equals("panel")) {
             event.setCancelled(true);
@@ -460,7 +506,7 @@ final class IslandMenus implements Listener {
                     ItemStack item = event.getCurrentItem();
                     if (item != null) {
                         ItemMeta meta = item.getItemMeta();
-                        meta.displayName(m.txt("m.gui.panel.leave-confirm"));
+                        meta.displayName(m.txt("gui.panel.leave-confirm"));
                         item.setItemMeta(meta);
                     }
                 }
@@ -481,6 +527,8 @@ final class IslandMenus implements Listener {
             if (jestSlotem(screen, "ZABIERANIE_ITEMOW", slot)) { m.przelaczZabieranieItemow(player); otworzMenuPermisji(player); }
             else if (jestSlotem(screen, "DOSTEP_KONTENEROW", slot)) { m.przelaczDostepDoKontenerow(player); otworzMenuPermisji(player); }
             else if (jestSlotem(screen, "INTERAKCJE", slot)) { m.przelaczInterakcje(player); otworzMenuPermisji(player); }
+            else if (jestSlotem(screen, "ROLNICTWO_GOSCI", slot)) { m.przelaczRolnictwoGosci(player); otworzMenuPermisji(player); }
+            else if (jestSlotem(screen, "WIADRA_GOSCI", slot)) { m.przelaczWiadraGosci(player); otworzMenuPermisji(player); }
             else if (jestSlotem(screen, "POWROT", slot)) { otworzMenuWyspy(player, zMenu); }
         }
         else if (ekran.equals("ustawienia")) {
@@ -493,6 +541,10 @@ final class IslandMenus implements Listener {
             else if (jestSlotem(screen, "POTWORY", slot)) { m.przelaczPotwory(player); otworzMenuUstawienWyspy(player); }
             else if (jestSlotem(screen, "ZABIJANIE_MOBOW_GOSCI", slot)) { m.przelaczZabijanieMobowPrzezGosci(player); otworzMenuUstawienWyspy(player); }
             else if (jestSlotem(screen, "POGODA_CZAS", slot)) { m.przelaczPogodeICzas(player); otworzMenuUstawienWyspy(player); }
+            else if (jestSlotem(screen, "OGIEN", slot)) { m.przelaczOgien(player); otworzMenuUstawienWyspy(player); }
+            else if (jestSlotem(screen, "ODWIEDZINY", slot)) { m.przelaczOdwiedziny(player); otworzMenuUstawienWyspy(player); }
+            else if (jestSlotem(screen, "POWROT_Z_PUSTKI", slot)) { m.przelaczPowrotZPustki(player); otworzMenuUstawienWyspy(player); }
+            else if (jestSlotem(screen, "ZWIERZETA", slot)) { m.przelaczZwierzeta(player); otworzMenuUstawienWyspy(player); }
             else if (jestSlotem(screen, "NAZWA_WYSPY", slot)) { m.chat.rozpocznijZmianeNazwyWyspy(player); }
             else if (jestSlotem(screen, "CZLONKOWIE", slot)) { otworzMenuCzlonkow(player); }
             else if (jestSlotem(screen, "POWROT", slot)) { otworzMenuWyspy(player, zMenu); }
@@ -580,7 +632,7 @@ final class IslandMenus implements Listener {
         if (data == null) return;
 
         IslandScreen screen = m.gui.czlonkowieWyspy();
-        Inventory inv = IslandGuiHolder.create("czlonkowie", screen.size(), m.txt("m.gui.title.members"));
+        Inventory inv = IslandGuiHolder.create("czlonkowie", screen.size(), m.txt("gui.title.members"));
         wypelnijTlo(inv, screen);
 
         boolean viewerIsOwner = data.getOwnerUUID().equals(player.getUniqueId());
@@ -592,8 +644,8 @@ final class IslandMenus implements Listener {
         ItemStack kartaWlasciciela = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta metaWlasciciela = (SkullMeta) kartaWlasciciela.getItemMeta();
         metaWlasciciela.setOwningPlayer(ownerOffline);
-        metaWlasciciela.displayName(m.txt("m.gui.members.owner-name", "player", ownerNick));
-        metaWlasciciela.lore(List.of(m.txt("m.gui.members.owner-lore")));
+        metaWlasciciela.displayName(m.txt("gui.members.owner-name", "player", ownerNick));
+        metaWlasciciela.lore(List.of(m.txt("gui.members.owner-lore")));
         kartaWlasciciela.setItemMeta(metaWlasciciela);
         inv.setItem(m.gui.czlonkowieSlotWlasciciela(), kartaWlasciciela);
 
@@ -613,19 +665,19 @@ final class IslandMenus implements Listener {
             SkullMeta meta = (SkullMeta) glowa.getItemMeta();
             meta.setOwningPlayer(offlinePlayer);
             meta.displayName(memberIsAdmin
-                    ? m.txt("m.gui.members.admin-name", "player", nick)
-                    : m.txt("m.gui.members.member-name", "player", nick));
+                    ? m.txt("gui.members.admin-name", "player", nick)
+                    : m.txt("gui.members.member-name", "player", nick));
 
             List<Component> lore = new ArrayList<>();
-            lore.add(m.txt(memberIsAdmin ? "m.gui.members.role-admin" : "m.gui.members.role-member"));
+            lore.add(m.txt(memberIsAdmin ? "gui.members.role-admin" : "gui.members.role-member"));
             lore.add(Component.empty());
             if (viewerIsOwner) {
-                lore.add(m.txt("m.gui.members.kick"));
-                lore.add(m.txt(memberIsAdmin ? "m.gui.members.demote" : "m.gui.members.promote"));
+                lore.add(m.txt("gui.members.kick"));
+                lore.add(m.txt(memberIsAdmin ? "gui.members.demote" : "gui.members.promote"));
             } else if (!memberIsAdmin) {
-                lore.add(m.txt("m.gui.members.kick"));
+                lore.add(m.txt("gui.members.kick"));
             } else {
-                lore.add(m.txt("m.gui.members.cant-manage"));
+                lore.add(m.txt("gui.members.cant-manage"));
             }
             meta.lore(lore);
             glowa.setItemMeta(meta);

@@ -67,6 +67,21 @@ public final class MainpluginsSkyblock extends JavaPlugin {
             var templateCommand = new IslandTemplateCommand(this, islandManager.getTemplate(), CoreAPI.getLangService());
             getCommand("@islandtemplate").setExecutor(templateCommand);
             getCommand("@islandtemplate").setTabCompleter(templateCommand);
+            getServer().getPluginManager().registerEvents(templateCommand, this);
+        }
+
+        // /@is - komendy admina (tp/usun/rozmiar/bank), dzialaja tez z konsoli.
+        if (getCommand("@is") != null) {
+            getCommand("@is").setExecutor((sender, command, label, args) -> {
+                islandManager.komendaAdmina(sender, args);
+                return true;
+            });
+            getCommand("@is").setTabCompleter((sender, command, alias, args) -> {
+                if (args.length == 1) return TabCompleteUtils.dopasuj(args[0], List.of("tp", "usun", "rozmiar", "bank"));
+                if (args.length == 2) return TabCompleteUtils.dopasujGraczy(args[1]);
+                if (args.length == 3 && args[0].equalsIgnoreCase("bank")) return TabCompleteUtils.dopasuj(args[2], List.of("ustaw", "dodaj"));
+                return TabCompleteUtils.PUSTA;
+            });
         }
 
         // Osobny executor: /@reloadwyspy ma sens tez z konsoli, nie tylko od gracza.
@@ -91,9 +106,9 @@ public final class MainpluginsSkyblock extends JavaPlugin {
         private static final List<String> PODKOMENDY = List.of(
                 "menu", "ustawdom", "ustawspawn", "usun", "granica", "budowanie", "pvp", "potwory", "ulepszenia",
                 "czlonkowie", "ustawienia", "permisje", "zapros", "akceptuj", "odrzuc", "opusc", "awansuj", "degraduj",
-                "wyrzuc", "dom", "wplac", "wyplac"
+                "wyrzuc", "dom", "wplac", "wyplac", "odwiedz", "przekaz", "wypros", "zbanuj", "odbanuj"
         );
-        private static final Set<String> PODKOMENDY_Z_GRACZEM = Set.of("zapros", "awansuj", "degraduj", "wyrzuc");
+        private static final Set<String> PODKOMENDY_Z_GRACZEM = Set.of("zapros", "awansuj", "degraduj", "wyrzuc", "odwiedz", "przekaz", "wypros", "zbanuj", "odbanuj");
 
         private final IslandManager islandManager;
 

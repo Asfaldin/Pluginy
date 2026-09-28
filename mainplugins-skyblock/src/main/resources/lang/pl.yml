@@ -2,11 +2,17 @@
 # Kwoty ({amount}, {balance}, {cost}, {worth}) są już z walutą serwera (np. "100$" albo "100 zł").
 template:
   missing: "&cWyspy nie są jeszcze gotowe - admin musi najpierw zapisać szablon wyspy (/@islandtemplate)."
-  usage: "&eUżycie: /@islandtemplate pos1 | pos2 | save &7- przy pos1/pos2 podleć do dwóch przeciwległych rogów wokół wyspy, a przy save stań tam, gdzie mają pojawiać się gracze."
+  usage: "&eUżycie: /@islandtemplate rozdzka | pos1 | pos2 | save [nazwa] &7- różdżką kliknij LPM jeden róg wyspy i PPM przeciwległy (albo pos1/pos2 tam, gdzie latasz), potem stań tam, gdzie mają pojawiać się gracze, i wpisz save. Bez nazwy zapisuje wzór 'default'."
   pos-set: "&aNarożnik {n} ustawiony na {x} {y} {z}."
-  need-corners: "&cNajpierw ustaw oba narożniki: /@islandtemplate pos1 i /@islandtemplate pos2."
+  need-corners: "&cNajpierw zaznacz oba rogi: różdżką (/@islandtemplate rozdzka) albo /@islandtemplate pos1 i pos2."
+  wand-given: "&aMasz różdżkę wzoru wyspy: LPM na bloku = róg 1, PPM = róg 2."
+  wand-name: "&6&lRóżdżka Wzoru Wyspy"
+  wand-lore-1: "&7LPM bloku - róg 1"
+  wand-lore-2: "&7PPM bloku - róg 2"
+  wand-lore-3: "&8Potem: /@islandtemplate save <nazwa>"
+  selected: "&aZaznaczono {sx}x{sy}x{sz} bloków. Stań tam, gdzie mają pojawiać się gracze, i wpisz /@islandtemplate save <nazwa>."
   other-world: "&cOba narożniki i Ty musicie być w tym samym świecie."
-  saved: "&aSzablon wyspy zapisany ({sx}x{sy}x{sz} bloków). Nowe wyspy będą go używać."
+  saved: "&aWzór wyspy '{id}' zapisany ({sx}x{sy}x{sz} bloków). Nowe wyspy będą go używać."
   save-failed: "&cNie udało się zapisać szablonu wyspy - szczegóły w logu serwera."
 
 common:
@@ -57,6 +63,18 @@ settings:
   interact-off: "&aDrzwi/dźwignie/przyciski dla gości: zablokowane"
   weather-on: "&aPogoda i czas na wyspie: zablokowane (zawsze południe, czysto)"
   weather-off: "&aPogoda i czas na wyspie: naturalne"
+  fire-on: "&aOgień na wyspie: rozprzestrzenia się"
+  fire-off: "&aOgień na wyspie: nie rozprzestrzenia się"
+  visit-on: "&aWyspa otwarta dla odwiedzających (/is odwiedz)"
+  visit-off: "&aWyspa zamknięta dla odwiedzających"
+  farming-on: "&aPlony i zwierzęta dla gości: dozwolone"
+  farming-off: "&aPlony i zwierzęta dla gości: zablokowane"
+  buckets-on: "&aWiadra dla gości: dozwolone"
+  buckets-off: "&aWiadra dla gości: zablokowane"
+  animals-on: "&aZwierzęta na wyspie: pojawiają się"
+  animals-off: "&aZwierzęta na wyspie: nie pojawiają się same"
+  void-on: "&aPowrót z pustki: włączony (upadek nie zabija)"
+  void-off: "&aPowrót z pustki: wyłączony (upadek w pustkę zabija)"
 
 home:
   not-on-island: "&cMusisz stać na własnej wyspie, żeby tu ustawić punkt teleportu!"
@@ -78,8 +96,59 @@ invite:
   accepted-notice: "&a{player} zaakceptował zaproszenie i dołączył do wyspy!"
   declined: "&eOdrzucono zaproszenie."
   declined-notice: "&c{player} odrzucił zaproszenie na wyspę."
+  full: "&cWyspa jest pełna, może na niej być najwyżej {max} graczy."
   chat-prompt: "&eWpisz na czacie nick gracza, którego chcesz zaprosić na wyspę (lub wpisz '{cancel}'):"
   chat-cancelled: "&cAnulowano zapraszanie gracza."
+
+void:
+  returned: "&eSpadłeś w pustkę, wracasz na wyspę."
+
+limit:
+  block: "&cNa tej wyspie stoi już najwięcej takich bloków, ile można ({max})."
+  animals: "&cNa tej wyspie jest już najwięcej zwierząt, ile można ({max})."
+
+transfer:
+  usage: "&cUżycie: /is przekaz <gracz>"
+  owner-only: "&cTylko właściciel może przekazać wyspę."
+  confirm: "&eNa pewno oddać wyspę graczowi {player}? Wpisz tę samą komendę jeszcze raz w ciągu {seconds} s. Zostaniesz na wyspie jako admin."
+  done: "&aPrzekazano wyspę graczowi {player}. Jesteś teraz adminem wyspy."
+  received: "&a{player} przekazał Ci wyspę. Jesteś teraz jej właścicielem!"
+
+guest:
+  expel-usage: "&cUżycie: /is wypros <gracz>"
+  not-here: "&cGracza {player} nie ma teraz na Twojej wyspie jako gościa."
+  expelled: "&aWyproszono gracza {player} z wyspy."
+  expelled-notice: "&eZostałeś wyproszony z wyspy."
+  ban-usage: "&cUżycie: /is zbanuj <gracz>"
+  unban-usage: "&cUżycie: /is odbanuj <gracz>"
+  ban-member: "&cNie możesz zbanować członka wyspy. Najpierw go wyrzuć (/is wyrzuc)."
+  banned: "&aGracz {player} nie wejdzie już na Twoją wyspę."
+  banned-notice: "&cZostałeś zbanowany na tej wyspie."
+  banned-here: "&cMasz zakaz wstępu na tę wyspę!"
+  not-banned: "&cGracz {player} nie ma bana na Twojej wyspie."
+  unbanned: "&aGracz {player} znów może wejść na Twoją wyspę."
+
+enter:
+  title: "&b{name}"
+  subtitle: "&7właściciel: {owner}"
+  # Nazwa wyspy, gdy właściciel nie nadał własnej.
+  default-name: "Wyspa gracza {owner}"
+
+admin:
+  usage: "&eUżycie: /@is tp <gracz> | usun <gracz> | rozmiar <gracz> <promień> | bank <gracz> [ustaw|dodaj <kwota>]"
+  teleported: "&bTeleport na wyspę gracza {player}."
+  deleted: "&aUsunięto wyspę gracza {player}."
+  deleted-notice: "&cAdmin usunął Twoją wyspę."
+  size-set: "&aWyspa gracza {player} ma teraz promień {size} bloków."
+  bank: "&eBank wyspy gracza {player}: {balance}"
+
+visit:
+  banned: "&cMasz zakaz wstępu na wyspę gracza {player}."
+  usage: "&cUżycie: /is odwiedz <gracz>"
+  no-island: "&cGracz {player} nie ma wyspy."
+  closed: "&cWyspa gracza {player} jest zamknięta dla odwiedzających."
+  done: "&bOdwiedzasz wyspę gracza {player}."
+  kicked-closed: "&eWłaściciel zamknął wyspę dla odwiedzających, wróciłeś na spawn."
 
 leave:
   not-member: "&cNie jesteś członkiem żadnej wyspy!"
@@ -136,9 +205,11 @@ protection:
   mob-kill: "&cNie możesz zabijać mobów na cudzej wyspie!"
   containers: "&cNie możesz otwierać skrzyń/kontenerów na cudzej wyspie!"
   interact: "&cNie możesz używać drzwi/mechanizmów na cudzej wyspie!"
+  farming: "&cNie możesz tego robić ze zwierzętami na cudzej wyspie!"
 
 gui:
   title:
+    choose-template: "&2&lWybierz swoją wyspę"
     panel: "&2&lPanel Wyspy"
     permissions: "&c&lPermisje Wyspy"
     settings: "&9&lUstawienia Wyspy"
@@ -147,6 +218,8 @@ gui:
     spawners: "&d&lUlepszenie Spawnerów"
     spawner: "&d&lSpawner: {type}"
     members: "&e&lCzłonkowie Wyspy"
+  choose-template:
+    click: "&aKliknij, aby założyć tę wyspę"
   toggle:
     on: "&aStan: Włączone"
     off: "&cStan: Wyłączone"

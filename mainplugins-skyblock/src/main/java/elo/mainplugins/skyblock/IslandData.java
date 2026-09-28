@@ -50,11 +50,13 @@ import java.util.concurrent.ConcurrentHashMap;
 /** Dane jednej wyspy (zapisywane w wyspy.yml przez IslandStorage). */
 public class IslandData {
     private final int id;
-    private final UUID ownerUUID;
+    private UUID ownerUUID;
     private final int centerX;
     private final int centerZ;
     private int borderSize;
     private final Set<UUID> members = new HashSet<>();
+    // Gracze, którzy nie mogą wejść na tę wyspę (/is zbanuj) - ani pieszo, ani teleportem.
+    private final Set<UUID> banned = new HashSet<>();
 
     // allowBreak/allowPvP/allowMobs dotyczą WYŁĄCZNIE gości - właściciel i członkowie
     // zawsze mogą budować/niszczyć na własnej wyspie niezależnie od tych ustawień
@@ -76,6 +78,19 @@ public class IslandData {
     // zawsze czyste niebo i południe (patrz IslandManager.aplikujPogodeICzas)
     // dla KAŻDEGO gracza fizycznie stojącego na tej wyspie, nie tylko gości.
     private boolean weatherLocked = false;
+
+    // Ogień i lawa podpalają bloki na wyspie (dotyczy całej wyspy, nie tylko gości).
+    private boolean allowFireSpread = false;
+    // Czy inni gracze mogą wejść na wyspę przez /is odwiedz <gracz>.
+    private boolean openForVisitors = true;
+    // Goście: zbieranie plonów, sadzenie, karmienie/rozmnażanie/strzyżenie zwierząt.
+    private boolean allowGuestFarming = false;
+    // Goście: wylewanie i nabieranie wody/lawy wiadrem.
+    private boolean allowGuestBuckets = false;
+    // Kto spadnie z wyspy w pustkę, wraca na jej punkt /is zamiast ginąć (dotyczy też gości).
+    private boolean voidReturn = true;
+    // Czy zwierzęta (krowy, świnie...) pojawiają się same na wyspie; rozmnażanie i jajka działają zawsze.
+    private boolean allowAnimals = true;
 
     // Kosmetyczna nazwa wyspy ustawiana przez właściciela/admina (przycisk "Nazwa Wyspy"
     // w Ustawieniach Wyspy) - null dopóki nikt jej nie ustawi, wtedy GUI pokazuje
@@ -100,6 +115,12 @@ public class IslandData {
     // ale IslandData celowo trzyma go jako zwykły String (patrz komentarz w
     // IslandSummary) - skyblock nie ma i nie powinien mieć zależności na moduł spawnerów.
     private final Map<String, Integer> spawnerLevels = new HashMap<>();
+
+    // Ile bloków z listy limitów (wyspy-config.yml: limity.bloki) stoi na wyspie - liczone przy stawianiu/niszczeniu.
+    private final Map<String, Integer> blockCounts = new HashMap<>();
+    public Map<String, Integer> getBlockCounts() { return blockCounts; }
+    public int getBlockCount(Material m) { return blockCounts.getOrDefault(m.name(), 0); }
+    public void addBlockCount(Material m, int delta) { blockCounts.merge(m.name(), delta, (a, b) -> Math.max(0, a + b)); }
 
     // Własny punkt teleportu ustawiony przez /is ustawdom - null dopóki gracz go nie
     // ustawi, wtedy teleportDoWyspy() używa domyślnego środka wyspy zamiast tego.
@@ -130,6 +151,9 @@ public class IslandData {
 
     public int getId() { return id; }
     public UUID getOwnerUUID() { return ownerUUID; }
+    /** Tylko dla /is przekaz - IslandManager przepina przy tym wszystkie mapy wysp. */
+    void setOwnerUUID(UUID ownerUUID) { this.ownerUUID = ownerUUID; }
+    public Set<UUID> getBanned() { return banned; }
     public int getCenterX() { return centerX; }
     public int getCenterZ() { return centerZ; }
     public int getBorderSize() { return borderSize; }
@@ -153,6 +177,18 @@ public class IslandData {
     public void setAllowContainerAccess(boolean allowContainerAccess) { this.allowContainerAccess = allowContainerAccess; }
     public boolean isAllowInteract() { return allowInteract; }
     public void setAllowInteract(boolean allowInteract) { this.allowInteract = allowInteract; }
+    public boolean isAllowFireSpread() { return allowFireSpread; }
+    public void setAllowFireSpread(boolean allowFireSpread) { this.allowFireSpread = allowFireSpread; }
+    public boolean isOpenForVisitors() { return openForVisitors; }
+    public void setOpenForVisitors(boolean openForVisitors) { this.openForVisitors = openForVisitors; }
+    public boolean isAllowGuestFarming() { return allowGuestFarming; }
+    public void setAllowGuestFarming(boolean allowGuestFarming) { this.allowGuestFarming = allowGuestFarming; }
+    public boolean isAllowGuestBuckets() { return allowGuestBuckets; }
+    public void setAllowGuestBuckets(boolean allowGuestBuckets) { this.allowGuestBuckets = allowGuestBuckets; }
+    public boolean isAllowAnimals() { return allowAnimals; }
+    public void setAllowAnimals(boolean allowAnimals) { this.allowAnimals = allowAnimals; }
+    public boolean isVoidReturn() { return voidReturn; }
+    public void setVoidReturn(boolean voidReturn) { this.voidReturn = voidReturn; }
     public boolean isWeatherLocked() { return weatherLocked; }
     public void setWeatherLocked(boolean weatherLocked) { this.weatherLocked = weatherLocked; }
     public String getCustomName() { return customName; }

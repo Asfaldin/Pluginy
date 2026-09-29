@@ -1,9 +1,297 @@
 # Mainplugins Skyblock - komunikaty po polsku. Kolory: &a &e ...  Placeholdery: {nazwa}
+# Kwoty ({amount}, {balance}, {cost}, {worth}) są już z walutą serwera (np. "100$" albo "100 zł").
 template:
   missing: "&cWyspy nie są jeszcze gotowe - admin musi najpierw zapisać szablon wyspy (/@islandtemplate)."
-  usage: "&eUżycie: /@islandtemplate pos1 | pos2 | save &7- przy pos1/pos2 podleć do dwóch przeciwległych rogów wokół wyspy, a przy save stań tam, gdzie mają pojawiać się gracze."
+  usage: "&eUżycie: /@islandtemplate rozdzka | pos1 | pos2 | save [nazwa] &7- różdżką kliknij LPM jeden róg wyspy i PPM przeciwległy (albo pos1/pos2 tam, gdzie latasz), potem stań tam, gdzie mają pojawiać się gracze, i wpisz save. Bez nazwy zapisuje wzór 'default'."
   pos-set: "&aNarożnik {n} ustawiony na {x} {y} {z}."
-  need-corners: "&cNajpierw ustaw oba narożniki: /@islandtemplate pos1 i /@islandtemplate pos2."
+  need-corners: "&cNajpierw zaznacz oba rogi: różdżką (/@islandtemplate rozdzka) albo /@islandtemplate pos1 i pos2."
+  wand-given: "&aMasz różdżkę wzoru wyspy: LPM na bloku = róg 1, PPM = róg 2."
+  wand-name: "&6&lRóżdżka Wzoru Wyspy"
+  wand-lore-1: "&7LPM bloku - róg 1"
+  wand-lore-2: "&7PPM bloku - róg 2"
+  wand-lore-3: "&8Potem: /@islandtemplate save <nazwa>"
+  selected: "&aZaznaczono {sx}x{sy}x{sz} bloków. Stań tam, gdzie mają pojawiać się gracze, i wpisz /@islandtemplate save <nazwa>."
   other-world: "&cOba narożniki i Ty musicie być w tym samym świecie."
-  saved: "&aSzablon wyspy zapisany ({sx}x{sy}x{sz} bloków). Nowe wyspy będą go używać."
+  saved: "&aWzór wyspy '{id}' zapisany ({sx}x{sy}x{sz} bloków). Nowe wyspy będą go używać."
   save-failed: "&cNie udało się zapisać szablonu wyspy - szczegóły w logu serwera."
+
+common:
+  no-island: "&cNie posiadasz wyspy!"
+  no-island-yet: "&cNie masz jeszcze wyspy!"
+  island-missing: "&cTwoja wyspa nie istnieje!"
+  managers-only: "&cTylko właściciel i administratorzy wyspy mogą to zrobić!"
+  player-not-found: "&cNie znaleziono gracza o takim nicku lub jest offline."
+  not-member: "&cTen gracz nie jest członkiem Twojej wyspy."
+  players-only: "&cTylko gracz może użyć tej komendy."
+  reloaded: "&aKonfiguracja i układ GUI wysp zostały przeładowane."
+  teleported: "&bPrzeteleportowano na wyspę!"
+  # Słowo, którym gracz przerywa pytanie na czacie (zaproszenie, nazwa wyspy).
+  cancel-word: "anuluj"
+
+create:
+  cooldown: "&cMusisz jeszcze poczekać {time}, zanim będziesz mógł założyć kolejną wyspę."
+  creating: "&eTworzenie Twojej wyspy..."
+  error: "&cWystąpił błąd podczas generowania wyspy!"
+  done: "&aTwoja wyspa została utworzona!"
+
+delete:
+  warning: "&c&lUWAGA: Czy na pewno chcesz usunąć swoją wyspę? Tej operacji nie da się cofnąć!"
+  how-to-confirm: "&eWpisz \"{phrase}\" na czacie w ciągu {seconds} s, aby potwierdzić (cokolwiek innego anuluje)."
+  # Zdanie, które gracz musi wpisać, żeby usunąć wyspę (wielkość liter i polskie znaki nie mają znaczenia).
+  confirm-phrase: "Tak zgadzam się"
+  owner-only: "&cTylko właściciel może usunąć wyspę!"
+  cancelled: "&eAnulowano usuwanie wyspy."
+  done: "&cTwoja wyspa została bezpowrotnie usunięta ze świata."
+  member-notice: "&cWyspa, na której byłeś, została usunięta przez właściciela."
+
+settings:
+  border-on: "&aWizualny border: włączony"
+  border-off: "&aWizualny border: wyłączony"
+  build-on: "&aBudowanie dla gości: otwarte"
+  build-off: "&aBudowanie dla gości: zamknięte"
+  pvp-on: "&aPvP na wyspie: włączone"
+  pvp-off: "&aPvP na wyspie: wyłączone"
+  guest-kill-on: "&aZabijanie mobów przez gości: dozwolone"
+  guest-kill-off: "&aZabijanie mobów przez gości: zablokowane"
+  pickup-on: "&aZabieranie itemów przez gości: dozwolone"
+  pickup-off: "&aZabieranie itemów przez gości: zablokowane"
+  containers-on: "&aDostęp gości do skrzyń/kontenerów: dozwolony"
+  containers-off: "&aDostęp gości do skrzyń/kontenerów: zablokowany"
+  interact-on: "&aDrzwi/dźwignie/przyciski dla gości: dozwolone"
+  interact-off: "&aDrzwi/dźwignie/przyciski dla gości: zablokowane"
+  visit-on: "&aWyspa otwarta dla odwiedzających (/is odwiedz)"
+  visit-off: "&aWyspa zamknięta dla odwiedzających"
+  farming-on: "&aPlony i zwierzęta dla gości: dozwolone"
+  farming-off: "&aPlony i zwierzęta dla gości: zablokowane"
+  buckets-on: "&aWiadra dla gości: dozwolone"
+  buckets-off: "&aWiadra dla gości: zablokowane"
+  member-build-on: "&aCzłonkowie: budowanie dozwolone"
+  member-build-off: "&aCzłonkowie: budowanie zablokowane"
+  member-containers-on: "&aCzłonkowie: skrzynie dozwolone"
+  member-containers-off: "&aCzłonkowie: skrzynie zablokowane"
+  member-invite-on: "&aCzłonkowie: mogą zapraszać graczy"
+  member-invite-off: "&aCzłonkowie: nie mogą zapraszać graczy"
+  member-bank-on: "&aCzłonkowie: mogą wypłacać z banku i ulepszać wyspę"
+  member-bank-off: "&aCzłonkowie: nie mogą wypłacać z banku ani ulepszać wyspy"
+
+home:
+  not-on-island: "&cMusisz stać na własnej wyspie, żeby tu ustawić punkt teleportu!"
+  home-set: "&aUstawiono nowy punkt teleportacji (/dom, /home) na Twojej wyspie!"
+  spawn-set: "&aUstawiono nowy punkt teleportacji (/is) na Twojej wyspie!"
+
+invite:
+  usage: "&cUżycie: /is zapros <gracz>"
+  self: "&cNie możesz zaprosić samego siebie!"
+  has-island: "&cTen gracz już ma wyspę lub jest członkiem innej wyspy."
+  already-pending: "&cTen gracz ma już oczekujące zaproszenie."
+  expired: "&7Zaproszenie na wyspę wygasło."
+  sent: "&aWysłano zaproszenie do {player}."
+  received: "&bZostałeś zaproszony na wyspę gracza {player}! Wpisz /is akceptuj lub /is odrzuc w ciągu {seconds} s."
+  none: "&cNie masz żadnych oczekujących zaproszeń."
+  outdated: "&cMasz już wyspę - to zaproszenie jest już nieaktualne."
+  island-gone: "&cTa wyspa już nie istnieje."
+  joined: "&aDołączyłeś do wyspy!"
+  accepted-notice: "&a{player} zaakceptował zaproszenie i dołączył do wyspy!"
+  declined: "&eOdrzucono zaproszenie."
+  declined-notice: "&c{player} odrzucił zaproszenie na wyspę."
+  full: "&cWyspa jest pełna, może na niej być najwyżej {max} graczy."
+  chat-prompt: "&eWpisz na czacie nick gracza, którego chcesz zaprosić na wyspę (lub wpisz '{cancel}'):"
+  chat-cancelled: "&cAnulowano zapraszanie gracza."
+
+void:
+  returned: "&eSpadłeś w pustkę, wracasz na wyspę."
+
+limit:
+  block: "&cNa tej wyspie stoi już najwięcej takich bloków, ile można ({max})."
+  animals: "&cNa tej wyspie jest już najwięcej zwierząt, ile można ({max})."
+
+transfer:
+  usage: "&cUżycie: /is przekaz <gracz>"
+  owner-only: "&cTylko właściciel może przekazać wyspę."
+  confirm: "&eNa pewno oddać wyspę graczowi {player}? Wpisz tę samą komendę jeszcze raz w ciągu {seconds} s. Zostaniesz na wyspie jako admin."
+  done: "&aPrzekazano wyspę graczowi {player}. Jesteś teraz adminem wyspy."
+  received: "&a{player} przekazał Ci wyspę. Jesteś teraz jej właścicielem!"
+
+guest:
+  expel-usage: "&cUżycie: /is wypros <gracz>"
+  not-here: "&cGracza {player} nie ma teraz na Twojej wyspie jako gościa."
+  expelled: "&aWyproszono gracza {player} z wyspy."
+  expelled-notice: "&eZostałeś wyproszony z wyspy."
+  ban-usage: "&cUżycie: /is zbanuj <gracz>"
+  unban-usage: "&cUżycie: /is odbanuj <gracz>"
+  ban-member: "&cNie możesz zbanować członka wyspy. Najpierw go wyrzuć (/is wyrzuc)."
+  banned: "&aGracz {player} nie wejdzie już na Twoją wyspę."
+  banned-notice: "&cZostałeś zbanowany na tej wyspie."
+  banned-here: "&cMasz zakaz wstępu na tę wyspę!"
+  not-banned: "&cGracz {player} nie ma bana na Twojej wyspie."
+  unbanned: "&aGracz {player} znów może wejść na Twoją wyspę."
+
+enter:
+  title: "&b{name}"
+  subtitle: "&7właściciel: {owner}"
+  # Nazwa wyspy, gdy właściciel nie nadał własnej.
+  default-name: "Wyspa gracza {owner}"
+
+admin:
+  usage: "&eUżycie: /@is tp <gracz> | usun <gracz> | rozmiar <gracz> <promień> | bank <gracz> [ustaw|dodaj <kwota>]"
+  teleported: "&bTeleport na wyspę gracza {player}."
+  deleted: "&aUsunięto wyspę gracza {player}."
+  deleted-notice: "&cAdmin usunął Twoją wyspę."
+  size-set: "&aWyspa gracza {player} ma teraz promień {size} bloków."
+  bank: "&eBank wyspy gracza {player}: {balance}"
+
+visit:
+  disabled: "&cOdwiedzanie wysp jest wyłączone na tym serwerze."
+  banned: "&cMasz zakaz wstępu na wyspę gracza {player}."
+  usage: "&cUżycie: /is odwiedz <gracz>"
+  no-island: "&cGracz {player} nie ma wyspy."
+  closed: "&cWyspa gracza {player} jest zamknięta dla odwiedzających."
+  done: "&bOdwiedzasz wyspę gracza {player}."
+  kicked-closed: "&eWłaściciel zamknął wyspę dla odwiedzających, wróciłeś na spawn."
+
+leave:
+  not-member: "&cNie jesteś członkiem żadnej wyspy!"
+  owner-hint: "&cJesteś właścicielem tej wyspy - użyj /is usun, aby ją usunąć."
+  done: "&eOpuściłeś wyspę."
+  notice: "&e{player} opuścił Twoją wyspę."
+
+role:
+  usage: "&cUżycie: /is {command} <gracz>"
+  owner-only: "&cTylko właściciel wyspy może zmieniać role."
+  changed: "&aZmieniono rolę na {role}."
+  changed-notice: "&bTwoja rola na wyspie została zmieniona na {role}."
+  owner: "Właściciel"
+  admin: "Admin"
+  member: "Członek"
+
+kick:
+  usage: "&cUżycie: /is wyrzuc <gracz>"
+  managers-only: "&cTylko właściciel i administratorzy mogą usuwać członków."
+  admin-protected: "&cNie możesz usunąć innego administratora wyspy."
+  done: "&eUsunięto gracza {player} z wyspy."
+  notice: "&cZostałeś usunięty z wyspy gracza {player}."
+
+bank:
+  deposit-usage: "&cUżycie: /is wplac <kwota>"
+  withdraw-usage: "&cUżycie: /is wyplac <kwota>"
+  not-enough-money: "&cNie masz wystarczająco pieniędzy!"
+  deposited: "&aWpłacono {amount} do banku wyspy. Nowy stan: {balance}."
+  deposit-notice: "&a{player} wpłacił {amount} do banku Twojej wyspy!"
+  not-enough-in-bank: "&cBank wyspy nie ma tyle pieniędzy! Stan: {balance}."
+  withdrew: "&aWypłacono {amount} z banku wyspy. Nowy stan: {balance}."
+  invalid-amount: "&cPodaj poprawną kwotę (liczbę)."
+  amount-positive: "&cKwota musi być większa od zera."
+  upgrade-no-money: "&cBank wyspy nie ma tyle pieniędzy! Potrzeba {cost}, w banku jest {balance}. Wpłać przez /is wplac."
+
+upgrade:
+  max-size: "&cOsiągnięto maksymalny rozmiar wyspy ({max} bloków)!"
+  border-done: "&aSukces! Powiększono teren wyspy. Nowy promień: {size} bloków."
+  spawner-max: "&cTa statystyka ma już maksymalny poziom!"
+  spawner-done: "&aUlepszono do poziomu {level}!"
+
+name:
+  prompt: "&eWpisz na czacie nową nazwę wyspy (max {max} znaków, lub wpisz '{cancel}'):"
+  cancelled: "&cAnulowano zmianę nazwy wyspy."
+  length: "&cNazwa musi mieć 1-{max} znaków."
+  set: "&aUstawiono nazwę wyspy: {name}"
+
+protection:
+  break: "&cNie możesz tego zniszczyć!"
+  place: "&cNie możesz stawiać bloków na cudzej wyspie!"
+  fluid-place: "&cNie możesz wylewać cieczy na cudzej wyspie!"
+  fluid-take: "&cNie możesz zbierać cieczy z cudzej wyspy!"
+  pvp: "&cPvP jest wyłączone na tej wyspie!"
+  mob-kill: "&cNie możesz zabijać mobów na cudzej wyspie!"
+  containers: "&cNie możesz otwierać skrzyń/kontenerów na cudzej wyspie!"
+  interact: "&cNie możesz używać drzwi/mechanizmów na cudzej wyspie!"
+  farming: "&cNie możesz tego robić ze zwierzętami na cudzej wyspie!"
+  member-build: "&cWłaściciel wyspy nie pozwolił członkom budować."
+  member-containers: "&cWłaściciel wyspy nie pozwolił członkom otwierać skrzyń."
+
+gui:
+  title:
+    choose-template: "&2&lWybierz swoją wyspę"
+    panel: "&2&lPanel Wyspy"
+    permissions: "&c&lPermisje Wyspy"
+    settings: "&9&lUstawienia Wyspy"
+    top: "&6&lTopka Wysp"
+    upgrades: "&6&lUlepszenia Wyspy"
+    spawners: "&d&lUlepszenie Spawnerów"
+    spawner: "&d&lSpawner: {type}"
+    members: "&e&lCzłonkowie Wyspy"
+  choose-template:
+    click: "&aKliknij, aby założyć tę wyspę"
+  toggle:
+    on: "&aStan: Włączone"
+    off: "&cStan: Wyłączone"
+    click: "&7Kliknij, aby przełączyć"
+  panel:
+    leave-confirm: "&4&lKLIKNIJ PONOWNIE, ABY OPUŚCIĆ WYSPĘ!"
+  bank:
+    balance: "&aStan: {balance}"
+    note: "&8Ulepszenia płacone WYŁĄCZNIE z tego banku"
+    deposit: "&b/is wplac <kwota> - wpłać (może każdy)"
+    withdraw: "&b/is wyplac <kwota> - wypłać (właściciel/admin)"
+  info:
+    name: "&bNazwa: {name}"
+    owner: "&7Właściciel: {player}"
+    unknown-owner: "Nieznany"
+    size: "&7Rozmiar: {size}x{size}"
+    members: "&7Członkowie: {count}"
+    worth: "&6Wartość wyspy: {worth}"
+    role: "&eTwoja rola: {role}"
+  settings:
+    name-current: "&7Aktualnie: {name}"
+    name-none: "(brak)"
+    name-click: "&7Kliknij, aby ustawić przez czat"
+    members-current: "&7Aktualnie: {count} członków"
+    members-click: "&7Kliknij, aby zarządzać"
+  top:
+    place-1: "&6&l#{place} - {name}"
+    place-2: "&7&l#{place} - {name}"
+    place-3: "&c&l#{place} - {name}"
+    place-other: "&e&l#{place} - {name}"
+    worth: "&6Wartość: {worth}"
+    size: "&7Rozmiar: {size}x{size}"
+    members: "&7Członkowie: {count}"
+  upgrades:
+    radius: "&7Aktualny promień: {size} bloków"
+    max: "&cOsiągnięto maksymalny rozmiar wyspy!"
+    cost: "&aKoszt (z banku wyspy): {cost}"
+    bank: "&eStan banku: {balance}"
+    click: "&bKliknij, aby powiększyć o {step} bloków!"
+  spawners:
+    name: "&e&lSpawner: {type}"
+    amount: "&7Ilość: {level}/{max}"
+    speed: "&7Szybkość: {level}/{max}"
+    manage: "&bKliknij, aby zarządzać ulepszeniami"
+    level: "&7Poziom: {level}/{max}"
+    max: "&cOsiągnięto maksymalny poziom!"
+    cost: "&aKoszt (z banku wyspy): {cost}"
+    click: "&bKliknij, aby ulepszyć"
+  members:
+    owner-name: "&6&l[WŁAŚCICIEL] {player}"
+    owner-lore: "&7Właściciel wyspy"
+    admin-name: "&6&l[ADMIN] {player}"
+    member-name: "&b&l{player}"
+    role-admin: "&6Rola: Administrator"
+    role-member: "&7Rola: Członek"
+    kick: "&cLPM: Usuń z wyspy"
+    promote: "&bPPM: Awansuj na Admina"
+    demote: "&bPPM: Zdegraduj do Członka"
+    cant-manage: "&8Nie możesz zarządzać innym administratorem"
+
+# Odmiana jednostek czasu: one = 1, few = 2-4 (22-24...), many = reszta.
+time:
+  day-one: "dzień"
+  day-few: "dni"
+  day-many: "dni"
+  hour-one: "godzinę"
+  hour-few: "godziny"
+  hour-many: "godzin"
+  minute-one: "minutę"
+  minute-few: "minuty"
+  minute-many: "minut"
+  second-one: "sekundę"
+  second-few: "sekundy"
+  second-many: "sekund"

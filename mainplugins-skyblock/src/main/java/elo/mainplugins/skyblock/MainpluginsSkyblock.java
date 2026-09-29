@@ -43,7 +43,7 @@ public final class MainpluginsSkyblock extends JavaPlugin {
         islandManager = new IslandManager(this, economyService);
         borderManager = new BorderManager(this, islandManager);
         IslandProtectionManager islandProtectionManager = new IslandProtectionManager(this, islandManager);
-        MobRestrictionManager mobRestrictionManager = new MobRestrictionManager();
+        MobRestrictionManager mobRestrictionManager = new MobRestrictionManager(islandManager);
 
         getServer().getPluginManager().registerEvents(islandManager, this);
         getServer().getPluginManager().registerEvents(borderManager, this);
@@ -69,6 +69,21 @@ public final class MainpluginsSkyblock extends JavaPlugin {
             var templateCommand = new IslandTemplateCommand(this, islandManager.getTemplate(), CoreAPI.getLangService());
             getCommand("@islandtemplate").setExecutor(templateCommand);
             getCommand("@islandtemplate").setTabCompleter(templateCommand);
+            getServer().getPluginManager().registerEvents(templateCommand, this);
+        }
+
+        // /@is - komendy admina (tp/usun/rozmiar/bank), dzialaja tez z konsoli.
+        if (getCommand("@is") != null) {
+            getCommand("@is").setExecutor((sender, command, label, args) -> {
+                islandManager.komendaAdmina(sender, args);
+                return true;
+            });
+            getCommand("@is").setTabCompleter((sender, command, alias, args) -> {
+                if (args.length == 1) return TabCompleteUtils.dopasuj(args[0], List.of("tp", "usun", "rozmiar", "bank"));
+                if (args.length == 2) return TabCompleteUtils.dopasujGraczy(args[1]);
+                if (args.length == 3 && args[0].equalsIgnoreCase("bank")) return TabCompleteUtils.dopasuj(args[2], List.of("ustaw", "dodaj"));
+                return TabCompleteUtils.PUSTA;
+            });
         }
 
         // Osobny executor: /@reloadwyspy ma sens tez z konsoli, nie tylko od gracza.
@@ -76,7 +91,7 @@ public final class MainpluginsSkyblock extends JavaPlugin {
         if (getCommand("@reloadwyspy") != null) {
             getCommand("@reloadwyspy").setExecutor((sender, command, label, args) -> {
                 islandManager.przeladujKonfiguracje();
-                sender.sendMessage("§aKonfiguracja i uklad GUI wysp zostaly przeladowane.");
+                CoreAPI.getLangService().send(sender, MainpluginsSkyblock.this, "common.reloaded");
                 return true;
             });
         }
@@ -91,11 +106,11 @@ public final class MainpluginsSkyblock extends JavaPlugin {
         // withdraw - patrz handleCommand) celowo pominięte tu, w podpowiedziach Tab liczy się
         // tylko polska forma główna, żeby nie dublować listy.
         private static final List<String> PODKOMENDY = List.of(
-                "menu", "ustawdom", "ustawspawn", "usun", "granica", "budowanie", "pvp", "potwory", "ulepszenia",
+                "menu", "ustawdom", "ustawspawn", "usun", "granica", "budowanie", "pvp", "ulepszenia",
                 "czlonkowie", "ustawienia", "permisje", "zapros", "akceptuj", "odrzuc", "opusc", "awansuj", "degraduj",
-                "wyrzuc", "dom", "wplac", "wyplac"
+                "wyrzuc", "dom", "wplac", "wyplac", "odwiedz", "przekaz", "wypros", "zbanuj", "odbanuj"
         );
-        private static final Set<String> PODKOMENDY_Z_GRACZEM = Set.of("zapros", "awansuj", "degraduj", "wyrzuc");
+        private static final Set<String> PODKOMENDY_Z_GRACZEM = Set.of("zapros", "awansuj", "degraduj", "wyrzuc", "odwiedz", "przekaz", "wypros", "zbanuj", "odbanuj");
 
         private final IslandManager islandManager;
 
@@ -106,7 +121,7 @@ public final class MainpluginsSkyblock extends JavaPlugin {
         @Override
         public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
             if (!(sender instanceof Player player)) {
-                sender.sendMessage("Tylko gracz moze uzyc tej komendy.");
+                CoreAPI.getLangService().send(sender, islandManager.plugin(), "common.players-only");
                 return true;
             }
             // Nazwa komendy (nie alias) - odróżnia "/is" od "/dom"/"/home" przy pustych

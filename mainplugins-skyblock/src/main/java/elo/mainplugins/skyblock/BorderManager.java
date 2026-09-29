@@ -106,11 +106,6 @@ public class BorderManager implements Listener {
     }
 
     public void wyczyscCzerwonyEkranBorderu(Player player) {
-        // Reset kosmetycznego efektu "Pogoda i Czas" (patrz IslandManager.aplikujPogodeICzas) -
-        // gracz opuszcza świat wysp, więc żaden island-owy override nie powinien się już trzymać.
-        player.resetPlayerTime();
-        player.resetPlayerWeather();
-
         WorldBorder worldBorder = player.getWorld().getWorldBorder();
 
         // Tworzymy osobną instancję borderu dla gracza, która kopiuje rozmiar świata,

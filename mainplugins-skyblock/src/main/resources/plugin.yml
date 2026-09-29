@@ -8,17 +8,22 @@ softdepend: [MainpluginsSpawn]
 commands:
   is:
     description: Wyspa
-    usage: "/is [menu|dom|ustawdom|ustawspawn|usun|granica|budowanie|pvp|potwory|ulepszenia|czlonkowie|ustawienia|permisje|zapros <gracz>|akceptuj|odrzuc|opusc|awansuj <gracz>|degraduj <gracz>|wyrzuc <gracz>|wplac <kwota>|wyplac <kwota>] - samo /is teleportuje do punktu z /is ustawspawn, /dom-/home zawsze do punktu z /is ustawdom (ang. aliasy: sethome/border/guests/mobs/upgrade/members/invite/accept/deny/leave/promote/demote/remove/deposit/withdraw)"
+    usage: "/is [menu|dom|ustawdom|ustawspawn|usun|granica|budowanie|pvp|ulepszenia|czlonkowie|ustawienia|permisje|zapros <gracz>|akceptuj|odrzuc|opusc|awansuj <gracz>|degraduj <gracz>|wyrzuc <gracz>|wplac <kwota>|wyplac <kwota>|odwiedz <gracz>|przekaz <gracz>|wypros <gracz>|zbanuj <gracz>|odbanuj <gracz>] - samo /is teleportuje do punktu z /is ustawspawn, /dom-/home zawsze do punktu z /is ustawdom (ang. aliasy: sethome/border/guests/upgrade/members/invite/accept/deny/leave/promote/demote/remove/deposit/withdraw/visit/transfer/expel/ban/unban)"
   dom:
     description: Teleport na wyspę - do punktu ustawionego przez "/is ustawdom" (niezależnego od "/is ustawspawn")
     aliases: [home]
+  "@is":
+    description: (Admin) Wyspy graczy - teleport, usuwanie, rozmiar, bank
+    usage: "/<command> tp <gracz> | usun <gracz> | rozmiar <gracz> <promien> | bank <gracz> [ustaw|dodaj <kwota>]"
+    permission: mainplugins.skyblock.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
   "@reloadwyspy":
     description: Wczytaj wyspy-config.yml i wyspy-gui.yml na nowo, bez restartu serwera
     permission: mainplugins.skyblock.reload
     permission-message: "&cNie masz permisji do tej komendy!"
   "@islandtemplate":
-    description: (Admin) Save the starter island template - pos1, pos2, then save where players should appear
-    usage: /<command> pos1 | pos2 | save
+    description: (Admin) Zapis wzoru wyspy startowej - rozdzka (LPM/PPM rogi) albo pos1/pos2, potem save [nazwa]
+    usage: /<command> rozdzka | pos1 | pos2 | save [nazwa]
     permission: mainplugins.skyblock.template
     permission-message: "&cNie masz permisji do tej komendy!"
 
@@ -28,6 +33,9 @@ permissions:
     default: op
   mainplugins.skyblock.bypass:
     description: Pozwala przechodzić przez granice wysp bez ograniczeń ruchu
+    default: op
+  mainplugins.skyblock.admin:
+    description: Dostep do /@is (teleport, usuwanie, rozmiar i bank cudzych wysp)
     default: op
   mainplugins.skyblock.reload:
     description: Pozwala przeładować konfigurację i układ GUI systemu wysp

@@ -1,9 +1,297 @@
 # Mainplugins Skyblock - English messages. Colors: &a &e ...  Placeholders: {name}
+# Amounts ({amount}, {balance}, {cost}, {worth}) already include the server currency (e.g. "100$").
 template:
   missing: "&cIslands are not set up yet - an admin has to save an island template first (/@islandtemplate)."
-  usage: "&eUsage: /@islandtemplate pos1 | pos2 | save &7- fly to two opposite corners around the island for pos1/pos2, then stand where players should appear and use save."
+  usage: "&eUsage: /@islandtemplate rozdzka | pos1 | pos2 | save [name] &7- with the wand left-click one corner of the island and right-click the opposite one (or pos1/pos2 where you fly), then stand where players should appear and use save. Without a name it saves the 'default' template."
   pos-set: "&aCorner {n} set to {x} {y} {z}."
-  need-corners: "&cSet both corners first: /@islandtemplate pos1 and /@islandtemplate pos2."
+  need-corners: "&cSelect both corners first: with the wand (/@islandtemplate rozdzka) or /@islandtemplate pos1 and pos2."
+  wand-given: "&aYou got the island template wand: left-click a block = corner 1, right-click = corner 2."
+  wand-name: "&6&lIsland Template Wand"
+  wand-lore-1: "&7Left-click a block - corner 1"
+  wand-lore-2: "&7Right-click a block - corner 2"
+  wand-lore-3: "&8Then: /@islandtemplate save <name>"
+  selected: "&aSelected {sx}x{sy}x{sz} blocks. Stand where players should appear and type /@islandtemplate save <name>."
   other-world: "&cBoth corners and you must be in the same world."
-  saved: "&aIsland template saved ({sx}x{sy}x{sz} blocks). New islands will use it."
+  saved: "&aIsland template '{id}' saved ({sx}x{sy}x{sz} blocks). New islands will use it."
   save-failed: "&cCould not save the island template - see the server log."
+
+common:
+  no-island: "&cYou don't have an island!"
+  no-island-yet: "&cYou don't have an island yet!"
+  island-missing: "&cYour island does not exist!"
+  managers-only: "&cOnly the island owner and admins can do that!"
+  player-not-found: "&cNo online player with that name."
+  not-member: "&cThat player is not a member of your island."
+  players-only: "&cOnly a player can use this command."
+  reloaded: "&aIsland configuration and GUI layout reloaded."
+  teleported: "&bTeleported to your island!"
+  # Word a player types to cancel a chat prompt (invite, island name).
+  cancel-word: "cancel"
+
+create:
+  cooldown: "&cYou have to wait {time} before creating another island."
+  creating: "&eCreating your island..."
+  error: "&cSomething went wrong while generating the island!"
+  done: "&aYour island has been created!"
+
+delete:
+  warning: "&c&lWARNING: Do you really want to delete your island? This cannot be undone!"
+  how-to-confirm: "&eType \"{phrase}\" in chat within {seconds} s to confirm (anything else cancels)."
+  # Sentence a player must type to delete the island (case does not matter).
+  confirm-phrase: "Yes I agree"
+  owner-only: "&cOnly the owner can delete the island!"
+  cancelled: "&eIsland deletion cancelled."
+  done: "&cYour island has been permanently deleted."
+  member-notice: "&cThe island you were on has been deleted by its owner."
+
+settings:
+  border-on: "&aVisual border: on"
+  border-off: "&aVisual border: off"
+  build-on: "&aBuilding for guests: open"
+  build-off: "&aBuilding for guests: closed"
+  pvp-on: "&aPvP on the island: on"
+  pvp-off: "&aPvP on the island: off"
+  guest-kill-on: "&aGuests killing mobs: allowed"
+  guest-kill-off: "&aGuests killing mobs: blocked"
+  pickup-on: "&aGuests picking up items: allowed"
+  pickup-off: "&aGuests picking up items: blocked"
+  containers-on: "&aGuest access to chests/containers: allowed"
+  containers-off: "&aGuest access to chests/containers: blocked"
+  interact-on: "&aDoors/levers/buttons for guests: allowed"
+  interact-off: "&aDoors/levers/buttons for guests: blocked"
+  visit-on: "&aIsland open to visitors (/is visit)"
+  visit-off: "&aIsland closed to visitors"
+  farming-on: "&aCrops and animals for guests: allowed"
+  farming-off: "&aCrops and animals for guests: blocked"
+  buckets-on: "&aBuckets for guests: allowed"
+  buckets-off: "&aBuckets for guests: blocked"
+  member-build-on: "&aMembers: building allowed"
+  member-build-off: "&aMembers: building blocked"
+  member-containers-on: "&aMembers: chests allowed"
+  member-containers-off: "&aMembers: chests blocked"
+  member-invite-on: "&aMembers: can invite players"
+  member-invite-off: "&aMembers: cannot invite players"
+  member-bank-on: "&aMembers: can withdraw from the bank and upgrade the island"
+  member-bank-off: "&aMembers: cannot withdraw from the bank or upgrade the island"
+
+home:
+  not-on-island: "&cYou have to stand on your own island to set a teleport point here!"
+  home-set: "&aNew teleport point (/home) set on your island!"
+  spawn-set: "&aNew teleport point (/is) set on your island!"
+
+invite:
+  usage: "&cUsage: /is invite <player>"
+  self: "&cYou cannot invite yourself!"
+  has-island: "&cThat player already has an island or is a member of another one."
+  already-pending: "&cThat player already has a pending invite."
+  expired: "&7The island invite has expired."
+  sent: "&aInvite sent to {player}."
+  received: "&bYou have been invited to {player}'s island! Type /is accept or /is deny within {seconds} s."
+  none: "&cYou have no pending invites."
+  outdated: "&cYou already have an island - this invite is no longer valid."
+  island-gone: "&cThat island no longer exists."
+  joined: "&aYou joined the island!"
+  accepted-notice: "&a{player} accepted the invite and joined the island!"
+  declined: "&eInvite declined."
+  declined-notice: "&c{player} declined the island invite."
+  full: "&cThe island is full, at most {max} players can be on it."
+  chat-prompt: "&eType the name of the player you want to invite in chat (or type '{cancel}'):"
+  chat-cancelled: "&cInvite cancelled."
+
+void:
+  returned: "&eYou fell into the void, back to the island."
+
+limit:
+  block: "&cThis island already has the most blocks of this kind allowed ({max})."
+  animals: "&cThis island already has the most animals allowed ({max})."
+
+transfer:
+  usage: "&cUsage: /is transfer <player>"
+  owner-only: "&cOnly the owner can transfer the island."
+  confirm: "&eReally give the island to {player}? Type the same command again within {seconds} s. You will stay on the island as an admin."
+  done: "&aThe island now belongs to {player}. You are an island admin."
+  received: "&a{player} gave you the island. You are its owner now!"
+
+guest:
+  expel-usage: "&cUsage: /is expel <player>"
+  not-here: "&c{player} is not on your island as a guest right now."
+  expelled: "&a{player} was sent off your island."
+  expelled-notice: "&eYou were sent off the island."
+  ban-usage: "&cUsage: /is ban <player>"
+  unban-usage: "&cUsage: /is unban <player>"
+  ban-member: "&cYou can't ban an island member. Remove them first (/is remove)."
+  banned: "&a{player} can no longer enter your island."
+  banned-notice: "&cYou are banned from this island."
+  banned-here: "&cYou are banned from this island!"
+  not-banned: "&c{player} is not banned on your island."
+  unbanned: "&a{player} can enter your island again."
+
+enter:
+  title: "&b{name}"
+  subtitle: "&7owner: {owner}"
+  # Island name when the owner has not set one.
+  default-name: "{owner}'s island"
+
+admin:
+  usage: "&eUsage: /@is tp <player> | usun <player> | rozmiar <player> <radius> | bank <player> [ustaw|dodaj <amount>]"
+  teleported: "&bTeleported to {player}'s island."
+  deleted: "&aDeleted {player}'s island."
+  deleted-notice: "&cAn admin deleted your island."
+  size-set: "&a{player}'s island now has a radius of {size} blocks."
+  bank: "&e{player}'s island bank: {balance}"
+
+visit:
+  disabled: "&cVisiting islands is disabled on this server."
+  banned: "&cYou are banned from {player}'s island."
+  usage: "&cUsage: /is visit <player>"
+  no-island: "&c{player} has no island."
+  closed: "&c{player}'s island is closed to visitors."
+  done: "&bYou are visiting {player}'s island."
+  kicked-closed: "&eThe owner closed the island to visitors, you are back at spawn."
+
+leave:
+  not-member: "&cYou are not a member of any island!"
+  owner-hint: "&cYou own this island - use /is usun to delete it."
+  done: "&eYou left the island."
+  notice: "&e{player} left your island."
+
+role:
+  usage: "&cUsage: /is {command} <player>"
+  owner-only: "&cOnly the island owner can change roles."
+  changed: "&aRole changed to {role}."
+  changed-notice: "&bYour island role has been changed to {role}."
+  owner: "Owner"
+  admin: "Admin"
+  member: "Member"
+
+kick:
+  usage: "&cUsage: /is remove <player>"
+  managers-only: "&cOnly the owner and admins can remove members."
+  admin-protected: "&cYou cannot remove another island admin."
+  done: "&eRemoved {player} from the island."
+  notice: "&cYou have been removed from {player}'s island."
+
+bank:
+  deposit-usage: "&cUsage: /is deposit <amount>"
+  withdraw-usage: "&cUsage: /is withdraw <amount>"
+  not-enough-money: "&cYou don't have enough money!"
+  deposited: "&aDeposited {amount} to the island bank. New balance: {balance}."
+  deposit-notice: "&a{player} deposited {amount} to your island bank!"
+  not-enough-in-bank: "&cThe island bank doesn't have that much! Balance: {balance}."
+  withdrew: "&aWithdrew {amount} from the island bank. New balance: {balance}."
+  invalid-amount: "&cEnter a valid amount (a number)."
+  amount-positive: "&cThe amount must be greater than zero."
+  upgrade-no-money: "&cThe island bank doesn't have enough! Needed {cost}, the bank has {balance}. Deposit with /is deposit."
+
+upgrade:
+  max-size: "&cThe island has reached its maximum size ({max} blocks)!"
+  border-done: "&aSuccess! The island area was expanded. New radius: {size} blocks."
+  spawner-max: "&cThis stat is already at the maximum level!"
+  spawner-done: "&aUpgraded to level {level}!"
+
+name:
+  prompt: "&eType the new island name in chat (max {max} characters, or type '{cancel}'):"
+  cancelled: "&cIsland name change cancelled."
+  length: "&cThe name must have 1-{max} characters."
+  set: "&aIsland name set: {name}"
+
+protection:
+  break: "&cYou can't break this!"
+  place: "&cYou can't place blocks on someone else's island!"
+  fluid-place: "&cYou can't pour liquids on someone else's island!"
+  fluid-take: "&cYou can't take liquids from someone else's island!"
+  pvp: "&cPvP is disabled on this island!"
+  mob-kill: "&cYou can't kill mobs on someone else's island!"
+  containers: "&cYou can't open chests/containers on someone else's island!"
+  interact: "&cYou can't use doors/mechanisms on someone else's island!"
+  farming: "&cYou can't do that with animals on someone else's island!"
+  member-build: "&cThe island owner does not let members build."
+  member-containers: "&cThe island owner does not let members open chests."
+
+gui:
+  title:
+    choose-template: "&2&lChoose your island"
+    panel: "&2&lIsland Panel"
+    permissions: "&c&lIsland Permissions"
+    settings: "&9&lIsland Settings"
+    top: "&6&lTop Islands"
+    upgrades: "&6&lIsland Upgrades"
+    spawners: "&d&lSpawner Upgrades"
+    spawner: "&d&lSpawner: {type}"
+    members: "&e&lIsland Members"
+  choose-template:
+    click: "&aClick to create this island"
+  toggle:
+    on: "&aState: On"
+    off: "&cState: Off"
+    click: "&7Click to toggle"
+  panel:
+    leave-confirm: "&4&lCLICK AGAIN TO LEAVE THE ISLAND!"
+  bank:
+    balance: "&aBalance: {balance}"
+    note: "&8Upgrades are paid ONLY from this bank"
+    deposit: "&b/is deposit <amount> - deposit (anyone)"
+    withdraw: "&b/is withdraw <amount> - withdraw (owner/admin)"
+  info:
+    name: "&bName: {name}"
+    owner: "&7Owner: {player}"
+    unknown-owner: "Unknown"
+    size: "&7Size: {size}x{size}"
+    members: "&7Members: {count}"
+    worth: "&6Island worth: {worth}"
+    role: "&eYour role: {role}"
+  settings:
+    name-current: "&7Current: {name}"
+    name-none: "(none)"
+    name-click: "&7Click to set it in chat"
+    members-current: "&7Current: {count} members"
+    members-click: "&7Click to manage"
+  top:
+    place-1: "&6&l#{place} - {name}"
+    place-2: "&7&l#{place} - {name}"
+    place-3: "&c&l#{place} - {name}"
+    place-other: "&e&l#{place} - {name}"
+    worth: "&6Worth: {worth}"
+    size: "&7Size: {size}x{size}"
+    members: "&7Members: {count}"
+  upgrades:
+    radius: "&7Current radius: {size} blocks"
+    max: "&cThe island has reached its maximum size!"
+    cost: "&aCost (from the island bank): {cost}"
+    bank: "&eBank balance: {balance}"
+    click: "&bClick to expand by {step} blocks!"
+  spawners:
+    name: "&e&lSpawner: {type}"
+    amount: "&7Amount: {level}/{max}"
+    speed: "&7Speed: {level}/{max}"
+    manage: "&bClick to manage upgrades"
+    level: "&7Level: {level}/{max}"
+    max: "&cMaximum level reached!"
+    cost: "&aCost (from the island bank): {cost}"
+    click: "&bClick to upgrade"
+  members:
+    owner-name: "&6&l[OWNER] {player}"
+    owner-lore: "&7Island owner"
+    admin-name: "&6&l[ADMIN] {player}"
+    member-name: "&b&l{player}"
+    role-admin: "&6Role: Administrator"
+    role-member: "&7Role: Member"
+    kick: "&cLeft click: Remove from island"
+    promote: "&bRight click: Promote to Admin"
+    demote: "&bRight click: Demote to Member"
+    cant-manage: "&8You can't manage another admin"
+
+# Time units: one = 1, few/many = the rest in English.
+time:
+  day-one: "day"
+  day-few: "days"
+  day-many: "days"
+  hour-one: "hour"
+  hour-few: "hours"
+  hour-many: "hours"
+  minute-one: "minute"
+  minute-few: "minutes"
+  minute-many: "minutes"
+  second-one: "second"
+  second-few: "seconds"
+  second-many: "seconds"

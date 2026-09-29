@@ -1,5 +1,7 @@
 package elo.mainplugins.skyblock;
 
+import elo.mainplugins.skyblock.config.IslandTuning;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -11,7 +13,9 @@ import org.bukkit.block.Container;
 import org.bukkit.entity.EnderPearl;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LightningStrike;
-import org.bukkit.entity.Monster;
+import org.bukkit.entity.Animals;
+import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
@@ -19,6 +23,9 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockBurnEvent;
+import org.bukkit.event.block.BlockSpreadEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockIgniteEvent;
@@ -44,7 +51,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Egzekwuje ustawienia allowBreak/allowPvP/allowMobs z IslandManager.IslandData,
+ * Egzekwuje ustawienia allowBreak/allowPvP z IslandData,
  * które wcześniej istniały tylko jako gettery/settery bez żadnego realnego efektu -
  * każdy mógł wejść na cudzą wyspę i robić co chciał. Właściciel i członkowie wyspy
  * zawsze mają pełny dostęp do własnego terenu niezależnie od tych ustawień; dotyczą
@@ -60,8 +67,13 @@ public class IslandProtectionManager implements Listener {
         this.islandManager = islandManager;
     }
 
-    private boolean jestWlascicielemLubCzlonkiem(IslandManager.IslandData data, UUID uuid) {
+    private boolean jestWlascicielemLubCzlonkiem(IslandData data, UUID uuid) {
         return data.getOwnerUUID().equals(uuid) || data.getMembers().contains(uuid);
+    }
+
+    /** Zwykły członek bez prawa budowania (właściciel i admini wyspy budują zawsze). */
+    private boolean czlonekBezBudowania(IslandData data, Player player) {
+        return islandManager.zwyklyCzlonek(data, player.getUniqueId()) && !data.isMemberBuild();
     }
 
     private Player rozwiazAtakujacego(Entity damager) {
@@ -70,8 +82,8 @@ public class IslandProtectionManager implements Listener {
         return null;
     }
 
-    private void odmowa(Player player, String komunikat) {
-        player.sendActionBar(Component.text(komunikat, NamedTextColor.RED));
+    private void odmowa(Player player, String key) {
+        islandManager.pasek(player, key);
     }
 
     /**
@@ -84,35 +96,50 @@ public class IslandProtectionManager implements Listener {
      */
     @EventHandler(ignoreCancelled = true)
     public void onBlockDamage(BlockDamageEvent event) {
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        if (data != null && czlonekBezBudowania(data, event.getPlayer())) {
+            event.setCancelled(true);
+            odmowa(event.getPlayer(), "protection.member-build");
+            return;
+        }
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
-        if (!data.isAllowBreak()) {
+        if (!data.isAllowBreak() && !(data.isAllowGuestFarming() && jestPlonem(event.getBlock().getType()))) {
             event.setCancelled(true);
-            odmowa(event.getPlayer(), "Nie możesz tego zniszczyć!");
+            odmowa(event.getPlayer(), "protection.break");
         }
     }
 
     /** Zapasowa siatka bezpieczeństwa na wypadek, gdyby coś ominęło onBlockDamage wyżej. */
     @EventHandler(ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        if (data != null && czlonekBezBudowania(data, event.getPlayer())) {
+            event.setCancelled(true);
+            odmowa(event.getPlayer(), "protection.member-build");
+            return;
+        }
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
-        if (!data.isAllowBreak()) {
+        if (!data.isAllowBreak() && !(data.isAllowGuestFarming() && jestPlonem(event.getBlock().getType()))) {
             event.setCancelled(true);
-            odmowa(event.getPlayer(), "Nie możesz tego zniszczyć!");
+            odmowa(event.getPlayer(), "protection.break");
         }
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        if (data != null && czlonekBezBudowania(data, event.getPlayer())) {
+            event.setCancelled(true);
+            islandManager.komunikat(event.getPlayer(), "protection.member-build");
+            return;
+        }
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
-        if (!data.isAllowBreak()) {
+        if (!data.isAllowBreak() && !(data.isAllowGuestFarming() && jestPlonem(event.getBlock().getType()))) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage(Component.text("Nie możesz stawiać bloków na cudzej wyspie!", NamedTextColor.RED));
+            islandManager.komunikat(event.getPlayer(), "protection.place");
         }
     }
 
@@ -125,12 +152,14 @@ public class IslandProtectionManager implements Listener {
      */
     @EventHandler(ignoreCancelled = true)
     public void onEntityExplode(EntityExplodeEvent event) {
+        if (islandManager.getTuning().wybuchyNiszczaBloki()) return;
         event.blockList().removeIf(block -> islandManager.znajdzWyspePod(block.getLocation()) != null);
     }
 
     /** To samo co wyżej, ale dla wybuchów bez encji-sprawcy (łóżko w Netherze, kotwica odrodzenia w Overworldzie). */
     @EventHandler(ignoreCancelled = true)
     public void onBlockExplode(BlockExplodeEvent event) {
+        if (islandManager.getTuning().wybuchyNiszczaBloki()) return;
         event.blockList().removeIf(block -> islandManager.znajdzWyspePod(block.getLocation()) != null);
     }
 
@@ -145,6 +174,7 @@ public class IslandProtectionManager implements Listener {
         EntityDamageEvent.DamageCause cause = event.getCause();
         if (cause != EntityDamageEvent.DamageCause.ENTITY_EXPLOSION
                 && cause != EntityDamageEvent.DamageCause.BLOCK_EXPLOSION) return;
+        if (islandManager.getTuning().wybuchyNiszczaBloki()) return;
 
         if (islandManager.znajdzWyspePod(event.getEntity().getLocation()) != null) {
             event.setCancelled(true);
@@ -158,7 +188,7 @@ public class IslandProtectionManager implements Listener {
      */
     @EventHandler(ignoreCancelled = true)
     public void onLightningIgnite(BlockIgniteEvent event) {
-        if (event.getCause() != BlockIgniteEvent.IgniteCause.LIGHTNING) return;
+        if (event.getCause() != BlockIgniteEvent.IgniteCause.LIGHTNING || islandManager.getTuning().pioruny()) return;
         if (islandManager.znajdzWyspePod(event.getBlock().getLocation()) != null) {
             event.setCancelled(true);
         }
@@ -167,7 +197,7 @@ public class IslandProtectionManager implements Listener {
     /** Piorun potrafi podpalić trafioną encję bezpośrednio (nie przez blok) - to ten przypadek. */
     @EventHandler(ignoreCancelled = true)
     public void onLightningCombust(EntityCombustByEntityEvent event) {
-        if (!(event.getCombuster() instanceof LightningStrike)) return;
+        if (!(event.getCombuster() instanceof LightningStrike) || islandManager.getTuning().pioruny()) return;
         if (islandManager.znajdzWyspePod(event.getEntity().getLocation()) != null) {
             event.setCancelled(true);
         }
@@ -175,7 +205,7 @@ public class IslandProtectionManager implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onLightningDamage(EntityDamageEvent event) {
-        if (event.getCause() != EntityDamageEvent.DamageCause.LIGHTNING) return;
+        if (event.getCause() != EntityDamageEvent.DamageCause.LIGHTNING || islandManager.getTuning().pioruny()) return;
         if (islandManager.znajdzWyspePod(event.getEntity().getLocation()) != null) {
             event.setCancelled(true);
         }
@@ -215,16 +245,68 @@ public class IslandProtectionManager implements Listener {
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onWorthTrackBreak(BlockBreakEvent event) {
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
         if (data == null) return;
         data.dodajDoWartosci(-islandManager.wartoscBloku(event.getBlock().getType()));
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onWorthTrackPlace(BlockPlaceEvent event) {
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
         if (data == null) return;
         data.dodajDoWartosci(islandManager.wartoscBloku(event.getBlock().getType()));
+        if (islandManager.getTuning().liczonyBlok(event.getBlock().getType())) data.addBlockCount(event.getBlock().getType(), 1);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onLimitTrackBreak(BlockBreakEvent event) {
+        IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        if (data == null || !islandManager.getTuning().liczonyBlok(event.getBlock().getType())) return;
+        data.addBlockCount(event.getBlock().getType(), -1);
+    }
+
+    /** Limit bloków na wyspę (np. lejów) - dotyczy wszystkich, też właściciela. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onLimitPlace(BlockPlaceEvent event) {
+        Material typ = event.getBlock().getType();
+        int limit = islandManager.getTuning().limitBloku(typ);
+        if (limit <= 0) return;
+        IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        if (data == null || data.getBlockCount(typ) < limit) return;
+        event.setCancelled(true);
+        islandManager.msg(event.getPlayer(), "limit.block", "max", String.valueOf(limit));
+    }
+
+    /** Limit zwierząt na wyspę: rozmnażanie. */
+    @EventHandler(ignoreCancelled = true)
+    public void onBreedLimit(org.bukkit.event.entity.EntityBreedEvent event) {
+        if (!zaDuzoZwierzat(event.getEntity().getLocation())) return;
+        event.setCancelled(true);
+        if (event.getBreeder() instanceof Player p) {
+            islandManager.msg(p, "limit.animals", "max", String.valueOf(islandManager.getTuning().limitZwierzat()));
+        }
+    }
+
+    /** Limit zwierząt na wyspę: jajka i jajka spawnu. */
+    @EventHandler(ignoreCancelled = true)
+    public void onEggLimit(CreatureSpawnEvent event) {
+        if (!(event.getEntity() instanceof Animals)) return;
+        CreatureSpawnEvent.SpawnReason r = event.getSpawnReason();
+        if (r != CreatureSpawnEvent.SpawnReason.EGG && r != CreatureSpawnEvent.SpawnReason.SPAWNER_EGG
+                && r != CreatureSpawnEvent.SpawnReason.DISPENSE_EGG) return;
+        if (zaDuzoZwierzat(event.getLocation())) event.setCancelled(true);
+    }
+
+    private boolean zaDuzoZwierzat(Location loc) {
+        int limit = islandManager.getTuning().limitZwierzat();
+        if (limit <= 0) return false;
+        IslandData data = islandManager.znajdzWyspePod(loc);
+        if (data == null) return false;
+        int r = data.getBorderSize();
+        org.bukkit.util.BoundingBox teren = new org.bukkit.util.BoundingBox(
+                data.getCenterX() - r, loc.getWorld().getMinHeight(), data.getCenterZ() - r,
+                data.getCenterX() + r + 1, loc.getWorld().getMaxHeight(), data.getCenterZ() + r + 1);
+        return loc.getWorld().getNearbyEntities(teren, e -> e instanceof Animals).size() >= limit;
     }
 
     /**
@@ -284,23 +366,33 @@ public class IslandProtectionManager implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onBucketEmpty(PlayerBucketEmptyEvent event) {
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        if (data != null && czlonekBezBudowania(data, event.getPlayer())) {
+            event.setCancelled(true);
+            islandManager.komunikat(event.getPlayer(), "protection.member-build");
+            return;
+        }
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
-        if (!data.isAllowBreak()) {
+        if (!data.isAllowGuestBuckets()) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage(Component.text("Nie możesz wylewać cieczy na cudzej wyspie!", NamedTextColor.RED));
+            islandManager.komunikat(event.getPlayer(), "protection.fluid-place");
         }
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onBucketFill(PlayerBucketFillEvent event) {
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
+        if (data != null && czlonekBezBudowania(data, event.getPlayer())) {
+            event.setCancelled(true);
+            islandManager.komunikat(event.getPlayer(), "protection.member-build");
+            return;
+        }
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
-        if (!data.isAllowBreak()) {
+        if (!data.isAllowGuestBuckets()) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage(Component.text("Nie możesz zbierać cieczy z cudzej wyspy!", NamedTextColor.RED));
+            islandManager.komunikat(event.getPlayer(), "protection.fluid-take");
         }
     }
 
@@ -311,37 +403,45 @@ public class IslandProtectionManager implements Listener {
         Player atakujacy = rozwiazAtakujacego(event.getDamager());
         if (atakujacy == null || atakujacy.equals(ofiara)) return;
 
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(ofiara.getLocation());
+        IslandData data = islandManager.znajdzWyspePod(ofiara.getLocation());
         if (data == null || data.isAllowPvP()) return;
 
         event.setCancelled(true);
-        atakujacy.sendMessage(Component.text("PvP jest wyłączone na tej wyspie!", NamedTextColor.RED));
+        islandManager.komunikat(atakujacy, "protection.pvp");
     }
 
+    /**
+     * Moby pojawiające się same na wyspach - ustawienie serwera (wyspy-config.yml: moby.potwory / moby.zwierzeta),
+     * domyślnie wyłączone, bo naturalny spawn na wielu wyspach mocno obciąża serwer. Spawnery, rozmnażanie,
+     * jajka i /summon działają zawsze. Potwory = wszystko wrogie (też slime'y, fantomy), zwierzęta = reszta żywych
+     * (krowy, ryby, kałamarnice, nietoperze...).
+     */
     @EventHandler(ignoreCancelled = true)
-    public void onCreatureSpawn(CreatureSpawnEvent event) {
-        if (!(event.getEntity() instanceof Monster)) return;
-
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getLocation());
-        if (data != null && !data.isAllowMobs()) {
-            event.setCancelled(true);
-        }
+    public void onNaturalSpawn(CreatureSpawnEvent event) {
+        if (!islandManager.jestSwiatemWysp(event.getLocation().getWorld())) return;
+        CreatureSpawnEvent.SpawnReason r = event.getSpawnReason();
+        if (r != CreatureSpawnEvent.SpawnReason.NATURAL && r != CreatureSpawnEvent.SpawnReason.CHUNK_GEN
+                && r != CreatureSpawnEvent.SpawnReason.PATROL && r != CreatureSpawnEvent.SpawnReason.REINFORCEMENTS) return;
+        IslandTuning t = islandManager.getTuning();
+        boolean wrog = event.getEntity() instanceof org.bukkit.entity.Enemy;
+        if (wrog ? !t.mobyPotwory() : !t.mobyZwierzeta()) event.setCancelled(true);
     }
 
-    /** Osobne od allowMobs (który dotyczy TYLKO spawnu) - kontroluje, kto może polować na już zaspawnowane moby. */
+    /** Kto może polować na moby na cudzej wyspie. */
     @EventHandler(ignoreCancelled = true)
     public void onGuestMobKill(EntityDamageByEntityEvent event) {
-        if (!(event.getEntity() instanceof Monster)) return;
+        // Wszystkie moby: potwory i zwierzęta (bez graczy - to PvP - i stojaków na zbroję).
+        if (!(event.getEntity() instanceof LivingEntity) || event.getEntity() instanceof Player || event.getEntity() instanceof ArmorStand) return;
 
         Player atakujacy = rozwiazAtakujacego(event.getDamager());
         if (atakujacy == null) return;
 
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getEntity().getLocation());
+        IslandData data = islandManager.znajdzWyspePod(event.getEntity().getLocation());
         if (data == null || jestWlascicielemLubCzlonkiem(data, atakujacy.getUniqueId())) return;
 
         if (!data.isAllowGuestMobKill()) {
             event.setCancelled(true);
-            atakujacy.sendMessage(Component.text("Nie możesz zabijać mobów na cudzej wyspie!", NamedTextColor.RED));
+            islandManager.komunikat(atakujacy, "protection.mob-kill");
         }
     }
 
@@ -349,7 +449,7 @@ public class IslandProtectionManager implements Listener {
     public void onItemPickup(EntityPickupItemEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
 
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(event.getItem().getLocation());
+        IslandData data = islandManager.znajdzWyspePod(event.getItem().getLocation());
         if (data == null || jestWlascicielemLubCzlonkiem(data, player.getUniqueId())) return;
 
         if (!data.isAllowItemPickup()) {
@@ -365,12 +465,17 @@ public class IslandProtectionManager implements Listener {
         Location lokalizacja = event.getInventory().getLocation();
         if (lokalizacja == null) return;
 
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(lokalizacja);
+        IslandData data = islandManager.znajdzWyspePod(lokalizacja);
+        if (data != null && islandManager.zwyklyCzlonek(data, player.getUniqueId()) && !data.isMemberContainers()) {
+            event.setCancelled(true);
+            islandManager.komunikat(player, "protection.member-containers");
+            return;
+        }
         if (data == null || jestWlascicielemLubCzlonkiem(data, player.getUniqueId())) return;
 
         if (!data.isAllowContainerAccess()) {
             event.setCancelled(true);
-            player.sendMessage(Component.text("Nie możesz otwierać skrzyń/kontenerów na cudzej wyspie!", NamedTextColor.RED));
+            islandManager.komunikat(player, "protection.containers");
         }
     }
 
@@ -390,13 +495,121 @@ public class IslandProtectionManager implements Listener {
         Block block = event.getClickedBlock();
         if (block == null || !czyMechanizm(block.getType())) return;
 
-        IslandManager.IslandData data = islandManager.znajdzWyspePod(block.getLocation());
+        IslandData data = islandManager.znajdzWyspePod(block.getLocation());
         if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
 
         if (!data.isAllowInteract()) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage(Component.text("Nie możesz używać drzwi/mechanizmów na cudzej wyspie!", NamedTextColor.RED));
+            islandManager.komunikat(event.getPlayer(), "protection.interact");
         }
+    }
+
+    /**
+     * Upadek w pustkę: zamiast śmierci (i utraty rzeczy) gracz wraca na punkt /is wyspy, z której spadł.
+     * Obrażenia od pustki pojawiają się dopiero sporo pod światem, więc spadający ich nie odczuje.
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onVoidFall(EntityDamageEvent event) {
+        if (event.getCause() != EntityDamageEvent.DamageCause.VOID || !(event.getEntity() instanceof Player player)) return;
+        if (!islandManager.jestSwiatemWysp(player.getWorld())) return;
+        IslandData data = islandManager.znajdzWyspePod(player.getLocation());
+        if (data == null || !islandManager.getTuning().powrotZPustki()) return;
+
+        event.setCancelled(true);
+        player.setFallDistance(0);
+        islandManager.teleportNaSpawnWyspy(player, data);
+        islandManager.komunikat(player, "void.returned");
+    }
+
+    /** Teleport (np. /tpa) na wyspę, na której gracz ma bana - blokowany; udany teleport pokazuje napis wyspy. */
+    @EventHandler(ignoreCancelled = true)
+    public void onTeleportBan(org.bukkit.event.player.PlayerTeleportEvent event) {
+        if (!islandManager.jestSwiatemWysp(event.getTo().getWorld())) return;
+        if (islandManager.zbanowanyTutaj(event.getPlayer(), event.getTo())) {
+            event.setCancelled(true);
+            islandManager.komunikat(event.getPlayer(), "guest.banned-here");
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onTeleportTitle(org.bukkit.event.player.PlayerTeleportEvent event) {
+        if (!islandManager.jestSwiatemWysp(event.getTo().getWorld())) return;
+        Player player = event.getPlayer();
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (player.isOnline()) islandManager.sprawdzWejscie(player, player.getLocation());
+        });
+    }
+
+    /**
+     * Odrodzenie po śmierci na własnej wyspie (zasada serwera odrodzenie-na-wyspie) zamiast na spawnie.
+     * HIGH - po pluginie spawnu (NORMAL), który ustawia spawn serwera. Łóżko i kotwica mają pierwszeństwo.
+     */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onRespawnOnIsland(org.bukkit.event.player.PlayerRespawnEvent event) {
+        if (!islandManager.getTuning().odrodzenieNaWyspie()) return;
+        if (event.getRespawnReason() != org.bukkit.event.player.PlayerRespawnEvent.RespawnReason.DEATH) return;
+        if (event.isBedSpawn() || event.isAnchorSpawn()) return;
+        IslandData data = islandManager.wyspaGraczaPoUuid(event.getPlayer().getUniqueId());
+        if (data != null) event.setRespawnLocation(islandManager.lokalizacjaSpawnuWyspy(data));
+    }
+
+    /** Zachowanie ekwipunku po śmierci w świecie wysp (zasada serwera zachowanie-ekwipunku). */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onDeathKeepInventory(org.bukkit.event.entity.PlayerDeathEvent event) {
+        if (!islandManager.getTuning().zachowanieEkwipunku()) return;
+        if (!islandManager.jestSwiatemWysp(event.getEntity().getWorld())) return;
+        event.setKeepInventory(true);
+        event.getDrops().clear();
+        event.setKeepLevel(true);
+        event.setDroppedExp(0);
+    }
+
+    /** Plony, które gość z włączonym „rolnictwem” może zebrać i posadzić. */
+    private boolean jestPlonem(Material material) {
+        if (Tag.CROPS.isTagged(material)) return true;
+        return switch (material) {
+            case NETHER_WART, COCOA, SWEET_BERRY_BUSH, MELON, PUMPKIN, SUGAR_CANE, CACTUS, BAMBOO -> true;
+            default -> material == Material.MELON_STEM || material == Material.PUMPKIN_STEM;
+        };
+    }
+
+    /** Karmienie, rozmnażanie, strzyżenie, dojenie i smycz na zwierzętach - dla gości tylko z „rolnictwem”. */
+    @EventHandler(ignoreCancelled = true)
+    public void onAnimalInteract(PlayerInteractEntityEvent event) {
+        if (!(event.getRightClicked() instanceof Animals zwierze)) return;
+        IslandData data = islandManager.znajdzWyspePod(zwierze.getLocation());
+        if (data == null || jestWlascicielemLubCzlonkiem(data, event.getPlayer().getUniqueId())) return;
+
+        if (!data.isAllowGuestFarming()) {
+            event.setCancelled(true);
+            islandManager.komunikat(event.getPlayer(), "protection.farming");
+        }
+    }
+
+    /** Ogień przeskakujący na sąsiednie bloki. */
+    @EventHandler(ignoreCancelled = true)
+    public void onFireSpread(BlockSpreadEvent event) {
+        if (event.getSource().getType() != Material.FIRE && event.getSource().getType() != Material.SOUL_FIRE) return;
+        if (ogienZablokowany(event.getBlock().getLocation())) event.setCancelled(true);
+    }
+
+    /** Blok spalony przez ogień. */
+    @EventHandler(ignoreCancelled = true)
+    public void onBlockBurn(BlockBurnEvent event) {
+        if (ogienZablokowany(event.getBlock().getLocation())) event.setCancelled(true);
+    }
+
+    /** Podpalenie od lawy albo od innego ognia (zapalniczka gracza działa zawsze). */
+    @EventHandler(ignoreCancelled = true)
+    public void onFireIgnite(BlockIgniteEvent event) {
+        BlockIgniteEvent.IgniteCause cause = event.getCause();
+        if (cause != BlockIgniteEvent.IgniteCause.SPREAD && cause != BlockIgniteEvent.IgniteCause.LAVA) return;
+        if (ogienZablokowany(event.getBlock().getLocation())) event.setCancelled(true);
+    }
+
+    /** Ogień na wyspach - ustawienie całego serwera (wyspy-config.yml: ogien-sie-rozprzestrzenia). */
+    private boolean ogienZablokowany(Location lokalizacja) {
+        return !islandManager.getTuning().ogienSieRozprzestrzenia() && islandManager.znajdzWyspePod(lokalizacja) != null;
     }
 
     /**
@@ -420,7 +633,16 @@ public class IslandProtectionManager implements Listener {
         // przez plugin permisji, a nie przez literalne /op (domyślnie: op ma je i tak).
         if (player.hasPermission("mainplugins.skyblock.bypass")) return;
 
-        if (islandManager.znajdzWyspePod(to) != null) return; // w granicach jakiejkolwiek wyspy - OK
+        if (islandManager.znajdzWyspePod(to) != null) {
+            // w granicach jakiejkolwiek wyspy - OK, chyba że gracz ma na niej bana
+            if (islandManager.zbanowanyTutaj(player, to) && !islandManager.zbanowanyTutaj(player, from)) {
+                event.setTo(from);
+                odmowa(player, "guest.banned-here");
+                return;
+            }
+            islandManager.sprawdzWejscie(player, to);
+            return;
+        }
 
         event.setTo(from);
     }

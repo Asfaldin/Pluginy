@@ -1,14 +1,17 @@
 # Konfiguracja systemu wysp (mainplugins-skyblock) - w pelni edytowalna bez rekompilacji.
 # Uklad GUI (sloty/ikony/teksty) jest w OSOBNYM pliku - patrz wyspy-gui.yml.
 # Przeladowanie na zywo, bez restartu serwera: /@reloadwyspy
-#
-# UWAGA (nie zmieniac bez zastanowienia): wartosci "cena-w-sklepie" ponizej w sekcji
-# spawnery.typy MUSZA sie zgadzac z buy-price w mainplugins-shop/categories/spawnery.yml -
-# to dwa niezalezne pliki opisujace te sama cene (jeden w sklepie, jeden tutaj jako baza
-# do liczenia kosztu ulepszen), zaden kod nie synchronizuje ich automatycznie.
+
+swiat:
+  # Nazwa swiata, w ktorym powstaja wyspy. Zmiana dziala dopiero po restarcie serwera,
+  # a istniejace wyspy zostaja w starym swiecie - zmieniaj tylko przed otwarciem serwera.
+  nazwa: skyblock_world
 
 tworzenie-wyspy:
-  domyslny-rozmiar: 50
+  # Promien nowej wyspy (bloki w kazda strone od srodka) - 15 = teren 30x30.
+  domyslny-rozmiar: 15
+  # Wysokosc (Y), na ktorej wklejana jest wyspa startowa. Gracz pojawia sie blok wyzej.
+  wysokosc: 100
   # Cooldown przed N-ta proba zalozenia wyspy w zyciu gracza (create+delete sie liczy).
   # Pierwsze dwie darmowe, potem kara rosnie schodkowo. Od "od-proby" w gore (wlacznie)
   # obowiazuje "sekundy" tego wpisu - wpisy MUSZA byc posortowane rosnaco po "od-proby".
@@ -22,13 +25,135 @@ tworzenie-wyspy:
 
 border:
   # O ile blokow (promienia) powieksza sie wyspa za jedno ulepszenie w panelu.
-  przyrost-na-ulepszenie: 25
-  # Koszt jednego ulepszenia = aktualny promien (przed ulepszeniem) * ta wartosc.
-  koszt-za-blok: 1000
+  przyrost-na-ulepszenie: 10
+  # Koszt pierwszego powiekszenia (z rozmiaru startowego).
+  koszt-pierwszego-powiekszenia: 2250
+  # O ile procent drozsze jest kazde kolejne powiekszenie (35 = 2250, 3040, 4100, 5540...).
+  wzrost-kosztu-procent: 35
   # Twardy limit promienia wyspy, niezalezny od tego ile gracz ma pieniedzy.
-  max-rozmiar: 750
-  # Odstep miedzy srodkami sasiednich wysp na siatce tworzenia.
-  odstep-siatki-wysp: 10000
+  max-rozmiar: 150
+  # Odstep miedzy srodkami sasiednich wysp. Wyspy ukladaja sie spirala wokol pustego srodka swiata,
+  # pierwsze stoja jeden odstep od (0, 0). Powinien byc co najmniej 2 * max-rozmiar + 1000, wtedy
+  # wyspy sie nie stykaja, a gracze nie widza cudzych wysp (Minecraft pokazuje najwyzej ok. 512 blokow).
+  odstep-siatki-wysp: 2000
+
+# Ustawienia, z ktorymi startuje kazda NOWA wyspa. Wlasciciel zmienia je potem sam w
+# Ustawieniach i Permisjach Wyspy. Wszystko z dopiskiem "gosci" dotyczy tylko osob spoza wyspy -
+# wlasciciel i czlonkowie zawsze moga budowac i uzywac wszystkiego na swojej wyspie.
+nowa-wyspa:
+  pvp: false
+  budowanie-gosci: false
+  wizualny-border: true
+  zabijanie-mobow-gosci: false
+  zabieranie-itemow-gosci: false
+  skrzynie-gosci: false
+  drzwi-i-mechanizmy-gosci: false
+  # Inni gracze moga wejsc na wyspe komenda /is odwiedz <gracz>.
+  otwarta-dla-odwiedzajacych: true
+  # Goscie moga zbierac i sadzic plony, karmic, rozmnazac i strzyc zwierzeta.
+  rolnictwo-gosci: false
+  # Goscie moga wylewac i nabierac wode i lawe wiadrem.
+  wiadra-gosci: false
+  # Co moga zwykli czlonkowie wyspy (wlasciciel i admini wyspy moga zawsze wszystko).
+  czlonkowie-budowanie: true
+  czlonkowie-skrzynie: true
+  czlonkowie-zapraszanie: false
+  # Wyplata z banku wyspy, powiekszanie terenu i ulepszanie spawnerow.
+  czlonkowie-bank-i-ulepszenia: false
+
+# Wzory wyspy startowej do wyboru przy zakladaniu. Kazdy wzor admin buduje w grze i zapisuje:
+# /@islandtemplate pos1, pos2, potem /@islandtemplate save <id>. Gdy zapisany jest tylko jeden wzor,
+# gracz nie widzi okna wyboru. "nazwa" moze miec kolory (&a, &e...).
+# "skrzynia": co lezy w skrzyni wzoru po zalozeniu wyspy; pusta lista = to, co wlozono przy budowie w grze.
+wzory-wysp:
+  - id: default
+    nazwa: "Klasyczna"
+    ikona: GRASS_BLOCK
+    opis: ["Drzewo, trochę ziemi i skrzynka"]
+    skrzynia: []
+  - id: farmerska
+    nazwa: "&aFarmerska"
+    ikona: WHEAT
+    opis: ["Większa wyspa z dębem i poletkiem pszenicy", "Woda przy polu, dynia i siano"]
+    skrzynia:
+      - { item: WHEAT_SEEDS, amount: 4 }
+      - { item: BONE_MEAL, amount: 4 }
+  - id: pustynna
+    nazwa: "&ePustynna"
+    ikona: SAND
+    opis: ["Piasek, kaktusy i piaskowiec", "Na start sadzonka i trochę ziemi"]
+    skrzynia:
+      - { item: OAK_SAPLING, amount: 1 }
+      - { item: DIRT, amount: 4 }
+      - { item: BONE_MEAL, amount: 4 }
+  - id: zimowa
+    nazwa: "&bZimowa"
+    ikona: SNOW_BLOCK
+    opis: ["Śnieg, świerk i lód", "Na start chleb i sadzonka świerku"]
+    skrzynia:
+      - { item: BREAD, amount: 5 }
+      - { item: SPRUCE_SAPLING, amount: 1 }
+
+# Ogien i lawa podpalaja bloki na wyspach (caly serwer). Wylaczone = nic nie splonie.
+ogien-sie-rozprzestrzenia: false
+
+# Kto spadnie z wyspy w pustke, wraca na wyspe zamiast ginac i tracic rzeczy (caly serwer).
+powrot-z-pustki: true
+
+# Moby, ktore pojawiaja sie SAME na wyspach (caly serwer, wlasciciele wysp tego nie zmieniaja).
+# Wylaczone = duzo mniej lagow. Spawnery, rozmnazanie i jajka dzialaja zawsze.
+moby:
+  potwory: false
+  zwierzeta: false
+  # Specjalne moby na CALYM serwerze (tez poza wyspami). Wylaczone = nie da sie ich zespawnowac ani zbudowac.
+  warden: false
+  wither: false
+  balwan: false
+
+# Po smierci gracz odradza sie na swojej wyspie zamiast na spawnie (lozko i kotwica maja pierwszenstwo).
+odrodzenie-na-wyspie: true
+# Po smierci w swiecie wysp gracz nie traci rzeczy ani poziomow.
+zachowanie-ekwipunku: false
+# Czy /is odwiedz dziala na serwerze (wlasciciele i tak moga zamknac swoje wyspy).
+odwiedzanie-wysp: true
+# TNT i creepery niszcza bloki na wyspach. Wylaczone = wybuch tylko wyglada, nic nie niszczy.
+wybuchy-niszcza-bloki: false
+# Pioruny na wyspach podpalaja i zadaja obrazenia. Wylaczone = tylko blysk i dzwiek.
+pioruny: false
+
+# Limity na jedna wyspe (przeciw lagom). Dotycza wszystkich, tez wlasciciela. 0 = bez limitu.
+limity:
+  # false = zaden limit blokow nie dziala.
+  wlaczone: true
+  # Ile sztuk danego bloku moze stac na wyspie.
+  bloki:
+    HOPPER: 32
+    OBSERVER: 32
+    PISTON: 32
+    STICKY_PISTON: 32
+    REDSTONE: 256
+    REPEATER: 64
+    COMPARATOR: 64
+    DISPENSER: 16
+    DROPPER: 16
+    CRAFTER: 16
+  # Bloki z listy wyzej, ktorych limit jest chwilowo wylaczony (liczba zostaje zapamietana).
+  wylaczone-bloki: []
+  # Ile zwierzat moze zyc na wyspie (rozmnazanie i jajka sie zatrzymuja).
+  zwierzeta: 50
+
+# Napis na ekranie ("Wyspa gracza X"), gdy gracz wchodzi na wyspe. Tresc w lang (enter.title/subtitle).
+napis-przy-wejsciu: true
+
+czlonkowie:
+  # Ilu graczy (razem z wlascicielem) moze byc na jednej wyspie. 0 = bez limitu.
+  limit: 6
+
+# Co gracz dostaje przy zalozeniu wyspy. Format jak nagrody w innych pluginach:
+# - item: MATERIAL, amount: ile  |  - money: kwota  |  - command: "komenda {player}"
+przedmioty-na-start:
+  - { item: LAVA_BUCKET, amount: 1 }
+  - { item: ICE, amount: 1 }
 
 teleport-bezpieczenstwo:
   # Ile blokow w dol szukamy gruntu pod punktem teleportu, zanim uznamy ze to za gleboka dziura.
@@ -54,33 +179,33 @@ wyczyszczenie-terenu:
 # "Wartosc wyspy" (patrz Topka Wysp) - liczona przyrostowo z postawionych/zniszczonych
 # blokow z tej listy. Material spoza listy nie wplywa na wartosc.
 wartosci-blokow:
-  NETHERITE_BLOCK: 5000.0
-  DIAMOND_BLOCK: 800.0
-  EMERALD_BLOCK: 600.0
-  BEACON: 3000.0
-  GOLD_BLOCK: 250.0
-  IRON_BLOCK: 100.0
-  COPPER_BLOCK: 40.0
-  LAPIS_BLOCK: 80.0
-  REDSTONE_BLOCK: 60.0
-  COAL_BLOCK: 30.0
-  SPAWNER: 1000.0
+  NETHERITE_BLOCK: 500.0
+  DIAMOND_BLOCK: 80.0
+  EMERALD_BLOCK: 60.0
+  GOLD_BLOCK: 25.0
+  IRON_BLOCK: 10.0
+  COPPER_BLOCK: 4.0
+  LAPIS_BLOCK: 8.0
+  REDSTONE_BLOCK: 6.0
+  COAL_BLOCK: 3.0
 
 spawnery:
   max-poziom: 5
-  # Kolejnosc = od najtanszego do najdrozszego w sklepie (patrz categories/spawnery.yml).
+  # Ulepszenia spawnerow kupowane w panelu wyspy (Ilosc = wiecej mobow naraz, Szybkosc = czesciej).
+  # "mnoznik" = ile razy drozsze sa ulepszenia tego spawnera od ceny podstawowej nizej (1.0 = tyle samo).
+  # "id" musi byc takie samo jak w pluginie Spawnerow.
   typy:
-    - { id: ZOMBIE,   nazwa-odmieniona: "Zombie",     ikona: ROTTEN_FLESH, cena-w-sklepie: 20000 }
-    - { id: PIG,      nazwa-odmieniona: "Świń",       ikona: PORKCHOP,     cena-w-sklepie: 25000 }
-    - { id: SKELETON, nazwa-odmieniona: "Szkieletów", ikona: BONE,         cena-w-sklepie: 30000 }
-    - { id: COW,      nazwa-odmieniona: "Krów",       ikona: LEATHER,      cena-w-sklepie: 40000 }
-    - { id: SPIDER,   nazwa-odmieniona: "Pająków",    ikona: STRING,       cena-w-sklepie: 45000 }
-    - { id: CHICKEN,  nazwa-odmieniona: "Kur",        ikona: FEATHER,      cena-w-sklepie: 55000 }
-    - { id: CREEPER,  nazwa-odmieniona: "Creeperów",  ikona: GUNPOWDER,    cena-w-sklepie: 60000 }
-    - { id: SHEEP,    nazwa-odmieniona: "Owiec",      ikona: WHITE_WOOL,   cena-w-sklepie: 67000 }
-    - { id: BREEZE,   nazwa-odmieniona: "Breeze'ów",  ikona: BREEZE_ROD,   cena-w-sklepie: 100000 }
-  # Koszt awansu Z danego poziomu NA kolejny (1->2, 2->3, 3->4, 4->5), zanim zostanie
-  # przemnozony przez mnoznik typu spawnera (patrz "cena-w-sklepie" wyzej). Poziomy spoza
+    - { id: ZOMBIE,   nazwa-odmieniona: "Zombie",     ikona: ROTTEN_FLESH, mnoznik: 1.0 }
+    - { id: PIG,      nazwa-odmieniona: "Świń",       ikona: PORKCHOP,     mnoznik: 1.1 }
+    - { id: SKELETON, nazwa-odmieniona: "Szkieletów", ikona: BONE,         mnoznik: 1.2 }
+    - { id: COW,      nazwa-odmieniona: "Krów",       ikona: LEATHER,      mnoznik: 1.4 }
+    - { id: SPIDER,   nazwa-odmieniona: "Pająków",    ikona: STRING,       mnoznik: 1.5 }
+    - { id: CHICKEN,  nazwa-odmieniona: "Kur",        ikona: FEATHER,      mnoznik: 1.7 }
+    - { id: CREEPER,  nazwa-odmieniona: "Creeperów",  ikona: GUNPOWDER,    mnoznik: 1.7 }
+    - { id: SHEEP,    nazwa-odmieniona: "Owiec",      ikona: WHITE_WOOL,   mnoznik: 1.8 }
+    - { id: BREEZE,   nazwa-odmieniona: "Breeze'ów",  ikona: BREEZE_ROD,   mnoznik: 2.2 }
+  # Cena podstawowa awansu Z danego poziomu NA kolejny (1->2, 2->3, 3->4, 4->5), mnozona przez
+  # "mnoznik" typu spawnera. Poziomy spoza
   # listy (5 i wyzej) uzywaja "domyslny". Ilosc i Szybkosc maja OSOBNE krzywe kosztu.
   koszt-bazowy-ilosc:
     poziomy: { 1: 2500, 2: 5000, 3: 8500 }

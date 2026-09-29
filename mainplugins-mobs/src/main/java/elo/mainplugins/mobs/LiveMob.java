@@ -3,6 +3,7 @@ package elo.mainplugins.mobs;
 import elo.mainplugins.mobs.model.MobDef;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import net.kyori.adventure.key.Key;
+import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -17,6 +18,7 @@ import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Husk;
+import org.bukkit.entity.Interaction;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Parrot;
 import org.bukkit.entity.Player;
@@ -35,6 +37,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -89,6 +93,31 @@ final class LiveMob {
     private float modelYaw = Float.NaN;
     /** Macierze kości z ostatniego ticka - skąd wylatują igły i ptaki. */
     private Map<String, Matrix4f> lastBones = Map.of();
+
+    // ---- ruch żywy, wygląd, śmierć (MobRig, warianty, rozpad) ----
+    private final MobRig rig;
+    /** Punkt odniesienia dla sprężyn (duże współrzędne świata tracą precyzję we float). */
+    private final Location origin;
+    /** Wygląd (wariant) - zostaje po animacji, która go przełączyła (np. faza 2). */
+    private String variant = "base";
+    private String shownVariant = "base";
+    /** Jednorazowa animacja bez umiejętności (losowe zachowanie, wejście w fazę 2). */
+    private MobDef.Anim oneShot;
+    private int oneShotStart;
+    private int nextRandom = 200;
+    private boolean phase2;
+    private double damageMultiplier = 1;
+    private float runWeight;
+    private final ConfigurationSection cfg;
+    /** Hitboxy części: obiekt interakcji -> kość. */
+    private final Map<UUID, String> hitParts = new HashMap<>();
+    private final Map<String, Interaction> hitboxes = new LinkedHashMap<>();
+    /** Śmierć: -1 = żyje, potem tick rozpoczęcia; rozpad części po animacji śmierci. */
+    private int deathStart = -1;
+    private Location deathLoc;
+    private final Map<String, float[]> shards = new HashMap<>();
+    private boolean finished;
+    private static final Pattern BACKGROUND_EXCLUDE = Pattern.compile("^(run|fly|glide|sleep|swim|sit|lie|move|death|hurt|takeoff|land|charge|phase.*)$", Pattern.CASE_INSENSITIVE);
 
     /** Trwająca umiejętność (null = zwykłe chodzenie i bicie) i jej stan. */
     private Ability action;
@@ -160,6 +189,15 @@ final class LiveMob {
             if (p != null && p.getDataType() == Void.class) particles.put(e, p);
         }
         last = at.clone();
+        origin = at.clone();
+        this.cfg = cfg;
+        rig = new MobRig(def);
+        if (cfg != null) {
+            rig.lookEnabled = cfg.getBoolean("patrzenie", true);
+            rig.ikEnabled = cfg.getBoolean("stopy-na-terenie", true);
+            rig.springsEnabled = cfg.getBoolean("sprezyny", true);
+        }
+        if (cfg == null || cfg.getBoolean("hitboxy-czesci", true)) spawnHitboxes(at);
         tick();
     }
 
@@ -193,6 +231,9 @@ final class LiveMob {
     void remove() {
         parts.values().forEach(ItemDisplay::remove);
         parts.clear();
+        hitboxes.values().forEach(Interaction::remove);
+        hitboxes.clear();
+        hitParts.clear();
         birds.forEach(b -> b.entity.remove());
         birds.clear();
         if (base.isValid()) base.remove();
@@ -210,6 +251,12 @@ final class LiveMob {
     private boolean special(String name) {
         String n = name.toLowerCase(Locale.ROOT);
         if (n.equals("idle") || n.equals("walk") || n.equals("attack") || n.equals("jump")) return true;
+        // Lista w config.yml: tylko te pętle grają stale (np. orbita kryształów); bez listy - wszystkie
+        // pętle poza stanami (bieg, lot, sen...), które plugin włącza sam albo wcale.
+        List<String> bg = cfg == null ? null : cfg.getStringList("animacje-w-tle");
+        if (bg != null && !bg.isEmpty()) return bg.stream().noneMatch(x -> x.equalsIgnoreCase(n));
+        if (BACKGROUND_EXCLUDE.matcher(n).matches()) return true;
+        for (String x : cfg == null ? List.<String>of() : cfg.getStringList("animacje-losowe")) if (x.equalsIgnoreCase(n)) return true;
         for (Ability a : abilities) {
             if (n.equalsIgnoreCase(a.c().getString("animacja", "")) || n.equalsIgnoreCase(a.c().getString("animacja-upadku", ""))) return true;
         }
@@ -464,8 +511,156 @@ final class LiveMob {
 
     // ---- ruch i wygląd ----
 
+    boolean dying() {
+        return deathStart >= 0;
+    }
+
+    boolean finished() {
+        return finished;
+    }
+
+    /** Kość trafionej części (null = to nie hitbox tego moba). */
+    String partOf(Entity e) {
+        return hitParts.get(e.getUniqueId());
+    }
+
+    /** Cios gracza w część: obrażenia jak zwykły cios (z naładowaniem ataku), słaby punkt mocniej. */
+    void hitPart(Player p, String bone) {
+        if (!alive()) return;
+        double dmg = 1;
+        var a = p.getAttribute(Attribute.ATTACK_DAMAGE);
+        if (a != null) dmg = a.getValue();
+        float charge = p.getAttackCooldown();
+        dmg *= 0.2 + charge * charge * 0.8;
+        boolean crit = charge > 0.9f && p.getFallDistance() > 0 && !p.isOnGround();
+        if (crit) dmg *= 1.5;
+        double mult = 1;
+        String name = def.bones().stream().filter(b -> b.id().equals(bone)).map(MobDef.Bone::name).findFirst().orElse(bone);
+        ConfigurationSection weak = cfg == null ? null : cfg.getConfigurationSection("slabe-punkty");
+        if (weak != null && weak.contains(name)) mult = weak.getDouble(name);
+        else if (name.equalsIgnoreCase("head") || name.equalsIgnoreCase("glowa")) mult = 1.5;
+        base.damage(dmg * mult, p);
+        Interaction box = hitboxes.get(bone);
+        Location at = box != null ? box.getLocation().add(0, box.getInteractionHeight() / 2, 0) : base.getLocation();
+        at.getWorld().spawnParticle(mult > 1 || crit ? Particle.CRIT : Particle.DAMAGE_INDICATOR, at, mult > 1 ? 10 : 3, 0.2, 0.2, 0.2, 0.1);
+        p.resetCooldown();
+    }
+
+    private void spawnHitboxes(Location at) {
+        // największe części (objętość pudełek), maks. 12 - każda dostaje własny obszar trafienia
+        List<MobDef.Bone> big = new ArrayList<>();
+        for (MobDef.Bone b : def.bones()) {
+            if (b.boxes().isEmpty() || !b.visible()) continue;
+            float vol = 0, ext = 0;
+            for (float[] x : b.boxes()) {
+                vol += Math.max(0.5f, x[3]) * Math.max(0.5f, x[4]) * Math.max(0.5f, x[5]);
+                ext = Math.max(ext, Math.max(x[3], Math.max(x[4], x[5])));
+            }
+            if (ext >= 5) big.add(b);
+        }
+        big.sort((x, y) -> Float.compare(volume(y), volume(x)));
+        for (MobDef.Bone b : big.subList(0, Math.min(12, big.size()))) {
+            Interaction i = at.getWorld().spawn(at, Interaction.class, e -> {
+                e.setPersistent(false);
+                e.setResponsive(false);
+                e.setInteractionWidth(0.5f);
+                e.setInteractionHeight(0.5f);
+            });
+            hitboxes.put(b.id(), i);
+            hitParts.put(i.getUniqueId(), b.id());
+        }
+    }
+
+    private static float volume(MobDef.Bone b) {
+        float v = 0;
+        for (float[] x : b.boxes()) v += Math.max(0.5f, x[3]) * Math.max(0.5f, x[4]) * Math.max(0.5f, x[5]);
+        return v;
+    }
+
+    /** Hitboxy za częściami: prostopadłościan otaczający pudełka części w świecie (bez obrotu - jak w grze). */
+    private void moveHitboxes(Location loc, float yaw, Map<String, Matrix4f> bones) {
+        if (hitboxes.isEmpty() || ticks % 2 != 0) return;
+        Matrix4f toWorld = MobRig.modelToWorld(yaw);
+        for (Map.Entry<String, Interaction> e : hitboxes.entrySet()) {
+            MobDef.Bone b = def.bones().stream().filter(x -> x.id().equals(e.getKey())).findFirst().orElse(null);
+            Matrix4f m = bones.get(e.getKey());
+            if (b == null || m == null) continue;
+            Matrix4f w = new Matrix4f(toWorld).mul(m);
+            float minX = 1e9f, minY = 1e9f, minZ = 1e9f, maxX = -1e9f, maxY = -1e9f, maxZ = -1e9f;
+            for (float[] x : b.boxes())
+                for (int c = 0; c < 8; c++) {
+                    Vector3f p = w.transformPosition(new Vector3f((x[0] + ((c & 1) != 0 ? x[3] : 0)) / 16f, (x[1] + ((c & 2) != 0 ? x[4] : 0)) / 16f, (x[2] + ((c & 4) != 0 ? x[5] : 0)) / 16f));
+                    minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+                    minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+                    minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z);
+                }
+            Interaction i = e.getValue();
+            i.setInteractionWidth(Math.max(0.3f, Math.min(4f, Math.max(maxX - minX, maxZ - minZ))));
+            i.setInteractionHeight(Math.max(0.3f, Math.min(4f, maxY - minY)));
+            i.teleport(loc.clone().add((minX + maxX) / 2, minY, (minZ + maxZ) / 2));
+        }
+    }
+
+    /** Wygląd części dla wariantu (przedmiot z modelem wariantu, świecenie). */
+    private void applyVariant() {
+        if (variant.equals(shownVariant)) return;
+        shownVariant = variant;
+        MobDef.Variant v = def.variants().get(variant);
+        for (MobDef.Bone b : def.bones()) {
+            ItemDisplay d = parts.get(b.id());
+            if (d == null) continue;
+            String item = b.variantItems().getOrDefault(variant, b.item());
+            ItemStack stack = new ItemStack(Material.PAPER);
+            String[] key = item.split(":", 2);
+            stack.setData(DataComponentTypes.ITEM_MODEL, Key.key(key[0], key[1]));
+            d.setItemStack(stack);
+            d.setBrightness(b.glow() && (v == null || !v.noGlow()) ? new Display.Brightness(15, 15) : null);
+        }
+    }
+
+    /** Losowe zachowania i faza 2 (config.yml) - jednorazowe animacje bez umiejętności. */
+    private void tickMood() {
+        if (cfg == null) return;
+        ConfigurationSection p2 = cfg.getConfigurationSection("faza-2");
+        if (p2 != null && !phase2) {
+            AttributeInstance max = base.getAttribute(Attribute.MAX_HEALTH);
+            if (max != null && base.getHealth() / max.getValue() < p2.getDouble("ponizej-zycia", 0.5)) {
+                phase2 = true;
+                damageMultiplier = p2.getDouble("obrazenia-mnoznik", 1.5);
+                AttributeInstance dmg = base.getAttribute(Attribute.ATTACK_DAMAGE);
+                if (dmg != null) dmg.setBaseValue(dmg.getBaseValue() * damageMultiplier);
+                MobDef.Anim a = find(p2.getString("animacja"));
+                if (a != null) {
+                    oneShot = a;
+                    oneShotStart = ticks;
+                    base.setAI(false);
+                }
+                if (p2.contains("wariant")) variant = p2.getString("wariant");
+                sound(base.getLocation(), p2.getString("dzwiek", "entity.lightning_bolt.thunder"));
+            }
+        }
+        List<String> randoms = cfg.getStringList("animacje-losowe");
+        if (oneShot == null && action == null && !walking && !randoms.isEmpty() && ticks >= nextRandom && base.getTarget() == null) {
+            MobDef.Anim a = find(randoms.get(ThreadLocalRandom.current().nextInt(randoms.size())));
+            if (a != null) {
+                oneShot = a;
+                oneShotStart = ticks;
+            }
+            nextRandom = ticks + (int) (cfg.getDouble("co-ile-sekund-losowe", 14) * 20 * (0.6 + ThreadLocalRandom.current().nextDouble() * 0.8));
+        }
+        if (oneShot != null && (ticks - oneShotStart) / 20f >= oneShot.length()) {
+            oneShot = null;
+            if (!base.hasAI() && action == null) base.setAI(true);
+        }
+    }
+
     void tick() {
         ticks++;
+        if (deathStart >= 0) {
+            tickDeath();
+            return;
+        }
+        tickMood();
         Object[] act = tickAction();
         tickBirds();
         Location loc = base.getLocation();
@@ -481,33 +676,91 @@ final class LiveMob {
         trail.addLast(loc.toVector().setY(0));
         if (trail.size() > TRAIL + 1) trail.removeFirst();
         float net = trail.size() > TRAIL ? (float) trail.getFirst().distance(trail.getLast()) / TRAIL : 0;
-        walking = action == null && net > (walking ? 0.012f : 0.03f);
+        walking = action == null && oneShot == null && net > (walking ? 0.012f : 0.03f);
         if (action != null) walkWeight = 0;
         walkWeight = Math.max(0, Math.min(1, walkWeight + (walking ? 0.12f : -0.1f)));
-        if (walking) walkTime += 0.05f * Math.max(0.5f, Math.min(2f, net / 0.08f));
-        MobDef.Anim walk = find("walk"), idle = find("idle");
-        if (walk != null) playing.add(new MobPose.Playing(walk, walkTime % Math.max(0.05f, walk.length()), walkWeight));
+        MobDef.Anim walk = find("walk", "move"), idle = find("idle"), run = find("run");
+        // bieg: szybki marsz przechodzi płynnie w animację biegu
+        runWeight = Math.max(0, Math.min(1, runWeight + (walking && run != null && net > 0.16f ? 0.1f : -0.1f)));
+        if (walking) walkTime += 0.05f * Math.max(0.5f, Math.min(2f, net / (runWeight > 0.5f ? 0.2f : 0.08f)));
+        if (walk != null) playing.add(new MobPose.Playing(walk, walkTime % Math.max(0.05f, walk.length()), walkWeight * (1 - runWeight)));
+        if (run != null && runWeight > 0) playing.add(new MobPose.Playing(run, walkTime % Math.max(0.05f, run.length()), walkWeight * runWeight));
         // W trakcie umiejętności spoczynek nie gra - ruchy (np. machanie rękami) gryzłyby się z nią.
-        if (idle != null && action == null) playing.add(new MobPose.Playing(idle, sec % Math.max(0.05f, idle.length()), 1 - walkWeight));
+        if (idle != null && action == null) playing.add(new MobPose.Playing(idle, sec % Math.max(0.05f, idle.length()), (1 - walkWeight) * (oneShot != null ? 0.2f : 1f)));
         for (MobDef.Anim a : def.animations().values()) {
             if (!special(a.name()) && a.loop()) playing.add(new MobPose.Playing(a, sec % Math.max(0.05f, a.length()), 1));
         }
-        if (act != null && act[0] instanceof MobDef.Anim a) playing.add(new MobPose.Playing(a, (Float) act[1], 1));
+        MobDef.Anim current = null;
+        float currentT = 0;
+        if (act != null && act[0] instanceof MobDef.Anim a) {
+            playing.add(new MobPose.Playing(a, (Float) act[1], 1));
+            current = a;
+            currentT = (Float) act[1];
+        }
+        if (oneShot != null) {
+            float t = (ticks - oneShotStart) / 20f;
+            playing.add(new MobPose.Playing(oneShot, t, 1));
+            current = oneShot;
+            currentT = t;
+        }
         MobDef.Anim attack = find("attack");
-        if (attack != null && (ticks - attackStart) / 20f < attack.length()) playing.add(new MobPose.Playing(attack, (ticks - attackStart) / 20f, 1));
+        if (attack != null && (ticks - attackStart) / 20f < attack.length()) {
+            playing.add(new MobPose.Playing(attack, (ticks - attackStart) / 20f, 1));
+            if (current == null) {
+                current = attack;
+                currentT = (ticks - attackStart) / 20f;
+            }
+        }
+        if (current != null) {
+            String v = MobPose.variantAt(current, currentT);
+            if (v != null) variant = v;
+        }
+        applyVariant();
 
         // Pierwsze 3 ticki części są niewidoczne i bez wygładzania; potem pokazują się od razu na miejscu.
         if (ticks == 3) parts.values().forEach(d -> {
             d.setInterpolationDuration(3);
             d.setViewRange(2f);
         });
-        Map<String, Matrix4f> bones = MobPose.boneMatrices(def, MobPose.offsets(playing));
-        lastBones = bones;
         float body = base.getBodyYaw();
         if (Float.isNaN(modelYaw)) modelYaw = body;
         float diff = ((body - modelYaw) % 360 + 540) % 360 - 180;
         if (Math.abs(diff) > 3) modelYaw += diff * (walking || action != null ? 0.5f : 0.3f);
         float yaw = modelYaw;
+
+        // Ruch żywy: głowa do celu, stopy na terenie, sprężyny (ogon, uszy, peleryna) z prawdziwego ruchu.
+        Map<String, MobPose.Offset> offsets = MobPose.offsets(playing);
+        Map<String, Matrix4f> animated = MobPose.boneMatrices(def, offsets);
+        Entity lookAt = base.getTarget();
+        if (lookAt == null) {
+            Player near = null;
+            double best = 144;
+            for (Player p : loc.getNearbyPlayers(12)) {
+                double d = p.getLocation().distanceSquared(loc);
+                if (d < best && !p.isDead()) {
+                    best = d;
+                    near = p;
+                }
+            }
+            lookAt = near;
+        }
+        Vector3f target = null;
+        if (lookAt instanceof org.bukkit.entity.LivingEntity le) {
+            Location eye = le.getEyeLocation();
+            target = new Vector3f((float) (eye.getX() - loc.getX()), (float) (eye.getY() - loc.getY()), (float) (eye.getZ() - loc.getZ()));
+        }
+        rig.applyLook(offsets, animated, yaw, target);
+        var world = loc.getWorld();
+        rig.applyFeet(offsets, animated, yaw, loc.getX(), loc.getY(), loc.getZ(), base.isOnGround() && action == null, (x, yFrom, z) -> {
+            var hit = world.rayTraceBlocks(new Location(world, x, yFrom, z), new Vector(0, -1, 0), 3.0, FluidCollisionMode.NEVER, true);
+            return hit == null ? Double.NaN : hit.getHitPosition().getY();
+        });
+        Matrix4f toWorld = new Matrix4f().translate((float) (loc.getX() - origin.getX()), (float) (loc.getY() - origin.getY()), (float) (loc.getZ() - origin.getZ()))
+                .mul(MobRig.modelToWorld(yaw));
+        rig.applySprings(offsets, animated, toWorld);
+        Map<String, Matrix4f> bones = MobPose.boneMatrices(def, offsets);
+        lastBones = bones;
+        moveHitboxes(loc, yaw, bones);
         for (MobDef.Bone b : def.bones()) {
             ItemDisplay d = parts.get(b.id());
             if (d == null) continue;
@@ -524,15 +777,131 @@ final class LiveMob {
             d.setInterpolationDelay(0);
             d.setTransformation(tr);
         }
+        effects(loc, yaw, bones, current, currentT, walk, idle, sec);
+    }
 
+    /** Cząsteczki: tylko w swojej animacji i oknie czasu, w swoim wariancie; lot w kierunku części. */
+    private void effects(Location loc, float yaw, Map<String, Matrix4f> bones, MobDef.Anim current, float currentT, MobDef.Anim walk, MobDef.Anim idle, float sec) {
+        MobDef.Anim playingAnim = current != null ? current : walking ? walk : idle;
+        float t = current != null ? currentT : playingAnim == null ? 0 : (walking ? walkTime : sec) % Math.max(0.05f, playingAnim.length());
         for (Map.Entry<MobDef.Effect, Particle> e : particles.entrySet()) {
             MobDef.Effect f = e.getKey();
-            if (ThreadLocalRandom.current().nextFloat() > f.rate() / 20f) continue;
+            if (f.anim() != null && (playingAnim == null || !(f.anim().equals(playingAnim.id()) || f.anim().equals(playingAnim.name())))) continue;
+            if (f.anim() != null && f.from() >= 0 && t < f.from()) continue;
+            if (f.anim() != null && f.to() >= 0 && t > f.to()) continue;
+            if (f.variant() != null && !f.variant().equals(variant)) continue;
+            float chance = f.rate() / 20f;
+            int count = (int) chance + (ThreadLocalRandom.current().nextFloat() < chance - (int) chance ? 1 : 0);
+            if (count == 0) continue;
             Matrix4f at = f.bone() != null && bones.containsKey(f.bone()) ? new Matrix4f(bones.get(f.bone())) : new Matrix4f();
             at.translate(f.offset()[0] / 16f, f.offset()[1] / 16f, f.offset()[2] / 16f);
-            Vector3f p = MobPose.displayMatrix(yaw, at, 1).getTranslation(new Vector3f());
+            Matrix4f disp = MobPose.displayMatrix(yaw, at, 1);
+            Vector3f p = disp.getTranslation(new Vector3f());
             double s = f.spread() / 16.0;
-            base.getWorld().spawnParticle(e.getValue(), loc.clone().add(p.x, p.y, p.z), 1, s, s, s, 0);
+            Vector3f v = new Vector3f();
+            if (f.velocity() != null) {
+                // kierunek lotu w układzie części -> świat (bez końcowego obrotu przedmiotu i skali)
+                Matrix4f dirM = new Matrix4f().rotateY((float) Math.toRadians(180 - yaw)).scale(-1, -1, 1).mul(at);
+                dirM.transformDirection(new Vector3f(f.velocity()[0], f.velocity()[1], f.velocity()[2]), v);
+                v.div(16f * 20f);
+            }
+            v.y += f.rise() / (16f * 20f);
+            for (int i = 0; i < Math.min(count, 8); i++) {
+                Location pl = loc.clone().add(p.x + (ThreadLocalRandom.current().nextDouble() - 0.5) * 2 * s, p.y + (ThreadLocalRandom.current().nextDouble() - 0.5) * 2 * s,
+                        p.z + (ThreadLocalRandom.current().nextDouble() - 0.5) * 2 * s);
+                if (v.lengthSquared() > 1e-8) base.getWorld().spawnParticle(e.getValue(), pl, 0, v.x, v.y, v.z, 1);
+                else base.getWorld().spawnParticle(e.getValue(), pl, 1, 0, 0, 0, 0);
+            }
         }
+    }
+
+    // ---- śmierć: animacja śmierci, potem rozpad na części ----
+
+    /** Mob zginął: części zostają, gra animacja "death" (jeśli jest), potem rozpadają się z fizyką. */
+    void startDeath() {
+        if (deathStart >= 0) return;
+        deathStart = ticks;
+        deathLoc = base.getLocation().clone();
+        hitboxes.values().forEach(Interaction::remove);
+        hitboxes.clear();
+        hitParts.clear();
+        birds.forEach(b -> b.entity.remove());
+        birds.clear();
+        if (cfg != null && !cfg.getBoolean("rozpad", true)) {
+            MobDef.Anim d = find("death");
+            if (d == null) finished = true;
+        }
+    }
+
+    private void tickDeath() {
+        MobDef.Anim death = find("death");
+        float t = (ticks - deathStart) / 20f;
+        float len = death == null ? 0 : Math.min(4f, death.length());
+        boolean shatter = cfg == null || cfg.getBoolean("rozpad", true);
+        if (t < len) {
+            // poza z animacji śmierci (bez chodu, bez patrzenia)
+            Map<String, Matrix4f> bones = MobPose.boneMatrices(def, MobPose.offsets(List.of(new MobPose.Playing(death, t, 1))));
+            lastBones = bones;
+            float yaw = Float.isNaN(modelYaw) ? 0 : modelYaw;
+            for (MobDef.Bone b : def.bones()) {
+                ItemDisplay d = parts.get(b.id());
+                if (d == null) continue;
+                Matrix4f m = MobPose.displayMatrix(yaw, bones.get(b.id()), b.modelScale());
+                Transformation tr = new Transformation(m.getTranslation(new Vector3f()), m.getNormalizedRotation(new Quaternionf()), m.getScale(new Vector3f()), new Quaternionf());
+                if (tr.equals(lastSent.put(b.id(), tr))) continue;
+                d.setInterpolationDelay(0);
+                d.setTransformation(tr);
+            }
+            return;
+        }
+        if (!shatter) {
+            finished = true;
+            return;
+        }
+        int k = (int) ((t - len) * 20);
+        if (k == 0) {
+            // start rozpadu: każda część dostaje prędkość od środka moba, w górę, i obrót
+            deathLoc.getWorld().spawnParticle(Particle.POOF, deathLoc.clone().add(0, def.hitboxHeight() / 2, 0), 25, def.hitboxWidth() / 2, def.hitboxHeight() / 3, def.hitboxWidth() / 2, 0.03);
+            for (Map.Entry<String, ItemDisplay> e : parts.entrySet()) {
+                Transformation tr = lastSent.get(e.getKey());
+                if (tr == null) continue;
+                Vector3f p = new Vector3f(tr.getTranslation());
+                Vector3f out = new Vector3f(p.x, 0, p.z);
+                if (out.lengthSquared() < 1e-4f) out.set(ThreadLocalRandom.current().nextFloat() - 0.5f, 0, ThreadLocalRandom.current().nextFloat() - 0.5f);
+                out.normalize().mul(0.08f + ThreadLocalRandom.current().nextFloat() * 0.12f);
+                float[] st = {p.x, p.y, p.z, out.x, 0.18f + ThreadLocalRandom.current().nextFloat() * 0.2f, out.z,
+                        ThreadLocalRandom.current().nextFloat() * 2 - 1, ThreadLocalRandom.current().nextFloat() * 2 - 1, ThreadLocalRandom.current().nextFloat() * 2 - 1,
+                        6 + ThreadLocalRandom.current().nextFloat() * 14, 0};
+                shards.put(e.getKey(), st);
+            }
+        }
+        for (Map.Entry<String, ItemDisplay> e : parts.entrySet()) {
+            float[] st = shards.get(e.getKey());
+            Transformation tr0 = lastSent.get(e.getKey());
+            if (st == null || tr0 == null) continue;
+            // ruch: grawitacja, odbicie od ziemi (blok pod częścią), obrót słabnie po uderzeniu
+            st[4] -= 0.045f;
+            float nx = st[0] + st[3], ny = st[1] + st[4], nz = st[2] + st[5];
+            Location w = deathLoc.clone().add(nx, ny, nz);
+            if (w.getBlock().getType().isSolid() && st[4] < 0) {
+                ny = (float) (Math.floor(w.getY()) + 1 - deathLoc.getY()) + 0.02f;
+                st[4] = -st[4] * 0.3f;
+                st[3] *= 0.5f;
+                st[5] *= 0.5f;
+                st[9] *= 0.4f;
+            }
+            st[0] = nx;
+            st[1] = ny;
+            st[2] = nz;
+            st[10] += st[9];
+            Quaternionf spin = new Quaternionf().rotateAxis((float) Math.toRadians(st[10]), new Vector3f(st[6], st[7], st[8]).normalize());
+            float fade = k < 30 ? 1 : Math.max(0, 1 - (k - 30) / 10f);
+            Transformation tr = new Transformation(new Vector3f(nx, ny, nz), spin.mul(new Quaternionf(tr0.getLeftRotation())), new Vector3f(tr0.getScale()).mul(fade), new Quaternionf());
+            ItemDisplay d = e.getValue();
+            d.setInterpolationDuration(1);
+            d.setInterpolationDelay(0);
+            d.setTransformation(tr);
+        }
+        if (k >= 41) finished = true;
     }
 }

@@ -24,12 +24,24 @@ public final class MobLoader {
             JsonObject b = e.getAsJsonObject();
             String id = b.get("id").getAsString();
             JsonObject d = bonesDisplay != null && bonesDisplay.has(id) ? bonesDisplay.getAsJsonObject(id) : null;
-            bones.add(new MobDef.Bone(id,
+            List<float[]> boxes = new ArrayList<>();
+            if (b.has("cubes")) {
+                for (JsonElement ce : b.getAsJsonArray("cubes")) {
+                    JsonObject c = ce.getAsJsonObject();
+                    float[] f = vec(c.get("from"), 0), sz = vec(c.get("size"), 0), g = vec(c.get("grow"), 0);
+                    boxes.add(new float[]{f[0] - g[0], f[1] - g[1], f[2] - g[2], sz[0] + 2 * g[0], sz[1] + 2 * g[1], sz[2] + 2 * g[2]});
+                }
+            }
+            Map<String, String> variantItems = new LinkedHashMap<>();
+            if (d != null && d.has("variants")) {
+                for (Map.Entry<String, JsonElement> v : d.getAsJsonObject("variants").entrySet()) variantItems.put(v.getKey(), v.getValue().getAsString());
+            }
+            bones.add(new MobDef.Bone(id, b.has("name") ? b.get("name").getAsString() : id,
                     b.has("parent") && !b.get("parent").isJsonNull() ? b.get("parent").getAsString() : null,
                     vec(b.get("pivot"), 0), vec(b.get("rotation"), 0), vec(b.get("scale"), 1),
                     b.has("glow") && b.get("glow").getAsBoolean(),
                     d != null ? d.get("item").getAsString() : null,
-                    d != null ? d.get("scale").getAsFloat() : 1f));
+                    d != null ? d.get("scale").getAsFloat() : 1f, List.copyOf(boxes), Map.copyOf(variantItems)));
         }
         Map<String, MobDef.Anim> anims = new LinkedHashMap<>();
         if (m.has("animations")) {
@@ -41,7 +53,16 @@ public final class MobLoader {
                     tracks.put(t.getKey(), new MobDef.Track(keys(tr.get("rotation")), keys(tr.get("position")), keys(tr.get("scale"))));
                 }
                 String name = a.get("name").getAsString();
-                anims.put(name, new MobDef.Anim(name, a.get("length").getAsFloat(), a.get("loop").getAsBoolean(), tracks));
+                List<MobDef.VariantKey> vk = new ArrayList<>();
+                if (a.has("variants")) {
+                    for (JsonElement ve : a.getAsJsonArray("variants")) {
+                        JsonObject v = ve.getAsJsonObject();
+                        vk.add(new MobDef.VariantKey(v.get("t").getAsFloat(), v.get("v").getAsString()));
+                    }
+                    vk.sort((x, y) -> Float.compare(x.t(), y.t()));
+                }
+                String aid = a.has("id") ? a.get("id").getAsString() : name;
+                anims.put(name, new MobDef.Anim(aid, name, a.get("length").getAsFloat(), a.get("loop").getAsBoolean(), tracks, List.copyOf(vk)));
             }
         }
         List<MobDef.Effect> effects = new ArrayList<>();
@@ -51,7 +72,9 @@ public final class MobLoader {
                 effects.add(new MobDef.Effect(
                         f.has("bone") && !f.get("bone").isJsonNull() ? f.get("bone").getAsString() : null,
                         f.get("particle").getAsString(), vec(f.get("offset"), 0),
-                        f.has("rate") ? f.get("rate").getAsFloat() : 1f, f.has("spread") ? f.get("spread").getAsFloat() : 0f));
+                        f.has("rate") ? f.get("rate").getAsFloat() : 1f, f.has("spread") ? f.get("spread").getAsFloat() : 0f,
+                        str(f, "anim"), f.has("from") ? f.get("from").getAsFloat() : -1, f.has("to") ? f.get("to").getAsFloat() : -1,
+                        str(f, "variant"), f.has("velocity") ? vec(f.get("velocity"), 0) : null, f.has("rise") ? f.get("rise").getAsFloat() : 0));
             }
         }
         double w = 0.6, h = 1.95;
@@ -60,7 +83,20 @@ public final class MobLoader {
             w = hb.get("width").getAsDouble();
             h = hb.get("height").getAsDouble();
         }
-        return new MobDef(m.get("id").getAsString(), m.get("name").getAsString(), List.copyOf(bones), anims, List.copyOf(effects), w, h);
+        Map<String, MobDef.Variant> variants = new LinkedHashMap<>();
+        JsonObject disp = JsonParser.parseString(displayJson).getAsJsonObject();
+        if (disp.has("variants")) {
+            for (JsonElement ve : disp.getAsJsonArray("variants")) {
+                JsonObject v = ve.getAsJsonObject();
+                String vid = v.get("id").getAsString();
+                variants.put(vid, new MobDef.Variant(vid, v.has("noGlow") && v.get("noGlow").getAsBoolean()));
+            }
+        }
+        return new MobDef(m.get("id").getAsString(), m.get("name").getAsString(), List.copyOf(bones), anims, List.copyOf(effects), w, h, Map.copyOf(variants));
+    }
+
+    private static String str(JsonObject o, String key) {
+        return o.has(key) && !o.get(key).isJsonNull() ? o.get(key).getAsString() : null;
     }
 
     private static float[] vec(JsonElement e, float fallback) {

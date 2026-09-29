@@ -14,7 +14,60 @@
 #   ptaki          - mob wypuszcza ptaki, które lecą na gracza i go dziobią
 #   wielki-skok    - skok wysoko w górę, upadek (kurz, obrażenia wokół), mob siedzi oszołomiony
 #                    tak długo, jak trwa "animacja-upadku", potem wstaje
+#
+# Ruch "żywy" i wygląd (każdy mob, domyślnie włączone):
+#   patrzenie: true          - głowa (i szyja) obraca się do celu / najbliższego gracza
+#   stopy-na-terenie: true   - nogi (części z "leg" w nazwie, z kolanem) dopasowują się do schodków i zboczy
+#   sprezyny: true           - ogon, uszy, peleryna, macki (po nazwach) reagują na prawdziwy ruch moba
+#   hitboxy-czesci: true     - każda duża część ma własny obszar trafienia (duże moby: trafiasz w to, co widzisz)
+#   slabe-punkty: {head: 2}  - mnożnik obrażeń za trafienie w część (nazwa z Kreatora); głowa domyślnie 1,5
+#   rozpad: true             - po animacji "death" części rozpadają się i spadają na ziemię
+#   animacje-w-tle: [...]    - pętle grane stale (np. orbita); bez listy - pętle poza stanami (bieg, lot, sen...)
+#   animacje-losowe: [...]   - co jakiś czas, gdy mob stoi bez celu, gra jedną z nich (co-ile-sekund-losowe: 14)
+#   faza-2: {ponizej-zycia: 0.5, animacja: ..., wariant: ..., obrazenia-mnoznik: 1.5, dzwiek: ...}
+#                            - poniżej części życia: animacja wejścia, zmiana wyglądu (wariant z Kreatora), mocniejsze ciosy
+# Animacja "run" (jeśli jest) gra sama przy szybkim marszu, płynnie z "walk".
 moby:
+  burzowy_gryf:
+    zycie: 60
+    szybkosc: 0.3
+    obrazenia: 6
+    odpornosc-na-odrzut: 0.4
+    slabe-punkty:
+      head: 2.0
+    animacje-losowe: [preen, shake, screech]
+    faza-2:
+      ponizej-zycia: 0.5
+      animacja: charge
+      wariant: burza
+      obrazenia-mnoznik: 1.5
+      dzwiek: entity.lightning_bolt.thunder
+    umiejetnosci:
+      skok:
+        typ: skok-na-gracza
+        animacja: jump
+        co-ile-sekund: 7
+        zasieg-od: 4
+        zasieg-do: 12
+        obrazenia: 7
+        wybicie: 0.3
+        ladowanie: 1.1
+        dzwiek: entity.phantom.bite
+      nurkowanie:
+        typ: wielki-skok
+        animacja: takeoff
+        animacja-upadku: land
+        co-ile-sekund: 18
+        zasieg-od: 5
+        zasieg-do: 16
+        wybicie: 0.55
+        czas-lotu: 1.4
+        wysokosc: 9
+        zasieg-uderzenia: 4
+        obrazenia: 9
+        dzwiek: entity.generic.explode
+        dzwiek-oszolomienia: entity.parrot.hurt
+
   bagienny_mutant:
     zycie: 40
     szybkosc: 0.25

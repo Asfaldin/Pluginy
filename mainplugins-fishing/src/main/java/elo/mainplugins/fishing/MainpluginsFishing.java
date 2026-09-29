@@ -1,5 +1,6 @@
 package elo.mainplugins.fishing;
 
+import elo.mainplugins.license.LicenseGuard;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.fishing.config.FishingConfigLoader;
 import net.kyori.adventure.text.Component;
@@ -20,7 +21,8 @@ public final class MainpluginsFishing extends JavaPlugin {
     @Override
     public void onEnable() {
         // Plugin płatny - patrz javadoc LicenseService oraz license-server/README.md.
-        if (!CoreAPI.getLicenseService().isLicensed("fishing")) {
+        if (!CoreAPI.getLicenseService().isLicensed("fishing")
+                || !LicenseGuard.enable(this, "fishing", () -> CoreAPI.getLicenseService().licenseProof("fishing"))) {
             getLogger().severe("Brak ważnej licencji dla mainplugins-fishing - plugin zostanie wyłączony.");
             getLogger().severe("Skonfiguruj klucz w license.yml (folder danych MainpluginsCore, sekcja 'keys: fishing: ...') i zrestartuj serwer.");
             getServer().getPluginManager().disablePlugin(this);

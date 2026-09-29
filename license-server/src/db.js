@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readJson, writeJson } from "./jsonStore.js";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,18 +13,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, "..", "data");
 const DB_FILE = join(DATA_DIR, "licenses.json");
 
-function ensureFile() {
-    if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
-    if (!existsSync(DB_FILE)) writeFileSync(DB_FILE, "[]", "utf8");
-}
-
+// Zapis atomowy z kopią .bak - patrz src/jsonStore.js.
 function loadAll() {
-    ensureFile();
-    return JSON.parse(readFileSync(DB_FILE, "utf8"));
+    return readJson(DB_FILE, []);
 }
 
 function saveAll(list) {
-    writeFileSync(DB_FILE, JSON.stringify(list, null, 2), "utf8");
+    writeJson(DB_FILE, list);
 }
 
 export function listLicenses() {
@@ -41,7 +36,7 @@ export function findByKey(key) {
  * `customerId`/`subscriptionId`/`billingType` opcjonalne - licencje wystawione
  * ręcznie z panelu admina (curl/zakładka Licencje) ich nie mają.
  */
-export function createLicense({ key, plugin, note, customerId = null, subscriptionId = null, billingType = "one-time" }) {
+export function createLicense({ key, plugin, note, customerId = null, subscriptionId = null, billingType = "one-time", orderId = null }) {
     const list = loadAll();
     const license = {
         key,
@@ -52,6 +47,7 @@ export function createLicense({ key, plugin, note, customerId = null, subscripti
         customerId,
         subscriptionId,
         billingType,
+        orderId: orderId == null ? null : String(orderId),
         createdAt: new Date().toISOString(),
         boundAt: null,
     };
@@ -101,4 +97,36 @@ export function setStatus(key, status) {
 export function licenseGrants(license, pluginId) {
     if (license.plugin === "*") return true;
     return license.plugin.split(",").map((s) => s.trim()).includes(pluginId);
+}
+
+/** Licencja z danego zamówienia LemonSqueezy - do wykrywania powtórzonych webhooków. */
+export function findByOrderId(orderId) {
+    const id = String(orderId);
+    // Licencje sprzed pola orderId mają numer zamówienia tylko w notatce.
+    return loadAll().find((l) => (l.orderId != null ? l.orderId === id : l.note?.startsWith(`LemonSqueezy order ${id} - `))) ?? null;
+}
+
+/**
+ * Zapisuje, z jakiego IP sprawdzano klucz (ostatnie 20 różnych adresów). Ten sam
+ * license.yml skopiowany na drugi serwer daje ten sam serverId, więc tego nie da się
+ * rozpoznać po samym kluczu - ale widać to po kilku różnych IP w krótkim czasie.
+ * Nie blokujemy automatycznie (dynamiczne IP, przeprowadzki hostingu), tylko oznaczamy
+ * licencję polem `suspicious` do sprawdzenia w panelu admina.
+ */
+export function recordValidation(key, ip) {
+    const list = loadAll();
+    const license = list.find((l) => l.key === key);
+    if (!license || !ip) return null;
+    const now = Date.now();
+    const seen = (license.seenIps ?? []).filter((e) => e.ip !== ip);
+    seen.push({ ip, at: new Date(now).toISOString() });
+    license.seenIps = seen.slice(-20);
+    const dayAgo = now - 24 * 60 * 60 * 1000;
+    const recent = new Set(license.seenIps.filter((e) => Date.parse(e.at) > dayAgo).map((e) => e.ip));
+    if (recent.size > 2 && !license.suspicious) {
+        license.suspicious = `${recent.size} different IPs within 24 h (${new Date(now).toISOString()})`;
+        console.warn(`License ${key} validated from ${recent.size} IPs within 24 h - possible key sharing.`);
+    }
+    saveAll(list);
+    return license;
 }

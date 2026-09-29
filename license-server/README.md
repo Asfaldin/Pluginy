@@ -100,3 +100,34 @@ zapytanie po uśpieniu trwa kilka-kilkanaście sekund) - `LicenseManager` ma na
 to grace period, więc nie zablokuje pluginu klientowi przy jednorazowym wolnym
 requeście. Gdy pojawi się VPS - wystarczy `git pull && npm install && npm
 start` na nim, bez zmian w kodzie.
+
+## Bezpieczeństwo licencji (podpisane tokeny, płatne jary)
+
+**Podpisane licencje.** `/api/validate` przy ważnej licencji zwraca token podpisany kluczem
+Ed25519 (`src/signing.js`). Core i KAŻDY płatny plugin (własna kopia `mainplugins-license`)
+przyjmują wyłącznie tokeny z poprawnym podpisem - własny "serwer licencji" w `api.url`,
+edycja `license-cache.yml` ani podmieniony Core nie odblokują płatnych pluginów. Token jest
+ważny 7 dni (tyle działa plugin bez połączenia z serwerem licencji); pluginy odświeżają go
+co 6 h i wyłączają się same, gdy licencja zostanie odwołana.
+
+- Klucz prywatny: `LICENSE_SIGNING_KEY` w `.env` (lokalnie i w `/opt/license-server/.env`).
+  **Bez niego serwer nie startuje.** Nigdy nie commituj go do repo.
+- Klucz publiczny: `mainplugins-license/.../LicenseToken.java` (`PUBLIC_KEY`).
+- Nowa para: `node deploy/gen-signing-key.mjs` - wymaga przebudowania i rozesłania
+  wszystkich pluginów (stare nie przyjmą nowych podpisów).
+
+**Płatne jary tylko z serwera.** Instalator PluginManagera zawiera tylko darmowe pluginy.
+Płatne leżą w `/opt/license-server/plugin-jars` (poza Caddy) i są wydawane przez
+`GET /api/me/plugins/:id/download` wyłącznie zalogowanemu kontu z aktywną licencją
+(limit 120 pobrań/h na konto, dziennik w `data/downloads.jsonl`).
+
+**Limity prób** (na IP, w pamięci procesu): logowanie 30/15 min + 10/15 min na konto,
+rejestracja 10/h, reset hasła 5-10/h, walidacja 600/h, panel admina 60/15 min.
+
+### Kolejność wdrożenia
+1. Skopiuj wiersz `LICENSE_SIGNING_KEY=...` z lokalnego `.env` do `/opt/license-server/.env` na VPS.
+2. `bash deploy/push.sh ubuntu@51.68.136.151` - nowy kod serwera.
+3. `./mvnw package` w katalogu głównym, potem `bash deploy/push-jars.sh ubuntu@51.68.136.151`.
+4. Nowy `mainplugins-core` do `PluginManager/desktop-app/src-tauri/plugin-jars/` i wydanie appki.
+   Klienci muszą zaktualizować Core RAZEM z płatnymi pluginami - nowe płatne pluginy na
+   starym Core się wyłączą (stary Core nie zna podpisanych dowodów).

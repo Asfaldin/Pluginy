@@ -8,3 +8,6 @@ replay_pid*.log
 mainplugins-core/resourcepack.rar
 mainplugins-core/resourcepack/*.zip
 mainplugins-core/resourcepack/*.rar
+
+# Plik tymczasowy maven-shade-plugin tworzony przy każdym buildzie
+dependency-reduced-pom.xml

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>elo</groupId>
+        <artifactId>mainplugins-parent</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>mainplugins-license</artifactId>
+    <packaging>jar</packaging>
+    <name>Mainplugins - License verification</name>
+
+    <!--
+        NIE jest pluginem (brak plugin.yml) - to biblioteka wkompilowywana (shade, scope
+        compile) w mainplugins-core i w KAŻDY płatny plugin osobno. Weryfikuje podpisane
+        tokeny licencji z serwera licencji (Ed25519, klucz publiczny wbudowany w
+        LicenseToken). Każdy płatny plugin ma własną kopię, więc podmieniony Core ani
+        fałszywy serwer licencji nie odblokują płatnych pluginów.
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.11.4</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
+            </plugin>
+            <!-- Biblioteka, nie plugin - nie kopiujemy jej do dist/ (tam są jary do wgrania na serwer). -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>collect-plugin-jar-to-dist</id>
+                        <phase>none</phase>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

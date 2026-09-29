@@ -15,6 +15,10 @@
     <name>Mainplugins - Shop</name>
 
     <dependencies>
+        <dependency>
+            <groupId>elo</groupId>
+            <artifactId>mainplugins-license</artifactId>
+        </dependency>
         <!-- scope=provided - patrz komentarz w mainplugins-skyblock/pom.xml -->
         <dependency>
             <groupId>elo</groupId>

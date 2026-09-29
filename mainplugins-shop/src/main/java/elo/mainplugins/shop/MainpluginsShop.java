@@ -1,5 +1,6 @@
 package elo.mainplugins.shop;
 
+import elo.mainplugins.license.LicenseGuard;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.LangService;
 import elo.mainplugins.core.util.MenuBridge;
@@ -50,7 +51,8 @@ public final class MainpluginsShop extends JavaPlugin {
     @Override
     public void onEnable() {
         // Plugin płatny - patrz javadoc LicenseService oraz license-server/README.md.
-        if (!CoreAPI.getLicenseService().isLicensed("shop")) {
+        if (!CoreAPI.getLicenseService().isLicensed("shop")
+                || !LicenseGuard.enable(this, "shop", () -> CoreAPI.getLicenseService().licenseProof("shop"))) {
             getLogger().severe("Brak ważnej licencji dla mainplugins-shop - plugin zostanie wyłączony.");
             getLogger().severe("Skonfiguruj klucz w license.yml (folder danych MainpluginsCore, sekcja 'keys: shop: ...') i zrestartuj serwer.");
             getServer().getPluginManager().disablePlugin(this);

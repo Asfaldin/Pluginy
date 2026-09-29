@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readJson, writeJson } from "./jsonStore.js";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -12,18 +12,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, "..", "data");
 const DB_FILE = join(DATA_DIR, "customers.json");
 
-function ensureFile() {
-    if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
-    if (!existsSync(DB_FILE)) writeFileSync(DB_FILE, "[]", "utf8");
-}
-
+// Zapis atomowy z kopią .bak - patrz src/jsonStore.js.
 function loadAll() {
-    ensureFile();
-    return JSON.parse(readFileSync(DB_FILE, "utf8"));
+    return readJson(DB_FILE, []);
 }
 
 function saveAll(list) {
-    writeFileSync(DB_FILE, JSON.stringify(list, null, 2), "utf8");
+    writeJson(DB_FILE, list);
 }
 
 function hashPassword(password) {
@@ -111,8 +106,8 @@ export function createPasswordResetToken(email) {
     return token;
 }
 
-/** @returns true jeśli kod poprawny i nie wygasł - wtedy od razu ustawia nowe hasło i
-    zużywa kod (jednorazowy, jak każdy token resetu). */
+/** @returns id konta, jeśli kod poprawny i nie wygasł (wtedy od razu ustawia nowe hasło
+    i zużywa kod - jednorazowy), albo false. */
 export function resetPasswordWithToken(token, newPassword) {
     const hash = hashToken(token);
     const list = loadAll();
@@ -123,5 +118,5 @@ export function resetPasswordWithToken(token, newPassword) {
     delete customer.resetTokenHash;
     delete customer.resetTokenExpiresAt;
     saveAll(list);
-    return true;
+    return customer.id;
 }

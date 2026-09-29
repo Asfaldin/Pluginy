@@ -1,5 +1,6 @@
 package elo.mainplugins.spawners;
 
+import elo.mainplugins.license.LicenseGuard;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.CustomItemProvider;
 import elo.mainplugins.spawners.config.SpawnerConfigLoader;
@@ -16,7 +17,8 @@ public final class MainpluginsSpawners extends JavaPlugin {
     @Override
     public void onEnable() {
         // Plugin płatny - patrz javadoc LicenseService oraz license-server/README.md.
-        if (!CoreAPI.getLicenseService().isLicensed("spawners")) {
+        if (!CoreAPI.getLicenseService().isLicensed("spawners")
+                || !LicenseGuard.enable(this, "spawners", () -> CoreAPI.getLicenseService().licenseProof("spawners"))) {
             getLogger().severe("Brak ważnej licencji dla mainplugins-spawners - plugin zostanie wyłączony.");
             getLogger().severe("Skonfiguruj klucz w license.yml (folder danych MainpluginsCore, sekcja 'keys: spawners: ...') i zrestartuj serwer.");
             getServer().getPluginManager().disablePlugin(this);

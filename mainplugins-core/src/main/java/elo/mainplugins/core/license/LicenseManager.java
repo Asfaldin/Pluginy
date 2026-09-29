@@ -1,6 +1,7 @@
 package elo.mainplugins.core.license;
 
 import elo.mainplugins.core.api.LicenseService;
+import elo.mainplugins.license.LicenseToken;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -27,31 +28,38 @@ import java.util.regex.Pattern;
  * server:
  *   id: "<losowe UUID, generowane automatycznie - NIE edytować ręcznie>"
  * api:
- *   url: "https://twoj-serwer-licencyjny.example.com"
+ *   url: "https://api.rsmc-network.pl"
  * keys:
  *   tools: "MPX-XXXXX-XXXXX-XXXXX"
  * }</pre>
  *
- * Brak zewnętrznej biblioteki JSON w tym module celowo - odpowiedź serwera ma
- * stały, prosty kształt ({@code {"valid":bool,"reason":"..."}}), więc parsujemy
- * ją ręcznie zamiast dokładać zależność do mainplugins-core.
+ * BEZPIECZEŃSTWO: ważna licencja to wyłącznie odpowiedź z tokenem PODPISANYM przez serwer
+ * licencji (Ed25519, weryfikacja w {@link LicenseToken} z mainplugins-license). Samo
+ * {@code "valid": true} nic nie znaczy - inaczej wystarczyłoby wskazać w api.url własny
+ * serwer. Token zawiera plugin, id serwera i jednorazowy nonce z tego zapytania (nie da się
+ * odtworzyć starej odpowiedzi) oraz datę ważności.
  *
- * Odporność na chwilową niedostępność serwera licencyjnego (np. darmowy hosting
- * usypiający się po bezczynności): jeśli żywe zapytanie się nie powiedzie, a
- * poprzednia udana weryfikacja tego klucza była w oknie karencji ({@link #GRACE_PERIOD}),
- * traktujemy klucz jako nadal ważny - klient płacący nie traci dostępu przez
- * przejściowy problem sieciowy. Jawna odpowiedź "invalid" z serwera (klucz
- * odwołany/przypisany gdzie indziej) NIE korzysta z karencji - to świadoma decyzja
- * operatora, nie awaria.
+ * Odporność na chwilową niedostępność serwera licencji: ostatni podpisany token trzymamy
+ * w {@code license-cache.yml} i jest on ważny do swojej daty wygaśnięcia (7 dni od
+ * wydania). Edycja pliku nic nie da - zmieniony token nie przejdzie weryfikacji podpisu.
+ * Jawna odpowiedź "invalid" (klucz odwołany/przypisany gdzie indziej) od razu kasuje
+ * zapisany token.
+ *
+ * Płatne pluginy nie ufają samemu {@link #isLicensed}: pobierają {@link #licenseProof}
+ * i sprawdzają podpis własną kopią weryfikatora (LicenseGuard), więc podmieniony Core
+ * niczego nie odblokuje.
  */
 public class LicenseManager implements LicenseService {
 
     private static final Duration RECHECK_INTERVAL = Duration.ofHours(6);
-    private static final Duration GRACE_PERIOD = Duration.ofHours(72);
+    private static final String DEFAULT_API_URL = "https://api.rsmc-network.pl";
     private static final Pattern VALID_PATTERN = Pattern.compile("\"valid\"\\s*:\\s*(true|false)");
     private static final Pattern REASON_PATTERN = Pattern.compile("\"reason\"\\s*:\\s*\"([^\"]*)\"");
+    private static final Pattern TOKEN_PATTERN = Pattern.compile("\"token\"\\s*:\\s*\"([A-Za-z0-9_-]+)\"");
+    private static final Pattern SIGNATURE_PATTERN = Pattern.compile("\"signature\"\\s*:\\s*\"([A-Za-z0-9_-]+)\"");
 
-    private record CacheEntry(boolean valid, long checkedAtMillis) {}
+    /** proof = "token.podpis" albo null, gdy licencja nieważna. */
+    private record CacheEntry(boolean valid, long checkedAtMillis, String proof) {}
 
     private final Plugin plugin;
     private final File configFile;
@@ -78,7 +86,7 @@ public class LicenseManager implements LicenseService {
             if (!plugin.getDataFolder().exists()) plugin.getDataFolder().mkdirs();
             FileConfiguration fresh = new YamlConfiguration();
             fresh.set("server.id", UUID.randomUUID().toString());
-            fresh.set("api.url", "https://your-license-server.example.com");
+            fresh.set("api.url", DEFAULT_API_URL);
             fresh.createSection("keys");
             try {
                 fresh.save(configFile);
@@ -94,6 +102,9 @@ public class LicenseManager implements LicenseService {
             saveConfigQuietly();
         }
         apiUrl = config.getString("api.url", "");
+        if (apiUrl == null || apiUrl.isBlank() || apiUrl.contains("your-license-server.example.com")) {
+            apiUrl = DEFAULT_API_URL;
+        }
     }
 
     private void saveConfigQuietly() {
@@ -111,23 +122,35 @@ public class LicenseManager implements LicenseService {
             plugin.getLogger().warning("Brak klucza licencyjnego dla '" + pluginId + "' w license.yml (sekcja keys) - plugin uznany za nielicencjonowany.");
             return false;
         }
-        if (apiUrl == null || apiUrl.isBlank() || apiUrl.contains("your-license-server.example.com")) {
-            plugin.getLogger().warning("license.yml: api.url nie jest skonfigurowany - nie można zweryfikować licencji dla '" + pluginId + "'.");
-            return false;
-        }
 
         CacheEntry cached = memoryCache.get(pluginId);
         long now = System.currentTimeMillis();
         if (cached != null && (now - cached.checkedAtMillis()) < RECHECK_INTERVAL.toMillis()) {
-            return cached.valid();
+            // Nawet świeży wpis sprawdzamy pod kątem wygaśnięcia tokenu.
+            return cached.valid() && proofValid(cached.proof(), pluginId, now);
         }
 
         return validateLive(pluginId, key, now);
     }
 
+    @Override
+    public String licenseProof(String pluginId) {
+        if (!isLicensed(pluginId)) return null;
+        CacheEntry cached = memoryCache.get(pluginId);
+        return cached != null && proofValid(cached.proof(), pluginId, System.currentTimeMillis()) ? cached.proof() : null;
+    }
+
+    /** Podpis się zgadza, token jest dla tego pluginu i tego serwera i jeszcze nie wygasł. */
+    private boolean proofValid(String proof, String pluginId, long now) {
+        LicenseToken.Claims claims = LicenseToken.verifyProof(proof);
+        return claims != null && claims.validFor(pluginId, now) && claims.serverId().equals(serverId);
+    }
+
     private boolean validateLive(String pluginId, String key, long now) {
+        String nonce = UUID.randomUUID().toString();
         try {
-            String body = "{\"key\":\"" + escape(key) + "\",\"plugin\":\"" + escape(pluginId) + "\",\"serverId\":\"" + escape(serverId) + "\"}";
+            String body = "{\"key\":\"" + escape(key) + "\",\"plugin\":\"" + escape(pluginId) + "\",\"serverId\":\"" + escape(serverId)
+                    + "\",\"nonce\":\"" + nonce + "\"}";
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(apiUrl.replaceAll("/+$", "") + "/api/validate"))
                     .timeout(Duration.ofSeconds(5))
@@ -138,64 +161,74 @@ public class LicenseManager implements LicenseService {
 
             if (response.statusCode() != 200) {
                 plugin.getLogger().warning("Serwer licencyjny zwrócił HTTP " + response.statusCode() + " dla '" + pluginId + "'.");
-                return fallbackToGrace(pluginId, now, "http " + response.statusCode());
+                return fallbackToCachedToken(pluginId, now, "http " + response.statusCode());
             }
 
-            Matcher validMatcher = VALID_PATTERN.matcher(response.body());
+            String responseBody = response.body();
+            Matcher validMatcher = VALID_PATTERN.matcher(responseBody);
             if (!validMatcher.find()) {
-                plugin.getLogger().warning("Nie udało się odczytać odpowiedzi serwera licencyjnego dla '" + pluginId + "': " + response.body());
-                return fallbackToGrace(pluginId, now, "unparseable response");
+                plugin.getLogger().warning("Nie udało się odczytać odpowiedzi serwera licencyjnego dla '" + pluginId + "'.");
+                return fallbackToCachedToken(pluginId, now, "unparseable response");
             }
 
-            boolean valid = Boolean.parseBoolean(validMatcher.group(1));
-            String reason = extractReason(response.body());
-            memoryCache.put(pluginId, new CacheEntry(valid, now));
-            if (valid) {
-                persistLastValid(pluginId, now);
-            } else {
-                plugin.getLogger().warning("Licencja dla '" + pluginId + "' nieważna: " + reason);
-                clearPersistedValid(pluginId);
+            if (!Boolean.parseBoolean(validMatcher.group(1))) {
+                plugin.getLogger().warning("Licencja dla '" + pluginId + "' nieważna: " + extract(REASON_PATTERN, responseBody, "(brak powodu w odpowiedzi)"));
+                memoryCache.put(pluginId, new CacheEntry(false, now, null));
+                persistProof(pluginId, null);
+                return false;
             }
-            return valid;
+
+            // "valid": true liczy się tylko z podpisanym tokenem dla TEGO zapytania.
+            String token = extract(TOKEN_PATTERN, responseBody, null);
+            String signature = extract(SIGNATURE_PATTERN, responseBody, null);
+            LicenseToken.Claims claims = LicenseToken.verify(token, signature);
+            boolean genuine = claims != null
+                    && claims.validFor(pluginId, now)
+                    && claims.serverId().equals(serverId)
+                    && claims.nonce().equals(nonce);
+            if (!genuine) {
+                plugin.getLogger().severe("Odpowiedź serwera licencji dla '" + pluginId + "' nie ma prawidłowego podpisu - odrzucona"
+                        + " (sprawdź api.url w license.yml; akceptowany jest tylko oficjalny serwer licencji).");
+                memoryCache.put(pluginId, new CacheEntry(false, now, null));
+                return false;
+            }
+            String proof = token + "." + signature;
+            memoryCache.put(pluginId, new CacheEntry(true, now, proof));
+            persistProof(pluginId, proof);
+            return true;
         } catch (IOException | InterruptedException e) {
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
             plugin.getLogger().warning("Serwer licencyjny nieosiągalny przy sprawdzaniu '" + pluginId + "': " + e.getMessage());
-            return fallbackToGrace(pluginId, now, "network error");
+            return fallbackToCachedToken(pluginId, now, "network error");
         }
     }
 
-    private static String extractReason(String body) {
-        Matcher m = REASON_PATTERN.matcher(body);
-        return m.find() ? m.group(1) : "(brak powodu w odpowiedzi)";
+    private static String extract(Pattern pattern, String body, String fallback) {
+        Matcher m = pattern.matcher(body);
+        return m.find() ? m.group(1) : fallback;
     }
 
-    private boolean fallbackToGrace(String pluginId, long now, String cause) {
+    /** Serwer licencji chwilowo niedostępny - ważny jest ostatni podpisany token do swojej daty wygaśnięcia. */
+    private boolean fallbackToCachedToken(String pluginId, long now, String cause) {
         FileConfiguration cacheCfg = YamlConfiguration.loadConfiguration(cacheFile);
-        long lastValidAt = cacheCfg.getLong("lastValidAt." + pluginId, -1);
-        boolean withinGrace = lastValidAt > 0 && (now - lastValidAt) < GRACE_PERIOD.toMillis();
-        if (withinGrace) {
-            plugin.getLogger().warning("Licencja '" + pluginId + "' w okresie karencji (" + cause + ") - traktowana jako ważna do "
-                    + java.time.Instant.ofEpochMilli(lastValidAt + GRACE_PERIOD.toMillis()));
+        String proof = cacheCfg.getString("proofs." + pluginId);
+        boolean valid = proofValid(proof, pluginId, now);
+        if (valid) {
+            LicenseToken.Claims claims = LicenseToken.verifyProof(proof);
+            plugin.getLogger().warning("Licencja '" + pluginId + "' ważna z zapisanego tokenu (" + cause + ") do "
+                    + java.time.Instant.ofEpochMilli(claims.expiresAt()));
         } else {
-            plugin.getLogger().severe("Licencja '" + pluginId + "' nieważna: brak połączenia z serwerem licencyjnym (" + cause + ") i okres karencji minął lub nigdy nie był aktywowany.");
+            plugin.getLogger().severe("Licencja '" + pluginId + "' nieważna: brak połączenia z serwerem licencyjnym (" + cause
+                    + ") i brak ważnego zapisanego tokenu.");
         }
-        memoryCache.put(pluginId, new CacheEntry(withinGrace, now));
-        return withinGrace;
+        memoryCache.put(pluginId, new CacheEntry(valid, now, valid ? proof : null));
+        return valid;
     }
 
-    private void persistLastValid(String pluginId, long now) {
+    private void persistProof(String pluginId, String proof) {
         FileConfiguration cacheCfg = YamlConfiguration.loadConfiguration(cacheFile);
-        cacheCfg.set("lastValidAt." + pluginId, now);
-        try {
-            cacheCfg.save(cacheFile);
-        } catch (IOException e) {
-            plugin.getLogger().warning("Nie udało się zapisać license-cache.yml: " + e.getMessage());
-        }
-    }
-
-    private void clearPersistedValid(String pluginId) {
-        FileConfiguration cacheCfg = YamlConfiguration.loadConfiguration(cacheFile);
-        cacheCfg.set("lastValidAt." + pluginId, null);
+        cacheCfg.set("proofs." + pluginId, proof);
+        cacheCfg.set("lastValidAt", null); // stary, niepodpisany format - już nieużywany
         try {
             cacheCfg.save(cacheFile);
         } catch (IOException e) {

@@ -94,6 +94,8 @@ public class IslandManager implements Listener, IslandService {
     final Set<UUID> pendingLeaveConfirmation = new HashSet<>();
     final Set<UUID> pendingInviteChat = ConcurrentHashMap.newKeySet();
     final Set<UUID> pendingNameChat = ConcurrentHashMap.newKeySet();
+    /** Gracze z włączonym czatem wyspy (/is czat) - ich wiadomości widzą tylko członkowie wyspy. */
+    final Set<UUID> czatWyspy = ConcurrentHashMap.newKeySet();
     // Zapamiętuje, który slot w GUI "Członkowie Wyspy" odpowiada za którego gracza
     final Map<UUID, Map<Integer, UUID>> slotyCzlonkow = new HashMap<>();
     // Który typ spawnera gracz aktualnie ma otwarty w podmenu "Spawner: X" (Ilość/Szybkość)
@@ -195,7 +197,18 @@ public class IslandManager implements Listener, IslandService {
             case "ustawspawn" -> ustawSpawnWyspy(player);
             case "wplac", "deposit" -> wplacDoBankuKomenda(player, args);
             case "wyplac", "withdraw" -> wyplacZBankuKomenda(player, args);
+            case "pomoc", "help" -> msg(player, "help.lines");
+            case "czat", "chat" -> czatKomenda(player, args);
+            case "biom", "biome" -> biomKomenda(player, args);
+            case "topka", "top" -> menus.otworzMenuTopkiWysp(player);
+            case "info" -> pokazInfo(player);
+            case "wartosci", "values" -> pokazWartosci(player);
             default -> {
+                // Literówka albo nieznana podkomenda nie może zakładać wyspy ani teleportować - tylko podpowiedź.
+                if (!sub.isEmpty() && !sub.equals("zmenu")) {
+                    msg(player, "help.unknown");
+                    return;
+                }
                 if (!playerIslandMap.containsKey(uuid)) {
                     stworzWyspe(player, zMenu);
                 } else if (nazwaKomendy.equalsIgnoreCase("dom")) {
@@ -577,6 +590,131 @@ public class IslandManager implements Listener, IslandService {
                 CoreAPI.getLangService().msg(plugin, "enter.subtitle", IslandTexts.pary("owner", wlasciciel != null ? wlasciciel : "?"))));
     }
 
+    // ---- /is czat ----
+
+    /** /is czat <wiadomość> = jedna wiadomość do członków; samo /is czat włącza albo wyłącza tryb czatu wyspy. */
+    void czatKomenda(Player player, String[] args) {
+        if (!playerIslandMap.containsKey(player.getUniqueId())) {
+            msg(player, "common.no-island");
+            return;
+        }
+        if (args.length > 1) {
+            wyslijNaCzatWyspy(player, String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length)));
+            return;
+        }
+        if (czatWyspy.remove(player.getUniqueId())) msg(player, "chat.off");
+        else {
+            czatWyspy.add(player.getUniqueId());
+            msg(player, "chat.on");
+        }
+    }
+
+    /** Wiadomość do właściciela i członków wyspy, którzy są w grze. Kody kolorów z wiadomości gracza są usuwane. */
+    void wyslijNaCzatWyspy(Player player, String wiadomosc) {
+        UUID ownerUUID = playerIslandMap.get(player.getUniqueId());
+        IslandData data = ownerUUID != null ? islandDatabase.get(ownerUUID) : null;
+        if (data == null) {
+            czatWyspy.remove(player.getUniqueId());
+            msg(player, "common.no-island");
+            return;
+        }
+        String czysta = wiadomosc.replaceAll("[&\u00a7]([0-9a-fk-orA-FK-OR]|#[0-9a-fA-F]{6})", "");
+        Set<UUID> odbiorcy = new java.util.HashSet<>(data.getMembers());
+        odbiorcy.add(data.getOwnerUUID());
+        for (UUID u : odbiorcy) {
+            Player p = Bukkit.getPlayer(u);
+            if (p != null) msg(p, "chat.format", "player", player.getName(), "message", czysta);
+        }
+        plugin.getLogger().info("[czat wyspy] " + player.getName() + ": " + czysta);
+    }
+
+    // ---- /is info, /is wartosci ----
+
+    /** Punkty bez zbędnych zer: 12.0 -> "12", 2.5 -> "2,5". */
+    static String punkty(double v) {
+        return v == Math.rint(v) ? String.valueOf((long) v) : String.valueOf(v).replace('.', ',');
+    }
+
+    /** /is info - to samo, co przycisk Informacje w panelu, tylko na czacie. */
+    void pokazInfo(Player player) {
+        UUID ownerUUID = playerIslandMap.get(player.getUniqueId());
+        IslandData data = ownerUUID != null ? islandDatabase.get(ownerUUID) : null;
+        if (data == null) {
+            msg(player, "common.no-island");
+            return;
+        }
+        boolean isOwner = data.getOwnerUUID().equals(player.getUniqueId());
+        String wlasciciel = Bukkit.getOfflinePlayer(data.getOwnerUUID()).getName();
+        msg(player, "info.header");
+        if (data.getCustomName() != null) msg(player, "gui.info.name", "name", data.getCustomName());
+        msg(player, "gui.info.owner", "player", wlasciciel != null ? wlasciciel : plain("gui.info.unknown-owner"));
+        msg(player, "gui.info.size", "size", String.valueOf(data.getBorderSize()));
+        msg(player, "gui.info.members", "count", String.valueOf(data.getMembers().size()));
+        msg(player, "gui.info.worth", "worth", IslandTexts.kasa(data.getWorth()));
+        msg(player, "gui.info.role", "role", plain(isOwner ? "role.owner" : (data.getRole(player.getUniqueId()) == IslandRole.ADMIN ? "role.admin" : "role.member")));
+    }
+
+    /** /is wartosci - które bloki dają ile punktów do wartości wyspy (od najcenniejszych). */
+    void pokazWartosci(Player player) {
+        Map<Material, Double> wartosci = tuning.wartosciBlokow();
+        msg(player, "values.header");
+        if (wartosci.isEmpty()) {
+            msg(player, "values.none");
+            return;
+        }
+        wartosci.entrySet().stream()
+                .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
+                .forEach(e -> msg(player, "values.line", "block", CoreAPI.getItemNameService().name(e.getKey()), "points", punkty(e.getValue())));
+        msg(player, "values.footer");
+    }
+
+    /**
+     * /@is przelicz - liczy wartość wyspy i liczniki limitów od nowa, blok po bloku. Przydaje się po dopisaniu
+     * bloku do listy wartości albo limitów, bo bloki postawione wcześniej nie były liczone. Kawałki świata
+     * kopiujemy na głównym wątku, a liczymy w tle, żeby serwer nie przyciął.
+     */
+    void przeliczWyspe(CommandSender sender, IslandData data, String nick) {
+        World w = skyblockWorld;
+        int r = data.getBorderSize();
+        int minX = data.getCenterX() - r, maxX = data.getCenterX() + r;
+        int minZ = data.getCenterZ() - r, maxZ = data.getCenterZ() + r;
+        List<ChunkSnapshot> kawalki = new ArrayList<>();
+        for (int cx = minX >> 4; cx <= maxX >> 4; cx++) {
+            for (int cz = minZ >> 4; cz <= maxZ >> 4; cz++) kawalki.add(w.getChunkAt(cx, cz).getChunkSnapshot(false, false, false));
+        }
+        int minY = w.getMinHeight(), maxY = w.getMaxHeight();
+        msg(sender, "admin.recalc-start", "player", nick);
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            double wartosc = 0;
+            Map<Material, Integer> liczniki = new HashMap<>();
+            for (ChunkSnapshot k : kawalki) {
+                int bx = k.getX() << 4, bz = k.getZ() << 4;
+                for (int lx = 0; lx < 16; lx++) {
+                    int x = bx + lx;
+                    if (x < minX || x > maxX) continue;
+                    for (int lz = 0; lz < 16; lz++) {
+                        int z = bz + lz;
+                        if (z < minZ || z > maxZ) continue;
+                        for (int y = minY; y < maxY; y++) {
+                            Material m = k.getBlockType(lx, y, lz);
+                            if (m.isAir()) continue;
+                            wartosc += tuning.wartoscBloku(m);
+                            if (tuning.liczonyBlok(m)) liczniki.merge(m, 1, Integer::sum);
+                        }
+                    }
+                }
+            }
+            double wynik = wartosc;
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                data.setWorth(wynik);
+                data.getBlockCounts().clear();
+                liczniki.forEach((m, c) -> data.getBlockCounts().put(m.name(), c));
+                storage.zapiszWyspy();
+                msg(sender, "admin.recalc-done", "player", nick, "worth", punkty(Math.round(wynik * 100) / 100.0));
+            });
+        });
+    }
+
     // ---- Komendy admina: /@is ----
 
     /** /@is tp|usun|rozmiar|bank <gracz> ... - działa też z konsoli (poza tp). */
@@ -624,6 +762,7 @@ public class IslandManager implements Listener, IslandService {
                 }
                 msg(sender, "admin.size-set", "player", args[1], "size", String.valueOf(rozmiar));
             }
+            case "przelicz", "recalc" -> przeliczWyspe(sender, data, args[1]);
             case "bank" -> {
                 if (args.length >= 4) {
                     double kwota;
@@ -678,7 +817,7 @@ public class IslandManager implements Listener, IslandService {
         UUID ownerUUID = playerIslandMap.get(inviter.getUniqueId());
         IslandData wyspa = ownerUUID != null ? islandDatabase.get(ownerUUID) : null;
         if (wyspa != null && wyspaPelna(wyspa)) {
-            msg(inviter, "invite.full", "max", String.valueOf(tuning.limitCzlonkow()));
+            msg(inviter, "invite.full", "max", String.valueOf(tuning.limitCzlonkowWyspy(wyspa.getPoziomCzlonkow())));
             return;
         }
         pendingInvites.put(targetUUID, new PendingInvite(ownerUUID, inviter.getUniqueId()));
@@ -712,7 +851,7 @@ public class IslandManager implements Listener, IslandService {
 
     /** Limit liczy właściciela + członków; 0 w configu = bez limitu. */
     boolean wyspaPelna(IslandData data) {
-        int limit = tuning.limitCzlonkow();
+        int limit = tuning.limitCzlonkowWyspy(data.getPoziomCzlonkow());
         return limit > 0 && 1 + data.getMembers().size() >= limit;
     }
 
@@ -735,7 +874,7 @@ public class IslandManager implements Listener, IslandService {
             return;
         }
         if (wyspaPelna(data)) {
-            msg(player, "invite.full", "max", String.valueOf(tuning.limitCzlonkow()));
+            msg(player, "invite.full", "max", String.valueOf(tuning.limitCzlonkowWyspy(data.getPoziomCzlonkow())));
             return;
         }
 
@@ -1324,6 +1463,153 @@ public class IslandManager implements Listener, IslandService {
         Bukkit.getPluginManager().callEvent(new IslandUpgradeEvent(player, data));
 
         msg(player, "upgrade.border-done", "size", String.valueOf(data.getBorderSize()));
+        menus.otworzMenuUlepszen(player);
+    }
+
+    /** Sprawdza, czy gracz może płacić z banku wyspy za ulepszenia; null = nie może (komunikat już poszedł). */
+    private IslandData wyspaDoUlepszenia(Player player) {
+        UUID ownerUUID = playerIslandMap.get(player.getUniqueId());
+        IslandData data = ownerUUID != null ? islandDatabase.get(ownerUUID) : null;
+        if (data == null) {
+            msg(player, "common.no-island-yet");
+            return null;
+        }
+        if (!mozeZarzadzac(player.getUniqueId(), data) && !data.isMemberBankUpgrade()) {
+            msg(player, "common.managers-only");
+            return null;
+        }
+        return data;
+    }
+
+    /**
+     * /is biom = lista biomów z cenami na czacie; /is biom <nazwa> = zmiana biomu wyspy. Nazwę można wpisać po polsku
+     * (bez polskich znaków też) albo tak jak w grze, np. /is biom pustynia albo /is biom desert.
+     */
+    void biomKomenda(Player player, String[] args) {
+        if (tuning.biomy().isEmpty()) {
+            msg(player, "biome.disabled");
+            return;
+        }
+        if (args.length < 2) {
+            msg(player, "biome.list-header");
+            for (IslandTuning.BiomWyspy b : tuning.biomy()) {
+                msg(player, "biome.list-line", "biome", b.nazwa(), "cost", IslandTexts.kasa(b.koszt()));
+            }
+            msg(player, "biome.list-footer");
+            return;
+        }
+        String wpisane = IslandTexts.bezOgonkow(String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length)).toLowerCase(java.util.Locale.ROOT));
+        for (IslandTuning.BiomWyspy b : tuning.biomy()) {
+            String nazwa = IslandTexts.bezOgonkow(b.nazwa().replaceAll("&.", "").toLowerCase(java.util.Locale.ROOT));
+            if (b.id().equals(wpisane) || b.id().replace('_', ' ').equals(wpisane) || nazwa.equals(wpisane)) {
+                zmienBiom(player, b);
+                return;
+            }
+        }
+        msg(player, "biome.unknown", "name", String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length)));
+    }
+
+    /** Nazwa biomu do tekstów (z listy w ustawieniach, bez kodów kolorów), albo samo id. */
+    String nazwaBiomu(String id) {
+        for (IslandTuning.BiomWyspy b : tuning.biomy()) {
+            if (b.id().equals(id)) return b.nazwa().replaceAll("&.", "");
+        }
+        return id;
+    }
+
+    /**
+     * Zmiana biomu całej wyspy za pieniądze z banku. Biom ustawiamy kawałek po kawałku (chunkiNaTick na tick,
+     * jak przy budowaniu wyspy), a każdy gotowy kawałek odsyłamy graczom, żeby od razu zobaczyli nowy kolor trawy i wody.
+     */
+    void zmienBiom(Player player, IslandTuning.BiomWyspy wybrany) {
+        IslandData data = wyspaDoUlepszenia(player);
+        if (data == null) return;
+        if (wybrany.id().equals(data.getBiom())) {
+            msg(player, "biome.already");
+            return;
+        }
+        org.bukkit.block.Biome biom = org.bukkit.Registry.BIOME.get(org.bukkit.NamespacedKey.minecraft(wybrany.id()));
+        if (biom == null) return;
+        if (!data.odejmijZBanku(wybrany.koszt())) {
+            msg(player, "bank.upgrade-no-money", "cost", IslandTexts.kasa(wybrany.koszt()), "balance", IslandTexts.kasa(data.getBankBalance()));
+            return;
+        }
+        data.setBiom(wybrany.id());
+        storage.zapiszWyspy();
+        player.closeInventory();
+        String nazwa = nazwaBiomu(wybrany.id());
+        msg(player, "biome.changing", "biome", nazwa);
+
+        World w = skyblockWorld;
+        int r = data.getBorderSize();
+        int minX = data.getCenterX() - r, maxX = data.getCenterX() + r;
+        int minZ = data.getCenterZ() - r, maxZ = data.getCenterZ() + r;
+        List<int[]> kawalki = new ArrayList<>();
+        for (int cx = minX >> 4; cx <= maxX >> 4; cx++) {
+            for (int cz = minZ >> 4; cz <= maxZ >> 4; cz++) kawalki.add(new int[]{cx, cz});
+        }
+        int minY = w.getMinHeight(), maxY = w.getMaxHeight();
+        int naTick = Math.max(1, tuning.chunkiNaTick());
+        new org.bukkit.scheduler.BukkitRunnable() {
+            int i = 0;
+
+            @Override
+            public void run() {
+                for (int n = 0; n < naTick && i < kawalki.size(); n++, i++) {
+                    int cx = kawalki.get(i)[0], cz = kawalki.get(i)[1];
+                    // Biom w grze jest zapisany w kostkach 4x4x4 - wystarczy ustawić co 4 bloki.
+                    for (int x = Math.max(minX, cx << 4); x <= Math.min(maxX, (cx << 4) + 15); x += 4) {
+                        for (int z = Math.max(minZ, cz << 4); z <= Math.min(maxZ, (cz << 4) + 15); z += 4) {
+                            for (int y = minY; y < maxY; y += 4) w.setBiome(x, y, z, biom);
+                        }
+                    }
+                    w.refreshChunk(cx, cz);
+                }
+                if (i >= kawalki.size()) {
+                    cancel();
+                    if (player.isOnline()) msg(player, "biome.done", "biome", nazwa);
+                }
+            }
+        }.runTaskTimer(plugin, 1L, 1L);
+    }
+
+    /** Kolejny poziom limitu graczy za pieniądze z banku wyspy. */
+    void ulepszCzlonkow(Player player) {
+        IslandData data = wyspaDoUlepszenia(player);
+        if (data == null) return;
+        var poziomy = tuning.ulepszeniaCzlonkow();
+        if (data.getPoziomCzlonkow() >= poziomy.size() || tuning.limitCzlonkow() <= 0) {
+            msg(player, "upgrade.max-level");
+            return;
+        }
+        var nastepny = poziomy.get(data.getPoziomCzlonkow());
+        if (!data.odejmijZBanku(nastepny.koszt())) {
+            msg(player, "bank.upgrade-no-money", "cost", IslandTexts.kasa(nastepny.koszt()), "balance", IslandTexts.kasa(data.getBankBalance()));
+            return;
+        }
+        data.setPoziomCzlonkow(data.getPoziomCzlonkow() + 1);
+        storage.zapiszWyspy();
+        msg(player, "upgrade.members-done", "limit", String.valueOf(nastepny.limit()));
+        menus.otworzMenuUlepszen(player);
+    }
+
+    /** Kolejny poziom wyższych limitów bloków za pieniądze z banku wyspy. */
+    void ulepszLimity(Player player) {
+        IslandData data = wyspaDoUlepszenia(player);
+        if (data == null) return;
+        var poziomy = tuning.ulepszeniaLimitow();
+        if (data.getPoziomLimitow() >= poziomy.size()) {
+            msg(player, "upgrade.max-level");
+            return;
+        }
+        var nastepny = poziomy.get(data.getPoziomLimitow());
+        if (!data.odejmijZBanku(nastepny.koszt())) {
+            msg(player, "bank.upgrade-no-money", "cost", IslandTexts.kasa(nastepny.koszt()), "balance", IslandTexts.kasa(data.getBankBalance()));
+            return;
+        }
+        data.setPoziomLimitow(data.getPoziomLimitow() + 1);
+        storage.zapiszWyspy();
+        msg(player, "upgrade.limits-done", "percent", String.valueOf(nastepny.procent()));
         menus.otworzMenuUlepszen(player);
     }
 

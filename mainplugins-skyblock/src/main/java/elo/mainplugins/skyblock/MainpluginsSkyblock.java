@@ -77,7 +77,7 @@ public final class MainpluginsSkyblock extends JavaPlugin {
                 return true;
             });
             getCommand("@is").setTabCompleter((sender, command, alias, args) -> {
-                if (args.length == 1) return TabCompleteUtils.dopasuj(args[0], List.of("tp", "usun", "rozmiar", "bank"));
+                if (args.length == 1) return TabCompleteUtils.dopasuj(args[0], List.of("tp", "usun", "rozmiar", "bank", "przelicz"));
                 if (args.length == 2) return TabCompleteUtils.dopasujGraczy(args[1]);
                 if (args.length == 3 && args[0].equalsIgnoreCase("bank")) return TabCompleteUtils.dopasuj(args[2], List.of("ustaw", "dodaj"));
                 return TabCompleteUtils.PUSTA;
@@ -106,7 +106,8 @@ public final class MainpluginsSkyblock extends JavaPlugin {
         private static final List<String> PODKOMENDY = List.of(
                 "menu", "ustawdom", "ustawspawn", "usun", "granica", "budowanie", "pvp", "ulepszenia",
                 "czlonkowie", "ustawienia", "permisje", "zapros", "akceptuj", "odrzuc", "opusc", "awansuj", "degraduj",
-                "wyrzuc", "dom", "wplac", "wyplac", "odwiedz", "przekaz", "wypros", "zbanuj", "odbanuj"
+                "wyrzuc", "dom", "wplac", "wyplac", "odwiedz", "przekaz", "wypros", "zbanuj", "odbanuj",
+                "pomoc", "topka", "info", "wartosci", "czat", "biom"
         );
         private static final Set<String> PODKOMENDY_Z_GRACZEM = Set.of("zapros", "awansuj", "degraduj", "wyrzuc", "odwiedz", "przekaz", "wypros", "zbanuj", "odbanuj");
 

@@ -1,6 +1,5 @@
 package elo.mainplugins.skyblock.gui;
 
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
@@ -41,13 +40,25 @@ public final class IslandGuiLoader {
         IslandScreen czlonkowieWyspy = parseScreen(cfg, "czlonkowie-wyspy", 54, log);
 
         int[] topkaSlotyRankingu = parseIntArray(cfg.getIntegerList("topka-wysp.sloty-rankingu"),
-                new int[]{10, 11, 12, 13, 14, 15, 16, 19, 20, 21});
+                new int[]{10, 12, 14, 16, 28, 30, 32, 34, 46, 48});
         int[] ulepszenieSpawnerowSlotyTypow = parseIntArray(cfg.getIntegerList("ulepszenie-spawnerow.sloty-typow"),
                 new int[]{9, 11, 13, 15, 17, 28, 30, 32, 34});
 
-        int czlonkowieSlotWlasciciela = cfg.getInt("czlonkowie-wyspy.slot-wlasciciela", 0);
-        int czlonkowiePierwszySlot = cfg.getInt("czlonkowie-wyspy.pierwszy-slot-czlonka", 1);
-        int czlonkowieOstatniSlot = cfg.getInt("czlonkowie-wyspy.ostatni-slot-czlonka", 44);
+        // Stałe miejsca spawnerów: "id: pole" albo "id: {slot: pole, strona: 2}".
+        java.util.Map<String, int[]> spawneryPola = new java.util.LinkedHashMap<>();
+        org.bukkit.configuration.ConfigurationSection pola = cfg.getConfigurationSection("ulepszenie-spawnerow.spawnery");
+        if (pola != null) {
+            for (String id : pola.getKeys(false)) {
+                if (pola.isInt(id)) spawneryPola.put(id, new int[]{pola.getInt(id), 0});
+                else if (pola.isConfigurationSection(id)) {
+                    spawneryPola.put(id, new int[]{pola.getInt(id + ".slot", -1), Math.max(0, pola.getInt(id + ".strona", 1) - 1)});
+                }
+            }
+        }
+        java.util.Set<String> ukryteSpawnery = new java.util.HashSet<>(cfg.getStringList("ulepszenie-spawnerow.ukryte"));
+
+        int[] czlonkowieSloty = parseIntArray(cfg.getIntegerList("czlonkowie-wyspy.sloty-czlonkow"),
+                new int[]{11, 12, 13, 14, 15});
 
         log.info("wyspy-gui.yml: wczytano uklad 8 ekranow GUI systemu wysp.");
 
@@ -55,9 +66,9 @@ public final class IslandGuiLoader {
                 panelWyspy, permisjeWyspy, ustawieniaWyspy,
                 topkaWysp, topkaSlotyRankingu,
                 ulepszeniaWyspy,
-                ulepszenieSpawnerow, ulepszenieSpawnerowSlotyTypow,
+                ulepszenieSpawnerow, ulepszenieSpawnerowSlotyTypow, spawneryPola, ukryteSpawnery,
                 spawnerPodmenu,
-                czlonkowieWyspy, czlonkowieSlotWlasciciela, czlonkowiePierwszySlot, czlonkowieOstatniSlot
+                czlonkowieWyspy, czlonkowieSloty
         );
     }
 
@@ -79,8 +90,20 @@ public final class IslandGuiLoader {
             }
         }
 
+        // tlo-pola: opcjonalna lista pol z tlem; brak = tlo na wszystkich wolnych polach.
+        List<Integer> tloPola = null;
+        if (cfg.isList(key + ".tlo-pola")) {
+            tloPola = new java.util.ArrayList<>();
+            for (Object o : cfg.getList(key + ".tlo-pola")) {
+                int slot = o instanceof Number n ? n.intValue() : -1;
+                if (slot >= 0 && slot < size) tloPola.add(slot);
+                else log.warning("wyspy-gui.yml: '" + key + ".tlo-pola' ma zle pole (" + o + ") - pomijam.");
+            }
+        }
+
         List<IslandGuiButton> przyciski = parsePrzyciski(cfg.getMapList(key + ".przyciski"), log, key, size);
-        return new IslandScreen(size, tlo, przyciski);
+        int strony = Math.max(1, cfg.getInt(key + ".strony", 1));
+        return new IslandScreen(size, tlo, tloPola, przyciski, strony);
     }
 
     private static List<IslandGuiButton> parsePrzyciski(List<Map<?, ?>> raw, Logger log, String context, int size) {
@@ -115,24 +138,11 @@ public final class IslandGuiLoader {
                 }
             }
 
-            String nazwa = m.get("nazwa") != null ? String.valueOf(m.get("nazwa")) : "";
-
-            Object kolorRaw = m.get("kolor");
-            NamedTextColor kolor = kolorRaw != null ? NamedTextColor.NAMES.value(String.valueOf(kolorRaw).toLowerCase()) : null;
-            if (kolor == null) {
-                if (kolorRaw != null) {
-                    log.warning("wyspy-gui.yml: '" + context + "' slot " + slot + " (" + akcja + ") ma zly 'kolor' ('" + kolorRaw + "') - uzywam YELLOW.");
-                }
-                kolor = NamedTextColor.YELLOW;
-            }
-
-            List<String> lore = new ArrayList<>();
-            Object loreRaw = m.get("lore");
-            if (loreRaw instanceof List<?> loreList) {
-                for (Object line : loreList) lore.add(String.valueOf(line));
-            }
-
-            list.add(new IslandGuiButton(slot, akcja, material, materialWylaczone, nazwa, kolor, lore));
+            // Nazwa i opis przycisku sa w lang/<jezyk>.yml pod buttons.<okno>.<akcja> (jak teksty innych pluginow).
+            String tekst = "buttons." + context + "." + akcja.toLowerCase(java.util.Locale.ROOT).replace('_', '-');
+            // strona: numer strony okna (1, 2...), na której stoi przycisk; brak = na każdej stronie.
+            Integer strona = m.get("strona") instanceof Number n ? n.intValue() : null;
+            list.add(new IslandGuiButton(slot, akcja, material, materialWylaczone, tekst, strona));
         }
         return list;
     }

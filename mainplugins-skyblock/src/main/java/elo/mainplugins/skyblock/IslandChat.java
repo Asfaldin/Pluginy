@@ -64,6 +64,12 @@ final class IslandChat implements Listener {
         // Nie łapiemy tych trzech promptów wcale, jeśli gracz akurat na żaden nie czeka -
         // event.message() do String tylko wtedy, gdy faktycznie trzeba go przeczytać.
         if (!m.pendingDeleteConfirmation.contains(uuid) && !m.pendingInviteChat.contains(uuid) && !m.pendingNameChat.contains(uuid)) {
+            // Tryb czatu wyspy (/is czat): wiadomość zamiast do wszystkich idzie do członków wyspy.
+            if (m.czatWyspy.contains(uuid)) {
+                event.setCancelled(true);
+                String tresc = PlainTextComponentSerializer.plainText().serialize(event.message());
+                Bukkit.getScheduler().runTask(m.plugin, () -> m.wyslijNaCzatWyspy(player, tresc));
+            }
             return;
         }
         String wiadomosc = PlainTextComponentSerializer.plainText().serialize(event.message()).trim();

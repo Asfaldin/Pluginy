@@ -104,6 +104,12 @@ public class IslandData {
     // terenu przy każdym odświeżeniu Topki Wysp byłoby zbyt kosztowne.
     private double worth = 0.0;
 
+    // Wykupione ulepszenia z banku wyspy (0 = brak): limit graczy i limity bloków.
+    private int poziomCzlonkow = 0;
+    private int poziomLimitow = 0;
+    // Biom wybrany w oknie "Biom wyspy" (null = biom świata, nic nie zmieniane).
+    private String biom = null;
+
     // Poziom (domyślnie 1) każdego typu customowego spawnera wykupionego przez
     // właściciela wyspy - klucz to SpawnerType.name() z mainplugins-spawners,
     // ale IslandData celowo trzyma go jako zwykły String (patrz komentarz w
@@ -197,6 +203,12 @@ public class IslandData {
         return true;
     }
 
+    public int getPoziomCzlonkow() { return poziomCzlonkow; }
+    public void setPoziomCzlonkow(int v) { this.poziomCzlonkow = Math.max(0, v); }
+    public int getPoziomLimitow() { return poziomLimitow; }
+    public String getBiom() { return biom; }
+    public void setBiom(String biom) { this.biom = biom; }
+    public void setPoziomLimitow(int v) { this.poziomLimitow = Math.max(0, v); }
     public double getWorth() { return worth; }
     public void setWorth(double worth) { this.worth = worth; }
     public void dodajDoWartosci(double delta) { worth = Math.max(0, worth + delta); }

@@ -57,8 +57,40 @@ public record IslandTuning(
         boolean pioruny,
         boolean mobyWarden,
         boolean mobyWither,
-        boolean mobyBalwan
+        boolean mobyBalwan,
+        List<PoziomCzlonkow> ulepszeniaCzlonkow,
+        List<PoziomLimitow> ulepszeniaLimitow,
+        List<BiomWyspy> biomy
 ) {
+    /** Biom do wyboru w oknie "Biom wyspy": id z gry (np. desert), nazwa w oknie, ikonka i koszt z banku wyspy. */
+    public record BiomWyspy(String id, String nazwa, Material ikona, int koszt) {}
+
+    /** Poziom ulepszenia "limit graczy": ilu graczy (z właścicielem) i ile kosztuje z banku wyspy. */
+    public record PoziomCzlonkow(int limit, int koszt) {}
+
+    /** Poziom ulepszenia "limity bloków": o ile procent wyższe limity i ile kosztuje z banku wyspy. */
+    public record PoziomLimitow(int procent, int koszt) {}
+
+    /** Limit graczy wyspy po jej ulepszeniach (poziom 0 = bez ulepszeń); 0 = bez limitu. */
+    public int limitCzlonkowWyspy(int poziom) {
+        if (limitCzlonkow <= 0) return 0;
+        if (poziom <= 0 || ulepszeniaCzlonkow.isEmpty()) return limitCzlonkow;
+        return ulepszeniaCzlonkow.get(Math.min(poziom, ulepszeniaCzlonkow.size()) - 1).limit();
+    }
+
+    /** O ile procent wyspa ma wyższe limity bloków po ulepszeniach (poziom 0 = bez ulepszeń). */
+    public int procentLimitow(int poziom) {
+        if (poziom <= 0 || ulepszeniaLimitow.isEmpty()) return 0;
+        return ulepszeniaLimitow.get(Math.min(poziom, ulepszeniaLimitow.size()) - 1).procent();
+    }
+
+    /** Limit bloku na konkretnej wyspie: zwykły limit powiększony o wykupione ulepszenia. */
+    public int limitBloku(Material material, int poziomLimitow) {
+        int baza = limitBloku(material);
+        if (baza <= 0) return baza;
+        return (int) Math.round(baza * (1 + procentLimitow(poziomLimitow) / 100.0));
+    }
+
     /** Wzór wyspy do wyboru przy zakładaniu - pliki islands/<id>.nbt/.yml zapisuje /@islandtemplate save <id>. */
     public record WzorWyspy(String id, String nazwa, Material ikona, List<String> opis, List<org.bukkit.inventory.ItemStack> skrzynia) {}
 

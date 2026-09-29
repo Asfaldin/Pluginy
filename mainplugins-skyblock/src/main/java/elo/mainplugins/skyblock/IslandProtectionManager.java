@@ -10,6 +10,7 @@ import org.bukkit.Material;
 import org.bukkit.Tag;
 import org.bukkit.block.Block;
 import org.bukkit.block.Container;
+import org.bukkit.block.PistonMoveReaction;
 import org.bukkit.entity.EnderPearl;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LightningStrike;
@@ -28,10 +29,12 @@ import org.bukkit.event.block.BlockSpreadEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
+import org.bukkit.event.block.BlockFadeEvent;
 import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
+import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityCombustByEntityEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -265,14 +268,81 @@ public class IslandProtectionManager implements Listener {
         data.addBlockCount(event.getBlock().getType(), -1);
     }
 
+    /**
+     * Blok zniknął z wyspy nie z ręki gracza (wybuch, ogień, tłok, enderman, spadający piasek...) -
+     * odejmujemy go od wartości wyspy i od licznika limitów tak samo jak przy zwykłym zniszczeniu.
+     * Bez tego dało się nabijać topkę: postaw blok diamentów, wysadź, zbierz, postaw znowu.
+     */
+    private void blokZniknal(Block block, Material typ) {
+        if (typ.isAir()) return;
+        IslandData data = islandManager.znajdzWyspePod(block.getLocation());
+        if (data == null) return;
+        data.dodajDoWartosci(-islandManager.wartoscBloku(typ));
+        if (islandManager.getTuning().liczonyBlok(typ)) data.addBlockCount(typ, -1);
+    }
+
+    /** Blok pojawił się na wyspie nie z ręki gracza (np. wylądował spadający piasek) - dodajemy go. */
+    private void blokPojawilSie(Block block, Material typ) {
+        if (typ.isAir()) return;
+        IslandData data = islandManager.znajdzWyspePod(block.getLocation());
+        if (data == null) return;
+        data.dodajDoWartosci(islandManager.wartoscBloku(typ));
+        if (islandManager.getTuning().liczonyBlok(typ)) data.addBlockCount(typ, 1);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onWorthTrackEntityExplode(EntityExplodeEvent event) {
+        for (Block block : event.blockList()) blokZniknal(block, block.getType());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onWorthTrackBlockExplode(BlockExplodeEvent event) {
+        for (Block block : event.blockList()) blokZniknal(block, block.getType());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onWorthTrackBurn(BlockBurnEvent event) {
+        blokZniknal(event.getBlock(), event.getBlock().getType());
+    }
+
+    /** Tłok niszczy bloki, które się nie przesuwają (np. pochodnie); przesuwanie w obrębie wyspy nic nie zmienia. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onWorthTrackPiston(BlockPistonExtendEvent event) {
+        for (Block block : event.getBlocks()) {
+            if (block.getPistonMoveReaction() == PistonMoveReaction.BREAK) blokZniknal(block, block.getType());
+        }
+    }
+
+    /** Moby i fizyka: enderman zabiera/kładzie blok, piasek i żwir spadają i lądują, owca zjada trawę... */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onWorthTrackEntityChange(EntityChangeBlockEvent event) {
+        Material stary = event.getBlock().getType();
+        Material nowy = event.getTo();
+        if (stary == nowy) return;
+        blokZniknal(event.getBlock(), stary);
+        blokPojawilSie(event.getBlock(), nowy);
+    }
+
+    /** Topnienie lodu i śniegu, obumieranie koralowców itp. - blok zmienia się sam. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onWorthTrackFade(BlockFadeEvent event) {
+        Material stary = event.getBlock().getType();
+        Material nowy = event.getNewState().getType();
+        if (stary == nowy) return;
+        blokZniknal(event.getBlock(), stary);
+        blokPojawilSie(event.getBlock(), nowy);
+    }
+
     /** Limit bloków na wyspę (np. lejów) - dotyczy wszystkich, też właściciela. */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onLimitPlace(BlockPlaceEvent event) {
         Material typ = event.getBlock().getType();
-        int limit = islandManager.getTuning().limitBloku(typ);
-        if (limit <= 0) return;
+        if (islandManager.getTuning().limitBloku(typ) <= 0) return;
         IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
-        if (data == null || data.getBlockCount(typ) < limit) return;
+        if (data == null) return;
+        // Limit tej wyspy: zwykły plus wykupione ulepszenie limitów.
+        int limit = islandManager.getTuning().limitBloku(typ, data.getPoziomLimitow());
+        if (data.getBlockCount(typ) < limit) return;
         event.setCancelled(true);
         islandManager.msg(event.getPlayer(), "limit.block", "max", String.valueOf(limit));
     }

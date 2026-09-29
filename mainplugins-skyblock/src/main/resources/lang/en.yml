@@ -133,12 +133,14 @@ enter:
   default-name: "{owner}'s island"
 
 admin:
-  usage: "&eUsage: /@is tp <player> | usun <player> | rozmiar <player> <radius> | bank <player> [ustaw|dodaj <amount>]"
+  usage: "&eUsage: /@is tp <player> | usun <player> | rozmiar <player> <radius> | bank <player> [ustaw|dodaj <amount>] | recalc <player>"
   teleported: "&bTeleported to {player}'s island."
   deleted: "&aDeleted {player}'s island."
   deleted-notice: "&cAn admin deleted your island."
   size-set: "&a{player}'s island now has a radius of {size} blocks."
   bank: "&e{player}'s island bank: {balance}"
+  recalc-start: "&eRecounting the island of {player}..."
+  recalc-done: "&aIsland of {player} recounted: worth {worth} pts, block limit counters updated."
 
 visit:
   disabled: "&cVisiting islands is disabled on this server."
@@ -188,6 +190,9 @@ upgrade:
   border-done: "&aSuccess! The island area was expanded. New radius: {size} blocks."
   spawner-max: "&cThis stat is already at the maximum level!"
   spawner-done: "&aUpgraded to level {level}!"
+  max-level: "&cThis upgrade is already at the highest level."
+  members-done: "&aUpgraded! The island can now have {limit} players."
+  limits-done: "&aUpgraded! Island block limits are {percent}% higher."
 
 name:
   prompt: "&eType the new island name in chat (max {max} characters, or type '{cancel}'):"
@@ -260,6 +265,12 @@ gui:
     cost: "&aCost (from the island bank): {cost}"
     bank: "&eBank balance: {balance}"
     click: "&bClick to expand by {step} blocks!"
+    members-now: "&7Player limit: &e{limit}"
+    members-next: "&7After the upgrade: &a{limit}"
+    limits-now: "&7Block limits: &e+{percent}%"
+    limits-next: "&7After the upgrade: &a+{percent}%"
+    max-level: "&cHighest level reached!"
+    click-upgrade: "&bClick to upgrade"
   spawners:
     name: "&e&lSpawner: {type}"
     amount: "&7Amount: {level}/{max}"
@@ -270,8 +281,6 @@ gui:
     cost: "&aCost (from the island bank): {cost}"
     click: "&bClick to upgrade"
   members:
-    owner-name: "&6&l[OWNER] {player}"
-    owner-lore: "&7Island owner"
     admin-name: "&6&l[ADMIN] {player}"
     member-name: "&b&l{player}"
     role-admin: "&6Role: Administrator"
@@ -295,3 +304,289 @@ time:
   second-one: "second"
   second-few: "seconds"
   second-many: "seconds"
+
+# Names and descriptions of buttons in island windows (window -> button). Empty description line = none.
+help:
+  unknown: "&cThere is no such command. Type &e/is help&c to see them all."
+  lines:
+    - "&6&l=== Island commands ==="
+    - "&e/is &7- teleport to your island, creates one if you have none"
+    - "&e/is menu &7- island panel"
+    - "&e/is info &7- island information"
+    - "&e/is top &7- island ranking"
+    - "&e/is values &7- how many points blocks give"
+    - "&e/is home &7/ &e/is sethome &7- island home point"
+    - "&e/is invite <player> &7- invite to your island"
+    - "&e/is accept &7/ &e/is deny &7- answer an invite"
+    - "&e/is visit <player> &7- visit someone's island"
+    - "&e/is deposit <amount> &7/ &e/is withdraw <amount> &7- island bank"
+    - "&e/is upgrade &7- expanding and upgrades"
+    - "&e/is settings &7/ &e/is permissions &7- island settings"
+    - "&e/is members &7- member list"
+    - "&e/is biome [name] &7- biome list or change the island biome"
+    - "&e/is chat [message] &7- chat only for island members"
+    - "&e/is expel <player> &7/ &e/is ban <player> &7- visitors"
+    - "&e/is leave &7- leave the island"
+    - "&e/is usun &7- delete the island"
+
+info:
+  header: "&6&l=== Your island ==="
+
+values:
+  header: "&6&l=== Points for blocks ==="
+  line: "&7{block}: &e{points} pts"
+  none: "&7No blocks give points on this server."
+  footer: "&7A placed block adds points to the island worth in the ranking, a broken one takes them away."
+
+chat:
+  format: "&a[Island] &f{player}&7: &f{message}"
+  on: "&aIsland chat on. Only island members will see what you write. Type &e/is chat&a to turn it off."
+  off: "&7Island chat off, you are writing to everyone again."
+
+biome:
+  disabled: "&cChanging the biome is turned off on this server."
+  already: "&eThe island already has this biome."
+  changing: "&eChanging the island biome to {biome}..."
+  done: "&aDone! The island biome is now: {biome}."
+  list-header: "&6&l=== Island biomes ==="
+  list-line: "&7- {biome}&7: &e{cost}"
+  list-footer: "&7Type &e/is biome <name>&7, e.g. &e/is biome desert&7. Paid from the island bank."
+  unknown: "&cThere is no biome \"{name}\". Type &e/is biome&c to see the list."
+
+buttons:
+  panel-wyspy:
+    poprzednia-strona:
+      name: "&e« Previous page"
+      lore-1: ""
+      lore-2: ""
+    nastepna-strona:
+      name: "&eNext page »"
+      lore-1: ""
+      lore-2: ""
+    teleport:
+      name: "&a&lTeleport to Island"
+      lore-1: "&7Click to go back home"
+      lore-2: ""
+    ulepszenia:
+      name: "&6&lIsland Upgrades"
+      lore-1: "&7Increase your island size"
+      lore-2: ""
+    bank:
+      name: "&e&lIsland Bank"
+      lore-1: ""
+      lore-2: ""
+    info:
+      name: "&b&lIsland Info"
+      lore-1: ""
+      lore-2: ""
+    ustawienia:
+      name: "&9&lIsland Settings"
+      lore-1: "&7Border, building, PvP, visits, name..."
+      lore-2: "&7Click to manage"
+    permisje:
+      name: "&c&lPermissions"
+      lore-1: "&7What guests and members can do"
+      lore-2: "&7Click to manage"
+    topka:
+      name: "&6&lTop Islands"
+      lore-1: "&7Island ranking by worth"
+      lore-2: ""
+    usun-wyspe:
+      name: "&4&lDelete Island"
+      lore-1: "&7Warning: the island is gone for good!"
+      lore-2: ""
+    opusc-wyspe:
+      name: "&c&lLeave Island"
+      lore-1: "&7You give up your membership"
+      lore-2: ""
+    wroc-do-menu:
+      name: "&c&l« Back to Main Menu"
+      lore-1: ""
+      lore-2: ""
+    zamknij-panel:
+      name: "&c&lClose Panel"
+      lore-1: ""
+      lore-2: ""
+  permisje-wyspy:
+    poprzednia-strona:
+      name: "&e« Previous page"
+      lore-1: ""
+      lore-2: ""
+    nastepna-strona:
+      name: "&eNext page »"
+      lore-1: ""
+      lore-2: ""
+    zabieranie-itemow:
+      name: "&6&lItem Pickup"
+      lore-1: "&7Guests picking up items from the ground"
+      lore-2: ""
+    dostep-kontenerow:
+      name: "&e&lChests and Containers"
+      lore-1: "&7Guests opening chests, barrels etc."
+      lore-2: ""
+    interakcje:
+      name: "&b&lInteractions"
+      lore-1: "&7Doors, levers and buttons for guests"
+      lore-2: ""
+    rolnictwo-gosci:
+      name: "&a&lFarming"
+      lore-1: "&7Guests harvesting crops and breeding"
+      lore-2: ""
+    wiadra-gosci:
+      name: "&9&lBuckets"
+      lore-1: "&7Water and lava buckets for guests"
+      lore-2: ""
+    czlonkowie-budowanie:
+      name: "&a&lMembers: Building"
+      lore-1: "&7Whether regular members build and break"
+      lore-2: ""
+    czlonkowie-skrzynie:
+      name: "&e&lMembers: Chests"
+      lore-1: "&7Whether regular members open chests"
+      lore-2: ""
+    czlonkowie-zapraszanie:
+      name: "&b&lMembers: Inviting"
+      lore-1: "&7Whether regular members invite players"
+      lore-2: ""
+    czlonkowie-bank:
+      name: "&6&lMembers: Bank and Upgrades"
+      lore-1: "&7Withdrawals, expanding land, spawners"
+      lore-2: ""
+    powrot:
+      name: "&c&lBack to Island Panel"
+      lore-1: ""
+      lore-2: ""
+  ustawienia-wyspy:
+    poprzednia-strona:
+      name: "&e« Previous page"
+      lore-1: ""
+      lore-2: ""
+    nastepna-strona:
+      name: "&eNext page »"
+      lore-1: ""
+      lore-2: ""
+    wizualny-border:
+      name: "&9&lVisible Border"
+      lore-1: ""
+      lore-2: ""
+    budowanie-gosci:
+      name: "&a&lGuest Building"
+      lore-1: "&7Owner and members can always build"
+      lore-2: ""
+    pvp:
+      name: "&c&lPvP"
+      lore-1: ""
+      lore-2: ""
+    zabijanie-mobow-gosci:
+      name: "&4&lGuest Mob Killing"
+      lore-1: "&7Separate from spawn - who can hunt mobs"
+      lore-2: ""
+    odwiedziny:
+      name: "&b&lVisits"
+      lore-1: "&7Whether others can enter via /is visit"
+      lore-2: ""
+    nazwa-wyspy:
+      name: "&b&lIsland Name"
+      lore-1: ""
+      lore-2: ""
+    czlonkowie:
+      name: "&e&lIsland Members"
+      lore-1: ""
+      lore-2: ""
+    powrot:
+      name: "&c&lBack to Island Panel"
+      lore-1: ""
+      lore-2: ""
+  topka-wysp:
+    poprzednia-strona:
+      name: "&e« Previous page"
+      lore-1: ""
+      lore-2: ""
+    nastepna-strona:
+      name: "&eNext page »"
+      lore-1: ""
+      lore-2: ""
+    powrot:
+      name: "&c&lBack to Island Panel"
+      lore-1: ""
+      lore-2: ""
+  ulepszenia-wyspy:
+    ulepszenie-czlonkow:
+      name: "&b&lMore players"
+      lore-1: "&7Higher player limit on the island"
+      lore-2: ""
+    ulepszenie-limitow:
+      name: "&6&lHigher block limits"
+      lore-1: "&7More hoppers, pistons and redstone"
+      lore-2: ""
+    poprzednia-strona:
+      name: "&e« Previous page"
+      lore-1: ""
+      lore-2: ""
+    nastepna-strona:
+      name: "&eNext page »"
+      lore-1: ""
+      lore-2: ""
+    powieksz-teren:
+      name: "&e&lExpand Land"
+      lore-1: ""
+      lore-2: ""
+    ulepszenie-spawnerow:
+      name: "&d&lSpawner Upgrades"
+      lore-1: "&7Increase mob spawn speed and amount"
+      lore-2: "&7on your island"
+    powrot:
+      name: "&c&lBack to Menu"
+      lore-1: ""
+      lore-2: ""
+  ulepszenie-spawnerow:
+    poprzednia-strona:
+      name: "&e« Previous page"
+      lore-1: ""
+      lore-2: ""
+    nastepna-strona:
+      name: "&eNext page »"
+      lore-1: ""
+      lore-2: ""
+    powrot:
+      name: "&c&lBack to Upgrades"
+      lore-1: ""
+      lore-2: ""
+  spawner-podmenu:
+    poprzednia-strona:
+      name: "&e« Previous page"
+      lore-1: ""
+      lore-2: ""
+    nastepna-strona:
+      name: "&eNext page »"
+      lore-1: ""
+      lore-2: ""
+    ilosc:
+      name: "&e&lAmount"
+      lore-1: "&7More mobs per spawn cycle"
+      lore-2: ""
+    szybkosc:
+      name: "&e&lSpeed"
+      lore-1: "&7Shorter time between spawn cycles"
+      lore-2: ""
+    powrot:
+      name: "&c&lBack to Spawner Upgrades"
+      lore-1: ""
+      lore-2: ""
+  czlonkowie-wyspy:
+    poprzednia-strona:
+      name: "&e« Previous page"
+      lore-1: ""
+      lore-2: ""
+    nastepna-strona:
+      name: "&eNext page »"
+      lore-1: ""
+      lore-2: ""
+    zapros:
+      name: "&a&lInvite Player"
+      lore-1: "&7Type the nick in chat after clicking"
+      lore-2: ""
+    powrot:
+      name: "&c&lBack to Island Settings"
+      lore-1: ""
+      lore-2: ""

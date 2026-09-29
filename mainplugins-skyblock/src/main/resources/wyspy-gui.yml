@@ -3,18 +3,20 @@
 # patrz wyspy-config.yml. Przeladowanie na zywo, bez restartu serwera: /@reloadwyspy
 #
 # Kazdy ekran: { size, tlo (opcjonalny material tla, domyslnie GRAY_STAINED_GLASS_PANE; AIR = bez tla),
-#                przyciski: lista {slot, akcja, material, material-wylaczone?, nazwa, kolor?, lore} }
+#                tlo-pola (opcjonalna lista pol z tlem, np. [0, 1, 2]; brak = tlo na wszystkich wolnych polach),
+#                przyciski: lista {slot, akcja, material, material-wylaczone?} }
+# Nazwy i opisy przyciskow sa w lang/<jezyk>.yml, sekcja "buttons" (okno -> akcja -> name, lore-1, lore-2).
 # "akcja" to identyfikator zachowania (co sie dzieje po kliknieciu) - NIE zmieniaj tych
-# identyfikatorow, tylko slot/material/nazwa/kolor/lore dookola nich. Przeniesienie przycisku
+# identyfikatorow, tylko slot/material dookola nich. Przeniesienie przycisku
 # na inny slot automatycznie przenosi tez obsluge kliku (klik jest routowany po akcji, nie po
 # na sztywno wpisanym numerze slotu).
 #
-# "kolor" to kolor tytulu przycisku (nazwa NamedTextColor, np. RED, DARK_RED, AQUA,
-# LIGHT_PURPLE...) - opcjonalny, domyslnie YELLOW przy braku/zlej wartosci.
-#
 # "material-wylaczone" dotyczy WYLACZNIE przycisku-przelacznika (dwustanowego): "material"
 # to ikona w stanie wlaczonym, "material-wylaczone" w stanie wylaczonym. Linia "Stan: ..."
-# i "Kliknij, aby przelaczyc" sa dopisywane automatycznie pod lore i NIE trzeba ich podawac.
+# i "Kliknij, aby przelaczyc" sa dopisywane automatycznie pod opisem i NIE trzeba ich podawac.
+#
+# Strony (kazde okno): "strony: 2" + przyciski POPRZEDNIA_STRONA / NASTEPNA_STRONA; przycisk
+# z "strona: 2" stoi tylko na 2. stronie, bez "strona" - na kazdej. Strzalki widac tylko, gdy obok jest strona.
 #
 # Niektore przyciski maja DWA warianty pod tym samym slotem (np. Usun/Opusc Wyspe, Wroc do
 # Menu/Zamknij Panel) - serwer sam wybiera wlasciwy wariant w zaleznosci od stanu gracza
@@ -24,106 +26,81 @@
 panel-wyspy:
   size: 54
   przyciski:
-    - { slot: 10, akcja: TELEPORT, material: OAK_DOOR, nazwa: "Teleport na Wyspę", kolor: GREEN,
-        lore: ["Kliknij, aby wrócić do siebie"] }
-    - { slot: 12, akcja: ULEPSZENIA, material: EXPERIENCE_BOTTLE, nazwa: "Ulepszenia Wyspy", kolor: GOLD,
-        lore: ["Zwiększ rozmiar wyspy"] }
-    - { slot: 14, akcja: BANK, material: GOLD_INGOT, nazwa: "Bank Wyspy", kolor: YELLOW, lore: [] }
-    - { slot: 16, akcja: INFO, material: PAPER, nazwa: "Informacje o Wyspie", kolor: AQUA, lore: [] }
-    - { slot: 20, akcja: USTAWIENIA, material: COMPARATOR, nazwa: "Ustawienia Wyspy", kolor: BLUE,
-        lore: ["Border, budowanie, PvP, odwiedziny, nazwa...", "Kliknij, aby zarządzać"] }
-    - { slot: 22, akcja: PERMISJE, material: LEVER, nazwa: "Permisje", kolor: RED,
-        lore: ["Co mogą goście i członkowie", "Kliknij, aby zarządzać"] }
-    - { slot: 24, akcja: TOPKA, material: GOLDEN_HELMET, nazwa: "Topka Wysp", kolor: GOLD,
-        lore: ["Ranking wysp według wartości"] }
-    - { slot: 53, akcja: USUN_WYSPE, material: TNT, nazwa: "Usuń Wyspę", kolor: DARK_RED,
-        lore: ["Ostrzeżenie: Wyspa zniknie bezpowrotnie!"] }
-    - { slot: 53, akcja: OPUSC_WYSPE, material: OAK_BOAT, nazwa: "Opuść Wyspę", kolor: RED,
-        lore: ["Samodzielnie zrezygnujesz z członkostwa"] }
-    - { slot: 49, akcja: WROC_DO_MENU, material: NETHER_STAR, nazwa: "« Wróć do Menu głównego", kolor: RED, lore: [] }
-    - { slot: 49, akcja: ZAMKNIJ_PANEL, material: BARRIER, nazwa: "Zamknij Panel", kolor: RED, lore: [] }
+    - { slot: 10, akcja: TELEPORT, material: OAK_DOOR }
+    - { slot: 12, akcja: ULEPSZENIA, material: EXPERIENCE_BOTTLE }
+    - { slot: 14, akcja: BANK, material: GOLD_INGOT }
+    - { slot: 16, akcja: INFO, material: PAPER }
+    - { slot: 20, akcja: USTAWIENIA, material: COMPARATOR }
+    - { slot: 22, akcja: PERMISJE, material: LEVER }
+    - { slot: 24, akcja: TOPKA, material: GOLDEN_HELMET }
+    - { slot: 53, akcja: USUN_WYSPE, material: TNT }
+    - { slot: 53, akcja: OPUSC_WYSPE, material: OAK_BOAT }
+    - { slot: 49, akcja: WROC_DO_MENU, material: NETHER_STAR }
+    - { slot: 49, akcja: ZAMKNIJ_PANEL, material: BARRIER }
 
 permisje-wyspy:
-  size: 36
+  size: 45
   przyciski:
-    - { slot: 11, akcja: ZABIERANIE_ITEMOW, material: HOPPER, material-wylaczone: BARRIER, kolor: GOLD,
-        nazwa: "Zabieranie Itemów", lore: ["Podnoszenie przedmiotów z ziemi przez gości"] }
-    - { slot: 12, akcja: DOSTEP_KONTENEROW, material: CHEST, material-wylaczone: IRON_DOOR, kolor: YELLOW,
-        nazwa: "Skrzynie i Kontenery", lore: ["Otwieranie skrzyń/beczek itp. przez gości"] }
-    - { slot: 13, akcja: INTERAKCJE, material: OAK_DOOR, material-wylaczone: OBSIDIAN, kolor: AQUA,
-        nazwa: "Drzwi i Mechanizmy", lore: ["Drzwi/dźwignie/przyciski dla gości"] }
-    - { slot: 14, akcja: ROLNICTWO_GOSCI, material: WHEAT, material-wylaczone: DEAD_BUSH, kolor: GREEN,
-        nazwa: "Plony i Zwierzęta", lore: ["Zbieranie plonów i hodowla przez gości"] }
-    - { slot: 15, akcja: WIADRA_GOSCI, material: WATER_BUCKET, material-wylaczone: BUCKET, kolor: BLUE,
-        nazwa: "Wiadra", lore: ["Woda i lawa w wiadrze dla gości"] }
-    - { slot: 20, akcja: CZLONKOWIE_BUDOWANIE, material: IRON_PICKAXE, material-wylaczone: BARRIER, kolor: GREEN,
-        nazwa: "Członkowie: Budowanie", lore: ["Czy zwykli członkowie budują i niszczą"] }
-    - { slot: 21, akcja: CZLONKOWIE_SKRZYNIE, material: CHEST, material-wylaczone: BARRIER, kolor: YELLOW,
-        nazwa: "Członkowie: Skrzynie", lore: ["Czy zwykli członkowie otwierają skrzynie"] }
-    - { slot: 22, akcja: CZLONKOWIE_ZAPRASZANIE, material: WRITABLE_BOOK, material-wylaczone: BARRIER, kolor: AQUA,
-        nazwa: "Członkowie: Zapraszanie", lore: ["Czy zwykli członkowie zapraszają graczy"] }
-    - { slot: 23, akcja: CZLONKOWIE_BANK, material: GOLD_INGOT, material-wylaczone: BARRIER, kolor: GOLD,
-        nazwa: "Członkowie: Bank i Ulepszenia", lore: ["Wypłaty, powiększanie terenu, spawnery"] }
-    - { slot: 31, akcja: POWROT, material: ARROW, nazwa: "Powrót do Panelu Wyspy", kolor: RED, lore: [] }
+    - { slot: 11, akcja: ZABIERANIE_ITEMOW, material: HOPPER, material-wylaczone: BARRIER }
+    - { slot: 12, akcja: DOSTEP_KONTENEROW, material: CHEST, material-wylaczone: IRON_DOOR }
+    - { slot: 13, akcja: INTERAKCJE, material: OAK_DOOR, material-wylaczone: OBSIDIAN }
+    - { slot: 14, akcja: ROLNICTWO_GOSCI, material: WHEAT, material-wylaczone: DEAD_BUSH }
+    - { slot: 15, akcja: WIADRA_GOSCI, material: WATER_BUCKET, material-wylaczone: BUCKET }
+    - { slot: 20, akcja: CZLONKOWIE_BUDOWANIE, material: IRON_PICKAXE, material-wylaczone: BARRIER }
+    - { slot: 21, akcja: CZLONKOWIE_SKRZYNIE, material: CHEST, material-wylaczone: BARRIER }
+    - { slot: 22, akcja: CZLONKOWIE_ZAPRASZANIE, material: WRITABLE_BOOK, material-wylaczone: BARRIER }
+    - { slot: 23, akcja: CZLONKOWIE_BANK, material: GOLD_INGOT, material-wylaczone: BARRIER }
+    - { slot: 40, akcja: POWROT, material: ARROW }
 
 ustawienia-wyspy:
   size: 45
   przyciski:
-    - { slot: 10, akcja: WIZUALNY_BORDER, material: BLUE_STAINED_GLASS, material-wylaczone: RED_STAINED_GLASS, kolor: BLUE,
-        nazwa: "Wizualny Border", lore: [] }
-    - { slot: 11, akcja: BUDOWANIE_GOSCI, material: GRASS_BLOCK, material-wylaczone: BEDROCK, kolor: GREEN,
-        nazwa: "Budowanie dla Gości", lore: ["Właściciel i członkowie budują zawsze"] }
-    - { slot: 12, akcja: PVP, material: IRON_SWORD, material-wylaczone: SHIELD, kolor: RED,
-        nazwa: "PvP na Wyspie", lore: [] }
-    - { slot: 19, akcja: ZABIJANIE_MOBOW_GOSCI, material: NETHERITE_SWORD, material-wylaczone: GOLDEN_APPLE, kolor: DARK_RED,
-        nazwa: "Zabijanie Mobów przez Gości", lore: ["Osobne od spawnu - kto może polować na moby"] }
-    - { slot: 15, akcja: ODWIEDZINY, material: ENDER_PEARL, material-wylaczone: BARRIER, kolor: AQUA,
-        nazwa: "Odwiedziny", lore: ["Czy inni mogą wejść przez /is odwiedz"] }
-    - { slot: 21, akcja: NAZWA_WYSPY, material: NAME_TAG, nazwa: "Nazwa Wyspy", kolor: AQUA, lore: [] }
-    - { slot: 22, akcja: CZLONKOWIE, material: PLAYER_HEAD, nazwa: "Członkowie Wyspy", kolor: YELLOW, lore: [] }
-    - { slot: 40, akcja: POWROT, material: ARROW, nazwa: "Powrót do Panelu Wyspy", kolor: RED, lore: [] }
+    - { slot: 11, akcja: WIZUALNY_BORDER, material: BLUE_STAINED_GLASS, material-wylaczone: RED_STAINED_GLASS }
+    - { slot: 12, akcja: BUDOWANIE_GOSCI, material: GRASS_BLOCK, material-wylaczone: BEDROCK }
+    - { slot: 13, akcja: PVP, material: IRON_SWORD, material-wylaczone: SHIELD }
+    - { slot: 14, akcja: ZABIJANIE_MOBOW_GOSCI, material: NETHERITE_SWORD, material-wylaczone: GOLDEN_APPLE }
+    - { slot: 15, akcja: ODWIEDZINY, material: ENDER_PEARL, material-wylaczone: BARRIER }
+    - { slot: 21, akcja: NAZWA_WYSPY, material: NAME_TAG }
+    - { slot: 23, akcja: CZLONKOWIE, material: PLAYER_HEAD }
+    - { slot: 40, akcja: POWROT, material: ARROW }
 
 topka-wysp:
   size: 54
   # Sloty rankingu w kolejnosci miejsc (1., 2., 3. ...) - dlugosc listy = limit rankingu.
-  sloty-rankingu: [10, 11, 12, 13, 14, 15, 16, 19, 20, 21]
+  sloty-rankingu: [10, 12, 14, 16, 28, 30, 32, 34, 46, 48]
   przyciski:
-    - { slot: 49, akcja: POWROT, material: ARROW, nazwa: "Powrót do Panelu Wyspy", kolor: RED, lore: [] }
+    - { slot: 51, akcja: POWROT, material: SPECTRAL_ARROW }
 
 ulepszenia-wyspy:
   size: 27
   przyciski:
-    - { slot: 11, akcja: POWIEKSZ_TEREN, material: GRASS_BLOCK, material-wylaczone: BEDROCK, kolor: YELLOW,
-        nazwa: "Powiększ Teren Wyspy", lore: [] }
-    - { slot: 13, akcja: ULEPSZENIE_SPAWNEROW, material: SPAWNER, nazwa: "Ulepszenie Spawnerów", kolor: LIGHT_PURPLE,
-        lore: ["Zwiększ tempo i ilość spawnu mobków", "na Twojej wyspie"] }
-    - { slot: 15, akcja: POWROT, material: ARROW, nazwa: "Powrót do Menu", kolor: RED, lore: [] }
+    - { slot: 10, akcja: POWIEKSZ_TEREN, material: GRASS_BLOCK, material-wylaczone: BEDROCK }
+    - { slot: 12, akcja: ULEPSZENIE_CZLONKOW, material: PLAYER_HEAD }
+    - { slot: 14, akcja: ULEPSZENIE_LIMITOW, material: HOPPER }
+    - { slot: 16, akcja: ULEPSZENIE_SPAWNEROW, material: SPAWNER }
+    - { slot: 22, akcja: POWROT, material: ARROW }
 
 ulepszenie-spawnerow:
   size: 54
-  # Sloty w kolejnosci typow spawnerow z wyspy-config.yml (spawnery.typy).
+  # Wolne miejsca na spawnery, po kolei. Spawner moze miec tez stale miejsce w "spawnery" (id: pole
+  # albo id: {slot: pole, strona: 2}) i wtedy stoi tam zawsze; "ukryte: [id]" chowa spawner z okna.
   sloty-typow: [9, 11, 13, 15, 17, 28, 30, 32, 34]
   przyciski:
-    - { slot: 49, akcja: POWROT, material: ARROW, nazwa: "Powrót do Ulepszeń", kolor: RED, lore: [] }
+    - { slot: 49, akcja: POWROT, material: ARROW }
 
 spawner-podmenu:
   size: 27
   przyciski:
     # "material" ponizej jest ignorowany dla ILOSC - ikona zawsze bierze sie z ikony
     # aktualnie otwartego typu spawnera (wyspy-config.yml: spawnery.typy[].ikona).
-    - { slot: 11, akcja: ILOSC, material: CLOCK, nazwa: "Ilość", kolor: YELLOW,
-        lore: ["Więcej mobków na jeden cykl spawnu"] }
-    - { slot: 15, akcja: SZYBKOSC, material: CLOCK, nazwa: "Szybkość", kolor: YELLOW,
-        lore: ["Krótszy odstęp między cyklami spawnu"] }
-    - { slot: 22, akcja: POWROT, material: ARROW, nazwa: "Powrót do Ulepszeń Spawnerów", kolor: RED, lore: [] }
+    - { slot: 11, akcja: ILOSC, material: CLOCK }
+    - { slot: 15, akcja: SZYBKOSC, material: CLOCK }
+    - { slot: 22, akcja: POWROT, material: ARROW }
 
 czlonkowie-wyspy:
-  size: 54
-  # Slot karty wlasciciela (nieklikalny) i zakres slotow na liste czlonkow.
-  slot-wlasciciela: 0
-  pierwszy-slot-czlonka: 1
-  ostatni-slot-czlonka: 44
+  size: 36
+  # Pola na glowki czlonkow wyspy, po kolei (wlasciciela tu nie ma).
+  sloty-czlonkow: [11, 12, 13, 14, 15]
   przyciski:
-    - { slot: 53, akcja: ZAPROS, material: EMERALD, nazwa: "Zaproś gracza", kolor: GREEN,
-        lore: ["Wpisz nick na czacie po kliknięciu"] }
-    - { slot: 49, akcja: POWROT, material: ARROW, nazwa: "Powrót do Ustawień Wyspy", kolor: RED, lore: [] }
+    - { slot: 35, akcja: ZAPROS, material: EMERALD }
+    - { slot: 31, akcja: POWROT, material: ARROW }

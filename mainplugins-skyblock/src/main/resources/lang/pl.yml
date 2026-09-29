@@ -133,12 +133,14 @@ enter:
   default-name: "Wyspa gracza {owner}"
 
 admin:
-  usage: "&eUżycie: /@is tp <gracz> | usun <gracz> | rozmiar <gracz> <promień> | bank <gracz> [ustaw|dodaj <kwota>]"
+  usage: "&eUżycie: /@is tp <gracz> | usun <gracz> | rozmiar <gracz> <promień> | bank <gracz> [ustaw|dodaj <kwota>] | przelicz <gracz>"
   teleported: "&bTeleport na wyspę gracza {player}."
   deleted: "&aUsunięto wyspę gracza {player}."
   deleted-notice: "&cAdmin usunął Twoją wyspę."
   size-set: "&aWyspa gracza {player} ma teraz promień {size} bloków."
   bank: "&eBank wyspy gracza {player}: {balance}"
+  recalc-start: "&eLiczę wartość wyspy gracza {player} od nowa..."
+  recalc-done: "&aWyspa gracza {player} przeliczona: wartość {worth} pkt, liczniki limitów zaktualizowane."
 
 visit:
   disabled: "&cOdwiedzanie wysp jest wyłączone na tym serwerze."
@@ -188,6 +190,9 @@ upgrade:
   border-done: "&aSukces! Powiększono teren wyspy. Nowy promień: {size} bloków."
   spawner-max: "&cTa statystyka ma już maksymalny poziom!"
   spawner-done: "&aUlepszono do poziomu {level}!"
+  max-level: "&cTo ulepszenie ma już najwyższy poziom."
+  members-done: "&aUlepszono! Na wyspie może być teraz {limit} graczy."
+  limits-done: "&aUlepszono! Limity bloków na wyspie są wyższe o {percent}%."
 
 name:
   prompt: "&eWpisz na czacie nową nazwę wyspy (max {max} znaków, lub wpisz '{cancel}'):"
@@ -211,14 +216,14 @@ protection:
 gui:
   title:
     choose-template: "&2&lWybierz swoją wyspę"
-    panel: "&2&lPanel Wyspy"
-    permissions: "&c&lPermisje Wyspy"
-    settings: "&9&lUstawienia Wyspy"
-    top: "&6&lTopka Wysp"
-    upgrades: "&6&lUlepszenia Wyspy"
-    spawners: "&d&lUlepszenie Spawnerów"
+    panel: "&2&lPanel wyspy"
+    permissions: "&c&lPermisje wyspy"
+    settings: "&9&lUstawienia wyspy"
+    top: "&6&lTopka wysp"
+    upgrades: "&6&lUlepszenia wyspy"
+    spawners: "&d&lUlepszenie spawnerów"
     spawner: "&d&lSpawner: {type}"
-    members: "&e&lCzłonkowie Wyspy"
+    members: "&e&lCzłonkowie wyspy"
   choose-template:
     click: "&aKliknij, aby założyć tę wyspę"
   toggle:
@@ -260,6 +265,12 @@ gui:
     cost: "&aKoszt (z banku wyspy): {cost}"
     bank: "&eStan banku: {balance}"
     click: "&bKliknij, aby powiększyć o {step} bloków!"
+    members-now: "&7Limit graczy: &e{limit}"
+    members-next: "&7Po ulepszeniu: &a{limit}"
+    limits-now: "&7Limity bloków: &e+{percent}%"
+    limits-next: "&7Po ulepszeniu: &a+{percent}%"
+    max-level: "&cOsiągnięto najwyższy poziom!"
+    click-upgrade: "&bKliknij, aby ulepszyć"
   spawners:
     name: "&e&lSpawner: {type}"
     amount: "&7Ilość: {level}/{max}"
@@ -270,8 +281,6 @@ gui:
     cost: "&aKoszt (z banku wyspy): {cost}"
     click: "&bKliknij, aby ulepszyć"
   members:
-    owner-name: "&6&l[WŁAŚCICIEL] {player}"
-    owner-lore: "&7Właściciel wyspy"
     admin-name: "&6&l[ADMIN] {player}"
     member-name: "&b&l{player}"
     role-admin: "&6Rola: Administrator"
@@ -295,3 +304,289 @@ time:
   second-one: "sekundę"
   second-few: "sekundy"
   second-many: "sekund"
+
+# Nazwy i opisy przycisków w oknach wysp (okno -> przycisk). Pusta linijka opisu = brak.
+help:
+  unknown: "&cNie ma takiej komendy. Wpisz &e/is pomoc&c, żeby zobaczyć wszystkie."
+  lines:
+    - "&6&l=== Komendy wyspy ==="
+    - "&e/is &7- teleport na wyspę, bez wyspy zakłada nową"
+    - "&e/is menu &7- panel wyspy"
+    - "&e/is info &7- informacje o wyspie"
+    - "&e/is topka &7- ranking wysp"
+    - "&e/is wartosci &7- ile punktów dają bloki"
+    - "&e/is dom &7/ &e/is ustawdom &7- punkt powrotu na wyspę"
+    - "&e/is zapros <gracz> &7- zaproszenie na wyspę"
+    - "&e/is akceptuj &7/ &e/is odrzuc &7- odpowiedź na zaproszenie"
+    - "&e/is odwiedz <gracz> &7- odwiedziny na cudzej wyspie"
+    - "&e/is wplac <kwota> &7/ &e/is wyplac <kwota> &7- bank wyspy"
+    - "&e/is ulepszenia &7- powiększanie i ulepszenia"
+    - "&e/is ustawienia &7/ &e/is permisje &7- ustawienia wyspy"
+    - "&e/is czlonkowie &7- lista członków"
+    - "&e/is biom [nazwa] &7- lista biomów albo zmiana biomu wyspy"
+    - "&e/is czat [wiadomość] &7- czat tylko dla członków wyspy"
+    - "&e/is wypros <gracz> &7/ &e/is zbanuj <gracz> &7- goście"
+    - "&e/is opusc &7- opuszczenie wyspy"
+    - "&e/is usun &7- usunięcie wyspy"
+
+info:
+  header: "&6&l=== Twoja wyspa ==="
+
+values:
+  header: "&6&l=== Punkty za bloki ==="
+  line: "&7{block}: &e{points} pkt"
+  none: "&7Na tym serwerze żadne bloki nie dają punktów."
+  footer: "&7Postawiony blok dodaje punkty do wartości wyspy w topce, zniszczony je odejmuje."
+
+chat:
+  format: "&a[Wyspa] &f{player}&7: &f{message}"
+  on: "&aCzat wyspy włączony. To, co napiszesz, zobaczą tylko członkowie wyspy. Wpisz &e/is czat&a, żeby wyłączyć."
+  off: "&7Czat wyspy wyłączony, piszesz znowu do wszystkich."
+
+biome:
+  disabled: "&cZmiana biomu jest wyłączona na tym serwerze."
+  already: "&eTa wyspa ma już ten biom."
+  changing: "&eZmieniam biom wyspy na {biome}..."
+  done: "&aGotowe! Wyspa ma teraz biom: {biome}."
+  list-header: "&6&l=== Biomy wyspy ==="
+  list-line: "&7- {biome}&7: &e{cost}"
+  list-footer: "&7Wpisz &e/is biom <nazwa>&7, np. &e/is biom pustynia&7. Płaci się z banku wyspy."
+  unknown: "&cNie ma biomu „{name}”. Wpisz &e/is biom&c, żeby zobaczyć listę."
+
+buttons:
+  panel-wyspy:
+    poprzednia-strona:
+      name: "&e« Poprzednia strona"
+      lore-1: ""
+      lore-2: ""
+    nastepna-strona:
+      name: "&eNastępna strona »"
+      lore-1: ""
+      lore-2: ""
+    teleport:
+      name: "&a&lTeleport na wyspę"
+      lore-1: "&7Kliknij, aby wrócić do siebie"
+      lore-2: ""
+    ulepszenia:
+      name: "&6&lUlepszenia wyspy"
+      lore-1: "&7Zwiększ rozmiar wyspy"
+      lore-2: ""
+    bank:
+      name: "&e&lBank wyspy"
+      lore-1: ""
+      lore-2: ""
+    info:
+      name: "&b&lInformacje o wyspie"
+      lore-1: ""
+      lore-2: ""
+    ustawienia:
+      name: "&9&lUstawienia wyspy"
+      lore-1: "&7Border, budowanie, PvP, odwiedziny, nazwa..."
+      lore-2: "&7Kliknij, aby zarządzać"
+    permisje:
+      name: "&c&lPermisje"
+      lore-1: "&7Co mogą goście i członkowie"
+      lore-2: "&7Kliknij, aby zarządzać"
+    topka:
+      name: "&6&lTopka wysp"
+      lore-1: "&7Ranking wysp według wartości"
+      lore-2: ""
+    usun-wyspe:
+      name: "&4&lUsuń wyspę"
+      lore-1: "&7Ostrzeżenie: Wyspa zniknie bezpowrotnie!"
+      lore-2: ""
+    opusc-wyspe:
+      name: "&c&lOpuść wyspę"
+      lore-1: "&7Samodzielnie zrezygnujesz z członkostwa"
+      lore-2: ""
+    wroc-do-menu:
+      name: "&c&l« Wróć do menu głównego"
+      lore-1: ""
+      lore-2: ""
+    zamknij-panel:
+      name: "&c&lZamknij panel"
+      lore-1: ""
+      lore-2: ""
+  permisje-wyspy:
+    poprzednia-strona:
+      name: "&e« Poprzednia strona"
+      lore-1: ""
+      lore-2: ""
+    nastepna-strona:
+      name: "&eNastępna strona »"
+      lore-1: ""
+      lore-2: ""
+    zabieranie-itemow:
+      name: "&6&lZabieranie itemów"
+      lore-1: "&7Podnoszenie przedmiotów z ziemi przez gości"
+      lore-2: ""
+    dostep-kontenerow:
+      name: "&e&lSkrzynie i kontenery"
+      lore-1: "&7Otwieranie skrzyń/beczek itp. przez gości"
+      lore-2: ""
+    interakcje:
+      name: "&b&lDrzwi i mechanizmy"
+      lore-1: "&7Drzwi/dźwignie/przyciski dla gości"
+      lore-2: ""
+    rolnictwo-gosci:
+      name: "&a&lPlony i zwierzęta"
+      lore-1: "&7Zbieranie plonów i hodowla przez gości"
+      lore-2: ""
+    wiadra-gosci:
+      name: "&9&lWiadra"
+      lore-1: "&7Woda i lawa w wiadrze dla gości"
+      lore-2: ""
+    czlonkowie-budowanie:
+      name: "&a&lCzłonkowie: budowanie"
+      lore-1: "&7Czy zwykli członkowie budują i niszczą"
+      lore-2: ""
+    czlonkowie-skrzynie:
+      name: "&e&lCzłonkowie: skrzynie"
+      lore-1: "&7Czy zwykli członkowie otwierają skrzynie"
+      lore-2: ""
+    czlonkowie-zapraszanie:
+      name: "&b&lCzłonkowie: zapraszanie"
+      lore-1: "&7Czy zwykli członkowie zapraszają graczy"
+      lore-2: ""
+    czlonkowie-bank:
+      name: "&6&lCzłonkowie: bank i ulepszenia"
+      lore-1: "&7Wypłaty, powiększanie terenu, spawnery"
+      lore-2: ""
+    powrot:
+      name: "&c&lPowrót do panelu wyspy"
+      lore-1: ""
+      lore-2: ""
+  ustawienia-wyspy:
+    poprzednia-strona:
+      name: "&e« Poprzednia strona"
+      lore-1: ""
+      lore-2: ""
+    nastepna-strona:
+      name: "&eNastępna strona »"
+      lore-1: ""
+      lore-2: ""
+    wizualny-border:
+      name: "&9&lWizualny border"
+      lore-1: ""
+      lore-2: ""
+    budowanie-gosci:
+      name: "&a&lBudowanie dla gości"
+      lore-1: "&7Właściciel i członkowie budują zawsze"
+      lore-2: ""
+    pvp:
+      name: "&c&lPvP na wyspie"
+      lore-1: ""
+      lore-2: ""
+    zabijanie-mobow-gosci:
+      name: "&4&lZabijanie mobów przez gości"
+      lore-1: "&7Osobne od spawnu - kto może polować na moby"
+      lore-2: ""
+    odwiedziny:
+      name: "&b&lOdwiedziny"
+      lore-1: "&7Czy inni mogą wejść przez /is odwiedz"
+      lore-2: ""
+    nazwa-wyspy:
+      name: "&b&lNazwa wyspy"
+      lore-1: ""
+      lore-2: ""
+    czlonkowie:
+      name: "&e&lCzłonkowie wyspy"
+      lore-1: ""
+      lore-2: ""
+    powrot:
+      name: "&c&lPowrót do panelu wyspy"
+      lore-1: ""
+      lore-2: ""
+  topka-wysp:
+    poprzednia-strona:
+      name: "&e« Poprzednia strona"
+      lore-1: ""
+      lore-2: ""
+    nastepna-strona:
+      name: "&eNastępna strona »"
+      lore-1: ""
+      lore-2: ""
+    powrot:
+      name: "&c&lPowrót do panelu wyspy"
+      lore-1: ""
+      lore-2: ""
+  ulepszenia-wyspy:
+    ulepszenie-czlonkow:
+      name: "&b&lWięcej graczy"
+      lore-1: "&7Większy limit graczy na wyspie"
+      lore-2: ""
+    ulepszenie-limitow:
+      name: "&6&lWyższe limity bloków"
+      lore-1: "&7Więcej lejów, tłoków i redstone"
+      lore-2: ""
+    poprzednia-strona:
+      name: "&e« Poprzednia strona"
+      lore-1: ""
+      lore-2: ""
+    nastepna-strona:
+      name: "&eNastępna strona »"
+      lore-1: ""
+      lore-2: ""
+    powieksz-teren:
+      name: "&e&lPowiększ teren wyspy"
+      lore-1: ""
+      lore-2: ""
+    ulepszenie-spawnerow:
+      name: "&d&lUlepszenie spawnerów"
+      lore-1: "&7Zwiększ tempo i ilość spawnu mobków"
+      lore-2: "&7na Twojej wyspie"
+    powrot:
+      name: "&c&lPowrót do menu"
+      lore-1: ""
+      lore-2: ""
+  ulepszenie-spawnerow:
+    poprzednia-strona:
+      name: "&e« Poprzednia strona"
+      lore-1: ""
+      lore-2: ""
+    nastepna-strona:
+      name: "&eNastępna strona »"
+      lore-1: ""
+      lore-2: ""
+    powrot:
+      name: "&c&lPowrót do ulepszeń"
+      lore-1: ""
+      lore-2: ""
+  spawner-podmenu:
+    poprzednia-strona:
+      name: "&e« Poprzednia strona"
+      lore-1: ""
+      lore-2: ""
+    nastepna-strona:
+      name: "&eNastępna strona »"
+      lore-1: ""
+      lore-2: ""
+    ilosc:
+      name: "&e&lIlość"
+      lore-1: "&7Więcej mobków na jeden cykl spawnu"
+      lore-2: ""
+    szybkosc:
+      name: "&e&lSzybkość"
+      lore-1: "&7Krótszy odstęp między cyklami spawnu"
+      lore-2: ""
+    powrot:
+      name: "&c&lPowrót do ulepszeń spawnerów"
+      lore-1: ""
+      lore-2: ""
+  czlonkowie-wyspy:
+    poprzednia-strona:
+      name: "&e« Poprzednia strona"
+      lore-1: ""
+      lore-2: ""
+    nastepna-strona:
+      name: "&eNastępna strona »"
+      lore-1: ""
+      lore-2: ""
+    zapros:
+      name: "&a&lZaproś gracza"
+      lore-1: "&7Wpisz nick na czacie po kliknięciu"
+      lore-2: ""
+    powrot:
+      name: "&c&lPowrót do ustawień wyspy"
+      lore-1: ""
+      lore-2: ""

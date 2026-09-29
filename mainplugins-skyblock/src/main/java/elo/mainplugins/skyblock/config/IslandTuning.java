@@ -5,6 +5,7 @@ import org.bukkit.Material;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Cała liczbowa/danych konfiguracja systemu wysp wczytana z wyspy-config.yml (patrz
@@ -36,30 +37,46 @@ public record IslandTuning(
         int kosztBazowySzybkoscDomyslny,
         String nazwaSwiata,
         int wysokoscWyspy,
-        long czasPogodyTicks,
         UstawieniaNowejWyspy nowaWyspa,
         int limitCzlonkow,
         List<Reward> nagrodyNaStart,
         boolean napisPrzyWejsciu,
         List<WzorWyspy> wzoryWysp,
         Map<Material, Integer> limityBlokow,
+        boolean limityBlokowWlaczone,
+        Set<Material> limityWylaczone,
         int limitZwierzat,
         boolean mobyPotwory,
         boolean mobyZwierzeta,
-        boolean powrotZPustki
+        boolean powrotZPustki,
+        boolean ogienSieRozprzestrzenia,
+        boolean odrodzenieNaWyspie,
+        boolean zachowanieEkwipunku,
+        boolean odwiedzanieWysp,
+        boolean wybuchyNiszczaBloki,
+        boolean pioruny,
+        boolean mobyWarden,
+        boolean mobyWither,
+        boolean mobyBalwan
 ) {
     /** Wzór wyspy do wyboru przy zakładaniu - pliki islands/<id>.nbt/.yml zapisuje /@islandtemplate save <id>. */
     public record WzorWyspy(String id, String nazwa, Material ikona, List<String> opis, List<org.bukkit.inventory.ItemStack> skrzynia) {}
 
-    /** 0 = bez limitu dla tego bloku. */
+    /** 0 = bez limitu dla tego bloku (brak na liście, wyłączony albo wszystkie limity wyłączone). */
     public int limitBloku(Material material) {
+        if (!limityBlokowWlaczone || limityWylaczone.contains(material)) return 0;
         return limityBlokow.getOrDefault(material, 0);
+    }
+
+    /** Czy liczyć postawione sztuki tego bloku - też gdy limit jest wyłączony, żeby po włączeniu liczba się zgadzała. */
+    public boolean liczonyBlok(Material material) {
+        return limityBlokow.getOrDefault(material, 0) > 0;
     }
 
     /** Ustawienia, z którymi startuje każda nowa wyspa (właściciel potem zmienia je w Ustawieniach/Permisjach Wyspy). */
     public record UstawieniaNowejWyspy(boolean pvp, boolean budowanieGosci, boolean wizualnyBorder,
                                        boolean zabijanieMobowGosci, boolean zabieranieItemowGosci, boolean skrzynieGosci,
-                                       boolean interakcjeGosci, boolean zablokowanaPogoda, boolean ogien,
+                                       boolean interakcjeGosci,
                                        boolean otwartaDlaOdwiedzajacych, boolean rolnictwoGosci, boolean wiadraGosci,
                                        boolean czlonkowieBudowanie, boolean czlonkowieSkrzynie,
                                        boolean czlonkowieZapraszanie, boolean czlonkowieBankIUlepszenia) {}
@@ -103,18 +120,10 @@ public record IslandTuning(
         return null;
     }
 
-    /** Najtańszy spawner w sklepie wyznacza skalę - jego mnożnik kosztu wynosi 1.0. */
-    private int cenaBazowegoSpawnera() {
-        int min = Integer.MAX_VALUE;
-        for (SpawnerTyp typ : spawnerTypy) min = Math.min(min, typ.cenaWSklepie());
-        return min == Integer.MAX_VALUE ? 1 : min;
-    }
-
-    /** Ile razy drożej ulepsza się dany spawner względem najtańszego - pierwiastek spłaszcza różnicę cen. */
+    /** Ile razy droższe są ulepszenia danego spawnera od ceny podstawowej (spawnery.typy[].mnoznik). */
     public double mnoznikKosztu(String typId) {
         SpawnerTyp typ = spawnerTyp(typId);
-        int cena = typ != null ? typ.cenaWSklepie() : cenaBazowegoSpawnera();
-        return Math.sqrt((double) cena / cenaBazowegoSpawnera());
+        return typ != null ? typ.mnoznik() : 1.0;
     }
 
     /** Koszt ulepszenia z obecnyPoziom na kolejny, zaokrąglony do pełnych setek (jak dawniej). */

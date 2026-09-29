@@ -41,7 +41,7 @@ public final class MainpluginsSkyblock extends JavaPlugin {
         islandManager = new IslandManager(this, economyService);
         borderManager = new BorderManager(this, islandManager);
         IslandProtectionManager islandProtectionManager = new IslandProtectionManager(this, islandManager);
-        MobRestrictionManager mobRestrictionManager = new MobRestrictionManager();
+        MobRestrictionManager mobRestrictionManager = new MobRestrictionManager(islandManager);
 
         getServer().getPluginManager().registerEvents(islandManager, this);
         getServer().getPluginManager().registerEvents(borderManager, this);

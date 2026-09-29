@@ -1,11 +1,6 @@
 # Konfiguracja systemu wysp (mainplugins-skyblock) - w pelni edytowalna bez rekompilacji.
 # Uklad GUI (sloty/ikony/teksty) jest w OSOBNYM pliku - patrz wyspy-gui.yml.
 # Przeladowanie na zywo, bez restartu serwera: /@reloadwyspy
-#
-# UWAGA (nie zmieniac bez zastanowienia): wartosci "cena-w-sklepie" ponizej w sekcji
-# spawnery.typy MUSZA sie zgadzac z buy-price w mainplugins-shop/categories/spawnery.yml -
-# to dwa niezalezne pliki opisujace te sama cene (jeden w sklepie, jeden tutaj jako baza
-# do liczenia kosztu ulepszen), zaden kod nie synchronizuje ich automatycznie.
 
 swiat:
   # Nazwa swiata, w ktorym powstaja wyspy. Zmiana dziala dopiero po restarcie serwera,
@@ -53,9 +48,6 @@ nowa-wyspa:
   zabieranie-itemow-gosci: false
   skrzynie-gosci: false
   drzwi-i-mechanizmy-gosci: false
-  zablokowana-pogoda: false
-  # Ogien i lawa podpalaja bloki na wyspie.
-  ogien: false
   # Inni gracze moga wejsc na wyspe komenda /is odwiedz <gracz>.
   otwarta-dla-odwiedzajacych: true
   # Goscie moga zbierac i sadzic plony, karmic, rozmnazac i strzyc zwierzeta.
@@ -79,6 +71,31 @@ wzory-wysp:
     ikona: GRASS_BLOCK
     opis: ["Drzewo, trochę ziemi i skrzynka"]
     skrzynia: []
+  - id: farmerska
+    nazwa: "&aFarmerska"
+    ikona: WHEAT
+    opis: ["Większa wyspa z dębem i poletkiem pszenicy", "Woda przy polu, dynia i siano"]
+    skrzynia:
+      - { item: WHEAT_SEEDS, amount: 4 }
+      - { item: BONE_MEAL, amount: 4 }
+  - id: pustynna
+    nazwa: "&ePustynna"
+    ikona: SAND
+    opis: ["Piasek, kaktusy i piaskowiec", "Na start sadzonka i trochę ziemi"]
+    skrzynia:
+      - { item: OAK_SAPLING, amount: 1 }
+      - { item: DIRT, amount: 4 }
+      - { item: BONE_MEAL, amount: 4 }
+  - id: zimowa
+    nazwa: "&bZimowa"
+    ikona: SNOW_BLOCK
+    opis: ["Śnieg, świerk i lód", "Na start chleb i sadzonka świerku"]
+    skrzynia:
+      - { item: BREAD, amount: 5 }
+      - { item: SPRUCE_SAPLING, amount: 1 }
+
+# Ogien i lawa podpalaja bloki na wyspach (caly serwer). Wylaczone = nic nie splonie.
+ogien-sie-rozprzestrzenia: false
 
 # Kto spadnie z wyspy w pustke, wraca na wyspe zamiast ginac i tracic rzeczy (caly serwer).
 powrot-z-pustki: true
@@ -88,9 +105,26 @@ powrot-z-pustki: true
 moby:
   potwory: false
   zwierzeta: false
+  # Specjalne moby na CALYM serwerze (tez poza wyspami). Wylaczone = nie da sie ich zespawnowac ani zbudowac.
+  warden: false
+  wither: false
+  balwan: false
+
+# Po smierci gracz odradza sie na swojej wyspie zamiast na spawnie (lozko i kotwica maja pierwszenstwo).
+odrodzenie-na-wyspie: true
+# Po smierci w swiecie wysp gracz nie traci rzeczy ani poziomow.
+zachowanie-ekwipunku: false
+# Czy /is odwiedz dziala na serwerze (wlasciciele i tak moga zamknac swoje wyspy).
+odwiedzanie-wysp: true
+# TNT i creepery niszcza bloki na wyspach. Wylaczone = wybuch tylko wyglada, nic nie niszczy.
+wybuchy-niszcza-bloki: false
+# Pioruny na wyspach podpalaja i zadaja obrazenia. Wylaczone = tylko blysk i dzwiek.
+pioruny: false
 
 # Limity na jedna wyspe (przeciw lagom). Dotycza wszystkich, tez wlasciciela. 0 = bez limitu.
 limity:
+  # false = zaden limit blokow nie dziala.
+  wlaczone: true
   # Ile sztuk danego bloku moze stac na wyspie.
   bloki:
     HOPPER: 32
@@ -103,6 +137,8 @@ limity:
     DISPENSER: 16
     DROPPER: 16
     CRAFTER: 16
+  # Bloki z listy wyzej, ktorych limit jest chwilowo wylaczony (liczba zostaje zapamietana).
+  wylaczone-bloki: []
   # Ile zwierzat moze zyc na wyspie (rozmnazanie i jajka sie zatrzymuja).
   zwierzeta: 50
 
@@ -118,11 +154,6 @@ czlonkowie:
 przedmioty-na-start:
   - { item: LAVA_BUCKET, amount: 1 }
   - { item: ICE, amount: 1 }
-
-pogoda-i-czas:
-  # Pora dnia na wyspie z wlaczona "Pogoda i czas" (w tickach gry: 0 = swit, 6000 = poludnie,
-  # 12000 = zachod, 18000 = polnoc).
-  pora-dnia: 6000
 
 teleport-bezpieczenstwo:
   # Ile blokow w dol szukamy gruntu pod punktem teleportu, zanim uznamy ze to za gleboka dziura.
@@ -160,19 +191,21 @@ wartosci-blokow:
 
 spawnery:
   max-poziom: 5
-  # Kolejnosc = od najtanszego do najdrozszego w sklepie (patrz categories/spawnery.yml).
+  # Ulepszenia spawnerow kupowane w panelu wyspy (Ilosc = wiecej mobow naraz, Szybkosc = czesciej).
+  # "mnoznik" = ile razy drozsze sa ulepszenia tego spawnera od ceny podstawowej nizej (1.0 = tyle samo).
+  # "id" musi byc takie samo jak w pluginie Spawnerow.
   typy:
-    - { id: ZOMBIE,   nazwa-odmieniona: "Zombie",     ikona: ROTTEN_FLESH, cena-w-sklepie: 20000 }
-    - { id: PIG,      nazwa-odmieniona: "Świń",       ikona: PORKCHOP,     cena-w-sklepie: 25000 }
-    - { id: SKELETON, nazwa-odmieniona: "Szkieletów", ikona: BONE,         cena-w-sklepie: 30000 }
-    - { id: COW,      nazwa-odmieniona: "Krów",       ikona: LEATHER,      cena-w-sklepie: 40000 }
-    - { id: SPIDER,   nazwa-odmieniona: "Pająków",    ikona: STRING,       cena-w-sklepie: 45000 }
-    - { id: CHICKEN,  nazwa-odmieniona: "Kur",        ikona: FEATHER,      cena-w-sklepie: 55000 }
-    - { id: CREEPER,  nazwa-odmieniona: "Creeperów",  ikona: GUNPOWDER,    cena-w-sklepie: 60000 }
-    - { id: SHEEP,    nazwa-odmieniona: "Owiec",      ikona: WHITE_WOOL,   cena-w-sklepie: 67000 }
-    - { id: BREEZE,   nazwa-odmieniona: "Breeze'ów",  ikona: BREEZE_ROD,   cena-w-sklepie: 100000 }
-  # Koszt awansu Z danego poziomu NA kolejny (1->2, 2->3, 3->4, 4->5), zanim zostanie
-  # przemnozony przez mnoznik typu spawnera (patrz "cena-w-sklepie" wyzej). Poziomy spoza
+    - { id: ZOMBIE,   nazwa-odmieniona: "Zombie",     ikona: ROTTEN_FLESH, mnoznik: 1.0 }
+    - { id: PIG,      nazwa-odmieniona: "Świń",       ikona: PORKCHOP,     mnoznik: 1.1 }
+    - { id: SKELETON, nazwa-odmieniona: "Szkieletów", ikona: BONE,         mnoznik: 1.2 }
+    - { id: COW,      nazwa-odmieniona: "Krów",       ikona: LEATHER,      mnoznik: 1.4 }
+    - { id: SPIDER,   nazwa-odmieniona: "Pająków",    ikona: STRING,       mnoznik: 1.5 }
+    - { id: CHICKEN,  nazwa-odmieniona: "Kur",        ikona: FEATHER,      mnoznik: 1.7 }
+    - { id: CREEPER,  nazwa-odmieniona: "Creeperów",  ikona: GUNPOWDER,    mnoznik: 1.7 }
+    - { id: SHEEP,    nazwa-odmieniona: "Owiec",      ikona: WHITE_WOOL,   mnoznik: 1.8 }
+    - { id: BREEZE,   nazwa-odmieniona: "Breeze'ów",  ikona: BREEZE_ROD,   mnoznik: 2.2 }
+  # Cena podstawowa awansu Z danego poziomu NA kolejny (1->2, 2->3, 3->4, 4->5), mnozona przez
+  # "mnoznik" typu spawnera. Poziomy spoza
   # listy (5 i wyzej) uzywaja "domyslny". Ilosc i Szybkosc maja OSOBNE krzywe kosztu.
   koszt-bazowy-ilosc:
     poziomy: { 1: 2500, 2: 5000, 3: 8500 }

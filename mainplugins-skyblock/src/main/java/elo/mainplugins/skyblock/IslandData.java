@@ -73,13 +73,6 @@ public class IslandData {
     private boolean allowContainerAccess = false;
     private boolean allowInteract = false;
 
-    // "Pogoda i Czas" - kosmetyczny przełącznik w Ustawieniach Wyspy, wymusza
-    // zawsze czyste niebo i południe (patrz IslandManager.aplikujPogodeICzas)
-    // dla KAŻDEGO gracza fizycznie stojącego na tej wyspie, nie tylko gości.
-    private boolean weatherLocked = false;
-
-    // Ogień i lawa podpalają bloki na wyspie (dotyczy całej wyspy, nie tylko gości).
-    private boolean allowFireSpread = false;
     // Czy inni gracze mogą wejść na wyspę przez /is odwiedz <gracz>.
     private boolean openForVisitors = true;
     // Goście: zbieranie plonów, sadzenie, karmienie/rozmnażanie/strzyżenie zwierząt.
@@ -176,8 +169,6 @@ public class IslandData {
     public void setAllowContainerAccess(boolean allowContainerAccess) { this.allowContainerAccess = allowContainerAccess; }
     public boolean isAllowInteract() { return allowInteract; }
     public void setAllowInteract(boolean allowInteract) { this.allowInteract = allowInteract; }
-    public boolean isAllowFireSpread() { return allowFireSpread; }
-    public void setAllowFireSpread(boolean allowFireSpread) { this.allowFireSpread = allowFireSpread; }
     public boolean isOpenForVisitors() { return openForVisitors; }
     public void setOpenForVisitors(boolean openForVisitors) { this.openForVisitors = openForVisitors; }
     public boolean isAllowGuestFarming() { return allowGuestFarming; }
@@ -192,8 +183,6 @@ public class IslandData {
     public void setMemberInvite(boolean v) { this.memberInvite = v; }
     public boolean isMemberBankUpgrade() { return memberBankUpgrade; }
     public void setMemberBankUpgrade(boolean v) { this.memberBankUpgrade = v; }
-    public boolean isWeatherLocked() { return weatherLocked; }
-    public void setWeatherLocked(boolean weatherLocked) { this.weatherLocked = weatherLocked; }
     public String getCustomName() { return customName; }
     public void setCustomName(String customName) { this.customName = customName; }
 

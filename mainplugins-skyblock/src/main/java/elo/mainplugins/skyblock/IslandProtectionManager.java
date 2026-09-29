@@ -152,12 +152,14 @@ public class IslandProtectionManager implements Listener {
      */
     @EventHandler(ignoreCancelled = true)
     public void onEntityExplode(EntityExplodeEvent event) {
+        if (islandManager.getTuning().wybuchyNiszczaBloki()) return;
         event.blockList().removeIf(block -> islandManager.znajdzWyspePod(block.getLocation()) != null);
     }
 
     /** To samo co wyżej, ale dla wybuchów bez encji-sprawcy (łóżko w Netherze, kotwica odrodzenia w Overworldzie). */
     @EventHandler(ignoreCancelled = true)
     public void onBlockExplode(BlockExplodeEvent event) {
+        if (islandManager.getTuning().wybuchyNiszczaBloki()) return;
         event.blockList().removeIf(block -> islandManager.znajdzWyspePod(block.getLocation()) != null);
     }
 
@@ -172,6 +174,7 @@ public class IslandProtectionManager implements Listener {
         EntityDamageEvent.DamageCause cause = event.getCause();
         if (cause != EntityDamageEvent.DamageCause.ENTITY_EXPLOSION
                 && cause != EntityDamageEvent.DamageCause.BLOCK_EXPLOSION) return;
+        if (islandManager.getTuning().wybuchyNiszczaBloki()) return;
 
         if (islandManager.znajdzWyspePod(event.getEntity().getLocation()) != null) {
             event.setCancelled(true);
@@ -185,7 +188,7 @@ public class IslandProtectionManager implements Listener {
      */
     @EventHandler(ignoreCancelled = true)
     public void onLightningIgnite(BlockIgniteEvent event) {
-        if (event.getCause() != BlockIgniteEvent.IgniteCause.LIGHTNING) return;
+        if (event.getCause() != BlockIgniteEvent.IgniteCause.LIGHTNING || islandManager.getTuning().pioruny()) return;
         if (islandManager.znajdzWyspePod(event.getBlock().getLocation()) != null) {
             event.setCancelled(true);
         }
@@ -194,7 +197,7 @@ public class IslandProtectionManager implements Listener {
     /** Piorun potrafi podpalić trafioną encję bezpośrednio (nie przez blok) - to ten przypadek. */
     @EventHandler(ignoreCancelled = true)
     public void onLightningCombust(EntityCombustByEntityEvent event) {
-        if (!(event.getCombuster() instanceof LightningStrike)) return;
+        if (!(event.getCombuster() instanceof LightningStrike) || islandManager.getTuning().pioruny()) return;
         if (islandManager.znajdzWyspePod(event.getEntity().getLocation()) != null) {
             event.setCancelled(true);
         }
@@ -202,7 +205,7 @@ public class IslandProtectionManager implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onLightningDamage(EntityDamageEvent event) {
-        if (event.getCause() != EntityDamageEvent.DamageCause.LIGHTNING) return;
+        if (event.getCause() != EntityDamageEvent.DamageCause.LIGHTNING || islandManager.getTuning().pioruny()) return;
         if (islandManager.znajdzWyspePod(event.getEntity().getLocation()) != null) {
             event.setCancelled(true);
         }
@@ -252,13 +255,13 @@ public class IslandProtectionManager implements Listener {
         IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
         if (data == null) return;
         data.dodajDoWartosci(islandManager.wartoscBloku(event.getBlock().getType()));
-        if (islandManager.getTuning().limitBloku(event.getBlock().getType()) > 0) data.addBlockCount(event.getBlock().getType(), 1);
+        if (islandManager.getTuning().liczonyBlok(event.getBlock().getType())) data.addBlockCount(event.getBlock().getType(), 1);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onLimitTrackBreak(BlockBreakEvent event) {
         IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
-        if (data == null || islandManager.getTuning().limitBloku(event.getBlock().getType()) <= 0) return;
+        if (data == null || !islandManager.getTuning().liczonyBlok(event.getBlock().getType())) return;
         data.addBlockCount(event.getBlock().getType(), -1);
     }
 
@@ -537,6 +540,30 @@ public class IslandProtectionManager implements Listener {
         });
     }
 
+    /**
+     * Odrodzenie po śmierci na własnej wyspie (zasada serwera odrodzenie-na-wyspie) zamiast na spawnie.
+     * HIGH - po pluginie spawnu (NORMAL), który ustawia spawn serwera. Łóżko i kotwica mają pierwszeństwo.
+     */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onRespawnOnIsland(org.bukkit.event.player.PlayerRespawnEvent event) {
+        if (!islandManager.getTuning().odrodzenieNaWyspie()) return;
+        if (event.getRespawnReason() != org.bukkit.event.player.PlayerRespawnEvent.RespawnReason.DEATH) return;
+        if (event.isBedSpawn() || event.isAnchorSpawn()) return;
+        IslandData data = islandManager.wyspaGraczaPoUuid(event.getPlayer().getUniqueId());
+        if (data != null) event.setRespawnLocation(islandManager.lokalizacjaSpawnuWyspy(data));
+    }
+
+    /** Zachowanie ekwipunku po śmierci w świecie wysp (zasada serwera zachowanie-ekwipunku). */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onDeathKeepInventory(org.bukkit.event.entity.PlayerDeathEvent event) {
+        if (!islandManager.getTuning().zachowanieEkwipunku()) return;
+        if (!islandManager.jestSwiatemWysp(event.getEntity().getWorld())) return;
+        event.setKeepInventory(true);
+        event.getDrops().clear();
+        event.setKeepLevel(true);
+        event.setDroppedExp(0);
+    }
+
     /** Plony, które gość z włączonym „rolnictwem” może zebrać i posadzić. */
     private boolean jestPlonem(Material material) {
         if (Tag.CROPS.isTagged(material)) return true;
@@ -580,9 +607,9 @@ public class IslandProtectionManager implements Listener {
         if (ogienZablokowany(event.getBlock().getLocation())) event.setCancelled(true);
     }
 
+    /** Ogień na wyspach - ustawienie całego serwera (wyspy-config.yml: ogien-sie-rozprzestrzenia). */
     private boolean ogienZablokowany(Location lokalizacja) {
-        IslandData data = islandManager.znajdzWyspePod(lokalizacja);
-        return data != null && !data.isAllowFireSpread();
+        return !islandManager.getTuning().ogienSieRozprzestrzenia() && islandManager.znajdzWyspePod(lokalizacja) != null;
     }
 
     /**

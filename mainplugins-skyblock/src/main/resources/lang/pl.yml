@@ -59,10 +59,6 @@ settings:
   containers-off: "&aDostęp gości do skrzyń/kontenerów: zablokowany"
   interact-on: "&aDrzwi/dźwignie/przyciski dla gości: dozwolone"
   interact-off: "&aDrzwi/dźwignie/przyciski dla gości: zablokowane"
-  weather-on: "&aPogoda i czas na wyspie: zablokowane (zawsze południe, czysto)"
-  weather-off: "&aPogoda i czas na wyspie: naturalne"
-  fire-on: "&aOgień na wyspie: rozprzestrzenia się"
-  fire-off: "&aOgień na wyspie: nie rozprzestrzenia się"
   visit-on: "&aWyspa otwarta dla odwiedzających (/is odwiedz)"
   visit-off: "&aWyspa zamknięta dla odwiedzających"
   farming-on: "&aPlony i zwierzęta dla gości: dozwolone"
@@ -145,6 +141,7 @@ admin:
   bank: "&eBank wyspy gracza {player}: {balance}"
 
 visit:
+  disabled: "&cOdwiedzanie wysp jest wyłączone na tym serwerze."
   banned: "&cMasz zakaz wstępu na wyspę gracza {player}."
   usage: "&cUżycie: /is odwiedz <gracz>"
   no-island: "&cGracz {player} nie ma wyspy."

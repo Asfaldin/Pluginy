@@ -6,20 +6,27 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 
 /**
- * Globalny zakaz spawnu Wardena, Withera i bałwana (Snow Golem) - wszędzie na
- * serwerze (naturalny spawn na wyspach - patrz IslandProtectionManager.onNaturalSpawn). Bałwan łapany
- * jest tu samo jak reszta mimo że powstaje przez zbudowanie (SpawnReason.BUILD_SNOWMAN),
- * nie naturalny spawn - to nadal ten sam event. Nie dotyczy /summon admina
- * (SpawnReason.COMMAND) - to świadomy wyjątek do testów.
+ * Warden, Wither i bałwan (Snow Golem) - na całym serwerze, według zasad serwera
+ * (wyspy-config.yml: moby.warden / moby.wither / moby.balwan, domyślnie zablokowane).
+ * Bałwan łapany jest tu mimo że powstaje przez zbudowanie (SpawnReason.BUILD_SNOWMAN) - to ten sam event.
+ * Nie dotyczy /summon admina (SpawnReason.COMMAND) - świadomy wyjątek do testów.
  */
 public class MobRestrictionManager implements Listener {
 
+    private final IslandManager islandManager;
+
+    public MobRestrictionManager(IslandManager islandManager) {
+        this.islandManager = islandManager;
+    }
+
     @EventHandler(ignoreCancelled = true)
     public void onCreatureSpawn(CreatureSpawnEvent event) {
-        EntityType typ = event.getEntityType();
-        if (typ != EntityType.WARDEN && typ != EntityType.WITHER && typ != EntityType.SNOW_GOLEM) return;
         if (event.getSpawnReason() == CreatureSpawnEvent.SpawnReason.COMMAND) return;
-
-        event.setCancelled(true);
+        var t = islandManager.getTuning();
+        EntityType typ = event.getEntityType();
+        boolean zablokowany = (typ == EntityType.WARDEN && !t.mobyWarden())
+                || (typ == EntityType.WITHER && !t.mobyWither())
+                || (typ == EntityType.SNOW_GOLEM && !t.mobyBalwan());
+        if (zablokowany) event.setCancelled(true);
     }
 }

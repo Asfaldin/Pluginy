@@ -10,8 +10,10 @@ import org.bukkit.plugin.Plugin;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 
 /**
@@ -57,7 +59,7 @@ public final class IslandConfigLoader {
         Map<Material, Double> wartosciBlokow = parseWartosciBlokow(cfg, log);
 
         int spawnerMaxPoziom = cfg.getInt("spawnery.max-poziom", 5);
-        List<SpawnerTyp> spawnerTypy = parseSpawnerTypy(cfg, log);
+        List<SpawnerTyp> spawnerTypy = zListySpawnerow(plugin, parseSpawnerTypy(cfg, log), log);
 
         Map<Integer, Integer> kosztBazowyIloscPoziomy = parsePoziomyKosztow(cfg, "spawnery.koszt-bazowy-ilosc.poziomy", log);
         int kosztBazowyIloscDomyslny = cfg.getInt("spawnery.koszt-bazowy-ilosc.domyslny", 17000);
@@ -66,14 +68,12 @@ public final class IslandConfigLoader {
 
         String nazwaSwiata = cfg.getString("swiat.nazwa", "skyblock_world");
         int wysokoscWyspy = cfg.getInt("tworzenie-wyspy.wysokosc", 100);
-        long czasPogodyTicks = cfg.getLong("pogoda-i-czas.pora-dnia", 6000L);
         String n = "nowa-wyspa.";
         IslandTuning.UstawieniaNowejWyspy nowaWyspa = new IslandTuning.UstawieniaNowejWyspy(
                 cfg.getBoolean(n + "pvp", false),
                 cfg.getBoolean(n + "budowanie-gosci", false), cfg.getBoolean(n + "wizualny-border", true),
                 cfg.getBoolean(n + "zabijanie-mobow-gosci", false), cfg.getBoolean(n + "zabieranie-itemow-gosci", false),
                 cfg.getBoolean(n + "skrzynie-gosci", false), cfg.getBoolean(n + "drzwi-i-mechanizmy-gosci", false),
-                cfg.getBoolean(n + "zablokowana-pogoda", false), cfg.getBoolean(n + "ogien", false),
                 cfg.getBoolean(n + "otwarta-dla-odwiedzajacych", true), cfg.getBoolean(n + "rolnictwo-gosci", false),
                 cfg.getBoolean(n + "wiadra-gosci", false),
                 cfg.getBoolean(n + "czlonkowie-budowanie", true), cfg.getBoolean(n + "czlonkowie-skrzynie", true),
@@ -96,15 +96,23 @@ public final class IslandConfigLoader {
                 wartosciBlokow, spawnerMaxPoziom, spawnerTypy,
                 kosztBazowyIloscPoziomy, kosztBazowyIloscDomyslny,
                 kosztBazowySzybkoscPoziomy, kosztBazowySzybkoscDomyslny,
-                nazwaSwiata, wysokoscWyspy, czasPogodyTicks, nowaWyspa,
+                nazwaSwiata, wysokoscWyspy, nowaWyspa,
                 limitCzlonkow, nagrodyNaStart,
                 cfg.getBoolean("napis-przy-wejsciu", true),
                 parseWzory(cfg, log), parseLimityBlokow(cfg, log),
+                cfg.getBoolean("limity.wlaczone", true), parseWylaczoneLimity(cfg, log),
                 Math.max(0, cfg.getInt("limity.zwierzeta", 50)),
                 // Moby pojawiające się same na wyspach - ustawienie całego serwera (domyślnie wyłączone, mniej lagów).
                 cfg.getBoolean("moby.potwory", false), cfg.getBoolean("moby.zwierzeta", false),
                 // Upadek w pustkę wraca na wyspę zamiast zabijać - ustawienie całego serwera.
-                cfg.getBoolean("powrot-z-pustki", true)
+                cfg.getBoolean("powrot-z-pustki", true),
+                // Ogień i lawa podpalają bloki na wyspach - ustawienie całego serwera (domyślnie wyłączone).
+                cfg.getBoolean("ogien-sie-rozprzestrzenia", false),
+                // Zasady całego serwera (aplikacja: Wyspy -> Zasady serwera).
+                cfg.getBoolean("odrodzenie-na-wyspie", true), cfg.getBoolean("zachowanie-ekwipunku", false),
+                cfg.getBoolean("odwiedzanie-wysp", true), cfg.getBoolean("wybuchy-niszcza-bloki", false),
+                cfg.getBoolean("pioruny", false),
+                cfg.getBoolean("moby.warden", false), cfg.getBoolean("moby.wither", false), cfg.getBoolean("moby.balwan", false)
         );
     }
 
@@ -152,12 +160,29 @@ public final class IslandConfigLoader {
                 log.warning("wyspy-config.yml: limity.bloki ma nieznany blok '" + key + "' - pomijam.");
                 continue;
             }
-            // Przedmioty stawiane jako inny blok: limit liczy postawiony blok.
-            if (material == Material.REDSTONE) material = Material.REDSTONE_WIRE;
-            else if (material == Material.STRING) material = Material.TRIPWIRE;
-            mapa.put(material, Math.max(0, sekcja.getInt(key)));
+            mapa.put(stawianyBlok(material), Math.max(0, sekcja.getInt(key)));
         }
         return mapa;
+    }
+
+    private static Set<Material> parseWylaczoneLimity(YamlConfiguration cfg, Logger log) {
+        Set<Material> set = new HashSet<>();
+        for (String key : cfg.getStringList("limity.wylaczone-bloki")) {
+            Material material = Material.matchMaterial(key);
+            if (material == null) {
+                log.warning("wyspy-config.yml: limity.wylaczone-bloki ma nieznany blok '" + key + "' - pomijam.");
+                continue;
+            }
+            set.add(stawianyBlok(material));
+        }
+        return set;
+    }
+
+    /** Przedmioty stawiane jako inny blok: limit liczy postawiony blok. */
+    private static Material stawianyBlok(Material material) {
+        if (material == Material.REDSTONE) return Material.REDSTONE_WIRE;
+        if (material == Material.STRING) return Material.TRIPWIRE;
+        return material;
     }
 
     private static List<IslandTuning.CooldownProg> parseCooldownProb(YamlConfiguration cfg, Logger log) {
@@ -213,8 +238,31 @@ public final class IslandConfigLoader {
                 continue;
             }
             String nazwaOdmieniona = m.get("nazwa-odmieniona") != null ? String.valueOf(m.get("nazwa-odmieniona")) : String.valueOf(idRaw);
-            int cenaWSklepie = m.get("cena-w-sklepie") instanceof Number n ? n.intValue() : 0;
-            lista.add(new SpawnerTyp(String.valueOf(idRaw), nazwaOdmieniona, ikona, cenaWSklepie));
+            double mnoznik = m.get("mnoznik") instanceof Number n ? Math.max(0.1, n.doubleValue()) : 1.0;
+            lista.add(new SpawnerTyp(String.valueOf(idRaw), nazwaOdmieniona, ikona, mnoznik));
+        }
+        return lista;
+    }
+
+    /**
+     * Lista spawnerów pochodzi z pluginu Spawnery (plugins/MainpluginsSpawners/spawnery-typy.yml), żeby nowy
+     * spawner od razu dało się ulepszać. Z wyspy-config.yml bierzemy tylko ikonę i mnożnik ceny (brak = ×1).
+     * Bez pluginu Spawnery zostaje własna lista z wyspy-config.yml.
+     */
+    private static List<SpawnerTyp> zListySpawnerow(Plugin plugin, List<SpawnerTyp> wlasne, Logger log) {
+        File plik = new File(plugin.getDataFolder().getParentFile(), "MainpluginsSpawners/spawnery-typy.yml");
+        if (!plik.exists()) return wlasne;
+        ConfigurationSection typy = YamlConfiguration.loadConfiguration(plik).getConfigurationSection("typy");
+        if (typy == null) return wlasne;
+        List<SpawnerTyp> lista = new ArrayList<>();
+        for (String id : typy.getKeys(false)) {
+            SpawnerTyp wlasny = null;
+            for (SpawnerTyp t : wlasne) if (t.id().equals(id)) wlasny = t;
+            String encja = typy.getString(id + ".encja", id);
+            String nazwa = typy.getString(id + ".nazwa-odmieniona", wlasny != null ? wlasny.nazwaOdmieniona() : id);
+            Material ikona = wlasny != null ? wlasny.ikona() : Material.matchMaterial(encja + "_SPAWN_EGG");
+            if (ikona == null) ikona = Material.SPAWNER;
+            lista.add(new SpawnerTyp(id, nazwa, ikona, wlasny != null ? wlasny.mnoznik() : 1.0));
         }
         return lista;
     }

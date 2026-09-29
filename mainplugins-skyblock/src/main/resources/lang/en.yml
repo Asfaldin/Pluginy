@@ -59,10 +59,6 @@ settings:
   containers-off: "&aGuest access to chests/containers: blocked"
   interact-on: "&aDoors/levers/buttons for guests: allowed"
   interact-off: "&aDoors/levers/buttons for guests: blocked"
-  weather-on: "&aWeather and time on the island: locked (always noon, clear)"
-  weather-off: "&aWeather and time on the island: natural"
-  fire-on: "&aFire on the island: spreads"
-  fire-off: "&aFire on the island: does not spread"
   visit-on: "&aIsland open to visitors (/is visit)"
   visit-off: "&aIsland closed to visitors"
   farming-on: "&aCrops and animals for guests: allowed"
@@ -145,6 +141,7 @@ admin:
   bank: "&e{player}'s island bank: {balance}"
 
 visit:
+  disabled: "&cVisiting islands is disabled on this server."
   banned: "&cYou are banned from {player}'s island."
   usage: "&cUsage: /is visit <player>"
   no-island: "&c{player} has no island."

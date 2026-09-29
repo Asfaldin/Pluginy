@@ -2,7 +2,7 @@
 # rekompilacji. Liczby/dane (koszty, promienie, timeouty...) sa w OSOBNYM pliku -
 # patrz wyspy-config.yml. Przeladowanie na zywo, bez restartu serwera: /@reloadwyspy
 #
-# Kazdy ekran: { size, tlo (opcjonalny material tla, domyslnie GRAY_STAINED_GLASS_PANE),
+# Kazdy ekran: { size, tlo (opcjonalny material tla, domyslnie GRAY_STAINED_GLASS_PANE; AIR = bez tla),
 #                przyciski: lista {slot, akcja, material, material-wylaczone?, nazwa, kolor?, lore} }
 # "akcja" to identyfikator zachowania (co sie dzieje po kliknieciu) - NIE zmieniaj tych
 # identyfikatorow, tylko slot/material/nazwa/kolor/lore dookola nich. Przeniesienie przycisku
@@ -26,15 +26,15 @@ panel-wyspy:
   przyciski:
     - { slot: 10, akcja: TELEPORT, material: OAK_DOOR, nazwa: "Teleport na Wyspę", kolor: GREEN,
         lore: ["Kliknij, aby wrócić do siebie"] }
-    - { slot: 12, akcja: ULEPSZENIA, material: BEACON, nazwa: "Ulepszenia Wyspy", kolor: GOLD,
+    - { slot: 12, akcja: ULEPSZENIA, material: EXPERIENCE_BOTTLE, nazwa: "Ulepszenia Wyspy", kolor: GOLD,
         lore: ["Zwiększ rozmiar wyspy"] }
     - { slot: 14, akcja: BANK, material: GOLD_INGOT, nazwa: "Bank Wyspy", kolor: YELLOW, lore: [] }
     - { slot: 16, akcja: INFO, material: PAPER, nazwa: "Informacje o Wyspie", kolor: AQUA, lore: [] }
     - { slot: 20, akcja: USTAWIENIA, material: COMPARATOR, nazwa: "Ustawienia Wyspy", kolor: BLUE,
-        lore: ["Border, budowanie, PvP, pogoda, nazwa...", "Kliknij, aby zarządzać"] }
+        lore: ["Border, budowanie, PvP, odwiedziny, nazwa...", "Kliknij, aby zarządzać"] }
     - { slot: 22, akcja: PERMISJE, material: LEVER, nazwa: "Permisje", kolor: RED,
         lore: ["Co mogą goście i członkowie", "Kliknij, aby zarządzać"] }
-    - { slot: 24, akcja: TOPKA, material: GOLD_BLOCK, nazwa: "Topka Wysp", kolor: GOLD,
+    - { slot: 24, akcja: TOPKA, material: GOLDEN_HELMET, nazwa: "Topka Wysp", kolor: GOLD,
         lore: ["Ranking wysp według wartości"] }
     - { slot: 53, akcja: USUN_WYSPE, material: TNT, nazwa: "Usuń Wyspę", kolor: DARK_RED,
         lore: ["Ostrzeżenie: Wyspa zniknie bezpowrotnie!"] }
@@ -77,10 +77,6 @@ ustawienia-wyspy:
         nazwa: "PvP na Wyspie", lore: [] }
     - { slot: 19, akcja: ZABIJANIE_MOBOW_GOSCI, material: NETHERITE_SWORD, material-wylaczone: GOLDEN_APPLE, kolor: DARK_RED,
         nazwa: "Zabijanie Mobów przez Gości", lore: ["Osobne od spawnu - kto może polować na moby"] }
-    - { slot: 20, akcja: POGODA_CZAS, material: CLOCK, material-wylaczone: ENDER_EYE, kolor: LIGHT_PURPLE,
-        nazwa: "Pogoda i Czas", lore: ["Zawsze południe i czyste niebo na wyspie"] }
-    - { slot: 14, akcja: OGIEN, material: FLINT_AND_STEEL, material-wylaczone: WATER_BUCKET, kolor: GOLD,
-        nazwa: "Ogień", lore: ["Czy ogień i lawa podpalają bloki"] }
     - { slot: 15, akcja: ODWIEDZINY, material: ENDER_PEARL, material-wylaczone: BARRIER, kolor: AQUA,
         nazwa: "Odwiedziny", lore: ["Czy inni mogą wejść przez /is odwiedz"] }
     - { slot: 21, akcja: NAZWA_WYSPY, material: NAME_TAG, nazwa: "Nazwa Wyspy", kolor: AQUA, lore: [] }
@@ -97,7 +93,7 @@ topka-wysp:
 ulepszenia-wyspy:
   size: 27
   przyciski:
-    - { slot: 11, akcja: POWIEKSZ_TEREN, material: BEACON, material-wylaczone: BEDROCK, kolor: YELLOW,
+    - { slot: 11, akcja: POWIEKSZ_TEREN, material: GRASS_BLOCK, material-wylaczone: BEDROCK, kolor: YELLOW,
         nazwa: "Powiększ Teren Wyspy", lore: [] }
     - { slot: 13, akcja: ULEPSZENIE_SPAWNEROW, material: SPAWNER, nazwa: "Ulepszenie Spawnerów", kolor: LIGHT_PURPLE,
         lore: ["Zwiększ tempo i ilość spawnu mobków", "na Twojej wyspie"] }

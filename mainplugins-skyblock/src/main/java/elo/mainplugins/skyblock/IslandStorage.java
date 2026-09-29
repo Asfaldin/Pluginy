@@ -110,8 +110,6 @@ final class IslandStorage {
             data.setAllowItemPickup(configWysp.getBoolean(path + "allowItemPickup", false));
             data.setAllowContainerAccess(configWysp.getBoolean(path + "allowContainerAccess", false));
             data.setAllowInteract(configWysp.getBoolean(path + "allowInteract", false));
-            data.setWeatherLocked(configWysp.getBoolean(path + "weatherLocked", false));
-            data.setAllowFireSpread(configWysp.getBoolean(path + "allowFireSpread", false));
             data.setOpenForVisitors(configWysp.getBoolean(path + "openForVisitors", true));
             data.setAllowGuestFarming(configWysp.getBoolean(path + "allowGuestFarming", false));
             data.setAllowGuestBuckets(configWysp.getBoolean(path + "allowGuestBuckets", false));
@@ -205,8 +203,6 @@ final class IslandStorage {
             configWysp.set(path + "allowItemPickup", data.isAllowItemPickup());
             configWysp.set(path + "allowContainerAccess", data.isAllowContainerAccess());
             configWysp.set(path + "allowInteract", data.isAllowInteract());
-            configWysp.set(path + "weatherLocked", data.isWeatherLocked());
-            configWysp.set(path + "allowFireSpread", data.isAllowFireSpread());
             configWysp.set(path + "openForVisitors", data.isOpenForVisitors());
             configWysp.set(path + "allowGuestFarming", data.isAllowGuestFarming());
             configWysp.set(path + "allowGuestBuckets", data.isAllowGuestBuckets());

@@ -324,14 +324,6 @@ public class IslandManager implements Listener, IslandService {
         msg(player, data.isAllowInteract() ? "settings.interact-on" : "settings.interact-off");
     }
 
-    public void przelaczOgien(Player player) {
-        IslandData data = wlasnaWyspaJakoZarzadca(player);
-        if (data == null) return;
-        data.setAllowFireSpread(!data.isAllowFireSpread());
-        storage.zapiszWyspy();
-        msg(player, data.isAllowFireSpread() ? "settings.fire-on" : "settings.fire-off");
-    }
-
     /** Zamknięcie wyspy od razu odsyła na spawn obcych graczy, którzy na niej stoją. */
     public void przelaczOdwiedziny(Player player) {
         IslandData data = wlasnaWyspaJakoZarzadca(player);
@@ -395,6 +387,10 @@ public class IslandManager implements Listener, IslandService {
 
     /** /is odwiedz <gracz> - teleport na punkt /is ustawspawn wyspy tego gracza, jeśli jest otwarta. */
     void odwiedzWyspe(Player player, String[] args) {
+        if (!tuning.odwiedzanieWysp() && !player.hasPermission("mainplugins.skyblock.bypass")) {
+            msg(player, "visit.disabled");
+            return;
+        }
         if (args.length < 2) {
             msg(player, "visit.usage");
             return;
@@ -648,34 +644,6 @@ public class IslandManager implements Listener, IslandService {
                 msg(sender, "admin.bank", "player", args[1], "balance", IslandTexts.kasa(data.getBankBalance()));
             }
             default -> msg(sender, "admin.usage");
-        }
-    }
-
-    public void przelaczPogodeICzas(Player player) {
-        IslandData data = wlasnaWyspaJakoZarzadca(player);
-        if (data == null) return;
-        data.setWeatherLocked(!data.isWeatherLocked());
-        storage.zapiszWyspy();
-        aplikujPogodeICzas(player, data);
-        msg(player, data.isWeatherLocked() ? "settings.weather-on" : "settings.weather-off");
-    }
-
-    /**
-     * Kosmetyczny efekt "Pogoda i Czas" - wymuszamy KLIENCKĄ iluzję zawsze czystego
-     * nieba i południa (WeatherType/setPlayerTime działają tylko dla jednego gracza,
-     * nie zmieniają realnej pogody/czasu w skyblockWorld dla nikogo innego). Dotyczy
-     * każdego, kto fizycznie stoi na tej wyspie - właściciela, członków i gości -
-     * odwrotnie niż allow* dotyczące wyłącznie gości. Wołane w tych samych miejscach,
-     * co wizualny border (patrz ustawWizualnyBorder/aplikujBorderDlaLokalizacji), żeby
-     * trzymało się gracza przy każdej zmianie świata/teleportacji tak samo jak border.
-     */
-    void aplikujPogodeICzas(Player player, IslandData data) {
-        if (data != null && data.isWeatherLocked()) {
-            player.setPlayerTime(tuning.czasPogodyTicks(), false);
-            player.setPlayerWeather(WeatherType.CLEAR);
-        } else {
-            player.resetPlayerTime();
-            player.resetPlayerWeather();
         }
     }
 
@@ -967,8 +935,6 @@ public class IslandManager implements Listener, IslandService {
         data.setAllowItemPickup(start.zabieranieItemowGosci());
         data.setAllowContainerAccess(start.skrzynieGosci());
         data.setAllowInteract(start.interakcjeGosci());
-        data.setWeatherLocked(start.zablokowanaPogoda());
-        data.setAllowFireSpread(start.ogien());
         data.setOpenForVisitors(start.otwartaDlaOdwiedzajacych());
         data.setAllowGuestFarming(start.rolnictwoGosci());
         data.setAllowGuestBuckets(start.wiadraGosci());
@@ -1033,7 +999,6 @@ public class IslandManager implements Listener, IslandService {
         IslandTeleport.zabezpieczPunktSpawnu(loc, tuning.maxGlebokoscSzukaniaWDol(), tuning.promienSzukaniaObok());
         player.teleport(loc);
         ustawWizualnyBorder(player, data);
-        aplikujPogodeICzas(player, data);
         msg(player, "common.teleported");
     }
 
@@ -1059,15 +1024,25 @@ public class IslandManager implements Listener, IslandService {
         msg(player, "common.teleported");
     }
 
-    /** Teleport na punkt /is ustawspawn danej wyspy (albo jej środek) - własnej albo odwiedzanej. */
-    void teleportNaSpawnWyspy(Player player, IslandData data) {
+    /** Punkt /is ustawspawn wyspy (albo jej środek), zabezpieczony przed pustką pod stopami. */
+    Location lokalizacjaSpawnuWyspy(IslandData data) {
         Location loc = data.hasCustomSpawn()
                 ? new Location(skyblockWorld, data.getSpawnX(), data.getSpawnY(), data.getSpawnZ(), data.getSpawnYaw(), data.getSpawnPitch())
                 : new Location(skyblockWorld, data.getCenterX() + 0.5, tuning.wysokoscWyspy() + 1, data.getCenterZ() + 0.5);
         IslandTeleport.zabezpieczPunktSpawnu(loc, tuning.maxGlebokoscSzukaniaWDol(), tuning.promienSzukaniaObok());
-        player.teleport(loc);
+        return loc;
+    }
+
+    /** Wyspa gracza (własna albo ta, na której jest członkiem) albo null. */
+    IslandData wyspaGraczaPoUuid(UUID uuid) {
+        UUID ownerUUID = playerIslandMap.get(uuid);
+        return ownerUUID != null ? islandDatabase.get(ownerUUID) : null;
+    }
+
+    /** Teleport na punkt /is ustawspawn danej wyspy (albo jej środek) - własnej albo odwiedzanej. */
+    void teleportNaSpawnWyspy(Player player, IslandData data) {
+        player.teleport(lokalizacjaSpawnuWyspy(data));
         ustawWizualnyBorder(player, data);
-        aplikujPogodeICzas(player, data);
     }
 
     /**
@@ -1262,7 +1237,6 @@ public class IslandManager implements Listener, IslandService {
         } else {
             ustawWizualnyBorder(player, data);
         }
-        aplikujPogodeICzas(player, data);
     }
 
     void ulepszSpawnerStatystyke(Player player, String typId, String sufiks) {

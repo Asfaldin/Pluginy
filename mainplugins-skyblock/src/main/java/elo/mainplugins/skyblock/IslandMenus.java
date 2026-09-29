@@ -57,6 +57,7 @@ final class IslandMenus implements Listener {
     }
 
     void wypelnijTlo(Inventory inv, IslandScreen screen) {
+        if (screen.tlo().isAir()) return; // tlo: AIR = puste wolne pola
         ItemStack tlo = new ItemStack(screen.tlo());
         ItemMeta meta = tlo.getItemMeta();
         meta.displayName(Component.empty());
@@ -218,8 +219,6 @@ final class IslandMenus implements Listener {
         ustawPrzelacznik(inv, screen, "BUDOWANIE_GOSCI", data.isAllowBreak());
         ustawPrzelacznik(inv, screen, "PVP", data.isAllowPvP());
         ustawPrzelacznik(inv, screen, "ZABIJANIE_MOBOW_GOSCI", data.isAllowGuestMobKill());
-        ustawPrzelacznik(inv, screen, "POGODA_CZAS", data.isWeatherLocked());
-        ustawPrzelacznik(inv, screen, "OGIEN", data.isAllowFireSpread());
         ustawPrzelacznik(inv, screen, "ODWIEDZINY", data.isOpenForVisitors());
 
         IslandGuiButton nazwaBtn = screen.przycisk("NAZWA_WYSPY");
@@ -544,8 +543,6 @@ final class IslandMenus implements Listener {
             else if (jestSlotem(screen, "BUDOWANIE_GOSCI", slot)) { m.przelaczBudowanieDlaGosci(player); otworzMenuUstawienWyspy(player); }
             else if (jestSlotem(screen, "PVP", slot)) { m.przelaczPvP(player); otworzMenuUstawienWyspy(player); }
             else if (jestSlotem(screen, "ZABIJANIE_MOBOW_GOSCI", slot)) { m.przelaczZabijanieMobowPrzezGosci(player); otworzMenuUstawienWyspy(player); }
-            else if (jestSlotem(screen, "POGODA_CZAS", slot)) { m.przelaczPogodeICzas(player); otworzMenuUstawienWyspy(player); }
-            else if (jestSlotem(screen, "OGIEN", slot)) { m.przelaczOgien(player); otworzMenuUstawienWyspy(player); }
             else if (jestSlotem(screen, "ODWIEDZINY", slot)) { m.przelaczOdwiedziny(player); otworzMenuUstawienWyspy(player); }
             else if (jestSlotem(screen, "NAZWA_WYSPY", slot)) { m.chat.rozpocznijZmianeNazwyWyspy(player); }
             else if (jestSlotem(screen, "CZLONKOWIE", slot)) { otworzMenuCzlonkow(player); }

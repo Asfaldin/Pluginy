@@ -27,6 +27,8 @@ import java.util.Random;
 public final class IslandTemplate {
 
     public static final String DOMYSLNY = "default";
+    /** Gotowe wzory w jarze - kopiowane do islands/ przy pierwszym starcie, jeśli ich tam nie ma. */
+    private static final String[] W_JARZE = {"default", "farmerska", "pustynna", "zimowa"};
 
     private final Plugin plugin;
     private final File folder;
@@ -34,10 +36,12 @@ public final class IslandTemplate {
     public IslandTemplate(Plugin plugin) {
         this.plugin = plugin;
         this.folder = new File(plugin.getDataFolder(), "islands");
-        if (!nbt(DOMYSLNY).exists() && plugin.getResource("islands/default.nbt") != null
-                && plugin.getResource("islands/default.yml") != null) {
-            plugin.saveResource("islands/default.nbt", false);
-            plugin.saveResource("islands/default.yml", false);
+        for (String id : W_JARZE) {
+            if (!nbt(id).exists() && plugin.getResource("islands/" + id + ".nbt") != null
+                    && plugin.getResource("islands/" + id + ".yml") != null) {
+                plugin.saveResource("islands/" + id + ".nbt", false);
+                plugin.saveResource("islands/" + id + ".yml", false);
+            }
         }
     }
 

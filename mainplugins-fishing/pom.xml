@@ -22,6 +22,10 @@
     <dependencies>
         <dependency>
             <groupId>elo</groupId>
+            <artifactId>mainplugins-license</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>elo</groupId>
             <artifactId>mainplugins-core</artifactId>
         </dependency>
     </dependencies>

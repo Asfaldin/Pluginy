@@ -1,5 +1,6 @@
 package elo.mainplugins.redstone;
 
+import elo.mainplugins.license.LicenseGuard;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.redstone.block.DeviceListeners;
 import elo.mainplugins.redstone.block.DeviceStore;
@@ -25,7 +26,8 @@ public final class MainpluginsRedstone extends JavaPlugin {
     @Override
     public void onEnable() {
         // Plugin płatny - patrz javadoc LicenseService oraz license-server/README.md.
-        if (!CoreAPI.getLicenseService().isLicensed("redstone")) {
+        if (!CoreAPI.getLicenseService().isLicensed("redstone")
+                || !LicenseGuard.enable(this, "redstone", () -> CoreAPI.getLicenseService().licenseProof("redstone"))) {
             getLogger().severe("Brak ważnej licencji dla mainplugins-redstone - plugin zostanie wyłączony.");
             getLogger().severe("Skonfiguruj klucz w license.yml (folder danych MainpluginsCore, sekcja 'keys: redstone: ...') i zrestartuj serwer.");
             getServer().getPluginManager().disablePlugin(this);

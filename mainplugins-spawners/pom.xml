@@ -15,6 +15,10 @@
     <name>Mainplugins - Spawners</name>
 
     <dependencies>
+        <dependency>
+            <groupId>elo</groupId>
+            <artifactId>mainplugins-license</artifactId>
+        </dependency>
         <!--
             Core - CustomItemKeys (wspólny tag PDC z modułem shop) i opcjonalny
             odczyt poziomów przez IslandService (patrz komentarz w skyblock/pom.xml -

@@ -1,5 +1,6 @@
 package elo.mainplugins.quests;
 
+import elo.mainplugins.license.LicenseGuard;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.LangService;
 import elo.mainplugins.core.api.RewardService;
@@ -17,7 +18,8 @@ public final class MainpluginsQuests extends JavaPlugin {
     @Override
     public void onEnable() {
         // Plugin płatny - patrz javadoc LicenseService oraz license-server/README.md.
-        if (!CoreAPI.getLicenseService().isLicensed("quests")) {
+        if (!CoreAPI.getLicenseService().isLicensed("quests")
+                || !LicenseGuard.enable(this, "quests", () -> CoreAPI.getLicenseService().licenseProof("quests"))) {
             getLogger().severe("Brak ważnej licencji dla mainplugins-quests - plugin zostanie wyłączony.");
             getLogger().severe("Skonfiguruj klucz w license.yml (folder danych MainpluginsCore, sekcja 'keys: quests: ...') i zrestartuj serwer.");
             getServer().getPluginManager().disablePlugin(this);

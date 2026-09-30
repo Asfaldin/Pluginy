@@ -16,7 +16,39 @@ public final class MobPose {
 
     private MobPose() {}
 
-    /** Wartość ścieżki w chwili t (interpolacja jak w Kreatorze: liniowa, płynna albo skok). */
+    /** Postęp 0-1 po krzywej przejścia - te same wzory co w Kreatorze (back i elastic wychodzą poza 0-1). */
+    public static float ease(String e, float f) {
+        if (e == null) return f;
+        switch (e) {
+            case "step": return 0;
+            case "smooth": return f * f * (3 - 2 * f);
+            case "in": return f * f * f;
+            case "out": return 1 - (1 - f) * (1 - f) * (1 - f);
+            case "back": {
+                double c = 1.70158;
+                return (float) (1 + (c + 1) * Math.pow(f - 1, 3) + c * Math.pow(f - 1, 2));
+            }
+            case "elastic":
+                return f <= 0 ? 0 : f >= 1 ? 1 : (float) (Math.pow(2, -10 * f) * Math.sin((f * 10 - 0.75) * 2 * Math.PI / 3) + 1);
+            case "bounce": {
+                double n = 7.5625, d = 2.75, x = f;
+                if (x < 1 / d) return (float) (n * x * x);
+                if (x < 2 / d) return (float) (n * (x -= 1.5 / d) * x + 0.75);
+                if (x < 2.5 / d) return (float) (n * (x -= 2.25 / d) * x + 0.9375);
+                return (float) (n * (x -= 2.625 / d) * x + 0.984375);
+            }
+            default: return f;
+        }
+    }
+
+    /** Wariant wyglądu w chwili t animacji (ostatnie przełączenie przed t) albo null, gdy animacja nie przełącza. */
+    public static String variantAt(MobDef.Anim anim, float t) {
+        String v = null;
+        for (MobDef.VariantKey k : anim.variants()) if (k.t() <= t + 1e-4f) v = k.variant();
+        return v;
+    }
+
+    /** Wartość ścieżki w chwili t (interpolacja jak w Kreatorze, z tymi samymi przejściami). */
     public static float[] sample(List<MobDef.Key> keys, float t) {
         if (keys == null || keys.isEmpty()) return null;
         if (t <= keys.get(0).t()) return keys.get(0).v();
@@ -25,9 +57,7 @@ public final class MobPose {
         for (int i = 0; i < keys.size() - 1; i++) {
             MobDef.Key a = keys.get(i), b = keys.get(i + 1);
             if (t < a.t() || t > b.t()) continue;
-            float f = b.t() == a.t() ? 0 : (t - a.t()) / (b.t() - a.t());
-            if ("step".equals(a.easing())) f = 0;
-            else if ("smooth".equals(a.easing())) f = f * f * (3 - 2 * f);
+            float f = ease(a.easing(), b.t() == a.t() ? 0 : (t - a.t()) / (b.t() - a.t()));
             float[] out = new float[3];
             for (int j = 0; j < 3; j++) out[j] = a.v()[j] + (b.v()[j] - a.v()[j]) * f;
             return out;

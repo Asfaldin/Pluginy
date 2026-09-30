@@ -27,6 +27,7 @@
         (Maven sam ustala kolejność - mainplugins-core zawsze pierwszy).
     -->
     <modules>
+        <module>mainplugins-license</module>
         <module>mainplugins-core</module>
         <module>mainplugins-menu</module>
         <module>mainplugins-skyblock</module>
@@ -95,6 +96,13 @@
                 <artifactId>mainplugins-core</artifactId>
                 <version>${project.version}</version>
                 <scope>provided</scope>
+            </dependency>
+            <!-- Weryfikacja podpisanych licencji - scope compile: KAŻDY płatny plugin (i Core)
+                 ma własną kopię w jarze (shade), patrz mainplugins-license/pom.xml. -->
+            <dependency>
+                <groupId>elo</groupId>
+                <artifactId>mainplugins-license</artifactId>
+                <version>${project.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

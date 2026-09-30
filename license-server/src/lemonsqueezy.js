@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { resolveVariant } from "./catalog.js";
-import { findCustomerByEmail } from "./customers.js";
-import { createLicense, findBySubscriptionId, setStatus } from "./db.js";
+import { findCustomerByEmail, findCustomerById } from "./customers.js";
+import { createLicense, findByOrderId, findBySubscriptionId, setStatus } from "./db.js";
 import { generateLicenseKey } from "./keys.js";
 import { sendEmail } from "./mailer.js";
 
@@ -35,8 +35,10 @@ export function verifyLemonSqueezySignature(rawBody, signatureHeader, secret) {
  * przypisania do konta - klient może się zgłosić, żeby ją ręcznie dowiązać).
  */
 function resolveCustomerId(payload, buyerEmail) {
+    // customer_id z linku checkout przyjmujemy tylko, gdy takie konto naprawdę istnieje
+    // (ktoś mógł dopisać do URL-a dowolną wartość).
     const fromCustomData = payload?.meta?.custom_data?.customer_id;
-    if (fromCustomData) return fromCustomData;
+    if (fromCustomData && findCustomerById(String(fromCustomData))) return String(fromCustomData);
     const byEmail = buyerEmail ? findCustomerByEmail(buyerEmail) : null;
     return byEmail?.id ?? null;
 }
@@ -44,8 +46,8 @@ function resolveCustomerId(payload, buyerEmail) {
 async function sendLicenseEmail(toEmail, pluginLabel, key) {
     await sendEmail(
         toEmail,
-        `Twój klucz licencyjny - ${pluginLabel}`,
-        `Dziękujemy za zakup!\n\n${pluginLabel}\nKlucz licencyjny: ${key}\n\nZaloguj się w zakładce Sklep w PluginManagerze, żeby zobaczyć swoje licencje, albo wklej ten klucz ręcznie do license.yml na serwerze.`
+        `Your license key - ${pluginLabel}`,
+        `Thank you for your purchase!\n\n${pluginLabel}\nLicense key: ${key}\n\nLog in on the Shop tab in RSMC Manager to see your licenses, or paste this key manually into license.yml on the server.`
     );
 }
 
@@ -56,13 +58,20 @@ async function handleOrderCreated(payload) {
     const orderId = payload?.data?.id;
 
     if (!variantId || !buyerEmail) {
-        console.error("order_created bez variant_id/user_email - pełen payload:", JSON.stringify(payload));
+        console.error("order_created without variant_id/user_email - full payload:", JSON.stringify(payload));
         return { handled: false, reason: "missing variant_id or user_email" };
+    }
+
+    // LemonSqueezy ponawia webhook przy błędzie/timeoucie - to samo zamówienie drugi raz
+    // nie może dać drugiego klucza.
+    const existing = orderId != null ? findByOrderId(orderId) : null;
+    if (existing) {
+        return { handled: true, duplicate: true, key: existing.key };
     }
 
     const resolved = resolveVariant(variantId);
     if (!resolved) {
-        console.error(`Brak pozycji katalogu dla variant_id=${variantId} (order ${orderId}, kupujący ${buyerEmail}) - uzupełnij src/catalog.js.`);
+        console.error(`No catalog entry for variant_id=${variantId} (order ${orderId}, buyer ${buyerEmail}) - add it to src/catalog.js.`);
         return { handled: false, reason: `unmapped variant_id: ${variantId}` };
     }
 
@@ -73,6 +82,7 @@ async function handleOrderCreated(payload) {
         note: `LemonSqueezy order ${orderId} - ${buyerEmail}`,
         customerId,
         billingType: "one-time",
+        orderId,
     });
 
     await sendLicenseEmail(buyerEmail, resolved.plugin, license.key);
@@ -86,13 +96,19 @@ async function handleSubscriptionCreated(payload) {
     const subscriptionId = payload?.data?.id;
 
     if (!variantId || !buyerEmail || !subscriptionId) {
-        console.error("subscription_created bez variant_id/user_email/id - pełen payload:", JSON.stringify(payload));
+        console.error("subscription_created without variant_id/user_email/id - full payload:", JSON.stringify(payload));
         return { handled: false, reason: "missing variant_id, user_email or subscription id" };
+    }
+
+    // Powtórzony webhook - subskrypcja ma już licencję.
+    const existingSub = findBySubscriptionId(subscriptionId);
+    if (existingSub) {
+        return { handled: true, duplicate: true, key: existingSub.key };
     }
 
     const resolved = resolveVariant(variantId);
     if (!resolved || resolved.billingType !== "subscription") {
-        console.error(`Brak pozycji katalogu (subskrypcja) dla variant_id=${variantId} - uzupełnij src/catalog.js (subscriptionVariantId).`);
+        console.error(`No catalog entry (subscription) for variant_id=${variantId} - add it to src/catalog.js (subscriptionVariantId).`);
         return { handled: false, reason: `unmapped subscription variant_id: ${variantId}` };
     }
 
@@ -115,7 +131,7 @@ function handleSubscriptionStatusChange(payload, eventName) {
     const subscriptionId = payload?.data?.id;
     const status = payload?.data?.attributes?.status; // "active" | "cancelled" | "expired" | "past_due" | "unpaid" | ...
     if (!subscriptionId) {
-        console.error(`${eventName} bez id subskrypcji - pełen payload:`, JSON.stringify(payload));
+        console.error(`${eventName} without a subscription id - full payload:`, JSON.stringify(payload));
         return { handled: false, reason: "missing subscription id" };
     }
 
@@ -125,9 +141,32 @@ function handleSubscriptionStatusChange(payload, eventName) {
         return { handled: false, reason: `no license for subscription ${subscriptionId}` };
     }
 
-    const nowActive = status === "active" || eventName === "subscription_payment_success";
+    // Status z LemonSqueezy decyduje (nie nazwa zdarzenia):
+    //  - active, on_trial        -> działa,
+    //  - cancelled               -> klient anulował, ale okres jest opłacony do końca (ends_at)
+    //                               - działa, aż przyjdzie "expired",
+    //  - past_due                -> płatność się nie udała, LemonSqueezy ponawia - dajemy czas,
+    //  - expired, unpaid, paused -> odbieramy.
+    const KEEP = new Set(["active", "on_trial", "cancelled", "past_due"]);
+    if (!status) {
+        console.error(`${eventName} without attributes.status - full payload:`, JSON.stringify(payload));
+        return { handled: false, reason: "missing status" };
+    }
+    const nowActive = KEEP.has(status);
     setStatus(license.key, nowActive ? "active" : "revoked");
     return { handled: true, key: license.key, newStatus: nowActive ? "active" : "revoked", lemonSqueezyStatus: status };
+}
+
+/** Zwrot pieniędzy za zamówienie - licencja z tego zamówienia przestaje działać. */
+function handleOrderRefunded(payload) {
+    const orderId = payload?.data?.id;
+    const license = orderId != null ? findByOrderId(orderId) : null;
+    if (!license) {
+        console.error(`order_refunded: no license for order ${orderId} - full payload:`, JSON.stringify(payload));
+        return { handled: false, reason: `no license for order ${orderId}` };
+    }
+    setStatus(license.key, "revoked");
+    return { handled: true, key: license.key, newStatus: "revoked" };
 }
 
 /** Obsługa webhooka - `rawBody` to Buffer (patrz express.raw() w server.js), nie sparsowany JSON. */
@@ -150,9 +189,14 @@ export async function handleLemonSqueezyWebhook(rawBody) {
         case "subscription_expired":
         case "subscription_payment_success":
         case "subscription_payment_failed":
+        case "subscription_paused":
+        case "subscription_unpaused":
+        case "subscription_resumed":
             return handleSubscriptionStatusChange(payload, eventName);
+        case "order_refunded":
+            return handleOrderRefunded(payload);
         default:
-            // Inne eventy (order_refunded, itd.) - celowo ignorowane na razie.
+            // Pozostałe zdarzenia nie zmieniają licencji.
             return { handled: false, reason: `ignored event: ${eventName}` };
     }
 }

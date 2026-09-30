@@ -30,4 +30,15 @@ public interface LicenseService {
      *         odwołany, przypisany do innego serwera, albo okres karencji minął.
      */
     boolean isLicensed(String pluginId);
+
+    /**
+     * Podpisany przez serwer licencji dowód licencji ("token.podpis") - płatny plugin
+     * sprawdza go SAM swoją kopią weryfikatora (mainplugins-license: LicenseGuard), zamiast
+     * ufać samemu {@link #isLicensed}. Dzięki temu podmieniony Core nie odblokuje pluginów.
+     *
+     * @return aktualny ważny dowód albo null, gdy licencji nie ma / wygasła.
+     */
+    default String licenseProof(String pluginId) {
+        return null;
+    }
 }

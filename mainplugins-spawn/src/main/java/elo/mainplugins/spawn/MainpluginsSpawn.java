@@ -1,5 +1,6 @@
 package elo.mainplugins.spawn;
 
+import elo.mainplugins.license.LicenseGuard;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.LangService;
 import elo.mainplugins.core.api.SpawnService;
@@ -15,7 +16,8 @@ public final class MainpluginsSpawn extends JavaPlugin {
     @Override
     public void onEnable() {
         // Plugin płatny - patrz javadoc LicenseService oraz license-server/README.md.
-        if (!CoreAPI.getLicenseService().isLicensed("spawn")) {
+        if (!CoreAPI.getLicenseService().isLicensed("spawn")
+                || !LicenseGuard.enable(this, "spawn", () -> CoreAPI.getLicenseService().licenseProof("spawn"))) {
             getLogger().severe("Brak ważnej licencji dla mainplugins-spawn - plugin zostanie wyłączony.");
             getLogger().severe("Skonfiguruj klucz w license.yml (folder danych MainpluginsCore, sekcja 'keys: spawn: ...') i zrestartuj serwer.");
             getServer().getPluginManager().disablePlugin(this);

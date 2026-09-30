@@ -1,5 +1,6 @@
 package elo.mainplugins.skyblock;
 
+import elo.mainplugins.license.LicenseGuard;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.IslandService;
@@ -28,7 +29,8 @@ public final class MainpluginsSkyblock extends JavaPlugin {
     @Override
     public void onEnable() {
         // Plugin płatny - patrz javadoc LicenseService oraz license-server/README.md.
-        if (!CoreAPI.getLicenseService().isLicensed("skyblock")) {
+        if (!CoreAPI.getLicenseService().isLicensed("skyblock")
+                || !LicenseGuard.enable(this, "skyblock", () -> CoreAPI.getLicenseService().licenseProof("skyblock"))) {
             getLogger().severe("Brak ważnej licencji dla mainplugins-skyblock - plugin zostanie wyłączony.");
             getLogger().severe("Skonfiguruj klucz w license.yml (folder danych MainpluginsCore, sekcja 'keys: skyblock: ...') i zrestartuj serwer.");
             getServer().getPluginManager().disablePlugin(this);

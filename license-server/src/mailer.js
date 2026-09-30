@@ -5,7 +5,7 @@ export async function sendEmail(toEmail, subject, text) {
     const apiKey = process.env.RESEND_API_KEY;
     const fromEmail = process.env.FROM_EMAIL;
     if (!apiKey || !fromEmail) {
-        console.warn(`RESEND_API_KEY/FROM_EMAIL nieskonfigurowane - mail "${subject}" do ${toEmail} NIE został wysłany.`);
+        console.warn(`RESEND_API_KEY/FROM_EMAIL not configured - email "${subject}" to ${toEmail} was NOT sent.`);
         return;
     }
     try {
@@ -15,9 +15,9 @@ export async function sendEmail(toEmail, subject, text) {
             body: JSON.stringify({ from: fromEmail, to: toEmail, subject, text }),
         });
         if (!resp.ok) {
-            console.error(`Resend zwrócił HTTP ${resp.status} przy wysyłce do ${toEmail}: ${await resp.text()}`);
+            console.error(`Resend returned HTTP ${resp.status} when sending to ${toEmail}: ${await resp.text()}`);
         }
     } catch (e) {
-        console.error(`Nie udało się wysłać maila do ${toEmail}:`, e);
+        console.error(`Couldn't send an email to ${toEmail}:`, e);
     }
 }

@@ -1,5 +1,6 @@
 package elo.mainplugins.dungeons;
 
+import elo.mainplugins.license.LicenseGuard;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.util.TabCompleteUtils;
 import elo.mainplugins.dungeons.config.DungeonConfigLoader;
@@ -12,7 +13,8 @@ public final class MainpluginsDungeons extends JavaPlugin {
     @Override
     public void onEnable() {
         // Plugin płatny - patrz javadoc LicenseService oraz license-server/README.md.
-        if (!CoreAPI.getLicenseService().isLicensed("dungeons")) {
+        if (!CoreAPI.getLicenseService().isLicensed("dungeons")
+                || !LicenseGuard.enable(this, "dungeons", () -> CoreAPI.getLicenseService().licenseProof("dungeons"))) {
             getLogger().severe("Brak ważnej licencji dla mainplugins-dungeons - plugin zostanie wyłączony.");
             getLogger().severe("Skonfiguruj klucz w license.yml (folder danych MainpluginsCore, sekcja 'keys: dungeons: ...') i zrestartuj serwer.");
             getServer().getPluginManager().disablePlugin(this);

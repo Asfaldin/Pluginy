@@ -1,5 +1,6 @@
 package elo.mainplugins.crates;
 
+import elo.mainplugins.license.LicenseGuard;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.CrateService;
 import elo.mainplugins.core.api.LangService;
@@ -19,7 +20,8 @@ public final class MainpluginsCrates extends JavaPlugin {
     @Override
     public void onEnable() {
         // Plugin płatny - patrz javadoc LicenseService oraz license-server/README.md.
-        if (!CoreAPI.getLicenseService().isLicensed("crates")) {
+        if (!CoreAPI.getLicenseService().isLicensed("crates")
+                || !LicenseGuard.enable(this, "crates", () -> CoreAPI.getLicenseService().licenseProof("crates"))) {
             getLogger().severe("Brak ważnej licencji dla mainplugins-crates - plugin zostanie wyłączony.");
             getLogger().severe("Skonfiguruj klucz w license.yml (folder danych MainpluginsCore, sekcja 'keys: crates: ...') i zrestartuj serwer.");
             getServer().getPluginManager().disablePlugin(this);

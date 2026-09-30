@@ -10,6 +10,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
@@ -50,7 +51,9 @@ public final class MainpluginsMobs extends JavaPlugin implements Listener, TabEx
         }
         Bukkit.getScheduler().runTaskTimer(this, () -> {
             live.removeIf(m -> {
-                if (m.alive()) return false;
+                // zabity: części zostają na animację śmierci i rozpad, potem znikają
+                if (!m.alive() && !m.dying()) m.startDeath();
+                if (!m.finished()) return false;
                 m.remove();
                 return true;
             });
@@ -111,6 +114,18 @@ public final class MainpluginsMobs extends JavaPlugin implements Listener, TabEx
     @EventHandler
     public void onAttack(EntityDamageByEntityEvent event) {
         for (LiveMob m : live) if (m.base.equals(event.getDamager())) m.attack();
+    }
+
+    /** Cios w hitbox części (obiekt interakcji) = cios w moba, słabe punkty mocniej. */
+    @EventHandler(ignoreCancelled = true)
+    public void onPartAttack(PrePlayerAttackEntityEvent event) {
+        for (LiveMob m : live) {
+            String bone = m.partOf(event.getAttacked());
+            if (bone == null) continue;
+            event.setCancelled(true);
+            m.hitPart(event.getPlayer(), bone);
+            return;
+        }
     }
 
     @EventHandler

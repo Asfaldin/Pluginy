@@ -18,6 +18,10 @@
          Zależność od core jest potrzebna tylko dla kilofa (drzewko umiejętności odpala
          perki wypłacające bonusową kasę przez EconomyService) - patrz CoreAPI. -->
     <dependencies>
+        <dependency>
+            <groupId>elo</groupId>
+            <artifactId>mainplugins-license</artifactId>
+        </dependency>
         <!-- scope=provided - patrz komentarz w mainplugins-skyblock/pom.xml -->
         <dependency>
             <groupId>elo</groupId>

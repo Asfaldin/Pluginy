@@ -120,8 +120,6 @@ final class IslandStorage {
             data.setCustomName(configWysp.getString(path + "customName"));
             data.setBankBalance(configWysp.getDouble(path + "bankBalance", 0.0));
             data.setWorth(configWysp.getDouble(path + "worth", 0.0));
-            data.setPoziomCzlonkow(configWysp.getInt(path + "poziomCzlonkow", 0));
-            data.setPoziomLimitow(configWysp.getInt(path + "poziomLimitow", 0));
             data.setBiom(configWysp.getString(path + "biom"));
 
             ConfigurationSection licznikiSekcja = configWysp.getConfigurationSection(path + "blockCounts");
@@ -216,8 +214,6 @@ final class IslandStorage {
             configWysp.set(path + "customName", data.getCustomName());
             configWysp.set(path + "bankBalance", data.getBankBalance());
             configWysp.set(path + "worth", data.getWorth());
-            configWysp.set(path + "poziomCzlonkow", data.getPoziomCzlonkow());
-            configWysp.set(path + "poziomLimitow", data.getPoziomLimitow());
             configWysp.set(path + "biom", data.getBiom());
 
             if (data.hasCustomHome()) {

@@ -190,9 +190,6 @@ upgrade:
   border-done: "&aSuccess! The island area was expanded. New radius: {size} blocks."
   spawner-max: "&cThis stat is already at the maximum level!"
   spawner-done: "&aUpgraded to level {level}!"
-  max-level: "&cThis upgrade is already at the highest level."
-  members-done: "&aUpgraded! The island can now have {limit} players."
-  limits-done: "&aUpgraded! Island block limits are {percent}% higher."
 
 name:
   prompt: "&eType the new island name in chat (max {max} characters, or type '{cancel}'):"
@@ -265,12 +262,6 @@ gui:
     cost: "&aCost (from the island bank): {cost}"
     bank: "&eBank balance: {balance}"
     click: "&bClick to expand by {step} blocks!"
-    members-now: "&7Player limit: &e{limit}"
-    members-next: "&7After the upgrade: &a{limit}"
-    limits-now: "&7Block limits: &e+{percent}%"
-    limits-next: "&7After the upgrade: &a+{percent}%"
-    max-level: "&cHighest level reached!"
-    click-upgrade: "&bClick to upgrade"
   spawners:
     name: "&e&lSpawner: {type}"
     amount: "&7Amount: {level}/{max}"
@@ -349,8 +340,8 @@ biome:
   changing: "&eChanging the island biome to {biome}..."
   done: "&aDone! The island biome is now: {biome}."
   list-header: "&6&l=== Island biomes ==="
-  list-line: "&7- {biome}&7: &e{cost}"
-  list-footer: "&7Type &e/is biome <name>&7, e.g. &e/is biome desert&7. Paid from the island bank."
+  list-line: "&7- {biome}"
+  list-footer: "&7Type &e/is biome <name>&7, e.g. &e/is biome desert&7. Changing is free."
   unknown: "&cThere is no biome \"{name}\". Type &e/is biome&c to see the list."
 
 buttons:
@@ -511,14 +502,6 @@ buttons:
       lore-1: ""
       lore-2: ""
   ulepszenia-wyspy:
-    ulepszenie-czlonkow:
-      name: "&b&lMore players"
-      lore-1: "&7Higher player limit on the island"
-      lore-2: ""
-    ulepszenie-limitow:
-      name: "&6&lHigher block limits"
-      lore-1: "&7More hoppers, pistons and redstone"
-      lore-2: ""
     poprzednia-strona:
       name: "&e« Previous page"
       lore-1: ""

@@ -430,40 +430,6 @@ final class IslandMenus implements Listener {
             inv.setItem(powieksz.slot(), ikonaZPrzycisku(powieksz, material, lore));
         }
 
-        // Ulepszenia za bank: limit graczy i limity bloków (bez poziomów w ustawieniach przycisku nie ma).
-        IslandGuiButton czlonkowieBtn = widoczny(screen, "ULEPSZENIE_CZLONKOW");
-        if (czlonkowieBtn != null && !m.tuning.ulepszeniaCzlonkow().isEmpty() && m.tuning.limitCzlonkow() > 0) {
-            var poziomy = m.tuning.ulepszeniaCzlonkow();
-            int poziom = data.getPoziomCzlonkow();
-            List<Component> lore = new ArrayList<>();
-            lore.add(m.txt("gui.upgrades.members-now", "limit", String.valueOf(m.tuning.limitCzlonkowWyspy(poziom))));
-            if (poziom >= poziomy.size()) lore.add(m.txt("gui.upgrades.max-level"));
-            else {
-                lore.add(m.txt("gui.upgrades.members-next", "limit", String.valueOf(poziomy.get(poziom).limit())));
-                lore.add(m.txt("gui.upgrades.cost", "cost", IslandTexts.kasa(poziomy.get(poziom).koszt())));
-                lore.add(m.txt("gui.upgrades.bank", "balance", IslandTexts.kasa(data.getBankBalance())));
-                lore.add(Component.empty());
-                lore.add(m.txt("gui.upgrades.click-upgrade"));
-            }
-            inv.setItem(czlonkowieBtn.slot(), ikonaZPrzycisku(czlonkowieBtn, lore));
-        }
-        IslandGuiButton limityBtn = widoczny(screen, "ULEPSZENIE_LIMITOW");
-        if (limityBtn != null && !m.tuning.ulepszeniaLimitow().isEmpty()) {
-            var poziomy = m.tuning.ulepszeniaLimitow();
-            int poziom = data.getPoziomLimitow();
-            List<Component> lore = new ArrayList<>();
-            lore.add(m.txt("gui.upgrades.limits-now", "percent", String.valueOf(m.tuning.procentLimitow(poziom))));
-            if (poziom >= poziomy.size()) lore.add(m.txt("gui.upgrades.max-level"));
-            else {
-                lore.add(m.txt("gui.upgrades.limits-next", "percent", String.valueOf(poziomy.get(poziom).procent())));
-                lore.add(m.txt("gui.upgrades.cost", "cost", IslandTexts.kasa(poziomy.get(poziom).koszt())));
-                lore.add(m.txt("gui.upgrades.bank", "balance", IslandTexts.kasa(data.getBankBalance())));
-                lore.add(Component.empty());
-                lore.add(m.txt("gui.upgrades.click-upgrade"));
-            }
-            inv.setItem(limityBtn.slot(), ikonaZPrzycisku(limityBtn, lore));
-        }
-
         IslandGuiButton spawnery = widoczny(screen, "ULEPSZENIE_SPAWNEROW");
         if (spawnery != null && saSpawnery()) {
             ItemStack itemSpawnery = ikonaZPrzycisku(spawnery, null);
@@ -728,8 +694,6 @@ final class IslandMenus implements Listener {
             int kier = kierunekStrony(screen, slot, event.getCurrentItem());
             if (kier != 0) { otworzMenuUlepszen(player, biezaca + kier); return; }
             if (jestSlotem(screen, "POWIEKSZ_TEREN", slot)) { m.uprosGranice(player); }
-            else if (jestSlotem(screen, "ULEPSZENIE_CZLONKOW", slot) && !m.tuning.ulepszeniaCzlonkow().isEmpty()) { m.ulepszCzlonkow(player); }
-            else if (jestSlotem(screen, "ULEPSZENIE_LIMITOW", slot) && !m.tuning.ulepszeniaLimitow().isEmpty()) { m.ulepszLimity(player); }
             else if (saSpawnery() && jestSlotem(screen, "ULEPSZENIE_SPAWNEROW", slot)) { otworzMenuWzrostuDropow(player); }
             else if (jestSlotem(screen, "POWROT", slot)) { otworzMenuWyspy(player, zMenu); }
         }

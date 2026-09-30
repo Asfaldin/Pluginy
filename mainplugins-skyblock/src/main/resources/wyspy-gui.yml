@@ -74,10 +74,8 @@ topka-wysp:
 ulepszenia-wyspy:
   size: 27
   przyciski:
-    - { slot: 10, akcja: POWIEKSZ_TEREN, material: GRASS_BLOCK, material-wylaczone: BEDROCK }
-    - { slot: 12, akcja: ULEPSZENIE_CZLONKOW, material: PLAYER_HEAD }
-    - { slot: 14, akcja: ULEPSZENIE_LIMITOW, material: HOPPER }
-    - { slot: 16, akcja: ULEPSZENIE_SPAWNEROW, material: SPAWNER }
+    - { slot: 11, akcja: POWIEKSZ_TEREN, material: GRASS_BLOCK, material-wylaczone: BEDROCK }
+    - { slot: 15, akcja: ULEPSZENIE_SPAWNEROW, material: SPAWNER }
     - { slot: 22, akcja: POWROT, material: ARROW }
 
 ulepszenie-spawnerow:

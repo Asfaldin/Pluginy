@@ -340,8 +340,7 @@ public class IslandProtectionManager implements Listener {
         if (islandManager.getTuning().limitBloku(typ) <= 0) return;
         IslandData data = islandManager.znajdzWyspePod(event.getBlock().getLocation());
         if (data == null) return;
-        // Limit tej wyspy: zwykły plus wykupione ulepszenie limitów.
-        int limit = islandManager.getTuning().limitBloku(typ, data.getPoziomLimitow());
+        int limit = islandManager.getTuning().limitBloku(typ);
         if (data.getBlockCount(typ) < limit) return;
         event.setCancelled(true);
         islandManager.msg(event.getPlayer(), "limit.block", "max", String.valueOf(limit));

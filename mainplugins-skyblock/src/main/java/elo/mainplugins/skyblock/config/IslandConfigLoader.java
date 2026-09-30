@@ -109,15 +109,15 @@ public final class IslandConfigLoader {
                 // Ogień i lawa podpalają bloki na wyspach - ustawienie całego serwera (domyślnie wyłączone).
                 cfg.getBoolean("ogien-sie-rozprzestrzenia", false),
                 // Zasady całego serwera (aplikacja: Wyspy -> Zasady serwera).
-                cfg.getBoolean("odrodzenie-na-wyspie", true), cfg.getBoolean("zachowanie-ekwipunku", false),
+                cfg.getBoolean("odrodzenie-na-wyspie", true), cfg.getBoolean("zachowanie-ekwipunku", true),
                 cfg.getBoolean("odwiedzanie-wysp", true), cfg.getBoolean("wybuchy-niszcza-bloki", false),
                 cfg.getBoolean("pioruny", false),
                 cfg.getBoolean("moby.warden", false), cfg.getBoolean("moby.wither", false), cfg.getBoolean("moby.balwan", false),
-                parseUlepszeniaCzlonkow(cfg), parseUlepszeniaLimitow(cfg), parseBiomy(cfg, log)
+                parseBiomy(cfg, log)
         );
     }
 
-    /** biomy: lista {biom, nazwa, ikona, koszt}; pusta = zmiana biomu wyłączona. Nieznany biom jest pomijany. */
+    /** biomy: lista {biom, nazwa}; pusta = zmiana biomu wyłączona. Nieznany biom jest pomijany. */
     private static List<IslandTuning.BiomWyspy> parseBiomy(YamlConfiguration cfg, Logger log) {
         List<IslandTuning.BiomWyspy> lista = new ArrayList<>();
         for (Map<?, ?> m : cfg.getMapList("biomy")) {
@@ -126,32 +126,8 @@ public final class IslandConfigLoader {
                 log.warning("wyspy-config.yml: biomy - nie ma biomu '" + id + "', pomijam.");
                 continue;
             }
-            Material ikona = m.get("ikona") != null ? Material.matchMaterial(String.valueOf(m.get("ikona"))) : null;
             String nazwa = m.get("nazwa") != null ? String.valueOf(m.get("nazwa")) : id;
-            int koszt = m.get("koszt") instanceof Number n ? Math.max(0, n.intValue()) : 0;
-            lista.add(new IslandTuning.BiomWyspy(id, nazwa, ikona != null ? ikona : Material.GRASS_BLOCK, koszt));
-        }
-        return lista;
-    }
-
-    /** ulepszenia.czlonkowie: lista {limit, koszt}; pusta = bez tego ulepszenia. */
-    private static List<IslandTuning.PoziomCzlonkow> parseUlepszeniaCzlonkow(YamlConfiguration cfg) {
-        List<IslandTuning.PoziomCzlonkow> lista = new ArrayList<>();
-        for (Map<?, ?> m : cfg.getMapList("ulepszenia.czlonkowie")) {
-            int limit = m.get("limit") instanceof Number n ? n.intValue() : 0;
-            int koszt = m.get("koszt") instanceof Number n ? n.intValue() : 0;
-            if (limit > 0) lista.add(new IslandTuning.PoziomCzlonkow(limit, Math.max(0, koszt)));
-        }
-        return lista;
-    }
-
-    /** ulepszenia.limity-blokow: lista {procent, koszt}; pusta = bez tego ulepszenia. */
-    private static List<IslandTuning.PoziomLimitow> parseUlepszeniaLimitow(YamlConfiguration cfg) {
-        List<IslandTuning.PoziomLimitow> lista = new ArrayList<>();
-        for (Map<?, ?> m : cfg.getMapList("ulepszenia.limity-blokow")) {
-            int procent = m.get("procent") instanceof Number n ? n.intValue() : 0;
-            int koszt = m.get("koszt") instanceof Number n ? n.intValue() : 0;
-            if (procent > 0) lista.add(new IslandTuning.PoziomLimitow(procent, Math.max(0, koszt)));
+            lista.add(new IslandTuning.BiomWyspy(id, nazwa));
         }
         return lista;
     }

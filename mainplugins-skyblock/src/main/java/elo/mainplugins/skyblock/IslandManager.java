@@ -817,7 +817,7 @@ public class IslandManager implements Listener, IslandService {
         UUID ownerUUID = playerIslandMap.get(inviter.getUniqueId());
         IslandData wyspa = ownerUUID != null ? islandDatabase.get(ownerUUID) : null;
         if (wyspa != null && wyspaPelna(wyspa)) {
-            msg(inviter, "invite.full", "max", String.valueOf(tuning.limitCzlonkowWyspy(wyspa.getPoziomCzlonkow())));
+            msg(inviter, "invite.full", "max", String.valueOf(tuning.limitCzlonkow()));
             return;
         }
         pendingInvites.put(targetUUID, new PendingInvite(ownerUUID, inviter.getUniqueId()));
@@ -851,7 +851,7 @@ public class IslandManager implements Listener, IslandService {
 
     /** Limit liczy właściciela + członków; 0 w configu = bez limitu. */
     boolean wyspaPelna(IslandData data) {
-        int limit = tuning.limitCzlonkowWyspy(data.getPoziomCzlonkow());
+        int limit = tuning.limitCzlonkow();
         return limit > 0 && 1 + data.getMembers().size() >= limit;
     }
 
@@ -874,7 +874,7 @@ public class IslandManager implements Listener, IslandService {
             return;
         }
         if (wyspaPelna(data)) {
-            msg(player, "invite.full", "max", String.valueOf(tuning.limitCzlonkowWyspy(data.getPoziomCzlonkow())));
+            msg(player, "invite.full", "max", String.valueOf(tuning.limitCzlonkow()));
             return;
         }
 
@@ -1482,7 +1482,7 @@ public class IslandManager implements Listener, IslandService {
     }
 
     /**
-     * /is biom = lista biomów z cenami na czacie; /is biom <nazwa> = zmiana biomu wyspy. Nazwę można wpisać po polsku
+     * /is biom = lista biomów na czacie; /is biom <nazwa> = zmiana biomu wyspy. Nazwę można wpisać po polsku
      * (bez polskich znaków też) albo tak jak w grze, np. /is biom pustynia albo /is biom desert.
      */
     void biomKomenda(Player player, String[] args) {
@@ -1493,7 +1493,7 @@ public class IslandManager implements Listener, IslandService {
         if (args.length < 2) {
             msg(player, "biome.list-header");
             for (IslandTuning.BiomWyspy b : tuning.biomy()) {
-                msg(player, "biome.list-line", "biome", b.nazwa(), "cost", IslandTexts.kasa(b.koszt()));
+                msg(player, "biome.list-line", "biome", b.nazwa());
             }
             msg(player, "biome.list-footer");
             return;
@@ -1518,7 +1518,7 @@ public class IslandManager implements Listener, IslandService {
     }
 
     /**
-     * Zmiana biomu całej wyspy za pieniądze z banku. Biom ustawiamy kawałek po kawałku (chunkiNaTick na tick,
+     * Darmowa zmiana biomu całej wyspy. Biom ustawiamy kawałek po kawałku (chunkiNaTick na tick,
      * jak przy budowaniu wyspy), a każdy gotowy kawałek odsyłamy graczom, żeby od razu zobaczyli nowy kolor trawy i wody.
      */
     void zmienBiom(Player player, IslandTuning.BiomWyspy wybrany) {
@@ -1530,10 +1530,6 @@ public class IslandManager implements Listener, IslandService {
         }
         org.bukkit.block.Biome biom = org.bukkit.Registry.BIOME.get(org.bukkit.NamespacedKey.minecraft(wybrany.id()));
         if (biom == null) return;
-        if (!data.odejmijZBanku(wybrany.koszt())) {
-            msg(player, "bank.upgrade-no-money", "cost", IslandTexts.kasa(wybrany.koszt()), "balance", IslandTexts.kasa(data.getBankBalance()));
-            return;
-        }
         data.setBiom(wybrany.id());
         storage.zapiszWyspy();
         player.closeInventory();
@@ -1571,46 +1567,6 @@ public class IslandManager implements Listener, IslandService {
                 }
             }
         }.runTaskTimer(plugin, 1L, 1L);
-    }
-
-    /** Kolejny poziom limitu graczy za pieniądze z banku wyspy. */
-    void ulepszCzlonkow(Player player) {
-        IslandData data = wyspaDoUlepszenia(player);
-        if (data == null) return;
-        var poziomy = tuning.ulepszeniaCzlonkow();
-        if (data.getPoziomCzlonkow() >= poziomy.size() || tuning.limitCzlonkow() <= 0) {
-            msg(player, "upgrade.max-level");
-            return;
-        }
-        var nastepny = poziomy.get(data.getPoziomCzlonkow());
-        if (!data.odejmijZBanku(nastepny.koszt())) {
-            msg(player, "bank.upgrade-no-money", "cost", IslandTexts.kasa(nastepny.koszt()), "balance", IslandTexts.kasa(data.getBankBalance()));
-            return;
-        }
-        data.setPoziomCzlonkow(data.getPoziomCzlonkow() + 1);
-        storage.zapiszWyspy();
-        msg(player, "upgrade.members-done", "limit", String.valueOf(nastepny.limit()));
-        menus.otworzMenuUlepszen(player);
-    }
-
-    /** Kolejny poziom wyższych limitów bloków za pieniądze z banku wyspy. */
-    void ulepszLimity(Player player) {
-        IslandData data = wyspaDoUlepszenia(player);
-        if (data == null) return;
-        var poziomy = tuning.ulepszeniaLimitow();
-        if (data.getPoziomLimitow() >= poziomy.size()) {
-            msg(player, "upgrade.max-level");
-            return;
-        }
-        var nastepny = poziomy.get(data.getPoziomLimitow());
-        if (!data.odejmijZBanku(nastepny.koszt())) {
-            msg(player, "bank.upgrade-no-money", "cost", IslandTexts.kasa(nastepny.koszt()), "balance", IslandTexts.kasa(data.getBankBalance()));
-            return;
-        }
-        data.setPoziomLimitow(data.getPoziomLimitow() + 1);
-        storage.zapiszWyspy();
-        msg(player, "upgrade.limits-done", "percent", String.valueOf(nastepny.procent()));
-        menus.otworzMenuUlepszen(player);
     }
 
     /**

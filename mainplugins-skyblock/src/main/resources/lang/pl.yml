@@ -190,9 +190,6 @@ upgrade:
   border-done: "&aSukces! Powiększono teren wyspy. Nowy promień: {size} bloków."
   spawner-max: "&cTa statystyka ma już maksymalny poziom!"
   spawner-done: "&aUlepszono do poziomu {level}!"
-  max-level: "&cTo ulepszenie ma już najwyższy poziom."
-  members-done: "&aUlepszono! Na wyspie może być teraz {limit} graczy."
-  limits-done: "&aUlepszono! Limity bloków na wyspie są wyższe o {percent}%."
 
 name:
   prompt: "&eWpisz na czacie nową nazwę wyspy (max {max} znaków, lub wpisz '{cancel}'):"
@@ -265,12 +262,6 @@ gui:
     cost: "&aKoszt (z banku wyspy): {cost}"
     bank: "&eStan banku: {balance}"
     click: "&bKliknij, aby powiększyć o {step} bloków!"
-    members-now: "&7Limit graczy: &e{limit}"
-    members-next: "&7Po ulepszeniu: &a{limit}"
-    limits-now: "&7Limity bloków: &e+{percent}%"
-    limits-next: "&7Po ulepszeniu: &a+{percent}%"
-    max-level: "&cOsiągnięto najwyższy poziom!"
-    click-upgrade: "&bKliknij, aby ulepszyć"
   spawners:
     name: "&e&lSpawner: {type}"
     amount: "&7Ilość: {level}/{max}"
@@ -349,8 +340,8 @@ biome:
   changing: "&eZmieniam biom wyspy na {biome}..."
   done: "&aGotowe! Wyspa ma teraz biom: {biome}."
   list-header: "&6&l=== Biomy wyspy ==="
-  list-line: "&7- {biome}&7: &e{cost}"
-  list-footer: "&7Wpisz &e/is biom <nazwa>&7, np. &e/is biom pustynia&7. Płaci się z banku wyspy."
+  list-line: "&7- {biome}"
+  list-footer: "&7Wpisz &e/is biom <nazwa>&7, np. &e/is biom pustynia&7. Zmiana jest darmowa."
   unknown: "&cNie ma biomu „{name}”. Wpisz &e/is biom&c, żeby zobaczyć listę."
 
 buttons:
@@ -511,14 +502,6 @@ buttons:
       lore-1: ""
       lore-2: ""
   ulepszenia-wyspy:
-    ulepszenie-czlonkow:
-      name: "&b&lWięcej graczy"
-      lore-1: "&7Większy limit graczy na wyspie"
-      lore-2: ""
-    ulepszenie-limitow:
-      name: "&6&lWyższe limity bloków"
-      lore-1: "&7Więcej lejów, tłoków i redstone"
-      lore-2: ""
     poprzednia-strona:
       name: "&e« Poprzednia strona"
       lore-1: ""

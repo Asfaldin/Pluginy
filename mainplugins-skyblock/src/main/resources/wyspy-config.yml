@@ -113,7 +113,7 @@ moby:
 # Po smierci gracz odradza sie na swojej wyspie zamiast na spawnie (lozko i kotwica maja pierwszenstwo).
 odrodzenie-na-wyspie: true
 # Po smierci w swiecie wysp gracz nie traci rzeczy ani poziomow.
-zachowanie-ekwipunku: false
+zachowanie-ekwipunku: true
 # Czy /is odwiedz dziala na serwerze (wlasciciele i tak moga zamknac swoje wyspy).
 odwiedzanie-wysp: true
 # TNT i creepery niszcza bloki na wyspach. Wylaczone = wybuch tylko wyglada, nic nie niszczy.
@@ -152,24 +152,16 @@ czlonkowie:
 # Biomy do wyboru komenda /is biom <nazwa> (samo /is biom pokazuje liste z cenami). Pusta lista = bez zmiany biomu.
 # biom = nazwa biomu z gry, nazwa = jak gracz go widzi i wpisuje, koszt = z banku wyspy.
 biomy:
-  - { biom: plains, nazwa: "&aRówniny", koszt: 0 }
-  - { biom: forest, nazwa: "&2Las", koszt: 5000 }
-  - { biom: desert, nazwa: "&ePustynia", koszt: 10000 }
-  - { biom: snowy_plains, nazwa: "&fŚnieżne równiny", koszt: 10000 }
-  - { biom: swamp, nazwa: "&2Bagno", koszt: 15000 }
-  - { biom: jungle, nazwa: "&2Dżungla", koszt: 20000 }
-
-# Ulepszenia za pieniadze z banku wyspy (okno Ulepszenia). Pusta lista = tego ulepszenia nie ma.
-ulepszenia:
-  # Wiekszy limit graczy: kolejne poziomy (limit razem z wlascicielem) i ich koszt.
-  czlonkowie:
-    - { limit: 8, koszt: 25000 }
-    - { limit: 10, koszt: 75000 }
-  # Wyzsze limity blokow (leje, tloki...): o ile procent i za ile.
-  limity-blokow:
-    - { procent: 25, koszt: 20000 }
-    - { procent: 50, koszt: 60000 }
-    - { procent: 100, koszt: 150000 }
+  - { biom: plains, nazwa: "&aRówniny" }
+  - { biom: forest, nazwa: "&2Las" }
+  - { biom: birch_forest, nazwa: "&aLas brzozowy" }
+  - { biom: cherry_grove, nazwa: "&dWiśniowy gaj" }
+  - { biom: taiga, nazwa: "&2Tajga" }
+  - { biom: snowy_plains, nazwa: "&fŚnieżne równiny" }
+  - { biom: desert, nazwa: "&ePustynia" }
+  - { biom: savanna, nazwa: "&6Sawanna" }
+  - { biom: jungle, nazwa: "&2Dżungla" }
+  - { biom: swamp, nazwa: "&2Bagno" }
 
 # Co gracz dostaje przy zalozeniu wyspy. Format jak nagrody w innych pluginach:
 # - item: MATERIAL, amount: ile  |  - money: kwota  |  - command: "komenda {player}"

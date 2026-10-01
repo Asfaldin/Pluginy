@@ -2,12 +2,12 @@
 # Wgrywa (albo aktualizuje) kod serwera kont/licencji na VPS i restartuje usługę.
 # Uruchamiane z komputera operatora (Git Bash), z folderu license-server:
 #   bash deploy/push.sh ubuntu@51.68.136.151
-# Wysyła tylko kod (src, package*.json) - bez node_modules, danych i .env.
+# Wysyła tylko kod (src, admin - panel wsparcia, package*.json) - bez node_modules, danych i .env.
 set -euo pipefail
 HOST="${1:?Podaj serwer, np. ubuntu@51.68.136.151}"
 cd "$(dirname "$0")/.."
 
-tar -czf /tmp/license-server.tgz src package.json package-lock.json
+tar -czf /tmp/license-server.tgz src admin package.json package-lock.json
 scp -q /tmp/license-server.tgz "$HOST:/tmp/license-server.tgz"
 ssh "$HOST" 'set -e
   sudo tar -xzf /tmp/license-server.tgz -C /opt/license-server

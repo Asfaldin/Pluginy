@@ -8,11 +8,27 @@ import java.util.Map;
  * (<id>.display.json: przedmiot z modelem i skala każdej części, przedmioty wariantów wyglądu).
  */
 public record MobDef(String id, String name, List<Bone> bones, Map<String, Anim> animations, List<Effect> effects,
-                     double hitboxWidth, double hitboxHeight, Map<String, Variant> variants) {
+                     double hitboxWidth, double hitboxHeight, Map<String, Variant> variants,
+                     Map<String, String> roles, Map<String, String> slots) {
 
     public MobDef(String id, String name, List<Bone> bones, Map<String, Anim> animations, List<Effect> effects,
                   double hitboxWidth, double hitboxHeight) {
-        this(id, name, bones, animations, effects, hitboxWidth, hitboxHeight, Map.of());
+        this(id, name, bones, animations, effects, hitboxWidth, hitboxHeight, Map.of(), Map.of(), Map.of());
+    }
+
+    public MobDef(String id, String name, List<Bone> bones, Map<String, Anim> animations, List<Effect> effects,
+                  double hitboxWidth, double hitboxHeight, Map<String, Variant> variants) {
+        this(id, name, bones, animations, effects, hitboxWidth, hitboxHeight, variants, Map.of(), Map.of());
+    }
+
+    /** Czy aplikacja zapisała role części (nowsze pliki) - wtedy rig nie zgaduje po nazwach. */
+    public boolean hasRoles() {
+        return !roles.isEmpty();
+    }
+
+    /** Rola części (head, neck, leg, arm, tail, wing, ear, spring) albo "none". */
+    public String role(String boneId) {
+        return roles.getOrDefault(boneId, "none");
     }
 
     /**
@@ -32,11 +48,18 @@ public record MobDef(String id, String name, List<Bone> bones, Map<String, Anim>
     }
 
     /** Animacja: kość -> ścieżki (obrót, przesunięcie, skala) względem pozy spoczynkowej; przełączenia wariantu w czasie. */
-    public record Anim(String id, String name, float length, boolean loop, Map<String, Track> tracks, List<VariantKey> variants) {
+    public record Anim(String id, String name, float length, boolean loop, Map<String, Track> tracks, List<VariantKey> variants, List<SoundKey> sounds) {
         public Anim(String name, float length, boolean loop, Map<String, Track> tracks) {
-            this(name, name, length, loop, tracks, List.of());
+            this(name, name, length, loop, tracks, List.of(), List.of());
+        }
+
+        public Anim(String id, String name, float length, boolean loop, Map<String, Track> tracks, List<VariantKey> variants) {
+            this(id, name, length, loop, tracks, variants, List.of());
         }
     }
+
+    /** Dźwięk w chwili t animacji (z Kreatora) - gra, gdy animacja mija ten moment. */
+    public record SoundKey(float t, String sound, float volume, float pitch) {}
 
     public record Track(List<Key> rotation, List<Key> position, List<Key> scale) {}
 

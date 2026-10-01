@@ -1,0 +1,524 @@
+:root {
+  --bg: #0e0d13;
+  --surface: #17151f;
+  --surface-2: #1f1c29;
+  --border: #2c2838;
+  --text: #ece9f5;
+  --muted: #9a94ad;
+  --accent: #a855f7;
+  --accent-ink: #1a0a29;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.45 "Segoe UI", system-ui, sans-serif;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  padding: 0.5rem 0.9rem;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+button.ghost {
+  background: transparent;
+}
+
+button.small {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+input,
+textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 0.55rem 0.7rem;
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 0.8rem;
+}
+
+.error {
+  color: var(--danger);
+  margin: 0;
+}
+
+.pad {
+  padding: 1rem;
+}
+
+/* Logowanie */
+.login {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  padding: 1rem;
+}
+
+.login-card {
+  width: min(380px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 1.6rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.login-card h1 {
+  margin: 0;
+}
+
+.login-card p {
+  margin: 0;
+}
+
+.login-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-weight: 600;
+}
+
+/* Układ */
+.app {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  height: 100%;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+}
+
+.brand {
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.brand span {
+  color: var(--accent);
+}
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0 0.75rem;
+}
+
+.tabs button {
+  flex: 1;
+  padding: 0.4rem 0.3rem;
+  font-size: 0.8rem;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.tabs button.on {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.tabs button span {
+  margin-left: 0.2rem;
+  color: var(--accent);
+}
+
+.search {
+  margin: 0.75rem;
+  width: auto;
+}
+
+.tickets {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 0.5rem 0.5rem;
+}
+
+.ticket-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+  margin-bottom: 0.3rem;
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  border-color: transparent;
+  background: transparent;
+}
+
+.ticket-item:hover {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+
+.ticket-item.selected {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+}
+
+.ticket-item.unread .ti-subject::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 0.4rem;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: middle;
+}
+
+.ti-top,
+.ti-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ti-subject {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ti-time,
+.ti-email {
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ti-preview {
+  font-size: 0.8rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Szczegóły */
+.detail {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.empty {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  height: 100%;
+  color: var(--muted);
+}
+
+.empty-icon {
+  font-size: 2.5rem;
+  opacity: 0.5;
+}
+
+#ticket {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.ticket-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ticket-head h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.25rem;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ticket-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.ticket-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  min-height: 0;
+}
+
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.2rem 1.4rem;
+  overflow-y: auto;
+}
+
+.msg {
+  max-width: 78%;
+  padding: 0.7rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.msg-staff {
+  align-self: flex-end;
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+.msg-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.3rem;
+}
+
+.msg-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.customer {
+  padding: 1.2rem;
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.customer h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.customer h3 + * {
+  margin-bottom: 0.2rem;
+}
+
+.c-email {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+#c-since {
+  margin-bottom: 1.2rem;
+}
+
+.licenses {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lic {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.lic-name {
+  font-weight: 600;
+  width: 100%;
+}
+
+.reply {
+  padding: 0.9rem 1.4rem 1.1rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.reply-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.reply-bar .muted {
+  margin-right: auto;
+}
+
+/* Plakietki */
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.s-open {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.s-answered {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 60%, transparent);
+}
+
+.s-closed {
+  color: var(--muted);
+}
+
+.p-high {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 60%, transparent);
+}
+
+.p-medium {
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 60%, transparent);
+}
+
+.p-low {
+  color: var(--muted);
+}
+
+@media (max-width: 900px) {
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: 45vh 1fr;
+  }
+  .ticket-body {
+    grid-template-columns: 1fr;
+  }
+  .customer {
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+}
+
+/* Link wyglądający jak przycisk (np. Community / Support tickets w nagłówku) */
+a.ghost {
+  display: inline-block;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+a.ghost:hover {
+  border-color: var(--accent);
+}
+
+/* Włączanie 2FA */
+.qr {
+  display: block;
+  width: 220px;
+  height: 220px;
+  margin: 0.5rem auto;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.secret {
+  font-family: ui-monospace, Consolas, monospace;
+  letter-spacing: 0.05em;
+  user-select: all;
+}

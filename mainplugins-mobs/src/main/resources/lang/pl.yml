@@ -1,0 +1,11 @@
+# Mainplugins Mobs - wiadomości po polsku. Kolory: &a &e ...  Zmienne: {name}
+admin:
+  usage: "&eUżycie: /@mob spawn <mob> [ilość] | list | killall | reload"
+  only-player: "&cPodaj gracza: /@mob spawn <mob> <ilość> <gracz>"
+  unknown-mob: "&cNie ma takiego moba. Moby: {mobs}"
+  spawned: "&aPostawiono &e{count}x {mob}&a."
+  list: "&eMoby: &f{mobs} &7(żywe: {alive})"
+  list-empty: "&eNie ma jeszcze mobów - zrób je w aplikacji (Texturepack Creator > Mobs) i wyślij paczkę na serwer."
+  killed: "&aUsunięto mobów: {count}."
+  reloaded: "&aWczytano mobów: {count}."
+  problem: "&c{problem}"

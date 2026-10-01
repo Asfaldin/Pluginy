@@ -12,11 +12,15 @@
 
     <artifactId>mainplugins-mobs</artifactId>
     <packaging>jar</packaging>
-    <name>Mainplugins - Mobs (test)</name>
+    <name>Mainplugins - Mobs</name>
 
-    <!-- Plugin TESTOWY: pokazuje w grze moby z Kreatora mobów (Texturepack Creator w aplikacji).
-         Czyta je z paczki zasobów, którą Core udostępnia graczom. -->
+    <!-- Moby z Kreatora mobów (Texturepack Creator w aplikacji, dodatek Ultimate): model, animacje,
+         zachowanie i umiejętności. Czyta je z paczki zasobów, którą Core udostępnia graczom. -->
     <dependencies>
+        <dependency>
+            <groupId>elo</groupId>
+            <artifactId>mainplugins-license</artifactId>
+        </dependency>
         <dependency>
             <groupId>elo</groupId>
             <artifactId>mainplugins-core</artifactId>

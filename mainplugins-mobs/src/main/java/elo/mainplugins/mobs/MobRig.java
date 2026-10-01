@@ -37,16 +37,16 @@ final class MobRig {
 
     private final MobDef def;
     private final Map<String, MobDef.Bone> byId = new HashMap<>();
-    /** Łańcuch patrzenia od nasady szyi do głowy i udział każdego segmentu. */
+    /** Łańcuchy patrzenia (od nasady szyi do głowy) - osobno dla każdej głowy. */
+    final List<List<String>> heads = new ArrayList<>();
+    /** Pierwsza głowa (zgodność z testami i starszym kodem). */
     final List<String> look = new ArrayList<>();
-    private final float[] lookWeights;
     final List<Leg> legs = new ArrayList<>();
     final List<String> springs = new ArrayList<>();
 
     boolean lookEnabled = true, ikEnabled = true, springsEnabled = true;
     float maxYaw = 70, maxPitch = 40;
 
-    private float lookYaw, lookPitch;
     private final Map<String, float[]> theta = new HashMap<>(), omega = new HashMap<>();
     private final Map<String, Vector3f[]> pivotHistory = new HashMap<>();
     private final Map<String, Vector3f> springDir = new HashMap<>();
@@ -66,28 +66,41 @@ final class MobRig {
     MobRig(MobDef def) {
         this.def = def;
         for (MobDef.Bone b : def.bones()) byId.put(b.id(), b);
-        // patrzenie: głowa + szyja w górę drzewa
-        MobDef.Bone head = def.bones().stream().filter(b -> HEAD.matcher(b.name()).find()).findFirst()
-                .orElse(def.bones().stream().filter(b -> b.name().toLowerCase(Locale.ROOT).contains("head")).findFirst().orElse(null));
-        if (head != null) {
-            for (MobDef.Bone b = head; b != null; b = b.parent() == null ? null : byId.get(b.parent())) {
-                if (b != head && !NECK.matcher(b.name()).find()) break;
-                look.add(0, b.id());
+        boolean explicit = def.hasRoles();
+        // patrzenie: każda głowa + jej szyja w górę drzewa (hydra z 3 głowami patrzy każdą osobno)
+        List<MobDef.Bone> headBones = new ArrayList<>();
+        if (explicit) {
+            for (MobDef.Bone b : def.bones()) {
+                if (!is(b, "head")) continue;
+                MobDef.Bone p = b.parent() == null ? null : byId.get(b.parent());
+                if (p == null || !is(p, "head")) headBones.add(b);
             }
+        } else {
+            def.bones().stream().filter(b -> HEAD.matcher(b.name()).find()).findFirst()
+                    .or(() -> def.bones().stream().filter(b -> b.name().toLowerCase(Locale.ROOT).contains("head")).findFirst())
+                    .ifPresent(headBones::add);
         }
-        lookWeights = new float[look.size()];
-        for (int i = 0; i < look.size(); i++) lookWeights[i] = look.size() == 1 ? 1 : i == look.size() - 1 ? 0.45f : 0.55f / (look.size() - 1);
-        // nogi: kość "noga", której rodzic nie jest nogą; łańcuch w dół przez pierwsze dziecko z pudełkami
+        for (MobDef.Bone head : headBones) {
+            List<String> chain = new ArrayList<>();
+            for (MobDef.Bone b = head; b != null; b = b.parent() == null ? null : byId.get(b.parent())) {
+                if (b != head && !is(b, "neck")) break;
+                chain.add(0, b.id());
+            }
+            heads.add(chain);
+        }
+        if (!heads.isEmpty()) look.addAll(heads.get(0));
+        // nogi: kość "noga", której rodzic nie jest nogą; łańcuch w dół (kolano, stopa) - dowolnie wiele nóg
         for (MobDef.Bone b : def.bones()) {
-            if (!LEG.matcher(b.name()).find()) continue;
+            if (!is(b, "leg")) continue;
             MobDef.Bone p = b.parent() == null ? null : byId.get(b.parent());
-            if (p != null && LEG.matcher(p.name()).find()) continue;
+            if (p != null && is(p, "leg")) continue;
             List<String> chain = new ArrayList<>();
             MobDef.Bone cur = b;
             while (cur != null && chain.size() < 4) {
                 chain.add(cur.id());
                 MobDef.Bone next = null;
-                for (MobDef.Bone c : def.bones()) if (cur.id().equals(c.parent()) && !c.boxes().isEmpty()) { next = c; break; }
+                // dalej w dół: najpierw dziecko-noga z pudełkami, inaczej (stare pliki) pierwsze z pudełkami
+                for (MobDef.Bone c : def.bones()) if (cur.id().equals(c.parent()) && !c.boxes().isEmpty() && (!explicit || is(c, "leg"))) { next = c; break; }
                 cur = next;
             }
             MobDef.Bone last = byId.get(chain.get(chain.size() - 1));
@@ -96,12 +109,42 @@ final class MobRig {
         }
         // sprężyny: nasady łańcuchów (rodzic nie jest sprężyną) z całym poddrzewem
         for (MobDef.Bone b : def.bones()) {
-            if (!SPRING.matcher(b.name()).find()) continue;
+            if (!isSpring(b)) continue;
             MobDef.Bone p = b.parent() == null ? null : byId.get(b.parent());
-            if (p != null && SPRING.matcher(p.name()).find()) continue;
+            if (p != null && isSpring(p)) continue;
             addTree(b.id());
         }
         for (String s : springs) springDir.put(s, dir(byId.get(s)));
+    }
+
+    /** Rola części: z aplikacji (nowe pliki) albo - dla starych - po nazwie. */
+    private boolean is(MobDef.Bone b, String role) {
+        if (def.hasRoles()) return role.equals(def.role(b.id()));
+        return switch (role) {
+            case "head" -> HEAD.matcher(b.name()).find();
+            case "neck" -> NECK.matcher(b.name()).find();
+            case "leg" -> LEG.matcher(b.name()).find();
+            default -> false;
+        };
+    }
+
+    private boolean isSpring(MobDef.Bone b) {
+        if (def.hasRoles()) {
+            String r = def.role(b.id());
+            return r.equals("tail") || r.equals("ear") || r.equals("spring");
+        }
+        return SPRING.matcher(b.name()).find();
+    }
+
+    /** Części z daną rolą (nasady łańcuchów) - np. ręce jako domyślne miejsce wystrzału. */
+    List<String> roots(String role) {
+        List<String> out = new ArrayList<>();
+        for (MobDef.Bone b : def.bones()) {
+            if (!is(b, role)) continue;
+            MobDef.Bone p = b.parent() == null ? null : byId.get(b.parent());
+            if (p == null || !is(p, role)) out.add(b.id());
+        }
+        return out;
     }
 
     private void addTree(String id) {
@@ -159,7 +202,17 @@ final class MobRig {
      * bones - macierze po animacji.
      */
     void applyLook(Map<String, MobPose.Offset> offsets, Map<String, Matrix4f> bones, float yaw, Vector3f target) {
-        if (!lookEnabled || look.isEmpty()) return;
+        if (!lookEnabled || heads.isEmpty()) return;
+        for (int h = 0; h < heads.size(); h++) applyLook(heads.get(h), h, offsets, bones, yaw, target);
+    }
+
+    private final Map<Integer, float[]> headAngles = new HashMap<>();
+
+    private void applyLook(List<String> look, int index, Map<String, MobPose.Offset> offsets, Map<String, Matrix4f> bones, float yaw, Vector3f target) {
+        float[] ang = headAngles.computeIfAbsent(index, k -> new float[2]);
+        float lookYaw = ang[0], lookPitch = ang[1];
+        float[] lookWeights = new float[look.size()];
+        for (int i = 0; i < look.size(); i++) lookWeights[i] = look.size() == 1 ? 1 : i == look.size() - 1 ? 0.45f : 0.55f / (look.size() - 1);
         float wantYaw = 0, wantPitch = 0;
         Matrix4f headM = bones.get(look.get(look.size() - 1));
         if (target != null && headM != null) {
@@ -181,6 +234,8 @@ final class MobRig {
         }
         lookYaw += (wantYaw - lookYaw) * 0.22f;
         lookPitch += (wantPitch - lookPitch) * 0.22f;
+        ang[0] = lookYaw;
+        ang[1] = lookPitch;
         for (int i = 0; i < look.size(); i++) {
             MobPose.Offset o = off(offsets, look.get(i));
             o.rotation[1] += lookYaw * lookWeights[i];

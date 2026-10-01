@@ -204,7 +204,7 @@ export const PACKAGES = [
     {
         id: "ultimate",
         label: "Ultimate (everything)",
-        description: "The whole Mainplugins ecosystem, including tools/shop/skyblock - and every plugin added later.",
+        description: "The whole Mainplugins ecosystem, including tools/shop/skyblock, custom 3D mobs and blocks - and every plugin added later.",
         plugins: "*",
         // Wyłącznie jednorazowo (bez abonamentu, patrz decyzja w COMMERCIALIZATION.md) -
         // 399 zł zamiast pierwotnych 249 zł, bo ta paczka oddaje też WSZYSTKIE przyszłe

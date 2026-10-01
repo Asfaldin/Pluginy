@@ -3,15 +3,16 @@ version: ${project.version}
 main: elo.mainplugins.mobs.MainpluginsMobs
 api-version: '1.20'
 depend: [MainpluginsCore]
+softdepend: [MainpluginsBlocks]
 
 commands:
   "@mob":
-    description: (Admin, test) Moby z Kreatora mobów - spawn, list, killall, reload
-    usage: /<command> spawn <mob> | list | killall | reload
+    description: (Admin) Custom mobs from the Mob creator - spawn, list, killall, reload
+    usage: /<command> spawn <mob> [amount] | list | killall | reload
     permission: mainplugins.mobs.admin
     permission-message: "&cNie masz permisji do tej komendy!"
 
 permissions:
   mainplugins.mobs.admin:
-    description: Test mobów z Kreatora
+    description: Spawn and manage custom mobs
     default: op

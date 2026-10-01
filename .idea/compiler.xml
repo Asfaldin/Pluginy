@@ -13,9 +13,12 @@
         <module name="mainplugins-farming" />
         <module name="mainplugins-chatfilter" />
         <module name="mainplugins-redstone" />
+        <module name="mainplugins-blocks" />
         <module name="mainplugins-market" />
         <module name="mainplugins-skyblock" />
+        <module name="mainplugins-license" />
         <module name="mainplugins-tools" />
+        <module name="mainplugins-generators" />
         <module name="mainplugins-hud" />
         <module name="mainplugins-crates" />
         <module name="mainplugins-fishing" />
@@ -24,10 +27,12 @@
         <module name="mainplugins-dungeons" />
         <module name="mainplugins-core" />
         <module name="mainplugins-shop" />
+        <module name="mainplugins-mobs" />
         <module name="mainplugins-spawners" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
+      <module name="mainplugins-advancements" target="25" />
       <module name="mainplugins-storage" target="25" />
     </bytecodeTargetLevel>
   </component>

@@ -1,0 +1,12 @@
+# Mainplugins Blocks - wiadomości po polsku. Kolory: &a &e ...  Zmienne: {name}
+reward:
+  block: "&aOtrzymujesz &e{amount}x {block}&a."
+admin:
+  usage: "&eUżycie: /@block give <blok> [gracz] [ilość] | list | reload"
+  unknown-block: "&cNie ma bloku \"{block}\". Bloki: {blocks}"
+  unknown-player: "&cGracz {player} nie jest online."
+  given: "&aDano &e{amount}x {block} &agraczowi {player}&a."
+  list: "&eBloki ({count}): &f{blocks}"
+  list-empty: "&eNie ma jeszcze bloków - zrób je w aplikacji (Texturepack Creator > Blocks) i wyślij paczkę na serwer."
+  reloaded: "&aWczytano bloków: {count}."
+  problem: "&c{problem}"

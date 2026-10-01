@@ -4,9 +4,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Zgłoszenia wsparcia - ten sam wzorzec pliku JSON co licenses.json/customers.json
-// (patrz db.js). Klient tworzy zgłoszenie i widzi swoje własne (requireCustomer w
-// server.js); odpowiadanie na razie przez curl z x-admin-key, tak samo jak wystawianie
-// licencji - jeden operator, bez potrzeby osobnego panelu admina na razie.
+// (patrz db.js). Klient tworzy zgłoszenie, widzi swoje i odpisuje w aplikacji; zespół
+// wsparcia odpowiada w panelu /admin (admin/, role w customers.js). Rozmowa to lista
+// wiadomości "customer"/"admin"; przy wiadomości zespołu zapisujemy też, kto odpisał (by).
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, "..", "data");
@@ -60,13 +60,14 @@ export function findById(id) {
     return loadAll().find((t) => t.id === id) ?? null;
 }
 
-/** Odpowiedź admina (curl, patrz README) - dopisuje wiadomość i ustawia status na "answered". */
-export function addAdminReply(id, body) {
+/** Odpowiedź zespołu - dopisuje wiadomość i ustawia status na "answered". `by` = e-mail
+    osoby z zespołu (widoczny tylko w panelu, klient widzi "Support"). */
+export function addAdminReply(id, body, by = null) {
     const list = loadAll();
     const ticket = list.find((t) => t.id === id);
     if (!ticket) return null;
     const now = new Date().toISOString();
-    ticket.messages.push({ from: "admin", body, at: now });
+    ticket.messages.push({ from: "admin", body, at: now, ...(by ? { by } : {}) });
     ticket.status = "answered";
     ticket.updatedAt = now;
     saveAll(list);
@@ -81,4 +82,22 @@ export function setStatus(id, status) {
     ticket.updatedAt = new Date().toISOString();
     saveAll(list);
     return ticket;
+}
+
+/** Klient odpisuje we własnym zgłoszeniu - wraca ono do kolejki jako "open" (też zamknięte). */
+export function addCustomerReply(id, customerId, body) {
+    const list = loadAll();
+    const ticket = list.find((t) => t.id === id && t.customerId === customerId);
+    if (!ticket) return null;
+    const now = new Date().toISOString();
+    ticket.messages.push({ from: "customer", body, at: now });
+    ticket.status = "open";
+    ticket.updatedAt = now;
+    saveAll(list);
+    return ticket;
+}
+
+/** Widok dla klienta - bez informacji, kto z zespołu odpisał. */
+export function forCustomer(ticket) {
+    return { ...ticket, messages: ticket.messages.map(({ by, ...m }) => (void by, m)) };
 }

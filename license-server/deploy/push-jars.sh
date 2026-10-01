@@ -8,15 +8,16 @@ set -euo pipefail
 HOST="${1:?Podaj serwer, np. ubuntu@51.68.136.151}"
 cd "$(dirname "$0")/.."
 
-# Musi się zgadzać z FREE_PLUGIN_IDS w PluginManager/desktop-app/src/lib/freePlugins.ts
-# i z listą JARS w desktop-app/src-tauri/src/embedded_jars.rs.
-FREE="core announcer farming menu teleport chatfilter hud ranks generators"
+# Tylko te płatne pluginy - musi się zgadzać z listą PAID w
+# PluginManager/desktop-app/src-tauri/src/embedded_jars.rs. Jawna lista zamiast "wszystko
+# poza darmowymi": w dist/ potrafią leżeć stare jary usuniętych modułów.
+PAID="blocks crates dungeons fishing market mobs quests redstone shop skyblock spawn spawners tools"
 
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
-for jar in ../dist/mainplugins-*.jar; do
-  id="$(basename "$jar" | sed -E 's/^mainplugins-([a-z0-9]+)-.*\.jar$/\1/')"
-  case " $FREE " in *" $id "*) continue ;; esac
+for id in $PAID; do
+  jar=$(ls ../dist/mainplugins-"$id"-*.jar 2>/dev/null | head -1)
+  [ -n "$jar" ] || { echo "Missing ../dist/mainplugins-$id-*.jar - run ./mvnw package first."; exit 1; }
   cp "$jar" "$STAGE/"
   echo "  + $(basename "$jar")"
 done
@@ -30,5 +31,5 @@ ssh "$HOST" 'set -e
   sudo chown -R license:license /opt/license-server/plugin-jars
   sudo chmod 750 /opt/license-server/plugin-jars
   rm -f /tmp/plugin-jars.tgz
-  ls /opt/license-server/plugin-jars | wc -l | xargs echo "Jars on the server:"'
+  sudo ls /opt/license-server/plugin-jars | wc -l | xargs echo "Jars on the server:"'
 rm -f /tmp/plugin-jars.tgz

@@ -67,10 +67,31 @@ export function authenticateCustomer(email, password) {
     return toPublic(customer);
 }
 
-function toPublic(customer) {
-    const { passwordHash, ...rest } = customer;
-    void passwordHash;
-    return rest;
+/** Tylko pola, które klient może zobaczyć (bez skrótów hasła i tokenu resetu). */
+export function toPublic(customer) {
+    return { id: customer.id, email: customer.email, createdAt: customer.createdAt, role: customer.role ?? "customer" };
+}
+
+// --- Role zespołu wsparcia ---
+// "admin" - pełny dostęp do panelu wsparcia; "support" - to samo (na przyszłość, gdyby
+// trzeba było rozdzielić uprawnienia). Rolę nadaje się WYŁĄCZNIE skryptem na serwerze
+// (src/set-role.mjs), nigdy przez API - nikt nie może nadać jej sam sobie.
+export const STAFF_ROLES = new Set(["admin", "support"]);
+
+export function isStaff(customerId) {
+    const c = findCustomerById(customerId);
+    return !!c && STAFF_ROLES.has(c.role);
+}
+
+/** @returns zaktualizowany klient albo null, gdy konto nie istnieje. */
+export function setRole(email, role) {
+    const list = loadAll();
+    const customer = list.find((c) => c.email.toLowerCase() === email.toLowerCase());
+    if (!customer) return null;
+    if (role === "customer") delete customer.role;
+    else customer.role = role;
+    saveAll(list);
+    return toPublic(customer);
 }
 
 /** @returns true jeśli zmiana się powiodła, false jeśli aktualne hasło się nie zgadza albo konto nie istnieje. */
@@ -119,4 +140,59 @@ export function resetPasswordWithToken(token, newPassword) {
     delete customer.resetTokenExpiresAt;
     saveAll(list);
     return customer.id;
+}
+
+// --- Weryfikacja dwuetapowa (tylko konta zespołu, patrz src/totp.js) ---
+// Sekret trzymany w customers.json (plik 600, poza repo). Wyłączenie/reset tylko skryptem
+// na serwerze (src/reset-2fa.mjs) - ktoś z samym hasłem nie wyłączy 2FA przez API.
+
+export function totpEnabled(customerId) {
+    return !!findCustomerById(customerId)?.totp?.enabled;
+}
+
+/** Zapisuje sekret do potwierdzenia pierwszym kodem. Nie nadpisuje już włączonego 2FA. */
+export function setPendingTotp(customerId, secret) {
+    const list = loadAll();
+    const c = list.find((x) => x.id === customerId);
+    if (!c || c.totp?.enabled) return false;
+    c.totp = { secret, enabled: false, lastStep: -1 };
+    saveAll(list);
+    return true;
+}
+
+/**
+ * Sprawdza kod i zapamiętuje użyte okno (kod nie przejdzie drugi raz).
+ * @param enable true = pierwsze potwierdzenie przy włączaniu 2FA.
+ */
+export function checkTotp(customerId, code, verify, enable = false) {
+    const list = loadAll();
+    const c = list.find((x) => x.id === customerId);
+    if (!c?.totp?.secret || c.totp.enabled === enable) return false;
+    const step = verify(c.totp.secret, code, c.totp.lastStep ?? -1);
+    if (step == null) return false;
+    c.totp.lastStep = step;
+    if (enable) c.totp.enabled = true;
+    saveAll(list);
+    return true;
+}
+
+export function resetTotp(email) {
+    const list = loadAll();
+    const c = list.find((x) => x.email.toLowerCase() === String(email).toLowerCase());
+    if (!c) return false;
+    delete c.totp;
+    saveAll(list);
+    return true;
+}
+
+/** Zapamiętuje skrót IP logowania. @returns true, gdy to IP pojawia się pierwszy raz (alert). */
+export function noteLoginIp(customerId, ipHash) {
+    const list = loadAll();
+    const c = list.find((x) => x.id === customerId);
+    if (!c) return false;
+    const known = c.loginIps ?? [];
+    const isNew = !known.includes(ipHash);
+    c.loginIps = [ipHash, ...known.filter((h) => h !== ipHash)].slice(0, 20);
+    saveAll(list);
+    return isNew;
 }

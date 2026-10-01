@@ -30,19 +30,35 @@ function saveAll(list) {
     writeJson(DB_FILE, list);
 }
 
-export function createSession(customerId) {
+/** @param mfa true = logowanie potwierdzone kodem 2FA (wymagane przez panel zespołu). */
+export function createSession(customerId, mfa = false) {
     const list = loadAll().filter((s) => s.expiresAt > Date.now()); // przy okazji sprzątamy wygasłe
     const token = randomBytes(32).toString("hex");
-    list.push({ tokenHash: hashToken(token), customerId, expiresAt: Date.now() + TTL_MS });
+    list.push({ tokenHash: hashToken(token), customerId, expiresAt: Date.now() + TTL_MS, ...(mfa ? { mfa: true } : {}) });
     saveAll(list);
     return token;
 }
 
 export function resolveSession(token) {
+    return resolveSessionInfo(token)?.customerId ?? null;
+}
+
+/** Jak resolveSession, ale z flagą mfa. */
+export function resolveSessionInfo(token) {
     if (!token) return null;
     const session = loadAll().find((s) => matches(s, token));
     if (!session || session.expiresAt < Date.now()) return null;
-    return session.customerId;
+    return { customerId: session.customerId, mfa: !!session.mfa };
+}
+
+/** Oznacza bieżącą sesję jako potwierdzoną 2FA (zaraz po włączeniu weryfikacji). */
+export function markSessionMfa(token) {
+    const list = loadAll();
+    const s = list.find((x) => matches(x, token));
+    if (!s) return false;
+    s.mfa = true;
+    saveAll(list);
+    return true;
 }
 
 export function deleteSession(token) {

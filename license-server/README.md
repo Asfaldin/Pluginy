@@ -131,3 +131,23 @@ rejestracja 10/h, reset hasła 5-10/h, walidacja 600/h, panel admina 60/15 min.
 4. Nowy `mainplugins-core` do `PluginManager/desktop-app/src-tauri/plugin-jars/` i wydanie appki.
    Klienci muszą zaktualizować Core RAZEM z płatnymi pluginami - nowe płatne pluginy na
    starym Core się wyłączą (stary Core nie zna podpisanych dowodów).
+
+## Panel wsparcia (/admin)
+
+Zgłoszenia z zakładki Support w aplikacji trafiają do panelu w przeglądarce:
+**https://api.rsmc-network.pl/admin** (pliki w `admin/`, API `/api/staff/*`).
+
+- **Dostęp:** zwykłe konto (rejestracja w aplikacji) z rolą nadaną NA SERWERZE - nie ma
+  do tego API, nikt nie nada jej sam sobie:
+  `cd /opt/license-server && sudo -u license node src/set-role.mjs <email> admin`
+  (odebranie: `... <email> customer`). Logowanie tym samym e-mailem i hasłem.
+- **W panelu:** lista zgłoszeń (Open / Answered / Closed / All, wyszukiwanie), rozmowa,
+  dane klienta i jego licencje, odpowiedź (Ctrl+Enter), "Send & close", zamknij/otwórz.
+  Odświeża się sama co 30 s. Sesja w sessionStorage - znika po zamknięciu karty.
+- **Klient** dostaje maila o odpowiedzi i odpisuje w aplikacji; jego odpowiedź otwiera
+  zgłoszenie z powrotem. Klient widzi "Support", panel pokazuje, kto z zespołu odpisał.
+- **Powiadomienia zespołu** (w `.env`, opcjonalne): `SUPPORT_NOTIFY_EMAIL` (adresy po
+  przecinku, przez Resend) i/lub `SUPPORT_DISCORD_WEBHOOK` - nowe zgłoszenie i każda
+  odpowiedź klienta.
+- **Bezpieczeństwo:** ścisłe CSP na /admin, dane klientów wstawiane tylko jako tekst,
+  limity prób logowania jak w aplikacji.

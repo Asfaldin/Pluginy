@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>RSMC Support</title>
+    <link rel="stylesheet" href="panel.css" />
+  </head>
+  <body>
+    <!-- Logowanie: zwykłe konto z rolą admin/support (src/set-role.mjs) -->
+    <main id="login" class="login" hidden>
+      <form id="login-form" class="login-card">
+        <h1>RSMC Support</h1>
+        <p class="muted">Sign in with your account. Only support team accounts have access.</p>
+        <label>Email<input id="login-email" type="email" autocomplete="username" required /></label>
+        <label>Password<input id="login-password" type="password" autocomplete="current-password" required /></label>
+        <label id="login-code-row" hidden>Code from your authenticator app<input id="login-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" /></label>
+        <p id="login-error" class="error" hidden></p>
+        <button type="submit" class="primary">Sign in</button>
+      </form>
+    </main>
+
+    <!-- Włączanie weryfikacji dwuetapowej - wymagane przed wejściem do panelu -->
+    <main id="setup2fa" class="login" hidden>
+      <form id="setup-form" class="login-card">
+        <h1>Turn on 2-step sign-in</h1>
+        <p class="muted">The team panel needs a code from your phone at every sign-in. In Google Authenticator tap <b>+</b>, then <b>Scan a QR code</b>.</p>
+        <img id="setup-qr" class="qr" alt="QR code for your authenticator app" />
+        <p class="muted small">Can't scan? Choose <b>Enter a setup key</b> and type: <code id="setup-secret" class="secret"></code></p>
+        <label>Code shown in the app<input id="setup-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" required /></label>
+        <p id="setup-error" class="error" hidden></p>
+        <button type="submit" class="primary">Turn on</button>
+      </form>
+    </main>
+
+    <div id="app" class="app" hidden>
+      <aside class="list">
+        <header class="list-head">
+          <div class="brand">RSMC <span>Support</span></div>
+          <a class="ghost small" href="community.html" title="Sign-ups and survey answers (admins)">Community</a>
+          <button id="logout" type="button" class="ghost small" title="Sign out">Sign out</button>
+        </header>
+        <div class="tabs" role="tablist">
+          <button type="button" data-filter="open" class="on">Open <span id="count-open"></span></button>
+          <button type="button" data-filter="answered">Answered <span id="count-answered"></span></button>
+          <button type="button" data-filter="closed">Closed <span id="count-closed"></span></button>
+          <button type="button" data-filter="all">All</button>
+        </div>
+        <input id="search" class="search" type="search" placeholder="Search subject, email, message..." />
+        <div id="tickets" class="tickets"></div>
+        <footer class="list-foot">
+          <span id="me" class="muted small"></span>
+          <span id="refreshed" class="muted small"></span>
+        </footer>
+      </aside>
+
+      <section id="detail" class="detail">
+        <div id="empty" class="empty">
+          <div class="empty-icon">✉</div>
+          <p>Choose a ticket on the left.</p>
+        </div>
+        <div id="ticket" hidden>
+          <header class="ticket-head">
+            <div>
+              <h2 id="t-subject"></h2>
+              <div id="t-meta" class="meta"></div>
+            </div>
+            <div class="ticket-actions">
+              <span id="t-status" class="badge"></span>
+              <button id="t-toggle" type="button" class="ghost"></button>
+            </div>
+          </header>
+          <div class="ticket-body">
+            <div id="t-thread" class="thread"></div>
+            <aside class="customer">
+              <h3>Customer</h3>
+              <div id="c-email" class="c-email"></div>
+              <div id="c-since" class="muted small"></div>
+              <h3>Licenses</h3>
+              <div id="c-licenses" class="licenses"></div>
+            </aside>
+          </div>
+          <form id="reply-form" class="reply">
+            <textarea id="reply-text" rows="4" placeholder="Write a reply... (Ctrl+Enter to send)" maxlength="10000" required></textarea>
+            <div class="reply-bar">
+              <span id="reply-error" class="error small" hidden></span>
+              <span class="muted small">The customer gets an email and reads the reply in the app.</span>
+              <button id="reply-close" type="button" class="ghost">Send &amp; close</button>
+              <button type="submit" class="primary">Send reply</button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </div>
+
+    <script src="panel.js"></script>
+  </body>
+</html>

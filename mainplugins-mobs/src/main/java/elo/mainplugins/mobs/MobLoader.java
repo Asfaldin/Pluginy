@@ -62,7 +62,16 @@ public final class MobLoader {
                     vk.sort((x, y) -> Float.compare(x.t(), y.t()));
                 }
                 String aid = a.has("id") ? a.get("id").getAsString() : name;
-                anims.put(name, new MobDef.Anim(aid, name, a.get("length").getAsFloat(), a.get("loop").getAsBoolean(), tracks, List.copyOf(vk)));
+                List<MobDef.SoundKey> sk = new ArrayList<>();
+                if (a.has("sounds") && a.get("sounds").isJsonArray()) {
+                    for (JsonElement se : a.getAsJsonArray("sounds")) {
+                        JsonObject so = se.getAsJsonObject();
+                        if (!so.has("sound")) continue;
+                        sk.add(new MobDef.SoundKey(so.has("t") ? so.get("t").getAsFloat() : 0, so.get("sound").getAsString(),
+                                so.has("volume") ? so.get("volume").getAsFloat() : 1, so.has("pitch") ? so.get("pitch").getAsFloat() : 1));
+                    }
+                }
+                anims.put(name, new MobDef.Anim(aid, name, a.get("length").getAsFloat(), a.get("loop").getAsBoolean(), tracks, List.copyOf(vk), List.copyOf(sk)));
             }
         }
         List<MobDef.Effect> effects = new ArrayList<>();
@@ -92,7 +101,14 @@ public final class MobLoader {
                 variants.put(vid, new MobDef.Variant(vid, v.has("noGlow") && v.get("noGlow").getAsBoolean()));
             }
         }
-        return new MobDef(m.get("id").getAsString(), m.get("name").getAsString(), List.copyOf(bones), anims, List.copyOf(effects), w, h, Map.copyOf(variants));
+        // Role części i animacje sytuacji - ustawione albo wykryte w aplikacji (lib/mobRoles.ts).
+        Map<String, String> roles = new LinkedHashMap<>(), slots = new LinkedHashMap<>();
+        if (disp.has("roles") && disp.get("roles").isJsonObject())
+            for (Map.Entry<String, JsonElement> e : disp.getAsJsonObject("roles").entrySet()) roles.put(e.getKey(), e.getValue().getAsString());
+        if (disp.has("slots") && disp.get("slots").isJsonObject())
+            for (Map.Entry<String, JsonElement> e : disp.getAsJsonObject("slots").entrySet()) slots.put(e.getKey(), e.getValue().getAsString());
+        return new MobDef(m.get("id").getAsString(), m.get("name").getAsString(), List.copyOf(bones), anims, List.copyOf(effects), w, h, Map.copyOf(variants),
+                Map.copyOf(roles), Map.copyOf(slots));
     }
 
     private static String str(JsonObject o, String key) {

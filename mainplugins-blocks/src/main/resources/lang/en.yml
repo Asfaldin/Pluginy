@@ -1,0 +1,12 @@
+# Mainplugins Blocks - English messages. Colors: &a &e ...  Placeholders: {name}
+reward:
+  block: "&aYou received &e{amount}x {block}&a."
+admin:
+  usage: "&eUsage: /@block give <block> [player] [amount] | list | reload"
+  unknown-block: "&cNo block \"{block}\". Blocks: {blocks}"
+  unknown-player: "&cPlayer {player} is not online."
+  given: "&aGave &e{amount}x {block} &ato {player}&a."
+  list: "&eBlocks ({count}): &f{blocks}"
+  list-empty: "&eNo blocks yet - make them in the app (Texturepack Creator > Blocks) and send the pack to the server."
+  reloaded: "&aLoaded {count} blocks."
+  problem: "&c{problem}"

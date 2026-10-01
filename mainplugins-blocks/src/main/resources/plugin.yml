@@ -1,0 +1,17 @@
+name: MainpluginsBlocks
+version: ${project.version}
+main: elo.mainplugins.blocks.MainpluginsBlocks
+api-version: '1.20'
+depend: [MainpluginsCore]
+
+commands:
+  "@block":
+    description: (Admin) Custom blocks from the Block creator - give, list, reload
+    usage: /<command> give <block> [player] [amount] | list | reload
+    permission: mainplugins.blocks.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+
+permissions:
+  mainplugins.blocks.admin:
+    description: Give custom blocks and reload them
+    default: op

@@ -1,0 +1,11 @@
+# Mainplugins Mobs - English messages. Colors: &a &e ...  Placeholders: {name}
+admin:
+  usage: "&eUsage: /@mob spawn <mob> [amount] | list | killall | reload"
+  only-player: "&cGive a player: /@mob spawn <mob> <amount> <player>"
+  unknown-mob: "&cNo such mob. Mobs: {mobs}"
+  spawned: "&aSpawned &e{count}x {mob}&a."
+  list: "&eMobs: &f{mobs} &7(alive: {alive})"
+  list-empty: "&eNo mobs yet - make them in the app (Texturepack Creator > Mobs) and send the pack to the server."
+  killed: "&aRemoved {count} mobs."
+  reloaded: "&aLoaded {count} mobs."
+  problem: "&c{problem}"

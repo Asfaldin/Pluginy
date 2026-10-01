@@ -49,6 +49,7 @@
         <module>mainplugins-dungeons</module>
         <module>mainplugins-chatfilter</module>
         <module>mainplugins-mobs</module>
+        <module>mainplugins-blocks</module>
     </modules>
 
     <properties>

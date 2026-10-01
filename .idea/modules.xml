@@ -3,16 +3,21 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/Mainplugins.iml" filepath="$PROJECT_DIR$/Mainplugins.iml" />
+      <module fileurl="file://$PROJECT_DIR$/mainplugins-advancements/mainplugins-advancements.iml" filepath="$PROJECT_DIR$/mainplugins-advancements/mainplugins-advancements.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-announcer/mainplugins-announcer.iml" filepath="$PROJECT_DIR$/mainplugins-announcer/mainplugins-announcer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/mainplugins-blocks/mainplugins-blocks.iml" filepath="$PROJECT_DIR$/mainplugins-blocks/mainplugins-blocks.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-chatfilter/mainplugins-chatfilter.iml" filepath="$PROJECT_DIR$/mainplugins-chatfilter/mainplugins-chatfilter.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-core/mainplugins-core.iml" filepath="$PROJECT_DIR$/mainplugins-core/mainplugins-core.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-crates/mainplugins-crates.iml" filepath="$PROJECT_DIR$/mainplugins-crates/mainplugins-crates.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-dungeons/mainplugins-dungeons.iml" filepath="$PROJECT_DIR$/mainplugins-dungeons/mainplugins-dungeons.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-farming/mainplugins-farming.iml" filepath="$PROJECT_DIR$/mainplugins-farming/mainplugins-farming.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-fishing/mainplugins-fishing.iml" filepath="$PROJECT_DIR$/mainplugins-fishing/mainplugins-fishing.iml" />
+      <module fileurl="file://$PROJECT_DIR$/mainplugins-generators/mainplugins-generators.iml" filepath="$PROJECT_DIR$/mainplugins-generators/mainplugins-generators.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-hud/mainplugins-hud.iml" filepath="$PROJECT_DIR$/mainplugins-hud/mainplugins-hud.iml" />
+      <module fileurl="file://$PROJECT_DIR$/mainplugins-license/mainplugins-license.iml" filepath="$PROJECT_DIR$/mainplugins-license/mainplugins-license.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-market/mainplugins-market.iml" filepath="$PROJECT_DIR$/mainplugins-market/mainplugins-market.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-menu/mainplugins-menu.iml" filepath="$PROJECT_DIR$/mainplugins-menu/mainplugins-menu.iml" />
+      <module fileurl="file://$PROJECT_DIR$/mainplugins-mobs/mainplugins-mobs.iml" filepath="$PROJECT_DIR$/mainplugins-mobs/mainplugins-mobs.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-quests/mainplugins-quests.iml" filepath="$PROJECT_DIR$/mainplugins-quests/mainplugins-quests.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-ranks/mainplugins-ranks.iml" filepath="$PROJECT_DIR$/mainplugins-ranks/mainplugins-ranks.iml" />
       <module fileurl="file://$PROJECT_DIR$/mainplugins-redstone/mainplugins-redstone.iml" filepath="$PROJECT_DIR$/mainplugins-redstone/mainplugins-redstone.iml" />

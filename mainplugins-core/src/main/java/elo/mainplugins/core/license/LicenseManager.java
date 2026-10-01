@@ -78,6 +78,9 @@ public class LicenseManager implements LicenseService {
         this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(4)).build();
         loadConfig();
         schedulePeriodicRecheck();
+        if (LicenseToken.isDevKey()) {
+            plugin.getLogger().warning("Jary zbudowane z TESTOWYM kluczem licencji (-Dlicense.publicKey) - przyjmują tylko licencje z lokalnego license-servera. Nie dawaj ich klientom.");
+        }
     }
 
     private void loadConfig() {

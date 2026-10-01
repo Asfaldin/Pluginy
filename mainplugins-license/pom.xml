@@ -30,7 +30,20 @@
         </dependency>
     </dependencies>
 
+    <properties>
+        <!-- Klucz publiczny licencji wbudowywany w jary. Domyślnie produkcyjny (para do LICENSE_SIGNING_KEY na VPS).
+             Do testów z własnym license-serverem: ./mvnw package -Dlicense.publicKey=<klucz z logu serwera>
+             Takich jarów NIE dajemy klientom - przyjmują tylko licencje z Twojego serwera. -->
+        <license.publicKey>MCowBQYDK2VwAyEAKDFHxn9IGm5OupdT8CAb1B4Shfo+JNpR0ipKVg2zwRA=</license.publicKey>
+    </properties>
+
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

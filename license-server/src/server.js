@@ -25,7 +25,7 @@ import { noteVisit, notifySignup, notifySurvey } from "./siteNotify.js";
 import { CATEGORIES, INDIVIDUAL_PLUGINS, PACKAGES } from "./catalog.js";
 import { sendEmail } from "./mailer.js";
 import { allowDownload, findJar, listJars, logDownload } from "./pluginJars.js";
-import { issueToken, loadSigningKey } from "./signing.js";
+import { issueToken, loadSigningKey, signingPublicKey } from "./signing.js";
 import { hit, limitByIp } from "./rateLimit.js";
 import { notifyCustomerOfReply, notifySupport } from "./notify.js";
 import { dirname, join } from "node:path";
@@ -83,6 +83,8 @@ if (!loadSigningKey()) {
     console.error("LICENSE_SIGNING_KEY is missing from the environment (.env) - generate it with: node deploy/gen-signing-key.mjs");
     process.exit(1);
 }
+// Klucz publiczny nie jest tajny - do budowania jarów testowych: ./mvnw package -Dlicense.publicKey=<ten klucz>
+console.log(`License public key: ${signingPublicKey()}`);
 
 // Musi być zarejestrowany PRZED app.use(express.json()) i z express.raw() (nie .json()) -
 // weryfikacja podpisu HMAC potrzebuje dokładnie surowych bajtów body, tak jak je podpisało

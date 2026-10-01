@@ -1,11 +1,14 @@
 package elo.mainplugins.license;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,8 +23,34 @@ import java.util.regex.Pattern;
  */
 public final class LicenseToken {
 
-    /** Klucz publiczny Ed25519 (SPKI DER, base64) - para do LICENSE_SIGNING_KEY na serwerze licencji. */
-    static final String PUBLIC_KEY = "MCowBQYDK2VwAyEAKDFHxn9IGm5OupdT8CAb1B4Shfo+JNpR0ipKVg2zwRA=";
+    /** Produkcyjny klucz publiczny Ed25519 (SPKI DER, base64) - para do LICENSE_SIGNING_KEY na VPS. */
+    static final String PROD_PUBLIC_KEY = "MCowBQYDK2VwAyEAKDFHxn9IGm5OupdT8CAb1B4Shfo+JNpR0ipKVg2zwRA=";
+
+    /**
+     * Klucz, którym ten jar sprawdza licencje: wpisany przy budowaniu (-Dlicense.publicKey=..., domyślnie
+     * produkcyjny), żeby dało się testować z własnym license-serverem. Celowo tylko przy budowaniu - gdyby
+     * dało się go zmienić w configu serwera, każdy podstawiłby własny klucz i odblokował płatne pluginy.
+     */
+    static final String PUBLIC_KEY = buildKey();
+
+    private static String buildKey() {
+        try (InputStream in = LicenseToken.class.getResourceAsStream("/elo/mainplugins/license/license-key.properties")) {
+            if (in != null) {
+                Properties p = new Properties();
+                p.load(in);
+                String k = p.getProperty("publicKey", "").trim();
+                if (!k.isEmpty() && !k.contains("${")) return k;
+            }
+        } catch (IOException ignored) {
+            // brak zasobu = klucz produkcyjny
+        }
+        return PROD_PUBLIC_KEY;
+    }
+
+    /** Jar zbudowany z innym kluczem niż produkcyjny (do testów) - Core ostrzega o tym w logu. */
+    public static boolean isDevKey() {
+        return !PUBLIC_KEY.equals(PROD_PUBLIC_KEY);
+    }
 
     /** Ile zegar serwera Minecrafta może się spieszyć względem serwera licencji. */
     private static final long CLOCK_SKEW_MS = 24L * 60 * 60 * 1000;

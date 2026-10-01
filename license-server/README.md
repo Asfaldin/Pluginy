@@ -151,3 +151,16 @@ Zgłoszenia z zakładki Support w aplikacji trafiają do panelu w przeglądarce:
   odpowiedź klienta.
 - **Bezpieczeństwo:** ścisłe CSP na /admin, dane klientów wstawiane tylko jako tekst,
   limity prób logowania jak w aplikacji.
+
+## Testy lokalne z własnym kluczem licencji
+
+Produkcyjnego `LICENSE_SIGNING_KEY` nie udostępniamy nikomu - da się nim wystawić dowolną licencję.
+Do testów każdy używa własnej pary kluczy:
+
+1. `node src/gen-dev-key.mjs` - wypisze `LICENSE_SIGNING_KEY=...` (do swojego `license-server/.env`) i klucz publiczny.
+   Klucz publiczny serwer wypisuje też przy każdym starcie (`License public key: ...`).
+2. Zbuduj jary z tym kluczem publicznym:
+   `./mvnw -q -pl <moduł> -am package -Dlicense.publicKey=<klucz publiczny>`
+3. Wgraj je na swój serwer testowy. Core ostrzeże w logu, że jary mają klucz testowy.
+
+Bez `-Dlicense.publicKey` jary mają klucz produkcyjny. Jarów z kluczem testowym nie dajemy klientom.

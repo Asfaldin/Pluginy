@@ -12,7 +12,6 @@ import elo.mainplugins.core.world.VoidGenerator;
 import elo.mainplugins.skyblock.config.IslandConfigLoader;
 import elo.mainplugins.skyblock.config.IslandGrid;
 import elo.mainplugins.skyblock.config.IslandTuning;
-import elo.mainplugins.skyblock.config.SpawnerTyp;
 import elo.mainplugins.skyblock.event.IslandBankDepositEvent;
 import elo.mainplugins.skyblock.event.IslandCreatedEvent;
 import elo.mainplugins.skyblock.event.IslandMemberJoinedEvent;
@@ -72,11 +71,6 @@ public class IslandManager implements Listener, IslandService {
     // Mapa pamiętająca, czy gracz wszedł do GUI z komendy /menu
     final Map<UUID, Boolean> otwartoZMenu = new HashMap<>();
 
-    // MUSZĄ się zgadzać 1:1 z tymi samymi literałami w SpawnerManager (mainplugins-spawners) -
-    // identyfikatory protokołu miedzy pluginami, nie "tresc" do edycji.
-    static final String SUFIKS_ILOSC = "_ILOSC";
-    static final String SUFIKS_SZYBKOSC = "_SZYBKOSC";
-
     // Maksymalny rozmiar WorldBordera dopuszczalny przez samego Minecrafta to
     // 5.9999968E7 (59 999 968) - wartość NIECO mniejsza niż okrągłe 60 milionów.
     // Wcześniejsze 60000000 przekraczało ten limit o 32 i wywalało IllegalArgumentException
@@ -98,8 +92,6 @@ public class IslandManager implements Listener, IslandService {
     final Set<UUID> czatWyspy = ConcurrentHashMap.newKeySet();
     // Zapamiętuje, który slot w GUI "Członkowie Wyspy" odpowiada za którego gracza
     final Map<UUID, Map<Integer, UUID>> slotyCzlonkow = new HashMap<>();
-    // Który typ spawnera gracz aktualnie ma otwarty w podmenu "Spawner: X" (Ilość/Szybkość)
-    final Map<UUID, String> otwartySpawnerTyp = new HashMap<>();
     // Historia tworzenia wysp per gracz - anty-spam cooldown na create/delete (patrz kolejnyCooldownTworzenia).
     // Liczba NIGDY się nie zeruje - to celowo licznik na całe życie konta, nie okno czasowe.
     final Map<UUID, IslandStorage.HistoriaTworzenia> historiaTworzeniaWysp = new HashMap<>();
@@ -1235,7 +1227,7 @@ public class IslandManager implements Listener, IslandService {
     /**
      * /is wplac <kwota> - wpłaca do banku WŁASNEJ wyspy gracza, niezależnie gdzie
      * fizycznie stoi w danym momencie. Bank jest JEDYNYM źródłem pieniędzy na
-     * ulepszenia (patrz uprosGranice/ulepszSpawnerStatystyke).
+     * ulepszenia (patrz uprosGranice).
      *
      * Wcześniej wpłata leciała do banku wyspy, na której gracz fizycznie stał (pomysł:
      * goście mogą wesprzeć cudzą wyspę) - w praktyce to było zbyt łatwe do pomylenia:
@@ -1378,31 +1370,6 @@ public class IslandManager implements Listener, IslandService {
         }
     }
 
-    void ulepszSpawnerStatystyke(Player player, String typId, String sufiks) {
-        IslandData data = wlasnaWyspaZUprawnieniem(player, IslandData::isMemberBankUpgrade);
-        if (data == null) return;
-
-        String klucz = typId + sufiks;
-        int level = data.getSpawnerLevel(klucz);
-        if (level >= tuning.spawnerMaxPoziom()) {
-            msg(player, "upgrade.spawner-max");
-            return;
-        }
-
-        boolean ilosc = sufiks.equals(SUFIKS_ILOSC);
-        int cost = tuning.kosztUlepszeniaSpawnera(typId, ilosc, level);
-        if (!data.odejmijZBanku(cost)) {
-            msg(player, "bank.upgrade-no-money", "cost", IslandTexts.kasa(cost), "balance", IslandTexts.kasa(data.getBankBalance()));
-            return;
-        }
-
-        data.setSpawnerLevel(klucz, level + 1);
-        storage.zapiszWyspy();
-
-        msg(player, "upgrade.spawner-done", "level", String.valueOf(level + 1));
-        menus.otworzMenuUlepszenSpawnera(player, typId);
-    }
-
     /** Jedyne miejsce egzekwujące kto kogo może wyrzucić - używane identycznie przez komendę i GUI. */
     void usunCzlonka(Player actor, UUID targetUUID) {
         UUID ownerUUID = playerIslandMap.get(actor.getUniqueId());
@@ -1435,6 +1402,7 @@ public class IslandManager implements Listener, IslandService {
     }
 
     void uprosGranice(Player player) {
+        if (!tuning.powiekszanieWlaczone()) return;
         UUID ownerUUID = playerIslandMap.get(player.getUniqueId());
         IslandData data = ownerUUID != null ? islandDatabase.get(ownerUUID) : null;
         if (data == null) {
@@ -1688,7 +1656,8 @@ public class IslandManager implements Listener, IslandService {
                 nick != null ? nick : data.getOwnerUUID().toString().substring(0, 8),
                 data.getBorderSize(),
                 data.getMembers().size(),
-                new HashMap<>(data.getSpawnerLevels())
+                // Poziomy spawnerów trzyma teraz sam plugin Spawnery (poziomy.yml) - pole zostaje puste dla zgodności core.
+                Map.of()
         );
     }
 

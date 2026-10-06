@@ -18,7 +18,7 @@ import java.util.logging.Logger;
 
 /**
  * Wczytuje wyspy-config.yml (cała liczbowa/danych konfiguracja systemu wysp - koszty,
- * promienie, timeouty, typy spawnerów, wartości bloków) do niemutowalnego {@link IslandTuning}.
+ * promienie, timeouty, wartości bloków) do niemutowalnego {@link IslandTuning}.
  * Ten sam wzorzec co ShopGuiLoader/QuestContentLoader: plik kopiowany z zasobu TYLKO przy
  * pierwszym uruchomieniu; brakująca/zła wartość dostaje warning i pada na sensowny domyślny
  * odpowiednik dawnej hardkodowanej stałej, zamiast crashować cały serwer przy starcie.
@@ -58,13 +58,7 @@ public final class IslandConfigLoader {
 
         Map<Material, Double> wartosciBlokow = parseWartosciBlokow(cfg, log);
 
-        int spawnerMaxPoziom = cfg.getInt("spawnery.max-poziom", 5);
-        List<SpawnerTyp> spawnerTypy = zListySpawnerow(plugin, parseSpawnerTypy(cfg, log), log);
 
-        Map<Integer, Integer> kosztBazowyIloscPoziomy = parsePoziomyKosztow(cfg, "spawnery.koszt-bazowy-ilosc.poziomy", log);
-        int kosztBazowyIloscDomyslny = cfg.getInt("spawnery.koszt-bazowy-ilosc.domyslny", 17000);
-        Map<Integer, Integer> kosztBazowySzybkoscPoziomy = parsePoziomyKosztow(cfg, "spawnery.koszt-bazowy-szybkosc.poziomy", log);
-        int kosztBazowySzybkoscDomyslny = cfg.getInt("spawnery.koszt-bazowy-szybkosc.domyslny", 24000);
 
         String nazwaSwiata = cfg.getString("swiat.nazwa", "skyblock_world");
         int wysokoscWyspy = cfg.getInt("tworzenie-wyspy.wysokosc", 100);
@@ -84,8 +78,7 @@ public final class IslandConfigLoader {
         // Co gracz dostaje przy założeniu wyspy - wspólny format nagród z core (item/money/command...).
         List<Reward> nagrodyNaStart = CoreAPI.getRewardService().parse(cfg.getList("przedmioty-na-start"), "wyspy-config.yml przedmioty-na-start");
 
-        log.info("wyspy-config.yml: wczytano konfiguracje (" + spawnerTypy.size() + " typow spawnerow, "
-                + wartosciBlokow.size() + " wycenionych blokow).");
+        log.info("wyspy-config.yml: wczytano konfiguracje (" + wartosciBlokow.size() + " wycenionych blokow).");
 
         return new IslandTuning(
                 domyslnyRozmiarWyspy, cooldownProb,
@@ -93,9 +86,7 @@ public final class IslandConfigLoader {
                 maxGlebokoscSzukaniaWDol, promienSzukaniaObok,
                 timeoutPotwierdzeniaTicks, timeoutZaproszeniaTicks, maxLotPerlyTicks,
                 maxDlugoscNazwyWyspy, zapasNaSchemat, chunkiNaTick,
-                wartosciBlokow, spawnerMaxPoziom, spawnerTypy,
-                kosztBazowyIloscPoziomy, kosztBazowyIloscDomyslny,
-                kosztBazowySzybkoscPoziomy, kosztBazowySzybkoscDomyslny,
+                wartosciBlokow,
                 nazwaSwiata, wysokoscWyspy, nowaWyspa,
                 limitCzlonkow, nagrodyNaStart,
                 cfg.getBoolean("napis-przy-wejsciu", true),
@@ -113,7 +104,9 @@ public final class IslandConfigLoader {
                 cfg.getBoolean("odwiedzanie-wysp", true), cfg.getBoolean("wybuchy-niszcza-bloki", false),
                 cfg.getBoolean("pioruny", false),
                 cfg.getBoolean("moby.warden", false), cfg.getBoolean("moby.wither", false), cfg.getBoolean("moby.balwan", false),
-                parseBiomy(cfg, log)
+                parseBiomy(cfg, log),
+                // false = wyspy zostają przy rozmiarze startowym, przycisk powiększania znika z okna ulepszeń.
+                cfg.getBoolean("border.wlaczone", true)
         );
     }
 
@@ -235,64 +228,6 @@ public final class IslandConfigLoader {
                 continue;
             }
             mapa.put(material, sekcja.getDouble(key));
-        }
-        return mapa;
-    }
-
-    private static List<SpawnerTyp> parseSpawnerTypy(YamlConfiguration cfg, Logger log) {
-        List<SpawnerTyp> lista = new ArrayList<>();
-        for (Map<?, ?> m : cfg.getMapList("spawnery.typy")) {
-            Object idRaw = m.get("id");
-            Object ikonaRaw = m.get("ikona");
-            if (idRaw == null || ikonaRaw == null) {
-                log.warning("wyspy-config.yml: wpis w spawnery.typy bez 'id'/'ikona' - pomijam.");
-                continue;
-            }
-            Material ikona = Material.matchMaterial(String.valueOf(ikonaRaw));
-            if (ikona == null) {
-                log.warning("wyspy-config.yml: spawnery.typy '" + idRaw + "' ma zly material ikony ('" + ikonaRaw + "') - pomijam.");
-                continue;
-            }
-            String nazwaOdmieniona = m.get("nazwa-odmieniona") != null ? String.valueOf(m.get("nazwa-odmieniona")) : String.valueOf(idRaw);
-            double mnoznik = m.get("mnoznik") instanceof Number n ? Math.max(0.1, n.doubleValue()) : 1.0;
-            lista.add(new SpawnerTyp(String.valueOf(idRaw), nazwaOdmieniona, ikona, mnoznik));
-        }
-        return lista;
-    }
-
-    /**
-     * Lista spawnerów pochodzi z pluginu Spawnery (plugins/MainpluginsSpawners/spawnery-typy.yml), żeby nowy
-     * spawner od razu dało się ulepszać. Z wyspy-config.yml bierzemy tylko ikonę i mnożnik ceny (brak = ×1).
-     * Bez pluginu Spawnery zostaje własna lista z wyspy-config.yml.
-     */
-    private static List<SpawnerTyp> zListySpawnerow(Plugin plugin, List<SpawnerTyp> wlasne, Logger log) {
-        File plik = new File(plugin.getDataFolder().getParentFile(), "MainpluginsSpawners/spawnery-typy.yml");
-        if (!plik.exists()) return wlasne;
-        ConfigurationSection typy = YamlConfiguration.loadConfiguration(plik).getConfigurationSection("typy");
-        if (typy == null) return wlasne;
-        List<SpawnerTyp> lista = new ArrayList<>();
-        for (String id : typy.getKeys(false)) {
-            SpawnerTyp wlasny = null;
-            for (SpawnerTyp t : wlasne) if (t.id().equals(id)) wlasny = t;
-            String encja = typy.getString(id + ".encja", id);
-            String nazwa = typy.getString(id + ".nazwa-odmieniona", wlasny != null ? wlasny.nazwaOdmieniona() : id);
-            Material ikona = wlasny != null ? wlasny.ikona() : Material.matchMaterial(encja + "_SPAWN_EGG");
-            if (ikona == null) ikona = Material.SPAWNER;
-            lista.add(new SpawnerTyp(id, nazwa, ikona, wlasny != null ? wlasny.mnoznik() : 1.0));
-        }
-        return lista;
-    }
-
-    private static Map<Integer, Integer> parsePoziomyKosztow(YamlConfiguration cfg, String path, Logger log) {
-        Map<Integer, Integer> mapa = new LinkedHashMap<>();
-        ConfigurationSection sekcja = cfg.getConfigurationSection(path);
-        if (sekcja == null) return mapa;
-        for (String key : sekcja.getKeys(false)) {
-            try {
-                mapa.put(Integer.parseInt(key), sekcja.getInt(key));
-            } catch (NumberFormatException e) {
-                log.warning("wyspy-config.yml: " + path + " ma nienumeryczny klucz poziomu '" + key + "' - pomijam.");
-            }
         }
         return mapa;
     }

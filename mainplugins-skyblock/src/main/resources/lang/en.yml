@@ -188,8 +188,6 @@ bank:
 upgrade:
   max-size: "&cThe island has reached its maximum size ({max} blocks)!"
   border-done: "&aSuccess! The island area was expanded. New radius: {size} blocks."
-  spawner-max: "&cThis stat is already at the maximum level!"
-  spawner-done: "&aUpgraded to level {level}!"
 
 name:
   prompt: "&eType the new island name in chat (max {max} characters, or type '{cancel}'):"
@@ -218,8 +216,6 @@ gui:
     settings: "&9&lIsland Settings"
     top: "&6&lTop Islands"
     upgrades: "&6&lIsland Upgrades"
-    spawners: "&d&lSpawner Upgrades"
-    spawner: "&d&lSpawner: {type}"
     members: "&e&lIsland Members"
   choose-template:
     click: "&aClick to create this island"
@@ -262,15 +258,6 @@ gui:
     cost: "&aCost (from the island bank): {cost}"
     bank: "&eBank balance: {balance}"
     click: "&bClick to expand by {step} blocks!"
-  spawners:
-    name: "&e&lSpawner: {type}"
-    amount: "&7Amount: {level}/{max}"
-    speed: "&7Speed: {level}/{max}"
-    manage: "&bClick to manage upgrades"
-    level: "&7Level: {level}/{max}"
-    max: "&cMaximum level reached!"
-    cost: "&aCost (from the island bank): {cost}"
-    click: "&bClick to upgrade"
   members:
     admin-name: "&6&l[ADMIN] {player}"
     member-name: "&b&l{player}"
@@ -441,7 +428,7 @@ buttons:
       lore-2: ""
     czlonkowie-bank:
       name: "&6&lMembers: Bank and Upgrades"
-      lore-1: "&7Withdrawals, expanding land, spawners"
+      lore-1: "&7Withdrawals and expanding land"
       lore-2: ""
     powrot:
       name: "&c&lBack to Island Panel"
@@ -516,44 +503,10 @@ buttons:
       lore-2: ""
     ulepszenie-spawnerow:
       name: "&d&lSpawner Upgrades"
-      lore-1: "&7Increase mob spawn speed and amount"
-      lore-2: "&7on your island"
+      lore-1: "&7More mobs and faster spawning"
+      lore-2: "&7You pay from your own wallet"
     powrot:
       name: "&c&lBack to Menu"
-      lore-1: ""
-      lore-2: ""
-  ulepszenie-spawnerow:
-    poprzednia-strona:
-      name: "&e« Previous page"
-      lore-1: ""
-      lore-2: ""
-    nastepna-strona:
-      name: "&eNext page »"
-      lore-1: ""
-      lore-2: ""
-    powrot:
-      name: "&c&lBack to Upgrades"
-      lore-1: ""
-      lore-2: ""
-  spawner-podmenu:
-    poprzednia-strona:
-      name: "&e« Previous page"
-      lore-1: ""
-      lore-2: ""
-    nastepna-strona:
-      name: "&eNext page »"
-      lore-1: ""
-      lore-2: ""
-    ilosc:
-      name: "&e&lAmount"
-      lore-1: "&7More mobs per spawn cycle"
-      lore-2: ""
-    szybkosc:
-      name: "&e&lSpeed"
-      lore-1: "&7Shorter time between spawn cycles"
-      lore-2: ""
-    powrot:
-      name: "&c&lBack to Spawner Upgrades"
       lore-1: ""
       lore-2: ""
   czlonkowie-wyspy:

@@ -35,39 +35,19 @@ public final class IslandGuiLoader {
         IslandScreen ustawieniaWyspy = parseScreen(cfg, "ustawienia-wyspy", 45, log);
         IslandScreen topkaWysp = parseScreen(cfg, "topka-wysp", 54, log);
         IslandScreen ulepszeniaWyspy = parseScreen(cfg, "ulepszenia-wyspy", 27, log);
-        IslandScreen ulepszenieSpawnerow = parseScreen(cfg, "ulepszenie-spawnerow", 54, log);
-        IslandScreen spawnerPodmenu = parseScreen(cfg, "spawner-podmenu", 27, log);
         IslandScreen czlonkowieWyspy = parseScreen(cfg, "czlonkowie-wyspy", 54, log);
 
         int[] topkaSlotyRankingu = parseIntArray(cfg.getIntegerList("topka-wysp.sloty-rankingu"),
                 new int[]{10, 12, 14, 16, 28, 30, 32, 34, 46, 48});
-        int[] ulepszenieSpawnerowSlotyTypow = parseIntArray(cfg.getIntegerList("ulepszenie-spawnerow.sloty-typow"),
-                new int[]{9, 11, 13, 15, 17, 28, 30, 32, 34});
-
-        // Stałe miejsca spawnerów: "id: pole" albo "id: {slot: pole, strona: 2}".
-        java.util.Map<String, int[]> spawneryPola = new java.util.LinkedHashMap<>();
-        org.bukkit.configuration.ConfigurationSection pola = cfg.getConfigurationSection("ulepszenie-spawnerow.spawnery");
-        if (pola != null) {
-            for (String id : pola.getKeys(false)) {
-                if (pola.isInt(id)) spawneryPola.put(id, new int[]{pola.getInt(id), 0});
-                else if (pola.isConfigurationSection(id)) {
-                    spawneryPola.put(id, new int[]{pola.getInt(id + ".slot", -1), Math.max(0, pola.getInt(id + ".strona", 1) - 1)});
-                }
-            }
-        }
-        java.util.Set<String> ukryteSpawnery = new java.util.HashSet<>(cfg.getStringList("ulepszenie-spawnerow.ukryte"));
-
         int[] czlonkowieSloty = parseIntArray(cfg.getIntegerList("czlonkowie-wyspy.sloty-czlonkow"),
                 new int[]{11, 12, 13, 14, 15});
 
-        log.info("wyspy-gui.yml: wczytano uklad 8 ekranow GUI systemu wysp.");
+        log.info("wyspy-gui.yml: wczytano uklad 6 ekranow GUI systemu wysp.");
 
         return new IslandGuiContent(
                 panelWyspy, permisjeWyspy, ustawieniaWyspy,
                 topkaWysp, topkaSlotyRankingu,
                 ulepszeniaWyspy,
-                ulepszenieSpawnerow, ulepszenieSpawnerowSlotyTypow, spawneryPola, ukryteSpawnery,
-                spawnerPodmenu,
                 czlonkowieWyspy, czlonkowieSloty
         );
     }

@@ -2,13 +2,12 @@ package elo.mainplugins.spawners;
 
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.IslandService;
+import elo.mainplugins.core.api.LangService;
 import elo.mainplugins.core.api.IslandSummary;
 import elo.mainplugins.core.util.AsyncConfigSaver;
 import elo.mainplugins.core.util.CustomItemKeys;
 import elo.mainplugins.spawners.config.SpawnerConfig;
 import elo.mainplugins.spawners.config.SpawnerTypeDef;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -73,13 +72,10 @@ public class SpawnerManager implements Listener {
         }
     }
 
-    // Sufiksy kluczy w IslandSummary.spawnerLevels() - MUSZĄ się zgadzać 1:1 z tymi
-    // samymi literałami w IslandManager (mainplugins-skyblock). Dwa osobne poziomy
-    // per typ spawnera zamiast jednego wspólnego - patrz otworzMenuUlepszenSpawnera.
-    private static final String SUFIKS_ILOSC = "_ILOSC";
-    private static final String SUFIKS_SZYBKOSC = "_SZYBKOSC";
-
     private final Plugin plugin;
+    private final LangService lang;
+    private final SpawnerLevels levels;
+    private SpawnerUpgradeMenu menu;
     private final File plikSpawnerow;
     private final FileConfiguration configSpawnerow;
     private final AsyncConfigSaver saverSpawnerow;
@@ -89,9 +85,11 @@ public class SpawnerManager implements Listener {
     private final Map<UUID, Instancja> mobyDoSpawnera = new HashMap<>();
     private volatile SpawnerConfig config;
 
-    public SpawnerManager(Plugin plugin, SpawnerConfig config) {
+    public SpawnerManager(Plugin plugin, SpawnerConfig config, LangService lang) {
         this.plugin = plugin;
         this.config = config;
+        this.lang = lang;
+        this.levels = new SpawnerLevels(plugin);
         this.plikSpawnerow = new File(plugin.getDataFolder(), "spawnery.yml");
         if (!plikSpawnerow.exists()) {
             plikSpawnerow.getParentFile().mkdirs();
@@ -163,6 +161,19 @@ public class SpawnerManager implements Listener {
 
     public void zamknij() {
         saverSpawnerow.zamknij();
+        levels.zamknij();
+    }
+
+    SpawnerConfig config() {
+        return config;
+    }
+
+    SpawnerLevels levels() {
+        return levels;
+    }
+
+    void ustawMenu(SpawnerUpgradeMenu menu) {
+        this.menu = menu;
     }
 
     /** Podmienia typy/ustawienia spawnerów na żywo - patrz /@reloadspawnery. Już postawione instancje zachowują swój typ (odczyt przez id). */
@@ -197,7 +208,7 @@ public class SpawnerManager implements Listener {
         if (typ == null) return null;
         ItemStack item = new ItemStack(Material.SPAWNER, Math.max(1, amount));
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text("Spawner: " + typ.nazwaOdmieniona(), NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD));
+        meta.displayName(lang.msg(plugin, "item.name", Map.of("type", typ.nazwaOdmieniona())).decoration(TextDecoration.ITALIC, false));
         meta.getPersistentDataContainer().set(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING,
                 CATALOG_PREFIX + typ.id().toLowerCase(java.util.Locale.ROOT));
         meta.setEnchantmentGlintOverride(true);
@@ -242,9 +253,7 @@ public class SpawnerManager implements Listener {
         int limit = config.ustawienia().limitSpawnerowNaWyspe();
         int juzPostawione = policzSpawneryWyspy(ownerUUID);
         if (juzPostawione >= limit) {
-            player.sendMessage(Component.text("Limit spawnerów na wyspę: "
-                    + limit + " (masz już " + juzPostawione + ").",
-                    NamedTextColor.RED));
+            lang.send(player, plugin, "place.limit", Map.of("limit", String.valueOf(limit), "count", String.valueOf(juzPostawione)));
             event.setCancelled(true);   // blok nie zostaje postawiony, item wraca do ekwipunku
             return;
         }
@@ -255,7 +264,7 @@ public class SpawnerManager implements Listener {
         instancje.put(kluczLokalizacji(loc), instancja);
         zapisz();
 
-        player.sendMessage(Component.text("Postawiono spawner: " + typ.nazwaOdmieniona() + "!", NamedTextColor.GREEN));
+        lang.send(player, plugin, "place.done", Map.of("type", typ.nazwaOdmieniona()));
     }
 
     /**
@@ -310,9 +319,7 @@ public class SpawnerManager implements Listener {
         if (instancja == null) return;
 
         event.setCancelled(true);
-        event.getPlayer().sendMessage(Component.text(
-                "Nie możesz w ten sposób zniszczyć spawnera! Kliknij go PPM trzymając patyk, żeby go zebrać.",
-                NamedTextColor.RED));
+        lang.send(event.getPlayer(), plugin, "break.blocked");
     }
 
     @EventHandler
@@ -325,15 +332,23 @@ public class SpawnerManager implements Listener {
         if (block == null || block.getType() != Material.SPAWNER) return;
 
         Player player = event.getPlayer();
-        if (player.getInventory().getItemInMainHand().getType() != config.ustawienia().narzedzieZbierania()) return;
-
         Instancja instancja = instancje.get(kluczLokalizacji(block.getLocation()));
         if (instancja == null) return;   // wanilijski spawner - nie nasz, zostaw w spokoju
+
+        // Pusta ręka na swoim spawnerze = okno ulepszeń (to samo co /spawnery).
+        if (player.getInventory().getItemInMainHand().getType() == Material.AIR) {
+            if (menu != null && instancja.ownerUUID.equals(wyspaGracza(player.getUniqueId()))) {
+                event.setCancelled(true);
+                menu.otworz(player, 0);
+            }
+            return;
+        }
+        if (player.getInventory().getItemInMainHand().getType() != config.ustawienia().narzedzieZbierania()) return;
 
         // Zbierać może właściciel wyspy albo ktokolwiek z tej samej wyspy.
         UUID wyspaGracza = wyspaGracza(player.getUniqueId());
         if (!instancja.ownerUUID.equals(wyspaGracza)) {
-            player.sendMessage(Component.text("To nie jest spawner z Twojej wyspy!", NamedTextColor.RED));
+            lang.send(player, plugin, "collect.not-yours");
             event.setCancelled(true);
             return;
         }
@@ -350,8 +365,7 @@ public class SpawnerManager implements Listener {
         ItemStack drop = createItem(typ.id(), 1);
 
         loc.getWorld().dropItemNaturally(loc.clone().add(0.5, 0.5, 0.5), drop);
-        player.sendMessage(Component.text("Zebrano spawner: " + typ.nazwaOdmieniona() + "!",
-                NamedTextColor.GREEN));
+        lang.send(player, plugin, "collect.done", Map.of("type", typ.nazwaOdmieniona()));
     }
 
     private void tick() {
@@ -388,8 +402,8 @@ public class SpawnerManager implements Listener {
                 }
             }
 
-            int poziomIlosci = pobierzPoziom(instancja, SUFIKS_ILOSC);
-            int poziomSzybkosci = pobierzPoziom(instancja, SUFIKS_SZYBKOSC);
+            int poziomIlosci = pobierzPoziom(instancja, SpawnerLevels.Rodzaj.ILOSC);
+            int poziomSzybkosci = pobierzPoziom(instancja, SpawnerLevels.Rodzaj.SZYBKOSC);
             int limit = config.ustawienia().limitKolejki();
             int iloscDoSpawnu = config.ustawienia().iloscNaCykl(poziomIlosci);
 
@@ -499,7 +513,8 @@ public class SpawnerManager implements Listener {
         if (!(Bukkit.getEntity(instancja.zywyMobId) instanceof LivingEntity zywa)) return;
 
         if (instancja.rozmiarStosu > 1) {
-            zywa.customName(Component.text(instancja.typ.nazwaPojedyncza() + " x" + instancja.rozmiarStosu, NamedTextColor.YELLOW));
+            zywa.customName(lang.msg(plugin, "mob.stack-name",
+                    Map.of("name", instancja.typ.nazwaPojedyncza(), "count", String.valueOf(instancja.rozmiarStosu))));
             zywa.setCustomNameVisible(true);
         } else {
             zywa.customName(null);
@@ -521,21 +536,17 @@ public class SpawnerManager implements Listener {
      * nie ma albo gracz nie ma wyspy - zwraca jego własne UUID, tak samo jak
      * robi to onSadzenie() przy przypisywaniu właściciela.
      */
-    private UUID wyspaGracza(UUID playerUUID) {
+    UUID wyspaGracza(UUID playerUUID) {
         IslandService islandService = CoreAPI.getIslandService();
         if (islandService == null) return playerUUID;
         IslandSummary summary = islandService.getIslandOf(playerUUID);
         return summary != null ? summary.ownerUUID() : playerUUID;
     }
 
-    private int pobierzPoziom(Instancja instancja, String sufiks) {
-        IslandService islandService = CoreAPI.getIslandService();
-        if (islandService == null) return 1;
-
-        IslandSummary summary = islandService.getIslandOf(instancja.ownerUUID);
-        if (summary == null) return 1;
-
-        return summary.spawnerLevels().getOrDefault(instancja.typ.id() + sufiks, 1);
+    /** Poziom ulepszenia spawnera (ulepszenia wyłączone = 1, nigdy powyżej obecnego max-poziom). */
+    private int pobierzPoziom(Instancja instancja, SpawnerLevels.Rodzaj rodzaj) {
+        if (!config.ustawienia().ulepszeniaWlaczone()) return 1;
+        return Math.min(config.ustawienia().maxPoziom(), levels.poziom(instancja.ownerUUID, instancja.typ.id(), rodzaj));
     }
 
     /**
@@ -545,7 +556,7 @@ public class SpawnerManager implements Listener {
      * (nastepnySpawnMillis wraca na domyślne 0) strzelał moba w tej samej sekundzie.
      */
     private void zainicjujKolejnySpawn(Instancja instancja) {
-        int poziomSzybkosci = pobierzPoziom(instancja, SUFIKS_SZYBKOSC);
+        int poziomSzybkosci = pobierzPoziom(instancja, SpawnerLevels.Rodzaj.SZYBKOSC);
         instancja.nastepnySpawnMillis = System.currentTimeMillis() + config.ustawienia().interwalSekund(poziomSzybkosci) * 1000L;
     }
 

@@ -11,7 +11,6 @@ import elo.mainplugins.core.api.SpawnService;
 import elo.mainplugins.core.world.VoidGenerator;
 import elo.mainplugins.skyblock.config.IslandConfigLoader;
 import elo.mainplugins.skyblock.config.IslandTuning;
-import elo.mainplugins.skyblock.config.SpawnerTyp;
 import elo.mainplugins.skyblock.event.IslandBankDepositEvent;
 import elo.mainplugins.skyblock.event.IslandCreatedEvent;
 import elo.mainplugins.skyblock.event.IslandMemberJoinedEvent;
@@ -88,35 +87,7 @@ final class IslandMenus implements Listener {
         return 0;
     }
 
-    /**
-     * Które spawnery stoją na tej stronie okna Spawnery (pole -> spawner). Ta sama reguła co w aplikacji:
-     * spawner ze stałym miejscem stoi na swoim polu i stronie, schowany się nie pokazuje, reszta (np. nowe)
-     * wchodzi po kolei na wolne miejsca, strona po stronie, z pominięciem pól zajętych na danej stronie.
-     */
-    Map<Integer, SpawnerTyp> spawneryNaStronie(int page) {
-        IslandScreen screen = m.gui.ulepszenieSpawnerow();
-        int strony = Math.max(1, screen.strony());
-        List<Map<Integer, SpawnerTyp>> naStronach = new ArrayList<>();
-        for (int p = 0; p < strony; p++) naStronach.add(new HashMap<>());
-        List<SpawnerTyp> luzem = new ArrayList<>();
-        for (SpawnerTyp typ : m.tuning.spawnerTypy()) {
-            if (m.gui.ukryteSpawnery().contains(typ.id())) continue;
-            int[] pole = m.gui.spawneryPola().get(typ.id());
-            if (pole == null) { luzem.add(typ); continue; }
-            if (pole[1] >= 0 && pole[1] < strony && pole[0] >= 0 && pole[0] < screen.size()) naStronach.get(pole[1]).putIfAbsent(pole[0], typ);
-        }
-        int i = 0;
-        for (int p = 0; p < strony && i < luzem.size(); p++) {
-            for (int slot : m.gui.ulepszenieSpawnerowSlotyTypow()) {
-                if (i >= luzem.size()) break;
-                if (naStronach.get(p).containsKey(slot)) continue;
-                naStronach.get(p).put(slot, luzem.get(i++));
-            }
-        }
-        return page >= 0 && page < strony ? naStronach.get(page) : Map.of();
-    }
-
-    /** Ulepszenia spawnerów mają sens tylko z pluginem Spawnery - bez niego przycisku nie ma (pole zostaje tłem). */
+    /** Przycisk Spawnery otwiera okno ulepszeń z pluginu Spawnery - bez niego przycisku nie ma (pole zostaje tłem). */
     static boolean saSpawnery() {
         return Bukkit.getPluginManager().isPluginEnabled("MainpluginsSpawners");
     }
@@ -412,7 +383,7 @@ final class IslandMenus implements Listener {
         wypelnijTlo(inv, screen);
 
         IslandGuiButton powieksz = widoczny(screen, "POWIEKSZ_TEREN");
-        if (powieksz != null) {
+        if (powieksz != null && m.tuning.powiekszanieWlaczone()) {
             List<Component> lore = maksimum
                     ? List.of(
                             m.txt("gui.upgrades.radius", "size", String.valueOf(currentSize)),
@@ -443,111 +414,6 @@ final class IslandMenus implements Listener {
         ustawPrzycisk(inv, screen, "POWROT", null);
         ustawStrzalki(inv, screen, page);
         player.openInventory(inv);
-    }
-
-    /**
-     * Poziomy (1-5 domyślnie, patrz wyspy-config.yml: spawnery.max-poziom) customowych
-     * spawnerów mainplugins-spawners, per wyspa. Sam moduł spawnerów o tym nic nie wie
-     * poza odczytem IslandSummary.spawnerLevels() - cała logika ulepszania (koszt, limit)
-     * żyje tutaj, w panelu wyspy.
-     */
-    public void otworzMenuWzrostuDropow(Player player) {
-        otworzMenuWzrostuDropow(player, 0);
-    }
-
-    public void otworzMenuWzrostuDropow(Player player, int page) {
-        IslandData data = m.wlasnaWyspaLubKomunikat(player);
-        if (data == null) return;
-
-        IslandScreen screen = m.gui.ulepszenieSpawnerow();
-        page = zacznijStrone(player, screen, page);
-        Inventory inv = IslandGuiHolder.create("spawnery", screen.size(), m.txt("gui.title.spawners"));
-        wypelnijTlo(inv, screen);
-
-        for (Map.Entry<Integer, SpawnerTyp> wpis : spawneryNaStronie(page).entrySet()) {
-            SpawnerTyp typ = wpis.getValue();
-            int poziomIlosci = data.getSpawnerLevel(typ.id() + IslandManager.SUFIKS_ILOSC);
-            int poziomSzybkosci = data.getSpawnerLevel(typ.id() + IslandManager.SUFIKS_SZYBKOSC);
-
-            ItemStack item = new ItemStack(typ.ikona());
-            ItemMeta meta = item.getItemMeta();
-            meta.displayName(m.txt("gui.spawners.name", "type", typ.nazwaOdmieniona()));
-
-            String max = String.valueOf(m.tuning.spawnerMaxPoziom());
-            List<Component> lore = new ArrayList<>();
-            lore.add(m.txt("gui.spawners.amount", "level", String.valueOf(poziomIlosci), "max", max));
-            lore.add(m.txt("gui.spawners.speed", "level", String.valueOf(poziomSzybkosci), "max", max));
-            lore.add(Component.empty());
-            lore.add(m.txt("gui.spawners.manage"));
-            meta.lore(lore);
-            item.setItemMeta(meta);
-
-            inv.setItem(wpis.getKey(), item);
-        }
-
-        ustawPrzycisk(inv, screen, "POWROT", null);
-        ustawStrzalki(inv, screen, page);
-        player.openInventory(inv);
-    }
-
-    /** Podmenu jednego typu spawnera - osobne ulepszanie Ilości (mobków/cykl) i Szybkości (odstęp między cyklami). */
-    public void otworzMenuUlepszenSpawnera(Player player, String typId) {
-        otworzMenuUlepszenSpawnera(player, typId, 0);
-    }
-
-    public void otworzMenuUlepszenSpawnera(Player player, String typId, int page) {
-        IslandData data = m.wlasnaWyspaLubKomunikat(player);
-        if (data == null) return;
-
-        SpawnerTyp typ = m.tuning.spawnerTyp(typId);
-        if (typ == null) return;
-
-        m.otwartySpawnerTyp.put(player.getUniqueId(), typId);
-
-        IslandScreen screen = m.gui.spawnerPodmenu();
-        page = zacznijStrone(player, screen, page);
-        Inventory inv = IslandGuiHolder.create("spawner", screen.size(), m.txt("gui.title.spawner", "type", typ.nazwaOdmieniona()));
-        wypelnijTlo(inv, screen);
-
-        int poziomIlosci = data.getSpawnerLevel(typId + IslandManager.SUFIKS_ILOSC);
-        int poziomSzybkosci = data.getSpawnerLevel(typId + IslandManager.SUFIKS_SZYBKOSC);
-
-        IslandGuiButton iloscBtn = widoczny(screen, "ILOSC");
-        if (iloscBtn != null) {
-            // Ikona ILOSC zawsze bierze się z ikony aktualnie otwartego typu spawnera,
-            // niezależnie od "material" w wyspy-m.gui.yml - patrz komentarz tam.
-            inv.setItem(iloscBtn.slot(), itemUlepszeniaStatystyki(iloscBtn, typId, typ.ikona(), poziomIlosci, true));
-        }
-        IslandGuiButton szybkoscBtn = widoczny(screen, "SZYBKOSC");
-        if (szybkoscBtn != null) {
-            inv.setItem(szybkoscBtn.slot(), itemUlepszeniaStatystyki(szybkoscBtn, typId, szybkoscBtn.material(), poziomSzybkosci, false));
-        }
-
-        ustawPrzycisk(inv, screen, "POWROT", null);
-        ustawStrzalki(inv, screen, page);
-        player.openInventory(inv);
-    }
-
-    ItemStack itemUlepszeniaStatystyki(IslandGuiButton btn, String typId, Material ikona, int level, boolean ilosc) {
-        boolean maksimum = level >= m.tuning.spawnerMaxPoziom();
-
-        ItemStack item = new ItemStack(ikona);
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(nazwaPrzycisku(btn));
-
-        List<Component> lore = new ArrayList<>();
-        lore.addAll(opisPrzycisku(btn));
-        lore.add(m.txt("gui.spawners.level", "level", String.valueOf(level), "max", String.valueOf(m.tuning.spawnerMaxPoziom())));
-        lore.add(Component.empty());
-        if (maksimum) {
-            lore.add(m.txt("gui.spawners.max"));
-        } else {
-            lore.add(m.txt("gui.spawners.cost", "cost", IslandTexts.kasa(m.tuning.kosztUlepszeniaSpawnera(typId, ilosc, level))));
-            lore.add(m.txt("gui.spawners.click"));
-        }
-        meta.lore(lore);
-        item.setItemMeta(meta);
-        return item;
     }
 
     /** Sloty wzorów w oknie wyboru: środek rzędów, po 7 w rzędzie. */
@@ -694,33 +560,8 @@ final class IslandMenus implements Listener {
             int kier = kierunekStrony(screen, slot, event.getCurrentItem());
             if (kier != 0) { otworzMenuUlepszen(player, biezaca + kier); return; }
             if (jestSlotem(screen, "POWIEKSZ_TEREN", slot)) { m.uprosGranice(player); }
-            else if (saSpawnery() && jestSlotem(screen, "ULEPSZENIE_SPAWNEROW", slot)) { otworzMenuWzrostuDropow(player); }
+            else if (saSpawnery() && jestSlotem(screen, "ULEPSZENIE_SPAWNEROW", slot)) { player.closeInventory(); player.performCommand("spawnery"); }
             else if (jestSlotem(screen, "POWROT", slot)) { otworzMenuWyspy(player, zMenu); }
-        }
-        else if (ekran.equals("spawnery")) {
-            event.setCancelled(true);
-            int slot = event.getRawSlot();
-            IslandScreen screen = m.gui.ulepszenieSpawnerow();
-            int page = biezaca;
-            if (jestSlotem(screen, "POWROT", slot)) { otworzMenuUlepszen(player); return; }
-            int kier = kierunekStrony(screen, slot, event.getCurrentItem());
-            if (kier != 0) { otworzMenuWzrostuDropow(player, Math.max(0, page + kier)); return; }
-
-            SpawnerTyp typ = spawneryNaStronie(page).get(slot);
-            if (typ != null) otworzMenuUlepszenSpawnera(player, typ.id());
-        }
-        else if (ekran.equals("spawner")) {
-            event.setCancelled(true);
-            int slot = event.getRawSlot();
-            String typId = m.otwartySpawnerTyp.get(player.getUniqueId());
-            if (typId == null) return;
-
-            IslandScreen screen = m.gui.spawnerPodmenu();
-            int kier = kierunekStrony(screen, slot, event.getCurrentItem());
-            if (kier != 0) { otworzMenuUlepszenSpawnera(player, typId, biezaca + kier); return; }
-            if (jestSlotem(screen, "ILOSC", slot)) { m.ulepszSpawnerStatystyke(player, typId, IslandManager.SUFIKS_ILOSC); }
-            else if (jestSlotem(screen, "SZYBKOSC", slot)) { m.ulepszSpawnerStatystyke(player, typId, IslandManager.SUFIKS_SZYBKOSC); }
-            else if (jestSlotem(screen, "POWROT", slot)) { otworzMenuWzrostuDropow(player); }
         }
         else if (ekran.equals("czlonkowie")) {
             event.setCancelled(true);

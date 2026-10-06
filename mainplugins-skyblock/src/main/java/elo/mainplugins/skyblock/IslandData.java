@@ -11,7 +11,6 @@ import elo.mainplugins.core.api.SpawnService;
 import elo.mainplugins.core.world.VoidGenerator;
 import elo.mainplugins.skyblock.config.IslandConfigLoader;
 import elo.mainplugins.skyblock.config.IslandTuning;
-import elo.mainplugins.skyblock.config.SpawnerTyp;
 import elo.mainplugins.skyblock.event.IslandBankDepositEvent;
 import elo.mainplugins.skyblock.event.IslandCreatedEvent;
 import elo.mainplugins.skyblock.event.IslandMemberJoinedEvent;
@@ -93,7 +92,7 @@ public class IslandData {
     private String customName;
 
     // Wspólna kasa wyspy - ZASTĘPUJE osobisty portfel jako JEDYNE źródło pieniędzy
-    // na ulepszenia (border, spawnery - patrz uprosGranice/ulepszSpawnerStatystyke).
+    // na powiększanie terenu (patrz uprosGranice).
     // Wpłaca każdy stojący fizycznie na tej wyspie (właściciel/członek/gość -
     // patrz /is wplac), wypłaca wyłącznie właściciel/admin (/is wyplac).
     private double bankBalance = 0.0;
@@ -106,12 +105,6 @@ public class IslandData {
 
     // Biom wybrany w oknie "Biom wyspy" (null = biom świata, nic nie zmieniane).
     private String biom = null;
-
-    // Poziom (domyślnie 1) każdego typu customowego spawnera wykupionego przez
-    // właściciela wyspy - klucz to SpawnerType.name() z mainplugins-spawners,
-    // ale IslandData celowo trzyma go jako zwykły String (patrz komentarz w
-    // IslandSummary) - skyblock nie ma i nie powinien mieć zależności na moduł spawnerów.
-    private final Map<String, Integer> spawnerLevels = new HashMap<>();
 
     // Ile bloków z listy limitów (wyspy-config.yml: limity.bloki) stoi na wyspie - liczone przy stawianiu/niszczeniu.
     private final Map<String, Integer> blockCounts = new HashMap<>();
@@ -206,9 +199,6 @@ public class IslandData {
     public void setWorth(double worth) { this.worth = worth; }
     public void dodajDoWartosci(double delta) { worth = Math.max(0, worth + delta); }
 
-    public Map<String, Integer> getSpawnerLevels() { return spawnerLevels; }
-    public int getSpawnerLevel(String typ) { return spawnerLevels.getOrDefault(typ, 1); }
-    public void setSpawnerLevel(String typ, int level) { spawnerLevels.put(typ, level); }
 
     public boolean hasCustomHome() { return homeX != null; }
     public double getHomeX() { return homeX; }

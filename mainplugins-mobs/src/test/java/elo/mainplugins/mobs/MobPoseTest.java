@@ -50,6 +50,23 @@ class MobPoseTest {
     }
 
     @Test
+    void obrotCzesciZeSkalaMaDlugoscJeden() {
+        // Czesc zmniejszona (skala kosci 0,35) i caly mob powiekszony (1,8): gra mnozy czesc kwaternionem obrotu,
+        // wiec musi miec dlugosc 1 - inaczej czesc dostaje dodatkowa skale (nadruk za maly, nogi w ziemi).
+        for (float s : new float[]{0.35f, 1.8f, 0.63f}) {
+            Matrix4f m = MobPose.displayMatrix(37, new Matrix4f().rotateX(0.4f).scale(s), 1);
+            assertEquals(1, MobPose.rotationOf(m).lengthSquared(), 1e-4, "skala " + s);
+            // obrot + skala odtwarzaja macierz (bez przesuniecia)
+            Matrix4f back = new Matrix4f().rotate(MobPose.rotationOf(m)).scale(m.getScale(new Vector3f()));
+            Vector3f p = new Vector3f(0.3f, -0.7f, 0.2f);
+            Vector3f want = m.transformDirection(new Vector3f(p)), got = back.transformDirection(new Vector3f(p));
+            assertEquals(want.x, got.x, 1e-4);
+            assertEquals(want.y, got.y, 1e-4);
+            assertEquals(want.z, got.z, 1e-4);
+        }
+    }
+
+    @Test
     void klatkiKluczoweJakWKreatorze() {
         List<MobDef.Key> keys = List.of(new MobDef.Key(0, new float[]{0, 0, 0}, "linear"), new MobDef.Key(1, new float[]{10, 0, 0}, "smooth"),
                 new MobDef.Key(2, new float[]{20, 0, 0}, "linear"));

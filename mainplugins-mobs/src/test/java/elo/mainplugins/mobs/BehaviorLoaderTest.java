@@ -25,6 +25,43 @@ class BehaviorLoaderTest {
     }
 
     @Test
+    void wyzwalaczRzuconyPrzedmiot() {
+        String json = """
+                {"id":"tancerz","bones":[],"animations":[],
+                 "behavior":{"skills":[{"name":"emerald","trigger":"item","item":"minecraft:emerald","rangeMax":4,
+                   "animation":"taniec","actions":[{"type":"take_item","at":0.5}]},
+                   {"name":"cokolwiek","trigger":"item"}]}}
+                """;
+        MobBehavior b = BehaviorLoader.fromJson(BehaviorLoader.behaviorOf(json), "Tancerz");
+        MobBehavior.Skill s = b.skills().get(0);
+        assertEquals("item", s.trigger());
+        assertEquals("minecraft:emerald", s.item());
+        assertEquals(4, s.rangeMax());
+        assertEquals("take_item", s.actions().get(0).type());
+        assertEquals("", b.skills().get(1).item());
+    }
+
+    @Test
+    void handelNpc() {
+        String json = """
+                {"id":"handlarz","bones":[],"animations":[],
+                 "behavior":{"npc":{"enabled":true,"onClick":[{"type":"open_trade"}],
+                   "trades":[{"buy":"minecraft:emerald","buyAmount":1,"sell":"minecraft:stick","sellAmount":1},
+                             {"buy":"","sell":"minecraft:stick"},{"buy":"minecraft:dirt","buyAmount":500,"sell":"minecraft:stone"}]},
+                   "skills":[{"name":"radosc","trigger":"trade","animation":"taniec"}]}}
+                """;
+        MobBehavior b = BehaviorLoader.fromJson(BehaviorLoader.behaviorOf(json), "Handlarz");
+        assertEquals(2, b.npc().trades().size());
+        assertEquals("minecraft:stick", b.npc().trades().get(0).sell());
+        assertEquals(64, b.npc().trades().get(1).buyAmount());
+        assertEquals("open_trade", b.npc().onClick().get(0).type());
+        assertEquals("trade", b.skills().get(0).trigger());
+        assertTrue(MobBehavior.Npc.OFF.trades().isEmpty());
+        assertFalse(b.fixedFacing());
+        assertTrue(BehaviorLoader.fromJson(BehaviorLoader.behaviorOf("{\"behavior\":{\"fixedFacing\":true}}"), "Scena").fixedFacing());
+    }
+
+    @Test
     void zachowanieZAplikacji() {
         String json = """
                 {"id":"wyvern","name":"Wyvern","bones":[],"animations":[],

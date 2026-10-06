@@ -21,6 +21,7 @@ import org.bukkit.entity.Egg;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fireball;
+import org.bukkit.entity.Item;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.LlamaSpit;
 import org.bukkit.entity.Mob;
@@ -33,6 +34,7 @@ import org.bukkit.entity.SpectralArrow;
 import org.bukkit.entity.Trident;
 import org.bukkit.entity.WindCharge;
 import org.bukkit.entity.WitherSkull;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -60,11 +62,15 @@ final class SkillRunner {
         final Skill skill;
         final int start;
         final LivingEntity target;
+        /** Wyzwalacz "item": przedmiot, który mob podniesie (akcja take_item). */
+        Item item;
         int next;
         /** Skok: od, do, start (tick), długość (ticki), wysokość łuku. */
         Location leapFrom, leapTo;
         int leapStart = -1, leapTicks;
         double leapHeight;
+        /** Akcja launch: lot pionowy z przyspieszeniem, jak rakieta. */
+        boolean rocket;
         /** Oszołomienie po umiejętności: animacja, start, długość (ticki). */
         MobDef.Anim stunAnim;
         int stunStart = -1, stunTicks;
@@ -87,8 +93,12 @@ final class SkillRunner {
     SkillRunner(LiveMob mob, List<Skill> skills) {
         this.mob = mob;
         this.skills = skills;
-        // Pierwsze użycie po kilku sekundach, każda umiejętność w innej chwili.
-        for (Skill s : skills) ready.put(s, 60 + ThreadLocalRandom.current().nextInt(100));
+        // Walka i "co jakiś czas": pierwsze użycie po kilku sekundach, każda umiejętność w innej chwili.
+        // Reakcje na zdarzenia (handel, sygnał, rzucony przedmiot...) działają od razu po postawieniu moba.
+        for (Skill s : skills) {
+            boolean repeating = s.trigger().equals("combat") || s.trigger().equals("timer");
+            ready.put(s, repeating ? 60 + ThreadLocalRandom.current().nextInt(100) : 0);
+        }
     }
 
     boolean busy() {
@@ -97,8 +107,13 @@ final class SkillRunner {
 
     static boolean exclusive(Skill s) {
         if (s.animation() != null) return true;
-        for (Action a : s.actions()) if (a.type().equals("leap") || a.type().equals("stun")) return true;
+        for (Action a : s.actions()) if (moves(a) || a.type().equals("stun")) return true;
         return false;
+    }
+
+    /** Akcje, które przesuwają moba w czasie (skok, wystrzał w górę). */
+    private static boolean moves(Action a) {
+        return a.type().equals("leap") || a.type().equals("launch");
     }
 
     /** Animacja głównej umiejętności i chwila w niej (do pozy moba) albo null. */
@@ -106,6 +121,7 @@ final class SkillRunner {
         if (main == null && ticks > 40) {
             tryTrigger("combat", target, canStartMain);
             tryTrigger("timer", target, canStartMain);
+            if (main == null && ticks % 5 == 0) tryItem(canStartMain);
         }
         for (Iterator<Run> it = background.iterator(); it.hasNext(); ) {
             Run r = it.next();
@@ -125,7 +141,7 @@ final class SkillRunner {
             if (trigger.equals("death")) {
                 // Mob już ginie - wszystkie akcje od razu, w miejscu śmierci.
                 Run r = new Run(s, mob.ticks(), target);
-                for (Action a : s.actions()) if (!a.type().equals("leap") && !a.type().equals("stun")) exec(r, a);
+                for (Action a : s.actions()) if (!moves(a) && !a.type().equals("stun")) exec(r, a);
                 continue;
             }
             start(s, target);
@@ -141,6 +157,44 @@ final class SkillRunner {
             start(s, target);
             if (main != null) return;
         }
+    }
+
+    /** Wyzwalacz "signal": inny mob wysłał sygnał o nazwie tej umiejętności (akcja signal); cel = nadawca. */
+    void signal(String name, LivingEntity from) {
+        for (Skill s : skills) {
+            if (!s.trigger().equals("signal") || !s.name().equalsIgnoreCase(name)) continue;
+            if (!conditionsOk(s, from, true)) continue;
+            start(s, from);
+        }
+    }
+
+    /** Wyzwalacz "item": najbliższy przedmiot leżący na ziemi w zasięgu (np. rzucony emerald). */
+    private void tryItem(boolean canStartMain) {
+        for (Skill s : skills) {
+            if (!s.trigger().equals("item")) continue;
+            if (exclusive(s) && !canStartMain) continue;
+            Item found = nearestItem(s);
+            if (found == null || !conditionsOk(s, null, true)) continue;
+            start(s, null, found);
+            if (main != null) return;
+        }
+    }
+
+    private Item nearestItem(Skill s) {
+        Material want = s.item().isBlank() ? null : Material.matchMaterial(s.item());
+        if (want == null && !s.item().isBlank()) return null;
+        Location at = mob.base.getLocation();
+        Item best = null;
+        double bestDist = Double.MAX_VALUE;
+        for (Item it : at.getNearbyEntitiesByType(Item.class, s.rangeMax())) {
+            if (!it.isValid() || !it.isOnGround() || (want != null && it.getItemStack().getType() != want)) continue;
+            double d = it.getLocation().distance(at);
+            if (d >= s.rangeMin() && d <= s.rangeMax() && d < bestDist) {
+                best = it;
+                bestDist = d;
+            }
+        }
+        return best;
     }
 
     private boolean conditionsOk(Skill s, LivingEntity target, boolean checkCooldown) {
@@ -162,18 +216,24 @@ final class SkillRunner {
     }
 
     private void start(Skill s, LivingEntity target) {
+        start(s, target, null);
+    }
+
+    private void start(Skill s, LivingEntity target, Item item) {
         int ticks = mob.ticks();
         ready.put(s, ticks + (int) (s.cooldown() * 20));
         Run r = new Run(s, ticks, target);
+        r.item = item;
         double end = 0;
         MobDef.Anim anim = mob.find(s.animation());
         if (anim != null) end = anim.length();
-        for (Action a : s.actions()) end = Math.max(end, a.at() + (a.type().equals("leap") ? a.p().num("duration", 1) : 0));
+        for (Action a : s.actions()) end = Math.max(end, a.at() + (moves(a) ? a.p().num("duration", 1) : 0));
         r.end = ticks + (int) Math.ceil(end * 20);
         if (exclusive(s)) {
             if (main != null) return;
             main = r;
             if (target != null) mob.face(target.getLocation());
+            else if (item != null) mob.face(item.getLocation());
         } else {
             background.add(r);
         }
@@ -187,7 +247,8 @@ final class SkillRunner {
         while (r.next < actions.size() && actions.get(r.next).at() <= t + 1e-6) exec(r, actions.get(r.next++));
         if (r.leapStart >= 0) {
             float k = Math.min(1f, (ticks - r.leapStart) / (float) Math.max(1, r.leapTicks));
-            Location at = r.leapFrom.clone().add(r.leapTo.toVector().subtract(r.leapFrom.toVector()).multiply(k));
+            float along = r.rocket ? k * k : k; // rakieta rusza powoli i przyspiesza
+            Location at = r.leapFrom.clone().add(r.leapTo.toVector().subtract(r.leapFrom.toVector()).multiply(along));
             at.add(0, r.leapHeight * 4 * k * (1 - k), 0);
             at.setDirection(r.leapTo.getDirection());
             mob.base.teleport(at);
@@ -229,7 +290,7 @@ final class SkillRunner {
 
     /** Akcje od razu (kliknięcie NPC): z animacją jako główna (NPC stoi i mówi), bez - w tle. */
     void runNow(String name, List<Action> actions, LivingEntity target, String animation) {
-        Skill s = new Skill(name, "click", 0, 0, 256, 1, 1, 0, animation, actions);
+        Skill s = new Skill(name, "click", 0, 0, 256, 1, 1, 0, animation, actions, "");
         if (animation != null && main != null) main = null;
         start(s, target);
     }
@@ -257,6 +318,23 @@ final class SkillRunner {
                     r.leapTicks = Math.max(1, (int) Math.round(p.num("duration", 1) * 20));
                     r.leapHeight = p.num("height", 0);
                     r.leapStart = mob.ticks();
+                }
+                case "launch" -> {
+                    // Pionowo w górę jak rakieta (np. wieśniak-fajerwerk), lot z przyspieszeniem.
+                    r.leapFrom = base.getLocation();
+                    r.leapTo = r.leapFrom.clone().add(0, Math.max(1, Math.min(64, p.num("height", 20))), 0);
+                    r.leapTicks = Math.max(1, (int) Math.round(p.num("duration", 1.5) * 20));
+                    r.leapHeight = 0;
+                    r.rocket = true;
+                    r.leapStart = mob.ticks();
+                    mob.sound(base.getLocation(), p.str("sound", "entity.firework_rocket.launch"), 2f, 1f);
+                }
+                case "firework" -> mob.firework(p);
+                case "signal" -> {
+                    for (LiveMob m : mob.allies(p.num("radius", 16))) m.signal(p.str("name", ""), base);
+                }
+                case "watch" -> {
+                    if (target != null) mob.watch(target, p.num("seconds", 4));
                 }
                 case "damage" -> {
                     double amount = p.num("amount", 4), radius = p.num("radius", 0);
@@ -328,6 +406,20 @@ final class SkillRunner {
                 case "die" -> mob.dieSilently();
                 case "shield" -> mob.shield((int) (p.num("seconds", 3) * 20));
                 case "variant" -> mob.setVariant(p.str("variant", "base"));
+                case "take_item" -> {
+                    // Przedmiot z wyzwalacza "item" leci do moba jak przy zwykłym podnoszeniu, ubywa jedna sztuka.
+                    Item it = r.item;
+                    if (it == null || !it.isValid()) return;
+                    base.playPickupItemAnimation(it, 1);
+                    ItemStack stack = it.getItemStack();
+                    if (stack.getAmount() <= 1) it.remove();
+                    else {
+                        stack.setAmount(stack.getAmount() - 1);
+                        it.setItemStack(stack);
+                    }
+                    mob.sound(base.getLocation(), p.str("sound", "entity.item.pickup"), 0.6f, 1.2f);
+                    r.item = null;
+                }
                 case "stun" -> {
                     r.stunAnim = mob.find(blank(p.str("animation", null)));
                     double sec = p.num("seconds", 0);
@@ -341,6 +433,9 @@ final class SkillRunner {
                 }
                 case "open_shop" -> {
                     if (target instanceof Player pl) pl.performCommand(("sklep " + p.str("category", "")).trim());
+                }
+                case "open_trade" -> {
+                    if (target instanceof Player pl) mob.openTrade(pl);
                 }
                 case "open_quests" -> {
                     if (target instanceof Player pl) pl.performCommand("zadania");
@@ -463,10 +558,27 @@ final class SkillRunner {
         int count = (int) Math.max(1, Math.min(20, p.num("count", 1)));
         double radius = p.num("radius", 2);
         int life = (int) (p.num("lifetime", 0) * 20);
+        // ring: rowno na okregu (kat startowy "angle", srodek przesuniety o centerX/centerZ pikseli modelu), przodem do srodka
+        boolean ring = p.bool("ring", false);
+        Location center = ring ? mob.modelPoint((float) p.num("centerX", 0), 24, (float) p.num("centerZ", 0)) : null;
         for (int i = 0; i < count; i++) {
-            Location at = ground(mob.base.getLocation().add(rnd() * radius, 0, rnd() * radius), 4);
-            if (at == null) at = mob.base.getLocation();
+            Location at;
+            if (ring) {
+                double a = Math.toRadians(p.num("angle", 0)) + Math.PI * 2 * i / count;
+                at = ground(center.clone().add(Math.cos(a) * radius, 0, Math.sin(a) * radius), 4);
+                if (at == null) at = center.clone().add(Math.cos(a) * radius, 0, Math.sin(a) * radius);
+                Vector d = center.toVector().subtract(at.toVector());
+                at.setYaw((float) Math.toDegrees(Math.atan2(-d.getX(), d.getZ())));
+                at.setPitch(0);
+            } else {
+                at = ground(mob.base.getLocation().add(rnd() * radius, 0, rnd() * radius), 4);
+                if (at == null) at = mob.base.getLocation();
+            }
             Entity spawned = mob.summonCustom(what, at, target, life);
+            if (ring && spawned instanceof Mob m) {
+                m.setRotation(at.getYaw(), 0);
+                m.setBodyYaw(at.getYaw());
+            }
             if (spawned == null) {
                 NamespacedKey k = NamespacedKey.fromString(what.contains(":") ? what : "minecraft:" + what);
                 EntityType type = k == null ? null : Registry.ENTITY_TYPE.get(k);

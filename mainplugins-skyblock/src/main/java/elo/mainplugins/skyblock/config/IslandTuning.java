@@ -29,12 +29,6 @@ public record IslandTuning(
         int zapasNaSchemat,
         int chunkiNaTick,
         Map<Material, Double> wartosciBlokow,
-        int spawnerMaxPoziom,
-        List<SpawnerTyp> spawnerTypy,
-        Map<Integer, Integer> kosztBazowyIloscPoziomy,
-        int kosztBazowyIloscDomyslny,
-        Map<Integer, Integer> kosztBazowySzybkoscPoziomy,
-        int kosztBazowySzybkoscDomyslny,
         String nazwaSwiata,
         int wysokoscWyspy,
         UstawieniaNowejWyspy nowaWyspa,
@@ -58,7 +52,8 @@ public record IslandTuning(
         boolean mobyWarden,
         boolean mobyWither,
         boolean mobyBalwan,
-        List<BiomWyspy> biomy
+        List<BiomWyspy> biomy,
+        boolean powiekszanieWlaczone
 ) {
     /** Biom do wyboru komendą /is biom: id z gry (np. desert) i nazwa na czacie. Zmiana jest darmowa. */
     public record BiomWyspy(String id, String nazwa) {}
@@ -115,26 +110,5 @@ public record IslandTuning(
             if (prog.odProby() <= numerProby) wynik = prog.milisekundy();
         }
         return wynik;
-    }
-
-    public SpawnerTyp spawnerTyp(String id) {
-        for (SpawnerTyp typ : spawnerTypy) {
-            if (typ.id().equals(id)) return typ;
-        }
-        return null;
-    }
-
-    /** Ile razy droższe są ulepszenia danego spawnera od ceny podstawowej (spawnery.typy[].mnoznik). */
-    public double mnoznikKosztu(String typId) {
-        SpawnerTyp typ = spawnerTyp(typId);
-        return typ != null ? typ.mnoznik() : 1.0;
-    }
-
-    /** Koszt ulepszenia z obecnyPoziom na kolejny, zaokrąglony do pełnych setek (jak dawniej). */
-    public int kosztUlepszeniaSpawnera(String typId, boolean ilosc, int obecnyPoziom) {
-        Map<Integer, Integer> poziomy = ilosc ? kosztBazowyIloscPoziomy : kosztBazowySzybkoscPoziomy;
-        int domyslny = ilosc ? kosztBazowyIloscDomyslny : kosztBazowySzybkoscDomyslny;
-        int baza = poziomy.getOrDefault(obecnyPoziom, domyslny);
-        return (int) (Math.round(baza * mnoznikKosztu(typId) / 100.0) * 100);
     }
 }

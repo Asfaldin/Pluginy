@@ -11,7 +11,6 @@ import elo.mainplugins.core.api.SpawnService;
 import elo.mainplugins.core.world.VoidGenerator;
 import elo.mainplugins.skyblock.config.IslandConfigLoader;
 import elo.mainplugins.skyblock.config.IslandTuning;
-import elo.mainplugins.skyblock.config.SpawnerTyp;
 import elo.mainplugins.skyblock.event.IslandBankDepositEvent;
 import elo.mainplugins.skyblock.event.IslandCreatedEvent;
 import elo.mainplugins.skyblock.event.IslandMemberJoinedEvent;
@@ -127,12 +126,6 @@ final class IslandStorage {
                 for (String blok : licznikiSekcja.getKeys(false)) data.getBlockCounts().put(blok, licznikiSekcja.getInt(blok));
             }
 
-            ConfigurationSection spawnerSekcja = configWysp.getConfigurationSection(path + "spawnerLevels");
-            if (spawnerSekcja != null) {
-                for (String typKey : spawnerSekcja.getKeys(false)) {
-                    data.setSpawnerLevel(typKey, spawnerSekcja.getInt(typKey, 1));
-                }
-            }
 
             if (configWysp.contains(path + "home.x")) {
                 data.setHome(
@@ -234,10 +227,6 @@ final class IslandStorage {
 
             for (Map.Entry<String, Integer> licznik : data.getBlockCounts().entrySet()) {
                 configWysp.set(path + "blockCounts." + licznik.getKey(), licznik.getValue());
-            }
-
-            for (Map.Entry<String, Integer> lvl : data.getSpawnerLevels().entrySet()) {
-                configWysp.set(path + "spawnerLevels." + lvl.getKey(), lvl.getValue());
             }
 
             List<String> czlonkowie = new ArrayList<>();

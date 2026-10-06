@@ -1,0 +1,33 @@
+# Mainplugins Spawners - English messages. Colors: &a &e ...  Variables in {braces}.
+item:
+  name: "&d&lSpawner: {type}"
+place:
+  done: "&aSpawner placed: {type}!"
+  limit: "&cSpawner limit: {limit} (you already have {count})."
+break:
+  blocked: "&cYou can't break a spawner like this! Right-click it holding a stick to pick it up."
+collect:
+  done: "&aPicked up spawner: {type}!"
+  not-yours: "&cThis is not your spawner!"
+mob:
+  stack-name: "&e{name} x{count}"
+menu:
+  title: "&5&lSpawner upgrades &8| &7{page}/{pages}"
+  item-name: "&d&lSpawner: {type}"
+  amount: "&7Amount: &flevel {level}/{max} &8({mobs} mobs at once)"
+  amount-price: "&eLeft-click &7- upgrade amount for &a{price}{currency}"
+  speed: "&7Speed: &flevel {level}/{max} &8(every {seconds} s)"
+  speed-price: "&eRight-click &7- upgrade speed for &a{price}{currency}"
+  max-reached: "&aHighest level!"
+  click-hint: "&8The upgrade works on all your spawners of this kind."
+  prev: "&e&lPrevious page"
+  next: "&e&lNext page"
+  close: "&c&lClose"
+upgrade:
+  off: "&cSpawner upgrades are turned off on this server."
+  max: "&cThis is already the highest level."
+  no-money: "&cYou can't afford it - the upgrade costs {price}{currency}."
+  done-amount: "&aAmount upgraded: {type} spawners are now level {level}! &7(-{price}{currency})"
+  done-speed: "&aSpeed upgraded: {type} spawners are now level {level}! &7(-{price}{currency})"
+reload:
+  done: "&aSpawners reloaded."

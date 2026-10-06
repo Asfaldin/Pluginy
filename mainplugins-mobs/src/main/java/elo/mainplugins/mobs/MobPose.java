@@ -2,6 +2,7 @@ package elo.mainplugins.mobs;
 
 import elo.mainplugins.mobs.model.MobDef;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 
 import java.util.HashMap;
 import java.util.List;
@@ -124,6 +125,15 @@ public final class MobPose {
         Matrix4f m = parent != null ? new Matrix4f(world(parent, byId, offsets, done)).mul(local) : local;
         done.put(b.id(), m);
         return m;
+    }
+
+    /**
+     * Obrót z macierzy części, która ma też skalę (części powiększone/zmniejszone, skala kości, cały mob w animacji).
+     * getNormalizedRotation zakłada macierz BEZ skali - przy skali innej niż 1 dawała kwaternion o długości różnej
+     * od 1, a gra mnoży nim część i dokłada skalę jeszcze raz (np. nadruk 3x za mały, części moba w skali 1,8 za duże).
+     */
+    public static Quaternionf rotationOf(Matrix4f m) {
+        return m.getUnnormalizedRotation(new Quaternionf()).normalize();
     }
 
     /**

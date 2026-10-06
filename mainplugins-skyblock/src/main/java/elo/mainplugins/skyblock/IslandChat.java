@@ -11,7 +11,6 @@ import elo.mainplugins.core.api.SpawnService;
 import elo.mainplugins.core.world.VoidGenerator;
 import elo.mainplugins.skyblock.config.IslandConfigLoader;
 import elo.mainplugins.skyblock.config.IslandTuning;
-import elo.mainplugins.skyblock.config.SpawnerTyp;
 import elo.mainplugins.skyblock.event.IslandBankDepositEvent;
 import elo.mainplugins.skyblock.event.IslandCreatedEvent;
 import elo.mainplugins.skyblock.event.IslandMemberJoinedEvent;

@@ -7,7 +7,9 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -63,7 +65,16 @@ public final class SpawnerConfigLoader {
 
             String nazwaOdmieniona = cfg.getString(path + "nazwa-odmieniona", id);
             String nazwaPojedyncza = cfg.getString(path + "nazwa-pojedyncza", id);
-            typy.put(id, new SpawnerTypeDef(id, encja, nazwaOdmieniona, nazwaPojedyncza));
+            String ikonaRaw = cfg.getString(path + "ikona");
+            Material ikona = ikonaRaw != null ? Material.matchMaterial(ikonaRaw) : null;
+            if (ikona == null) {
+                // Domyślnie jajo spawnu tego moba, a gdy go nie ma - zwykły spawner.
+                ikona = Material.matchMaterial(encja.name() + "_SPAWN_EGG");
+                if (ikona == null) ikona = Material.SPAWNER;
+                if (ikonaRaw != null) log.warning("spawnery-typy.yml: typ '" + id + "' ma zla 'ikona' ('" + ikonaRaw + "') - uzywam " + ikona + ".");
+            }
+            double mnoznik = Math.max(0.1, cfg.getDouble(path + "mnoznik", 1.0));
+            typy.put(id, new SpawnerTypeDef(id, encja, nazwaOdmieniona, nazwaPojedyncza, ikona, mnoznik));
         }
         return typy;
     }
@@ -85,7 +96,23 @@ public final class SpawnerConfigLoader {
             narzedzie = Material.STICK;
         }
 
-        return new SpawnerSettings(maxPoziom, limitKolejki, interwalBazowy, interwalNaPoziom,
-                iloscBazowa, iloscNaPoziom, limitSpawnerow, promienAktywnosci, narzedzie);
+        boolean ulepszeniaWlaczone = cfg.getBoolean("ulepszenia.wlaczone", true);
+        List<Integer> cenyIlosc = ceny(cfg, "ulepszenia.ceny-ilosc", List.of(2500, 5000, 8500, 17000), log);
+        List<Integer> cenySzybkosc = ceny(cfg, "ulepszenia.ceny-szybkosc", List.of(3500, 7000, 12000, 24000), log);
+
+        return new SpawnerSettings(Math.max(1, maxPoziom), limitKolejki, interwalBazowy, interwalNaPoziom,
+                iloscBazowa, iloscNaPoziom, limitSpawnerow, promienAktywnosci, narzedzie,
+                ulepszeniaWlaczone, cenyIlosc, cenySzybkosc);
+    }
+
+    /** Lista cen poziomów (1->2, 2->3...); brak albo pusta = domyślna. */
+    private static List<Integer> ceny(YamlConfiguration cfg, String path, List<Integer> domyslne, Logger log) {
+        if (!cfg.isList(path)) return domyslne;
+        List<Integer> lista = new ArrayList<>();
+        for (Object o : cfg.getList(path)) {
+            if (o instanceof Number n) lista.add(Math.max(0, n.intValue()));
+            else log.warning("spawnery-typy.yml: " + path + " ma nie-liczbe '" + o + "' - pomijam.");
+        }
+        return lista.isEmpty() ? domyslne : List.copyOf(lista);
     }
 }

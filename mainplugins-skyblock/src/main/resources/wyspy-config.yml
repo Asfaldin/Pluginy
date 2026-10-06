@@ -24,6 +24,8 @@ tworzenie-wyspy:
     - { od-proby: 7, sekundy: 86400 }
 
 border:
+  # Czy gracze moga powiekszac wyspe w panelu. false = wyspy zostaja przy rozmiarze startowym.
+  wlaczone: true
   # O ile blokow (promienia) powieksza sie wyspa za jedno ulepszenie w panelu.
   przyrost-na-ulepszenie: 10
   # Koszt pierwszego powiekszenia (z rozmiaru startowego).
@@ -58,7 +60,7 @@ nowa-wyspa:
   czlonkowie-budowanie: true
   czlonkowie-skrzynie: true
   czlonkowie-zapraszanie: false
-  # Wyplata z banku wyspy, powiekszanie terenu i ulepszanie spawnerow.
+  # Wyplata z banku wyspy i powiekszanie terenu.
   czlonkowie-bank-i-ulepszenia: false
 
 # Wzory wyspy startowej do wyboru przy zakladaniu. Kazdy wzor admin buduje w grze i zapisuje:
@@ -203,27 +205,3 @@ wartosci-blokow:
   REDSTONE_BLOCK: 6.0
   COAL_BLOCK: 3.0
 
-spawnery:
-  max-poziom: 5
-  # Ulepszenia spawnerow kupowane w panelu wyspy (Ilosc = wiecej mobow naraz, Szybkosc = czesciej).
-  # "mnoznik" = ile razy drozsze sa ulepszenia tego spawnera od ceny podstawowej nizej (1.0 = tyle samo).
-  # "id" musi byc takie samo jak w pluginie Spawnerow.
-  typy:
-    - { id: ZOMBIE,   nazwa-odmieniona: "Zombie",     ikona: ROTTEN_FLESH, mnoznik: 1.0 }
-    - { id: PIG,      nazwa-odmieniona: "Świń",       ikona: PORKCHOP,     mnoznik: 1.1 }
-    - { id: SKELETON, nazwa-odmieniona: "Szkieletów", ikona: BONE,         mnoznik: 1.2 }
-    - { id: COW,      nazwa-odmieniona: "Krów",       ikona: LEATHER,      mnoznik: 1.4 }
-    - { id: SPIDER,   nazwa-odmieniona: "Pająków",    ikona: STRING,       mnoznik: 1.5 }
-    - { id: CHICKEN,  nazwa-odmieniona: "Kur",        ikona: FEATHER,      mnoznik: 1.7 }
-    - { id: CREEPER,  nazwa-odmieniona: "Creeperów",  ikona: GUNPOWDER,    mnoznik: 1.7 }
-    - { id: SHEEP,    nazwa-odmieniona: "Owiec",      ikona: WHITE_WOOL,   mnoznik: 1.8 }
-    - { id: BREEZE,   nazwa-odmieniona: "Breeze'ów",  ikona: BREEZE_ROD,   mnoznik: 2.2 }
-  # Cena podstawowa awansu Z danego poziomu NA kolejny (1->2, 2->3, 3->4, 4->5), mnozona przez
-  # "mnoznik" typu spawnera. Poziomy spoza
-  # listy (5 i wyzej) uzywaja "domyslny". Ilosc i Szybkosc maja OSOBNE krzywe kosztu.
-  koszt-bazowy-ilosc:
-    poziomy: { 1: 2500, 2: 5000, 3: 8500 }
-    domyslny: 17000
-  koszt-bazowy-szybkosc:
-    poziomy: { 1: 3500, 2: 7000, 3: 12000 }
-    domyslny: 24000

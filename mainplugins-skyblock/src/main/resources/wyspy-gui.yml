@@ -75,24 +75,8 @@ ulepszenia-wyspy:
   size: 27
   przyciski:
     - { slot: 11, akcja: POWIEKSZ_TEREN, material: GRASS_BLOCK, material-wylaczone: BEDROCK }
+    # Otwiera okno ulepszen z pluginu Spawnery (/spawnery); bez tego pluginu przycisku nie ma.
     - { slot: 15, akcja: ULEPSZENIE_SPAWNEROW, material: SPAWNER }
-    - { slot: 22, akcja: POWROT, material: ARROW }
-
-ulepszenie-spawnerow:
-  size: 54
-  # Wolne miejsca na spawnery, po kolei. Spawner moze miec tez stale miejsce w "spawnery" (id: pole
-  # albo id: {slot: pole, strona: 2}) i wtedy stoi tam zawsze; "ukryte: [id]" chowa spawner z okna.
-  sloty-typow: [9, 11, 13, 15, 17, 28, 30, 32, 34]
-  przyciski:
-    - { slot: 49, akcja: POWROT, material: ARROW }
-
-spawner-podmenu:
-  size: 27
-  przyciski:
-    # "material" ponizej jest ignorowany dla ILOSC - ikona zawsze bierze sie z ikony
-    # aktualnie otwartego typu spawnera (wyspy-config.yml: spawnery.typy[].ikona).
-    - { slot: 11, akcja: ILOSC, material: CLOCK }
-    - { slot: 15, akcja: SZYBKOSC, material: CLOCK }
     - { slot: 22, akcja: POWROT, material: ARROW }
 
 czlonkowie-wyspy:

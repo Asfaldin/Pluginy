@@ -188,8 +188,6 @@ bank:
 upgrade:
   max-size: "&cOsiągnięto maksymalny rozmiar wyspy ({max} bloków)!"
   border-done: "&aSukces! Powiększono teren wyspy. Nowy promień: {size} bloków."
-  spawner-max: "&cTa statystyka ma już maksymalny poziom!"
-  spawner-done: "&aUlepszono do poziomu {level}!"
 
 name:
   prompt: "&eWpisz na czacie nową nazwę wyspy (max {max} znaków, lub wpisz '{cancel}'):"
@@ -218,8 +216,6 @@ gui:
     settings: "&9&lUstawienia wyspy"
     top: "&6&lTopka wysp"
     upgrades: "&6&lUlepszenia wyspy"
-    spawners: "&d&lUlepszenie spawnerów"
-    spawner: "&d&lSpawner: {type}"
     members: "&e&lCzłonkowie wyspy"
   choose-template:
     click: "&aKliknij, aby założyć tę wyspę"
@@ -262,15 +258,6 @@ gui:
     cost: "&aKoszt (z banku wyspy): {cost}"
     bank: "&eStan banku: {balance}"
     click: "&bKliknij, aby powiększyć o {step} bloków!"
-  spawners:
-    name: "&e&lSpawner: {type}"
-    amount: "&7Ilość: {level}/{max}"
-    speed: "&7Szybkość: {level}/{max}"
-    manage: "&bKliknij, aby zarządzać ulepszeniami"
-    level: "&7Poziom: {level}/{max}"
-    max: "&cOsiągnięto maksymalny poziom!"
-    cost: "&aKoszt (z banku wyspy): {cost}"
-    click: "&bKliknij, aby ulepszyć"
   members:
     admin-name: "&6&l[ADMIN] {player}"
     member-name: "&b&l{player}"
@@ -441,7 +428,7 @@ buttons:
       lore-2: ""
     czlonkowie-bank:
       name: "&6&lCzłonkowie: bank i ulepszenia"
-      lore-1: "&7Wypłaty, powiększanie terenu, spawnery"
+      lore-1: "&7Wypłaty i powiększanie terenu"
       lore-2: ""
     powrot:
       name: "&c&lPowrót do panelu wyspy"
@@ -516,44 +503,10 @@ buttons:
       lore-2: ""
     ulepszenie-spawnerow:
       name: "&d&lUlepszenie spawnerów"
-      lore-1: "&7Zwiększ tempo i ilość spawnu mobków"
-      lore-2: "&7na Twojej wyspie"
+      lore-1: "&7Więcej mobów i szybszy spawn"
+      lore-2: "&7Płacisz ze swojego portfela"
     powrot:
       name: "&c&lPowrót do menu"
-      lore-1: ""
-      lore-2: ""
-  ulepszenie-spawnerow:
-    poprzednia-strona:
-      name: "&e« Poprzednia strona"
-      lore-1: ""
-      lore-2: ""
-    nastepna-strona:
-      name: "&eNastępna strona »"
-      lore-1: ""
-      lore-2: ""
-    powrot:
-      name: "&c&lPowrót do ulepszeń"
-      lore-1: ""
-      lore-2: ""
-  spawner-podmenu:
-    poprzednia-strona:
-      name: "&e« Poprzednia strona"
-      lore-1: ""
-      lore-2: ""
-    nastepna-strona:
-      name: "&eNastępna strona »"
-      lore-1: ""
-      lore-2: ""
-    ilosc:
-      name: "&e&lIlość"
-      lore-1: "&7Więcej mobków na jeden cykl spawnu"
-      lore-2: ""
-    szybkosc:
-      name: "&e&lSzybkość"
-      lore-1: "&7Krótszy odstęp między cyklami spawnu"
-      lore-2: ""
-    powrot:
-      name: "&c&lPowrót do ulepszeń spawnerów"
       lore-1: ""
       lore-2: ""
   czlonkowie-wyspy:

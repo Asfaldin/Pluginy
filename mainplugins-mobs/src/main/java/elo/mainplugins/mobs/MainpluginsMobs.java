@@ -262,6 +262,25 @@ public final class MainpluginsMobs extends JavaPlugin implements Listener, TabEx
         m.onInteract(event.getPlayer());
     }
 
+    /** Fajerwerk z akcji "firework" (np. wieśniak-fajerwerk) - sam efekt, bez obrażeń. */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onFireworkDamage(EntityDamageByEntityEvent event) {
+        if (event.getDamager() instanceof org.bukkit.entity.Firework fw
+                && fw.getPersistentDataContainer().has(new NamespacedKey(this, "harmless"))) event.setCancelled(true);
+    }
+
+    /** Kupno w oknie handlu moba (akcja open_trade) - zapamiętane do zamknięcia okna. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPurchase(io.papermc.paper.event.player.PlayerPurchaseEvent event) {
+        for (LiveMob m : live.values()) m.onTraded(event.getPlayer());
+    }
+
+    @EventHandler
+    public void onTradeClose(org.bukkit.event.inventory.InventoryCloseEvent event) {
+        if (!(event.getInventory() instanceof org.bukkit.inventory.MerchantInventory) || !(event.getPlayer() instanceof Player p)) return;
+        for (LiveMob m : new ArrayList<>(live.values())) if (m.isTradingWith(p)) m.onTradeClosed(p);
+    }
+
     private LiveMob of(Entity e) {
         return e == null ? null : live.get(e.getUniqueId());
     }
@@ -417,8 +436,18 @@ public final class MainpluginsMobs extends JavaPlugin implements Listener, TabEx
                         count = 1;
                     }
                 }
-                Location at = p.getLocation().add(p.getLocation().getDirection().setY(0).normalize().multiply(4));
-                for (int i = 0; i < count; i++) spawn(args[1], at.clone().add(i == 0 ? 0 : ThreadLocalRandom.current().nextDouble(-2, 2), 0, i == 0 ? 0 : ThreadLocalRandom.current().nextDouble(-2, 2)));
+                // Blok przed graczem, przodem w tę samą stronę, w którą patrzy gracz (Karol 03.10 - ustawianie scen do nagrań).
+                float yaw = p.getLocation().getYaw();
+                Location at = p.getLocation().add(p.getLocation().getDirection().setY(0).normalize());
+                at.setYaw(yaw);
+                at.setPitch(0);
+                for (int i = 0; i < count; i++) {
+                    LiveMob m = spawn(args[1], at.clone().add(i == 0 ? 0 : ThreadLocalRandom.current().nextDouble(-2, 2), 0, i == 0 ? 0 : ThreadLocalRandom.current().nextDouble(-2, 2)));
+                    if (m != null) {
+                        m.base.setRotation(yaw, 0);
+                        m.base.setBodyYaw(yaw);
+                    }
+                }
                 lang.send(sender, this, "admin.spawned", Map.of("mob", behaviors.get(args[1].toLowerCase(Locale.ROOT)).name(), "count", String.valueOf(count)));
             }
             case "list" -> {

@@ -11,6 +11,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
+import org.bukkit.FireworkEffect;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -27,6 +28,7 @@ import org.bukkit.entity.Bee;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Firework;
 import org.bukkit.entity.Guardian;
 import org.bukkit.entity.Husk;
 import org.bukkit.entity.Interaction;
@@ -38,6 +40,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
@@ -109,6 +112,8 @@ final class LiveMob {
     private final Map<String, Transformation> lastSent = new HashMap<>();
     /** Kąt modelu - goni kąt ciała moba płynnie, bez drobnych drgnięć (stojący mob ciągle lekko się obraca). */
     private float modelYaw = Float.NaN;
+    /** fixedFacing: kierunek modelu ustalony przy pierwszym ticku (patrz tick). */
+    private float fixedYaw = Float.NaN;
     /** Macierze kości z ostatniego ticka - skąd wylatują pociski i stworzenia. */
     private Map<String, Matrix4f> lastBones = Map.of();
 
@@ -404,6 +409,116 @@ final class LiveMob {
         skills.runNow("click", actions, p, talk == null ? null : talk.name());
     }
 
+    // ---- sygnały między mobami i śledzenie wzrokiem (akcje signal, watch) ----
+
+    /** Akcja watch: głowa śledzi ten byt (np. lecącego wieśniaka-fajerwerk) i może patrzeć wysoko w górę. */
+    private Entity watching;
+    private int watchUntil = -1;
+    private float normalMaxPitch = Float.NaN;
+
+    void watch(Entity e, double seconds) {
+        if (Float.isNaN(normalMaxPitch)) normalMaxPitch = rig.maxPitch;
+        watching = e;
+        watchUntil = ticks + (int) Math.round(seconds * 20);
+        rig.maxPitch = 85;
+    }
+
+    private void stopWatching() {
+        watching = null;
+        if (!Float.isNaN(normalMaxPitch)) rig.maxPitch = normalMaxPitch;
+    }
+
+    /** Sygnał od moba obok (akcja signal) - umiejętności "signal" o tej samej nazwie. */
+    void signal(String name, LivingEntity from) {
+        if (alive()) skills.signal(name, from);
+    }
+
+    /**
+     * Akcja firework: prawdziwy fajerwerk z gry wybucha w środku moba. Oznaczony - nikogo nie rani
+     * (MainpluginsMobs.onFireworkDamage). shape: ball | ball_large | star | burst | creeper;
+     * colors / fade: nazwy kolorów z gry (RED, ORANGE...) albo #rrggbb, po przecinku.
+     */
+    void firework(MobBehavior.Params p) {
+        Location at = base.getLocation().add(0, def.hitboxHeight() * 0.6, 0);
+        FireworkEffect.Type type;
+        try {
+            type = FireworkEffect.Type.valueOf(p.str("shape", "ball_large").toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            type = FireworkEffect.Type.BALL_LARGE;
+        }
+        List<Color> colors = colors(p.str("colors", "RED,ORANGE,YELLOW"));
+        if (colors.isEmpty()) colors = List.of(Color.RED);
+        FireworkEffect effect = FireworkEffect.builder().with(type).withColor(colors).withFade(colors(p.str("fade", "WHITE")))
+                .flicker(p.bool("flicker", true)).trail(p.bool("trail", true)).build();
+        Firework fw = at.getWorld().spawn(at, Firework.class, f -> {
+            FireworkMeta meta = f.getFireworkMeta();
+            meta.addEffect(effect);
+            f.setFireworkMeta(meta);
+            f.getPersistentDataContainer().set(new NamespacedKey(host.plugin(), "harmless"), PersistentDataType.BYTE, (byte) 1);
+        });
+        fw.detonate();
+    }
+
+    private static List<Color> colors(String list) {
+        List<Color> out = new ArrayList<>();
+        for (String raw : list.split(",")) {
+            String c = raw.trim();
+            if (c.isEmpty()) continue;
+            try {
+                if (c.startsWith("#")) out.add(Color.fromRGB(Integer.parseInt(c.substring(1), 16)));
+                else if (Color.class.getField(c.toUpperCase(Locale.ROOT)).get(null) instanceof Color named) out.add(named);
+            } catch (ReflectiveOperationException | IllegalArgumentException ignored) {
+                // nieznany kolor - pomijamy
+            }
+        }
+        return out;
+    }
+
+    // ---- handel (akcja open_trade, wyzwalacz "trade") ----
+
+    /** Gracze z otwartym oknem handlu tego moba; traded = coś kupili, zanim je zamknęli. */
+    private final Set<UUID> trading = new HashSet<>();
+    private final Set<UUID> traded = new HashSet<>();
+
+    /** Okno handlu jak u wieśniaka z gry - oferty z npc.trades, bez limitu użyć. */
+    void openTrade(Player p) {
+        List<org.bukkit.inventory.MerchantRecipe> recipes = new ArrayList<>();
+        for (MobBehavior.Trade t : bh.npc().trades()) {
+            Material buy = Material.matchMaterial(t.buy()), sell = Material.matchMaterial(t.sell());
+            if (buy == null || sell == null || !buy.isItem() || !sell.isItem()) {
+                warn("Handel: nieznany przedmiot w ofercie " + t.buy() + " -> " + t.sell());
+                continue;
+            }
+            var r = new org.bukkit.inventory.MerchantRecipe(new ItemStack(sell, t.sellAmount()), Integer.MAX_VALUE);
+            r.addIngredient(new ItemStack(buy, t.buyAmount()));
+            recipes.add(r);
+        }
+        if (recipes.isEmpty()) return;
+        var merchant = Bukkit.createMerchant(Component.text(bh.name()));
+        merchant.setRecipes(recipes);
+        // Najpierw okno, potem zapis: otwarcie zamyka poprzednie okno (np. drugie kliknięcie), a jego
+        // zamknięcie czyściłoby gracza z listy handlujących.
+        p.openMerchant(merchant, true);
+        trading.add(p.getUniqueId());
+        traded.remove(p.getUniqueId());
+    }
+
+    boolean isTradingWith(Player p) {
+        return trading.contains(p.getUniqueId());
+    }
+
+    void onTraded(Player p) {
+        if (trading.contains(p.getUniqueId())) traded.add(p.getUniqueId());
+    }
+
+    /** Okno zamknięte - jeśli gracz coś kupił, umiejętności "trade" (np. taniec z radości). */
+    void onTradeClosed(Player p) {
+        if (!trading.remove(p.getUniqueId())) return;
+        boolean bought = traded.remove(p.getUniqueId());
+        host.plugin().getLogger().info("Handel z " + id() + " zamknięty: " + p.getName() + (bought ? " kupił - start umiejętności trade" : " nic nie kupił"));
+        if (bought && alive()) skills.trigger("trade", p, 0);
+    }
+
     Entity summonCustom(String id, Location at, LivingEntity target, int life) {
         LiveMob child = host.spawn(id, at, true);
         if (child == null) return null;
@@ -523,6 +638,13 @@ final class LiveMob {
 
     // ---- pomocnicze dla umiejętności ----
 
+    /** Punkt modelu (piksele modelu: y w dół, ziemia = 24, przód = -z) w świecie - np. środek kółka przy ławce w modelu. */
+    Location modelPoint(float x, float y, float z) {
+        float yaw = Float.isNaN(modelYaw) ? base.getLocation().getYaw() : modelYaw;
+        Vector3f p = MobRig.modelToWorld(yaw).transformPosition(new Vector3f(x / 16f, y / 16f, z / 16f));
+        return base.getLocation().add(p.x, p.y, p.z);
+    }
+
     /** Położenie kości w świecie (np. ręka, z której leci pocisk). */
     Location bonePos(String bone) {
         Location loc = base.getLocation();
@@ -544,6 +666,7 @@ final class LiveMob {
     }
 
     void face(Location to) {
+        if (bh.fixedFacing()) return;
         Vector d = to.toVector().subtract(base.getLocation().toVector());
         if (d.lengthSquared() < 1e-4) return;
         float yaw = (float) Math.toDegrees(Math.atan2(-d.getX(), d.getZ()));
@@ -1215,6 +1338,12 @@ final class LiveMob {
             d.setViewRange(2f);
         });
         float body = base.getBodyYaw();
+        if (bh.fixedFacing()) {
+            // Scena (np. siłacz z ławką w modelu): kierunek z chwili postawienia, ciało może się kręcić, model nie.
+            if (Float.isNaN(fixedYaw)) fixedYaw = base.getLocation().getYaw();
+            body = fixedYaw;
+            modelYaw = fixedYaw;
+        }
         if (Float.isNaN(modelYaw)) modelYaw = body;
         float diff = ((body - modelYaw) % 360 + 540) % 360 - 180;
         if (Math.abs(diff) > 3) modelYaw += diff * (walking || busy ? 0.5f : 0.3f);
@@ -1224,6 +1353,10 @@ final class LiveMob {
         Map<String, MobPose.Offset> offsets = MobPose.offsets(playing);
         Map<String, Matrix4f> animated = MobPose.boneMatrices(def, offsets);
         Entity lookAt = target;
+        if (watching != null) {
+            if (ticks < watchUntil && watching.isValid()) lookAt = watching;
+            else stopWatching();
+        }
         if (lookAt == null) lookAt = nearestPlayer(loc, 12, false);
         Vector3f lookTarget = null;
         if (lookAt instanceof LivingEntity le) {
@@ -1250,7 +1383,7 @@ final class LiveMob {
             Matrix4f m = MobPose.displayMatrix(yaw, bones.get(b.id()), b.modelScale());
             // Rozłożone na położenie, obrót i skalę - gotową macierz gra rozkłada przy wygładzaniu za każdym
             // razem trochę inaczej (przy równej skali rozkład nie jest jednoznaczny) i części skaczą.
-            Transformation tr = new Transformation(m.getTranslation(new Vector3f()), m.getNormalizedRotation(new Quaternionf()),
+            Transformation tr = new Transformation(m.getTranslation(new Vector3f()), MobPose.rotationOf(m),
                     m.getScale(new Vector3f()), new Quaternionf());
             // Tylko gdy ułożenie się zmieniło: sam sygnał „zacznij wygładzanie od nowa” przy niezmienionym ułożeniu
             // cofa część w grze do początku poprzedniego ruchu - co tick, więc stojąca część drży.
@@ -1330,7 +1463,7 @@ final class LiveMob {
                 ItemDisplay d = parts.get(b.id());
                 if (d == null) continue;
                 Matrix4f m = MobPose.displayMatrix(yaw, bones.get(b.id()), b.modelScale());
-                Transformation tr = new Transformation(m.getTranslation(new Vector3f()), m.getNormalizedRotation(new Quaternionf()), m.getScale(new Vector3f()), new Quaternionf());
+                Transformation tr = new Transformation(m.getTranslation(new Vector3f()), MobPose.rotationOf(m), m.getScale(new Vector3f()), new Quaternionf());
                 if (tr.equals(lastSent.put(b.id(), tr))) continue;
                 d.setInterpolationDelay(0);
                 d.setTransformation(tr);

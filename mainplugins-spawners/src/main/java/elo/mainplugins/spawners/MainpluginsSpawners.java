@@ -3,6 +3,7 @@ package elo.mainplugins.spawners;
 import elo.mainplugins.license.LicenseGuard;
 import elo.mainplugins.core.CoreAPI;
 import elo.mainplugins.core.api.CustomItemProvider;
+import elo.mainplugins.core.api.LangService;
 import elo.mainplugins.spawners.config.SpawnerConfigLoader;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -25,8 +26,14 @@ public final class MainpluginsSpawners extends JavaPlugin {
             return;
         }
 
-        spawnerManager = new SpawnerManager(this, SpawnerConfigLoader.load(this));
+        LangService lang = CoreAPI.getLangService();
+        lang.registerDefaults(this);
+        spawnerManager = new SpawnerManager(this, SpawnerConfigLoader.load(this), lang);
         getServer().getPluginManager().registerEvents(spawnerManager, this);
+
+        SpawnerUpgradeMenu menu = new SpawnerUpgradeMenu(this, spawnerManager, lang, CoreAPI.getEconomyService());
+        spawnerManager.ustawMenu(menu);
+        getServer().getPluginManager().registerEvents(menu, this);
 
         // Spawnery w katalogu itemów core: "custom: spawner_zombie" działa w Sklepie, nagrodach itd.
         CoreAPI.getCustomItemService().registerProvider(this, new CustomItemProvider() {
@@ -41,10 +48,18 @@ public final class MainpluginsSpawners extends JavaPlugin {
             }
         });
 
+        // Okno ulepszeń - też z przycisku "Spawnery" w panelu wyspy (Skyblock woła tę komendę).
+        if (getCommand("spawnery") != null) {
+            getCommand("spawnery").setExecutor((sender, command, label, args) -> {
+                if (sender instanceof Player player) menu.otworz(player, 0);
+                return true;
+            });
+        }
+
         if (getCommand("@reloadspawnery") != null) {
             getCommand("@reloadspawnery").setExecutor((sender, command, label, args) -> {
                 spawnerManager.aktualizujKonfiguracje(SpawnerConfigLoader.load(this));
-                sender.sendMessage("§aSpawnery-typy.yml zostało przeładowane.");
+                lang.send(sender, this, "reload.done");
                 return true;
             });
         }

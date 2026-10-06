@@ -5,53 +5,75 @@
 # spawner gdzie stoi, per-instancja) i w PDC podniesionego itemu - zmiana albo
 # usuniecie ID typu, ktory gracze juz maja postawiony, zepsuje ich zapisany
 # stan (spawner przestanie sie wczytywac). Ten sam identyfikator MUSI sie
-# zgadzac z custom-id w mainplugins-shop categories/spawnery.yml ORAZ z id w
-# mainplugins-skyblock wyspy-config.yml (spawnery.typy) - nic tego nie
-# synchronizuje automatycznie, trzeba pilnowac recznie po obu stronach.
+# zgadzac z custom-id w mainplugins-shop categories/spawnery.yml - nic tego nie
+# synchronizuje automatycznie.
+#
+# "ikona" = ikona w oknie ulepszen (/spawnery); brak = jajo spawnu tego moba.
+# "mnoznik" = ile razy drozsze sa ulepszenia tego spawnera od cen z sekcji "ulepszenia"
+# nizej (1.0 = tyle samo). Wynik zaokraglany do pelnych setek.
 
 typy:
   COW:
     encja: COW
     nazwa-odmieniona: "Krów"
     nazwa-pojedyncza: "Krowa"
+    ikona: LEATHER
+    mnoznik: 1.4
   SHEEP:
     encja: SHEEP
     nazwa-odmieniona: "Owiec"
     nazwa-pojedyncza: "Owca"
+    ikona: WHITE_WOOL
+    mnoznik: 1.8
   PIG:
     encja: PIG
     nazwa-odmieniona: "Świń"
     nazwa-pojedyncza: "Świnia"
+    ikona: PORKCHOP
+    mnoznik: 1.1
   CHICKEN:
     encja: CHICKEN
     nazwa-odmieniona: "Kur"
     nazwa-pojedyncza: "Kura"
+    ikona: FEATHER
+    mnoznik: 1.7
   SPIDER:
     encja: SPIDER
     nazwa-odmieniona: "Pająków"
     nazwa-pojedyncza: "Pająk"
+    ikona: STRING
+    mnoznik: 1.5
   ZOMBIE:
     encja: ZOMBIE
     nazwa-odmieniona: "Zombie"
     nazwa-pojedyncza: "Zombie"
+    ikona: ROTTEN_FLESH
+    mnoznik: 1.0
   SKELETON:
     encja: SKELETON
     nazwa-odmieniona: "Szkieletów"
     nazwa-pojedyncza: "Szkielet"
+    ikona: BONE
+    mnoznik: 1.2
   CREEPER:
     encja: CREEPER
     nazwa-odmieniona: "Creeperów"
     nazwa-pojedyncza: "Creeper"
+    ikona: GUNPOWDER
+    mnoznik: 1.7
   BREEZE:
     encja: BREEZE
     nazwa-odmieniona: "Breeze'ów"
     nazwa-pojedyncza: "Breeze"
+    ikona: BREEZE_ROD
+    mnoznik: 2.2
 
 # interwal-sekund(poziom) = interwal-sekund-bazowy + interwal-sekund-na-poziom * poziom
 # ilosc-na-cykl(poziom)   = ilosc-na-cykl-bazowa + ilosc-na-cykl-na-poziom * poziom
 # Domyslne wartosci ponizej dają dokladnie stara, hardkodowana progresje:
 # interwal 32/28/24/20/16s i ilosc 5/6/7/8/9 dla poziomow 1-5.
 ustawienia:
+  # Najwyzszy poziom ulepszen (osobno Ilosc i Szybkosc). 1 = bez ulepszen.
   max-poziom: 5
   limit-kolejki: 50
   interwal-sekund-bazowy: 36
@@ -61,3 +83,13 @@ ustawienia:
   limit-spawnerow-na-wyspe: 10
   promien-aktywnosci-gracza: 16
   narzedzie-zbierania: STICK
+
+# Ulepszenia spawnerow: gracz wpisuje /spawnery albo klika swoj spawner pusta reka
+# i placi ze swojego portfela. Ilosc = wiecej mobow naraz, Szybkosc = czesciej.
+# Poziom dotyczy wszystkich spawnerow danego rodzaju gracza (na skyblocku: calej wyspy).
+ulepszenia:
+  wlaczone: true
+  # Cena podstawowa ulepszenia Z danego poziomu NA kolejny (1->2, 2->3, 3->4, 4->5), mnozona przez
+  # "mnoznik" spawnera. Poziomy dalej niz lista biora ostatnia cene. Ilosc i Szybkosc maja osobne ceny.
+  ceny-ilosc: [2500, 5000, 8500, 17000]
+  ceny-szybkosc: [3500, 7000, 12000, 24000]

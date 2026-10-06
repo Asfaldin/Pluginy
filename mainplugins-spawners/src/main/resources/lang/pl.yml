@@ -1,0 +1,33 @@
+# Mainplugins Spawnery - polskie wiadomości. Kolory: &a &e ...  Zmienne w {klamrach}.
+item:
+  name: "&d&lSpawner: {type}"
+place:
+  done: "&aPostawiono spawner: {type}!"
+  limit: "&cLimit spawnerów: {limit} (masz już {count})."
+break:
+  blocked: "&cNie możesz w ten sposób zniszczyć spawnera! Kliknij go PPM trzymając patyk, żeby go zebrać."
+collect:
+  done: "&aZebrano spawner: {type}!"
+  not-yours: "&cTo nie jest Twój spawner!"
+mob:
+  stack-name: "&e{name} x{count}"
+menu:
+  title: "&5&lUlepszenia spawnerów &8| &7{page}/{pages}"
+  item-name: "&d&lSpawner: {type}"
+  amount: "&7Ilość: &fpoziom {level}/{max} &8({mobs} mobów naraz)"
+  amount-price: "&eLPM &7- ulepsz ilość za &a{price}{currency}"
+  speed: "&7Szybkość: &fpoziom {level}/{max} &8(co {seconds} s)"
+  speed-price: "&ePPM &7- ulepsz szybkość za &a{price}{currency}"
+  max-reached: "&aNajwyższy poziom!"
+  click-hint: "&8Ulepszenie działa na wszystkie Twoje spawnery tego rodzaju."
+  prev: "&e&lPoprzednia strona"
+  next: "&e&lNastępna strona"
+  close: "&c&lZamknij"
+upgrade:
+  off: "&cUlepszenia spawnerów są na tym serwerze wyłączone."
+  max: "&cTo już najwyższy poziom."
+  no-money: "&cNie stać Cię - ulepszenie kosztuje {price}{currency}."
+  done-amount: "&aUlepszono ilość: spawnery {type} mają teraz poziom {level}! &7(-{price}{currency})"
+  done-speed: "&aUlepszono szybkość: spawnery {type} mają teraz poziom {level}! &7(-{price}{currency})"
+reload:
+  done: "&aSpawnery przeładowane."

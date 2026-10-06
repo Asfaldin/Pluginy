@@ -6,6 +6,10 @@ depend: [MainpluginsCore]
 softdepend: [MainpluginsSkyblock]
 
 commands:
+  spawnery:
+    description: Spawner upgrades - more mobs at once or more often
+    usage: /<command>
+    aliases: [spawners]
   "@reloadspawnery":
     description: Wczytaj spawnery-typy.yml na nowo, bez restartu serwera
     permission: mainplugins.spawners.reload

@@ -1,3 +1,4 @@
+import { PLANS, LIMITS, FEATURES, entitlements, planOfLicenses } from "./plans.js";
 import "dotenv/config";
 import express from "express";
 import { bindServer, createLicense, findByCustomer, findByKey, licenseGrants, listLicenses, recordValidation, revokeLicense } from "./db.js";
@@ -251,6 +252,11 @@ app.get("/api/me", requireCustomer, (req, res) => {
 
 app.get("/api/me/licenses", requireCustomer, (req, res) => {
     res.json(findByCustomer(req.customerId));
+});
+
+// Plan konta (Free/Plus/Pro/Network) z jego licencji - funkcje i limity, patrz plans.js.
+app.get("/api/me/plan", requireCustomer, (req, res) => {
+    res.json(entitlements(planOfLicenses(findByCustomer(req.customerId))));
 });
 
 // --- Płatne jary pluginów (patrz src/pluginJars.js) - tylko dla konta z aktywną licencją ---
@@ -565,7 +571,13 @@ app.get("/api/catalog", (_req, res) => {
         categories: CATEGORIES,
         individualPlugins: INDIVIDUAL_PLUGINS,
         packages: PACKAGES,
+        plans: PLANS,
     });
+});
+
+// Publiczny - plany, funkcje (funkcja -> najniższy plan) i limity, dla appki i strony.
+app.get("/api/plans", (_req, res) => {
+    res.json({ plans: PLANS, features: FEATURES, limits: LIMITS });
 });
 
 app.get("/health", (_req, res) => res.json({ ok: true }));

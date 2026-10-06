@@ -96,6 +96,8 @@ export function setStatus(key, status) {
 /** Czy licencja (już zweryfikowana jako active/przypisana do właściwego serwera) obejmuje ten plugin. */
 export function licenseGrants(license, pluginId) {
     if (license.plugin === "*") return true;
+    // Plan subskrypcji (plan:plus/pro/network) obejmuje wszystkie pluginy - patrz plans.js.
+    if (license.plugin.startsWith("plan:")) return true;
     return license.plugin.split(",").map((s) => s.trim()).includes(pluginId);
 }
 

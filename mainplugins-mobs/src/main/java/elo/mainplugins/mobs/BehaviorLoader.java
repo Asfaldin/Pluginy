@@ -27,7 +27,7 @@ public final class BehaviorLoader {
     static final Set<String> MOVEMENTS = Set.of("walk", "fly", "swim", "stationary");
     static final Set<String> ATTITUDES = Set.of("hostile", "neutral", "passive");
     static final Set<String> ATTACKS = Set.of("melee", "ranged", "none");
-    static final Set<String> TRIGGERS = Set.of("combat", "timer", "hit", "hurt", "spawn", "death", "phase");
+    static final Set<String> TRIGGERS = Set.of("combat", "timer", "hit", "hurt", "spawn", "death", "phase", "item", "trade", "signal");
 
     private BehaviorLoader() {}
 
@@ -88,7 +88,7 @@ public final class BehaviorLoader {
                 strOrNull(b, "attackSound"), strOrNull(b, "shootSound"), strOrNull(b, "spawnSound"), strOrNull(b, "stepSound"), strOrNull(b, "talkSound"),
                 weak, bool(b, "look", true), bool(b, "feet", true), bool(b, "springs", true), bool(b, "partHitboxes", true), bool(b, "shatter", true),
                 strings(b, "randomAnimations"), clamp(num(b, "randomInterval", 14), 1, 3600), strings(b, "backgroundAnimations"),
-                phases, skills, bool(b, "persistent", true), npc(b));
+                phases, skills, bool(b, "persistent", true), npc(b), bool(b, "fixedFacing", false));
     }
 
     private static MobBehavior.Npc npc(JsonObject b) {
@@ -103,9 +103,17 @@ public final class BehaviorLoader {
             if (!type.isBlank()) onClick.add(new Action(type, clamp(num(a, "at", 0), 0, 600), params(a)));
         }
         onClick.sort((x, y) -> Double.compare(x.at(), y.at()));
+        List<MobBehavior.Trade> trades = new ArrayList<>();
+        for (JsonElement e : arr(n, "trades")) {
+            if (!e.isJsonObject()) continue;
+            JsonObject t = e.getAsJsonObject();
+            String buy = str(t, "buy", ""), sell = str(t, "sell", "");
+            if (buy.isBlank() || sell.isBlank()) continue;
+            trades.add(new MobBehavior.Trade(buy, (int) clamp(num(t, "buyAmount", 1), 1, 64), sell, (int) clamp(num(t, "sellAmount", 1), 1, 64)));
+        }
         return new MobBehavior.Npc(true, bool(n, "invulnerable", true), clamp(num(n, "homeRadius", 0), 0, 64), strings(n, "dialogue"),
                 pick(str(n, "dialogueMode", "chat"), Set.of("chat", "title"), "chat"), List.copyOf(onClick),
-                clamp(num(n, "clickCooldown", 1), 0, 86400), bool(n, "oncePerPlayer", false));
+                clamp(num(n, "clickCooldown", 1), 0, 86400), bool(n, "oncePerPlayer", false), List.copyOf(trades));
     }
 
     private static Skill skill(JsonObject s) {
@@ -120,7 +128,8 @@ public final class BehaviorLoader {
         actions.sort((x, y) -> Double.compare(x.at(), y.at()));
         return new Skill(str(s, "name", "skill"), pick(str(s, "trigger", "combat"), TRIGGERS, "combat"), clamp(num(s, "cooldown", 10), 0, 3600),
                 clamp(num(s, "rangeMin", 0), 0, 256), clamp(num(s, "rangeMax", 16), 0, 256), clamp(num(s, "chance", 1), 0, 1),
-                clamp(num(s, "healthBelow", 1), 0, 1), (int) clamp(num(s, "phase", 0), 0, 100), strOrNull(s, "animation"), List.copyOf(actions));
+                clamp(num(s, "healthBelow", 1), 0, 1), (int) clamp(num(s, "phase", 0), 0, 100), strOrNull(s, "animation"), List.copyOf(actions),
+                str(s, "item", ""));
     }
 
     // ---- stary config.yml ----

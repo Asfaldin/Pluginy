@@ -11,6 +11,8 @@ import java.util.Map;
  * @param attitude  hostile (atakuje graczy) | neutral (dopiero gdy ktoś go uderzy) | passive (ucieka)
  * @param attack    melee | ranged | none
  * @param nameplate always | near | never - nazwa nad mobem
+ * @param fixedFacing nigdy się nie obraca (ani po kliknięciu, ani w umiejętnościach) - np. scena z ławką w modelu,
+ *                    która musi stać tam, gdzie mob został postawiony
  */
 public record MobBehavior(double health, double damage, double speed, double armor, double knockbackResistance,
                           double followRange, double attackCooldown,
@@ -22,7 +24,7 @@ public record MobBehavior(double health, double damage, double speed, double arm
                           Map<String, Double> weakPoints,
                           boolean look, boolean feet, boolean springs, boolean partHitboxes, boolean shatter,
                           List<String> randomAnimations, double randomInterval, List<String> backgroundAnimations,
-                          List<Phase> phases, List<Skill> skills, boolean persistent, Npc npc) {
+                          List<Phase> phases, List<Skill> skills, boolean persistent, Npc npc, boolean fixedFacing) {
 
     /**
      * NPC: nieśmiertelny, nie walczy, reaguje na kliknięcie - kolejna linijka dialogu, a po ostatniej
@@ -32,11 +34,15 @@ public record MobBehavior(double health, double damage, double speed, double arm
      * @param dialogueMode chat | title
      * @param clickCooldown sekundy między kliknięciami jednego gracza
      * @param oncePerPlayer akcje (np. nagroda) tylko raz na gracza - zapamiętane na mobie, przeżywa restart
+     * @param trades       oferty okna handlu (akcja open_trade) - jak u wieśniaka z gry
      */
     public record Npc(boolean enabled, boolean invulnerable, double homeRadius, List<String> dialogue, String dialogueMode,
-                      List<Action> onClick, double clickCooldown, boolean oncePerPlayer) {
-        public static final Npc OFF = new Npc(false, false, 0, List.of(), "chat", List.of(), 1, false);
+                      List<Action> onClick, double clickCooldown, boolean oncePerPlayer, List<Trade> trades) {
+        public static final Npc OFF = new Npc(false, false, 0, List.of(), "chat", List.of(), 1, false, List.of());
     }
+
+    /** Oferta handlu: gracz daje buy x buyAmount, dostaje sell x sellAmount (id przedmiotów z gry, np. "minecraft:emerald"). */
+    public record Trade(String buy, int buyAmount, String sell, int sellAmount) {}
 
     /** color: pink blue red green yellow purple white; style: progress notched_6 notched_10 notched_12 notched_20. */
     public record BossBar(boolean enabled, String color, String style, double range) {}
@@ -52,11 +58,15 @@ public record MobBehavior(double health, double damage, double speed, double arm
      * życie poniżej, szansa, od której fazy) i co robi (akcje w czasie od startu, animacja gra od 0).
      *
      * @param trigger combat (co cooldown, gdy ma cel) | timer (co cooldown, zawsze) | hit (trafił cel) |
-     *                hurt (oberwał) | spawn | death | phase (wejście w fazę o numerze {@code phase})
+     *                hurt (oberwał) | spawn | death | phase (wejście w fazę o numerze {@code phase}) |
+     *                item (ktoś rzucił przedmiot {@code item} w zasięgu rangeMax - np. emerald dla wieśniaka) |
+     *                trade (gracz coś kupił w oknie handlu tego moba i je zamknął) |
+     *                signal (mob obok wysłał akcją signal sygnał o nazwie tej umiejętności; cel = nadawca)
      * @param phase   dla "phase": numer fazy (1 = pierwsza z listy); dla reszty: działa dopiero od tej fazy (0 = zawsze)
+     * @param item    dla "item": przedmiot, np. "minecraft:emerald" (puste = dowolny); akcja take_item go podnosi
      */
     public record Skill(String name, String trigger, double cooldown, double rangeMin, double rangeMax, double chance,
-                        double healthBelow, int phase, String animation, List<Action> actions) {}
+                        double healthBelow, int phase, String animation, List<Action> actions, String item) {}
 
     /** Akcja umiejętności: typ, chwila (s od startu) i jej ustawienia. */
     public record Action(String type, double at, Params p) {}

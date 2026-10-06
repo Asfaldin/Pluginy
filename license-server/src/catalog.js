@@ -1,3 +1,4 @@
+import { resolvePlanVariant } from "./plans.js";
 // Katalog tego, co można kupić - źródło prawdy dla /api/catalog (appka to stąd czyta
 // do zakładki Sklep) i dla mapowania webhooków LemonSqueezy z powrotem na to, co
 // klient faktycznie kupił. TO TY EDYTUJESZ TEN PLIK jako operator:
@@ -224,6 +225,9 @@ export const PACKAGES = [
 export function resolveVariant(variantId) {
     if (variantId == null || variantId === "") return null;
     const id = String(variantId);
+    // Plany subskrypcji (Free/Plus/Pro/Network) - patrz plans.js.
+    const plan = resolvePlanVariant(id);
+    if (plan) return plan;
     const same = (v) => v != null && String(v) === id; // nieuzupełnione variantId: null nigdy nie pasuje
     for (const p of INDIVIDUAL_PLUGINS) {
         if (same(p.variantId)) return { plugin: p.id, billingType: "one-time" };

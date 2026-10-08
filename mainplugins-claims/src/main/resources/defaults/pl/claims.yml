@@ -1,0 +1,17 @@
+# Mainplugins Claims. Edytuj w aplikacji: Pluginy > Ochrona terenu.
+claims:
+  # Ile chunków (16x16) gracz może zabezpieczyć - bez planu / z planem Plus na serwerze.
+  max-chunks: 4
+  max-chunks-with-plan: 25
+  # Cena jednego chunka (0 = za darmo).
+  cost-per-chunk: 0
+  # Światy, w których claimy są wyłączone.
+  disabled-worlds: [world_nether, world_the_end]
+  # Flagi nowego terenu (gracze zmieniają je /claim flag w planie Plus).
+  default-flags:
+    pvp: false
+    explosions: false
+    mob-griefing: false
+  # Komunikat na pasku akcji przy wejściu na cudzy teren.
+  enter-message: true
+  show-border-seconds: 10

@@ -1,0 +1,51 @@
+# Mainplugins Season Pass. Edytuj w aplikacji: Pluginy > Season Pass.
+# Nagrody w tym samym formacie co we wszystkich pluginach Mainplugins: { money: 100 }, { item: DIAMOND, amount: 2 },
+# { key: rare_key }, { crate: mystery }, { command: "give {player} cake" }.
+
+season:
+  # Zmiana id = nowy sezon (XP i odebrane poziomy graczy zaczynają się od zera).
+  id: sezon-1
+  name: "&6&lSezon 1"
+  # Opcjonalna data końca - po niej XP przestaje przybywać.
+  ends: ""
+  xp-per-level: 100
+
+xp:
+  daily-login: 50
+  playtime-minutes: 10
+  playtime-xp: 10
+  mob-kill: 1
+  vote: 40
+
+# Permisja ścieżki premium - sprzedaj ją jako rangę albo pakiet w sklepie serwera.
+premium-permission: mainplugins.pass.premium
+
+levels:
+  - { level: 1, free: [ { money: 100 } ], premium: [ { item: GOLDEN_APPLE, amount: 2 } ] }
+  - { level: 2, free: [ { item: BREAD, amount: 16 } ], premium: [ { money: 300 } ] }
+  - { level: 3, free: [ { item: IRON_INGOT, amount: 8 } ], premium: [ { item: DIAMOND, amount: 2 } ] }
+  - { level: 4, free: [ { money: 200 } ], premium: [ { item: EXPERIENCE_BOTTLE, amount: 32 } ] }
+  - { level: 5, free: [ { item: GOLDEN_APPLE } ], premium: [ { item: DIAMOND, amount: 5 } ] }
+  - { level: 6, free: [ { item: EMERALD, amount: 4 } ], premium: [ { money: 750 } ] }
+  - { level: 7, free: [ { money: 400 } ], premium: [ { item: ENCHANTED_GOLDEN_APPLE } ] }
+  - { level: 8, free: [ { item: DIAMOND } ], premium: [ { item: NETHERITE_SCRAP, amount: 2 } ] }
+  - { level: 9, free: [ { item: EXPERIENCE_BOTTLE, amount: 16 } ], premium: [ { money: 1500 } ] }
+  - { level: 10, free: [ { item: DIAMOND, amount: 3 } ], premium: [ { item: NETHERITE_INGOT } ] }
+
+daily:
+  enabled: true
+  # true = opuszczony dzień zaczyna serię od dnia 1.
+  reset-if-missed: true
+  days:
+    - { rewards: [ { money: 50 } ] }
+    - { rewards: [ { item: BREAD, amount: 8 } ] }
+    - { rewards: [ { money: 100 } ] }
+    - { rewards: [ { item: IRON_INGOT, amount: 4 } ] }
+    - { rewards: [ { money: 150 } ] }
+    - { rewards: [ { item: GOLDEN_APPLE } ] }
+    - { rewards: [ { item: DIAMOND } ] }
+
+vote:
+  enabled: true
+  rewards:
+    - { money: 100 }

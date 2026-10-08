@@ -5,6 +5,19 @@ api-version: '1.20'
 softdepend: [PlaceholderAPI, Vault]
 
 commands:
+  "@schedule":
+    description: Harmonogram serwera (list, run <id>, reload)
+    permission: mainplugins.core.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+    usage: /<command> [list|run <id>|reload]
+  "@backup":
+    description: Kopia zapasowa świata i konfiguracji teraz
+    permission: mainplugins.core.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@reloadcommands":
+    description: Przeładuj własne komendy (custom-commands.yml)
+    permission: mainplugins.core.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
   wszystkiekomendy:
     description: Panel administratora - moduły, statystyki i wszystkie komendy
     permission: mainplugins.core.admin

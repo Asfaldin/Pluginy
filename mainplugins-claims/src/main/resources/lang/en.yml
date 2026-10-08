@@ -1,0 +1,35 @@
+# Mainplugins Claims - English messages. Colors: &a &e ...  Placeholders: {name}
+claim:
+  claimed: "&aThis chunk is now yours! &7({count}/{max} chunks) &8- green particles show its border."
+  unclaimed: "&eThis chunk is no longer protected."
+  list-header: "&6Your land &7({count}/{max} chunks):"
+  list-line: "&7- &f{world} &7at x &f{x}&7, z &f{z}"
+  trusted: "&a{player} can now build on your land."
+  untrusted: "&e{player} can no longer build on your land."
+  info-free: "&7This chunk is free - type &f/claim &7to protect it."
+  info: "&6Owner: &f{owner}\n&7Trusted: &f{trusted}\n&7PvP: &f{pvp} &8| &7Explosions: &f{explosions} &8| &7Mobs: &f{mobs}"
+  flag-set: "&aFlag {flag}: {value}"
+protect:
+  denied: "&cThis land belongs to {owner}."
+  entered: "&eLand of &6{owner}"
+  wilderness: "&7Free land"
+help:
+  all: "&e/claim &7protect this chunk &8| &e/unclaim &8| &e/claim list &8| &e/claim trust|untrust <player> &8| &e/claim info &8| &e/claim flag <pvp|explosions|mobs> <on|off>"
+  trust: "&eUsage: /claim trust|untrust <player>"
+  flag: "&eUsage: /claim flag <pvp|explosions|mobs> <on|off>"
+error:
+  players-only: "&cOnly a player can use this."
+  world-disabled: "&cYou can't claim land in this world."
+  already-yours: "&eThis chunk is already yours."
+  taken: "&cThis chunk belongs to {owner}."
+  limit: "&cYou already have {max} chunks."
+  limit-plan: "&cYou already have {max} chunks. More land needs the server's Plus plan."
+  no-money: "&cA chunk costs {cost} $."
+  not-yours: "&cThis chunk isn't yours."
+  player-unknown: "&cUnknown player: {player}"
+  plan-flags: "&cLand flags need the server's Plus plan."
+admin:
+  usage: "&eUsage: /@claims reload | bypass"
+  reloaded: "&aClaims reloaded."
+  bypass-on: "&aBypass ON - you ignore claims."
+  bypass-off: "&eBypass OFF."

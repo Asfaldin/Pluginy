@@ -1,0 +1,17 @@
+# Mainplugins Claims. Edit it in the app: Plugins > Land protection.
+claims:
+  # How many chunks (16x16) a player can protect - without a plan / with the server's Plus plan.
+  max-chunks: 4
+  max-chunks-with-plan: 25
+  # Price of one chunk (0 = free).
+  cost-per-chunk: 0
+  # Worlds where claiming is off.
+  disabled-worlds: [world_nether, world_the_end]
+  # Flags of new land (players change them with /claim flag on the Plus plan).
+  default-flags:
+    pvp: false
+    explosions: false
+    mob-griefing: false
+  # Action bar message when walking into someone's land.
+  enter-message: true
+  show-border-seconds: 10

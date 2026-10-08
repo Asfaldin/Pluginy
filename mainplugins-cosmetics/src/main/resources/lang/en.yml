@@ -1,0 +1,26 @@
+# Mainplugins Cosmetics - English messages. Colors: &a &e ...  Placeholders: {name}
+cosmetic:
+  equipped: "&aEquipped: {name}"
+  removed: "&eRemoved: {name}"
+  helmet-busy: "&cTake off your helmet first - a hat goes on an empty head slot."
+  broken: "&cThis cosmetic ({name}) is set up wrong - tell an admin."
+  pet-name: "&7{player}'s {name}"
+lock:
+  permission: "&cLocked - get it in the server store."
+  plan-plus: "&cCustom-item hats need the server's Plus plan."
+  plan-pro: "&cPets need the server's Pro plan."
+menu:
+  title: "&8Cosmetics"
+  tab-hats: "&6Hats"
+  tab-trails: "&6Trails"
+  tab-pets: "&6Pets"
+  tab-open: "&7Open"
+  tab-click: "&eClick to open"
+  click: "&eClick to equip"
+  on: "&a✔ Equipped - click to remove"
+  empty: "&7Nothing here yet."
+error:
+  players-only: "&cOnly a player can use this."
+admin:
+  usage: "&eUsage: /@cosmetics reload"
+  reloaded: "&aCosmetics reloaded."

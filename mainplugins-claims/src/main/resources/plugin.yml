@@ -1,0 +1,25 @@
+name: MainpluginsClaims
+version: ${project.version}
+main: elo.mainplugins.claims.MainpluginsClaims
+api-version: '1.20'
+depend: [MainpluginsCore]
+
+commands:
+  claim:
+    description: Protect the chunk you stand in (and manage your land)
+    aliases: [dzialka, teren]
+  unclaim:
+    description: Remove protection from the chunk you stand in
+  "@claims":
+    description: (Admin) Claims - reload, bypass protection
+    usage: /<command> reload | bypass
+    permission: mainplugins.claims.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+
+permissions:
+  mainplugins.claims.admin:
+    description: Access to /@claims
+    default: op
+  mainplugins.claims.bypass:
+    description: Can ignore other players' claims (after /@claims bypass)
+    default: op

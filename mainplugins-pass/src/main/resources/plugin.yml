@@ -1,0 +1,26 @@
+name: MainpluginsPass
+version: ${project.version}
+main: elo.mainplugins.pass.MainpluginsPass
+api-version: '1.20'
+depend: [MainpluginsCore]
+
+commands:
+  pass:
+    description: Season pass - levels and rewards
+    aliases: [przepustka, battlepass]
+  daily:
+    description: Daily rewards for logging in
+    aliases: [nagrody, codzienne]
+  "@pass":
+    description: (Admin) Season pass - reload, give XP, register a vote, reset a player
+    usage: /<command> reload | xp <player> <amount> | vote <player> | reset <player>
+    permission: mainplugins.pass.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+
+permissions:
+  mainplugins.pass.admin:
+    description: Access to /@pass
+    default: op
+  mainplugins.pass.premium:
+    description: Premium track of the season pass (sell it as a rank or package)
+    default: false

@@ -1,3 +1,4 @@
+import { planCovers } from "./plans.js";
 import { readJson, writeJson } from "./jsonStore.js";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -97,7 +98,7 @@ export function setStatus(key, status) {
 export function licenseGrants(license, pluginId) {
     if (license.plugin === "*") return true;
     // Plan subskrypcji (plan:plus/pro/network) obejmuje wszystkie pluginy - patrz plans.js.
-    if (license.plugin.startsWith("plan:")) return true;
+    if (license.plugin.startsWith("plan:")) return planCovers(license.plugin.slice(5), pluginId);
     return license.plugin.split(",").map((s) => s.trim()).includes(pluginId);
 }
 

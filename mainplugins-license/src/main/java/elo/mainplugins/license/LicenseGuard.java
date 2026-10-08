@@ -41,6 +41,15 @@ public final class LicenseGuard {
         return true;
     }
 
+    /**
+     * Sprawdzenie bez wyłączania pluginu - dla pluginów, które działają za darmo w wersji
+     * podstawowej, a licencją (planem) odblokowują tylko część funkcji. Ten sam podpis co
+     * {@link #enable}, więc fałszywy Core nic nie odblokuje. Wołać przy starcie i co jakiś czas.
+     */
+    public static boolean isValid(String pluginId, Supplier<String> proofSupplier) {
+        return check(pluginId, proofSupplier);
+    }
+
     static boolean check(String pluginId, Supplier<String> proofSupplier) {
         String proof;
         try {

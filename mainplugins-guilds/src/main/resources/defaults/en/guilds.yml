@@ -1,0 +1,18 @@
+# Mainplugins Guilds. Edit it in the app: Plugins > Guilds.
+guilds:
+  # Price of founding a guild (0 = free).
+  create-cost: 1000
+  # Member limit without a plan / with the server's Plus plan or higher.
+  max-members: 8
+  max-members-with-plan: 30
+  tag-min-length: 2
+  tag-max-length: 5
+  name-max-length: 24
+  # false = guild members (and allies) can't hurt each other.
+  friendly-fire: false
+  # Countdown before teleporting to the guild home (don't move).
+  home-delay-seconds: 3
+  # How long an invite stays valid.
+  invite-seconds: 120
+  # Alliances (plan Plus) - how many allies a guild can have.
+  max-allies: 3

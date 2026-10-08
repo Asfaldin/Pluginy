@@ -50,6 +50,10 @@
         <module>mainplugins-chatfilter</module>
         <module>mainplugins-mobs</module>
         <module>mainplugins-blocks</module>
+        <module>mainplugins-pass</module>
+        <module>mainplugins-guilds</module>
+        <module>mainplugins-claims</module>
+        <module>mainplugins-cosmetics</module>
     </modules>
 
     <properties>

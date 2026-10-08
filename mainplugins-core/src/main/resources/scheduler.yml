@@ -1,0 +1,37 @@
+# Harmonogram serwera - najwygodniej edytować w aplikacji (Server -> Schedule).
+# Plik jest wczytywany sam po zapisaniu (albo /@schedule reload).
+#
+# type: command | broadcast | restart | backup
+# at: godziny "HH:mm" (czas serwera), days: [mon, tue, ...] (puste = codziennie)
+# every: co ile minut (zamiast at), commands: komendy z konsoli (bez /)
+# message: wiadomość (& kolory); przy restarcie {time} = ile zostało
+# warn: sekundy przed restartem, kiedy ostrzec graczy
+tasks:
+  nightly-backup:
+    name: "Nightly backup"
+    enabled: false
+    type: backup
+    at: ["04:00"]
+  nightly-restart:
+    name: "Nightly restart"
+    enabled: false
+    type: restart
+    at: ["04:30"]
+    warn: [300, 60, 10]
+    message: "&cServer restarts in &e{time}&c."
+  discord-reminder:
+    name: "Discord reminder"
+    enabled: false
+    type: broadcast
+    every: 30
+    message: "&7Join our Discord: &b/discord"
+
+# Komenda restartu. Puste = zwykłe wyłączenie (hosting/skrypt startowy uruchamia serwer ponownie).
+restart-command: ""
+
+backups:
+  folder: backups
+  keep: 7
+  include-plugins: true
+  # puste = wszystkie światy
+  worlds: []

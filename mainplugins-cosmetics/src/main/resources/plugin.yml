@@ -1,0 +1,20 @@
+name: MainpluginsCosmetics
+version: ${project.version}
+main: elo.mainplugins.cosmetics.MainpluginsCosmetics
+api-version: '1.20'
+depend: [MainpluginsCore]
+
+commands:
+  cosmetics:
+    description: Hats, trails and pets
+    aliases: [kosmetyki, cosmetic]
+  "@cosmetics":
+    description: (Admin) Cosmetics - reload
+    usage: /<command> reload
+    permission: mainplugins.cosmetics.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+
+permissions:
+  mainplugins.cosmetics.admin:
+    description: Access to /@cosmetics
+    default: op

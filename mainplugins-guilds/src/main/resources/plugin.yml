@@ -1,0 +1,20 @@
+name: MainpluginsGuilds
+version: ${project.version}
+main: elo.mainplugins.guilds.MainpluginsGuilds
+api-version: '1.20'
+depend: [MainpluginsCore]
+
+commands:
+  g:
+    description: Guilds - create, invite, chat, home, bank, alliances
+    aliases: [guild, gildia, klan]
+  "@guilds":
+    description: (Admin) Guilds - reload, disband a guild
+    usage: /<command> reload | disband <tag>
+    permission: mainplugins.guilds.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+
+permissions:
+  mainplugins.guilds.admin:
+    description: Access to /@guilds
+    default: op

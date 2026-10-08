@@ -1,0 +1,26 @@
+# Mainplugins Cosmetics - polskie komunikaty. Kolory: &a &e ...  Wstawki: {nazwa}
+cosmetic:
+  equipped: "&aZałożono: {name}"
+  removed: "&eZdjęto: {name}"
+  helmet-busy: "&cNajpierw zdejmij hełm - czapka trafia na pusty slot głowy."
+  broken: "&cTen kosmetyk ({name}) jest źle ustawiony - daj znać adminowi."
+  pet-name: "&7{name} gracza {player}"
+lock:
+  permission: "&cZablokowane - kup w sklepie serwera."
+  plan-plus: "&cCzapki z custom itemów wymagają planu Plus na serwerze."
+  plan-pro: "&cPupile wymagają planu Pro na serwerze."
+menu:
+  title: "&8Kosmetyki"
+  tab-hats: "&6Czapki"
+  tab-trails: "&6Smugi"
+  tab-pets: "&6Pupile"
+  tab-open: "&7Otwarte"
+  tab-click: "&eKliknij, żeby otworzyć"
+  click: "&eKliknij, żeby założyć"
+  on: "&a✔ Założone - kliknij, żeby zdjąć"
+  empty: "&7Nic tu jeszcze nie ma."
+error:
+  players-only: "&cTylko gracz może użyć tej komendy."
+admin:
+  usage: "&eUżycie: /@cosmetics reload"
+  reloaded: "&aKosmetyki wczytane na nowo."

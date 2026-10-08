@@ -224,6 +224,25 @@ public final class MainpluginsCore extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new CommandRemapper(this), this);
 
+        // Zakładka Server w aplikacji: statystyki, harmonogram, kopie zapasowe, własne komendy.
+        elo.mainplugins.core.server.ServerDataLog serverData = new elo.mainplugins.core.server.ServerDataLog(getDataFolder(), getLogger()::warning);
+        elo.mainplugins.core.server.StatsRecorder statsRecorder = new elo.mainplugins.core.server.StatsRecorder(this, serverData);
+        getServer().getPluginManager().registerEvents(statsRecorder, this);
+        statsRecorder.start();
+        elo.mainplugins.core.server.BackupManager backupManager = new elo.mainplugins.core.server.BackupManager(this, serverData);
+        elo.mainplugins.core.server.TaskScheduler taskScheduler = new elo.mainplugins.core.server.TaskScheduler(this, serverData, backupManager);
+        taskScheduler.start();
+        elo.mainplugins.core.server.CustomCommandsManager customCommands = new elo.mainplugins.core.server.CustomCommandsManager(this);
+        // Po starcie serwera - wtedy mapa komend zawiera już komendy wszystkich pluginów (wykrywanie kolizji).
+        getServer().getScheduler().runTask(this, customCommands::reload);
+        elo.mainplugins.core.server.ServerAdminCommand serverAdmin = new elo.mainplugins.core.server.ServerAdminCommand(taskScheduler, backupManager, customCommands);
+        for (String name : java.util.List.of("@schedule", "@backup", "@reloadcommands")) {
+            if (getCommand(name) != null) {
+                getCommand(name).setExecutor(serverAdmin);
+                getCommand(name).setTabCompleter(serverAdmin);
+            }
+        }
+
         getLogger().info("MainpluginsCore włączony - EconomyService dostępny dla innych pluginów.");
     }
 

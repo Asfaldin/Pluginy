@@ -1,0 +1,35 @@
+# Mainplugins Claims - polskie komunikaty. Kolory: &a &e ...  Wstawki: {nazwa}
+claim:
+  claimed: "&aTen chunk jest teraz twój! &7({count}/{max} chunków) &8- zielone cząsteczki pokazują granicę."
+  unclaimed: "&eTen chunk nie jest już chroniony."
+  list-header: "&6Twój teren &7({count}/{max} chunków):"
+  list-line: "&7- &f{world} &7przy x &f{x}&7, z &f{z}"
+  trusted: "&a{player} może teraz budować na twoim terenie."
+  untrusted: "&e{player} nie może już budować na twoim terenie."
+  info-free: "&7Ten chunk jest wolny - wpisz &f/claim&7, żeby go zabezpieczyć."
+  info: "&6Właściciel: &f{owner}\n&7Zaufani: &f{trusted}\n&7PvP: &f{pvp} &8| &7Wybuchy: &f{explosions} &8| &7Moby: &f{mobs}"
+  flag-set: "&aFlaga {flag}: {value}"
+protect:
+  denied: "&cTen teren należy do {owner}."
+  entered: "&eTeren gracza &6{owner}"
+  wilderness: "&7Wolny teren"
+help:
+  all: "&e/claim &7zabezpiecz ten chunk &8| &e/unclaim &8| &e/claim list &8| &e/claim trust|untrust <gracz> &8| &e/claim info &8| &e/claim flag <pvp|explosions|mobs> <on|off>"
+  trust: "&eUżycie: /claim trust|untrust <gracz>"
+  flag: "&eUżycie: /claim flag <pvp|explosions|mobs> <on|off>"
+error:
+  players-only: "&cTylko gracz może użyć tej komendy."
+  world-disabled: "&cW tym świecie nie można zabezpieczać terenu."
+  already-yours: "&eTen chunk już jest twój."
+  taken: "&cTen chunk należy do {owner}."
+  limit: "&cMasz już {max} chunków."
+  limit-plan: "&cMasz już {max} chunków. Więcej terenu wymaga planu Plus na serwerze."
+  no-money: "&cChunk kosztuje {cost} $."
+  not-yours: "&cTen chunk nie jest twój."
+  player-unknown: "&cNieznany gracz: {player}"
+  plan-flags: "&cFlagi terenu wymagają planu Plus na serwerze."
+admin:
+  usage: "&eUżycie: /@claims reload | bypass"
+  reloaded: "&aClaimy wczytane na nowo."
+  bypass-on: "&aBypass WŁĄCZONY - ignorujesz cudze tereny."
+  bypass-off: "&eBypass WYŁĄCZONY."

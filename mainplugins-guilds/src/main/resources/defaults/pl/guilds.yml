@@ -1,0 +1,18 @@
+# Mainplugins Guilds. Edytuj w aplikacji: Pluginy > Gildie.
+guilds:
+  # Koszt założenia gildii (0 = za darmo).
+  create-cost: 1000
+  # Limit członków bez planu / z planem Plus lub wyższym na serwerze.
+  max-members: 8
+  max-members-with-plan: 30
+  tag-min-length: 2
+  tag-max-length: 5
+  name-max-length: 24
+  # false = członkowie gildii (i sojusznicy) nie ranią się nawzajem.
+  friendly-fire: false
+  # Odliczanie przed teleportem do domu gildii (nie ruszaj się).
+  home-delay-seconds: 3
+  # Jak długo zaproszenie jest ważne.
+  invite-seconds: 120
+  # Sojusze (plan Plus) - ilu sojuszników może mieć gildia.
+  max-allies: 3

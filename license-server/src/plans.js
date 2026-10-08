@@ -23,6 +23,15 @@ export const FEATURES = {
     "crates.roulette": "plus",
     "crates.announce": "plus",
     "crates.sharedKeys": "plus",
+    // season pass
+    "pass.season": "plus",
+    // gildie (bank, sojusze, wyższy limit)
+    "guilds.bank": "plus",
+    // ochrona terenu (flagi, wyższy limit)
+    "claims.flags": "plus",
+    // kosmetyki
+    "cosmetics.custom": "plus",
+    "cosmetics.pets": "pro",
     // sklep
     "shop.dynamicPrices": "plus",
     "shop.events": "pro",
@@ -58,6 +67,20 @@ export const PLANS = [
 ];
 
 const rank = (id) => Math.max(0, PLAN_ORDER.indexOf(id));
+
+/**
+ * Identyfikatory licencji, które wymagają WYŻSZEGO planu niż Plus (domyślnie plan obejmuje
+ * wszystkie pluginy od Plus). Pluginy sprawdzają je przez LicenseGuard.isValid(id) - np.
+ * pupile w Kosmetykach to osobne id "cosmetics-pets" dostępne od Pro.
+ */
+export const PLUGIN_MIN_PLAN = {
+    "cosmetics-pets": "pro",
+};
+
+/** Czy licencja planu (np. "plan:plus") obejmuje dany identyfikator pluginu. */
+export function planCovers(planId, pluginId) {
+    return rank(planId) >= rank(PLUGIN_MIN_PLAN[pluginId] ?? "plus");
+}
 
 /** Plan z licencji: najwyższy aktywny "plan:<id>", "*" = network, reszta = free. */
 export function planOfLicenses(licenses) {

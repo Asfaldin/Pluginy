@@ -1,0 +1,18 @@
+# Mainplugins Cosmetics. Edit it in the app: Plugins > Cosmetics.
+# free: true = everyone; otherwise the permission mainplugins.cosmetics.<id> (sell it as a rank/package).
+
+hats:
+  - { id: pumpkin, name: "&6Pumpkin head", item: CARVED_PUMPKIN, free: true }
+  - { id: glass, name: "&bGlass helmet", item: GLASS }
+  - { id: crown, name: "&eGold crown", item: GOLDEN_HELMET }
+
+trails:
+  - { id: flames, name: "&cFlames", particle: FLAME, free: true }
+  - { id: hearts, name: "&dHearts", particle: HEART }
+  - { id: happy, name: "&aHappy sparks", particle: HAPPY_VILLAGER }
+  - { id: clouds, name: "&fClouds", particle: CLOUD }
+
+pets:
+  - { id: cat, name: "&fCat", mob: CAT, icon: STRING }
+  - { id: fox, name: "&6Fox", mob: FOX, icon: SWEET_BERRIES }
+  - { id: allay, name: "&bAllay", mob: ALLAY, icon: AMETHYST_SHARD }

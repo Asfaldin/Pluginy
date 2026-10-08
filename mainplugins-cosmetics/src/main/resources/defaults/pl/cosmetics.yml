@@ -1,0 +1,18 @@
+# Mainplugins Cosmetics. Edytuj w aplikacji: Pluginy > Kosmetyki.
+# free: true = dla wszystkich; inaczej permisja mainplugins.cosmetics.<id> (sprzedaj ją jako rangę/pakiet).
+
+hats:
+  - { id: pumpkin, name: "&6Dyniowa głowa", item: CARVED_PUMPKIN, free: true }
+  - { id: glass, name: "&bSzklany hełm", item: GLASS }
+  - { id: crown, name: "&eZłota korona", item: GOLDEN_HELMET }
+
+trails:
+  - { id: flames, name: "&cPłomienie", particle: FLAME, free: true }
+  - { id: hearts, name: "&dSerduszka", particle: HEART }
+  - { id: happy, name: "&aRadosne iskry", particle: HAPPY_VILLAGER }
+  - { id: clouds, name: "&fChmurki", particle: CLOUD }
+
+pets:
+  - { id: cat, name: "&fKot", mob: CAT, icon: STRING }
+  - { id: fox, name: "&6Lis", mob: FOX, icon: SWEET_BERRIES }
+  - { id: allay, name: "&bAllay", mob: ALLAY, icon: AMETHYST_SHARD }

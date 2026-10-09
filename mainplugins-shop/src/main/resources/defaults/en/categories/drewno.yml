@@ -1,0 +1,26 @@
+# One shop category (edited in the PluginManager app). buy = price for 'amount' pieces, sell = price for 'sell-amount' pieces.
+name: '&e&lWood'
+icon: OAK_LOG
+items:
+  - {item: OAK_PLANKS, buy: 512, amount: 64, sell: 375, sell-amount: 64, name: '&d&lOak Planks'}
+  - {item: BIRCH_PLANKS, buy: 512, amount: 64, sell: 375, sell-amount: 64, name: '&d&lBirch Planks'}
+  - {item: CRIMSON_PLANKS, buy: 576, amount: 64, sell: 375, sell-amount: 64, name: '&d&lCrimson Planks'}
+  - {item: WARPED_PLANKS, buy: 576, amount: 64, sell: 375, sell-amount: 64, name: '&d&lWarped Planks'}
+  - {item: JUNGLE_PLANKS, buy: 704, amount: 64, sell: 375, sell-amount: 64, name: '&d&lJungle Planks'}
+  - {item: ACACIA_PLANKS, buy: 704, amount: 64, sell: 375, sell-amount: 64, name: '&d&lAcacia Planks'}
+  - {item: SPRUCE_PLANKS, buy: 768, amount: 64, sell: 375, sell-amount: 64, name: '&d&lSpruce Planks'}
+  - {item: DARK_OAK_PLANKS, buy: 768, amount: 64, sell: 375, sell-amount: 64, name: '&d&lDark Oak Planks'}
+  - {item: MANGROVE_PLANKS, buy: 832, amount: 64, sell: 375, sell-amount: 64, name: '&d&lMangrove Planks'}
+  - {item: CHERRY_PLANKS, buy: 832, amount: 64, sell: 375, sell-amount: 64, name: '&d&lCherry Planks'}
+  - {item: PALE_OAK_PLANKS, buy: 832, amount: 64, sell: 375, sell-amount: 64, name: '&d&lPale Oak Planks'}
+  - {item: OAK_LOG, buy: 1920, amount: 64, sell: 1300, sell-amount: 64, name: '&d&lOak Log'}
+  - {item: BIRCH_LOG, buy: 1920, amount: 64, sell: 1300, sell-amount: 64, name: '&d&lBirch Log'}
+  - {item: CRIMSON_STEM, buy: 2240, amount: 64, sell: 1500, sell-amount: 64, name: '&d&lCrimson Stem'}
+  - {item: WARPED_STEM, buy: 2240, amount: 64, sell: 1500, sell-amount: 64, name: '&d&lWarped Stem'}
+  - {item: JUNGLE_LOG, buy: 2560, amount: 64, sell: 400, sell-amount: 64, name: '&d&lJungle Log'}
+  - {item: ACACIA_LOG, buy: 2560, amount: 64, sell: 1500, sell-amount: 64, name: '&d&lAcacia Log'}
+  - {item: SPRUCE_LOG, buy: 2880, amount: 64, sell: 400, sell-amount: 64, name: '&d&lSpruce Log'}
+  - {item: DARK_OAK_LOG, buy: 2880, amount: 64, sell: 400, sell-amount: 64, name: '&d&lDark Oak Log'}
+  - {item: CHERRY_LOG, buy: 3200, amount: 64, sell: 1500, sell-amount: 64, name: '&d&lCherry Log'}
+  - {item: PALE_OAK_LOG, buy: 3200, amount: 64, sell: 1500, sell-amount: 64, name: '&d&lPale Oak Log'}
+  - {item: MANGROVE_LOG, buy: 22400, amount: 64, sell: 1500, sell-amount: 64, name: '&d&lMangrove Log'}

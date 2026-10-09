@@ -1,0 +1,66 @@
+# One shop category (edited in the PluginManager app). buy = price for 'amount' pieces, sell = price for 'sell-amount' pieces.
+name: '&e&lBlocks'
+icon: GRASS_BLOCK
+items:
+  - {item: MUD, buy: 640, amount: 64, sell-amount: 64, name: '&d&lMud'}
+  - {item: COBBLESTONE, buy: 640, amount: 64, sell: 50, sell-amount: 64, name: '&d&lCobblestone'}
+  - {item: SNOW_BLOCK, buy: 640, amount: 64, sell-amount: 64, name: '&d&lSnow Block'}
+  - {item: STONE, buy: 960, amount: 64, sell: 70, sell-amount: 64, name: '&d&lStone'}
+  - {item: GRANITE, buy: 1600, amount: 64, sell-amount: 64, name: '&d&lGranite'}
+  - {item: DIORITE, buy: 1600, amount: 64, sell-amount: 64, name: '&d&lDiorite'}
+  - {item: ANDESITE, buy: 1600, amount: 64, sell-amount: 64, name: '&d&lAndesite'}
+  - {item: COBBLED_DEEPSLATE, buy: 1792, amount: 64, sell-amount: 64, name: '&d&lCobbled Deepslate'}
+  - {item: DIRT, buy: 1920, amount: 64, sell: 60, sell-amount: 64, name: '&d&lDirt'}
+  - {item: STONE_BRICKS, buy: 1920, amount: 64, sell-amount: 64, name: '&d&lStone Bricks'}
+  - {item: SMOOTH_STONE, buy: 1920, amount: 64, sell-amount: 64, name: '&d&lSmooth Stone'}
+  - {item: ROOTED_DIRT, buy: 2240, amount: 64, sell-amount: 64, name: '&d&lRooted Dirt'}
+  - {item: NETHERRACK, buy: 2240, amount: 64, sell: 25, sell-amount: 64, name: '&d&lNetherrack'}
+  - {item: TUFF, buy: 640, amount: 16, sell-amount: 16, name: '&d&lTuff'}
+  - {item: DRIPSTONE_BLOCK, buy: 640, amount: 16, sell-amount: 16, name: '&d&lDripstone Block'}
+  - {item: NETHER_BRICKS, buy: 720, amount: 16, sell-amount: 16, name: '&d&lNether Bricks'}
+  - {item: SULFUR, buy: 720, amount: 16, sell-amount: 16, name: '&d&lSulfur'}
+  - {item: MANGROVE_ROOTS, buy: 720, amount: 16, sell-amount: 16, name: '&d&lMangrove Roots'}
+  - {item: DEEPSLATE, buy: 720, amount: 16, sell-amount: 16, name: '&d&lDeepslate'}
+  - {item: BASALT, buy: 720, amount: 16, sell-amount: 16, name: '&d&lBasalt'}
+  - {item: PODZOL, buy: 720, amount: 16, sell-amount: 16, name: '&d&lPodzol'}
+  - {item: MOSS_BLOCK, buy: 720, amount: 16, sell-amount: 16, name: '&d&lMoss Block'}
+  - {item: GRASS_BLOCK, buy: 720, amount: 16, sell-amount: 16, name: '&d&lGrass Block'}
+  - {item: CALCITE, buy: 720, amount: 16, sell-amount: 16, name: '&d&lCalcite'}
+  - {item: END_STONE, buy: 720, amount: 16, sell-amount: 16, name: '&d&lEnd Stone'}
+  - {item: ICE, buy: 800, amount: 16, sell-amount: 16, name: '&d&lIce'}
+  - {item: CINNABAR, buy: 800, amount: 16, sell-amount: 16, name: '&d&lCinnabar'}
+  - {item: MUDDY_MANGROVE_ROOTS, buy: 800, amount: 16, sell-amount: 16, name: '&d&lMuddy Mangrove Roots'}
+  - {item: BLACKSTONE, buy: 800, amount: 16, sell-amount: 16, name: '&d&lBlackstone'}
+  - {item: MYCELIUM, buy: 800, amount: 16, sell-amount: 16, name: '&d&lMycelium'}
+  - {item: GRAVEL, buy: 800, amount: 16, sell: 110, sell-amount: 64, name: '&d&lGravel'}
+  - {item: TERRACOTTA, buy: 880, amount: 16, sell-amount: 16, name: '&d&lTerracotta'}
+  - {item: SOUL_SOIL, buy: 880, amount: 16, sell-amount: 16, name: '&d&lSoul Soil'}
+  - {item: SMOOTH_BASALT, buy: 880, amount: 16, sell-amount: 16, name: '&d&lSmooth Basalt'}
+  - {item: SOUL_SAND, buy: 880, amount: 16, sell: 40, sell-amount: 64, name: '&d&lSoul Sand'}
+  - {item: PALE_MOSS_BLOCK, buy: 880, amount: 16, sell-amount: 16, name: '&d&lPale Moss Block'}
+  - {item: SAND, buy: 960, amount: 16, sell: 110, sell-amount: 64, name: '&d&lSand'}
+  - {item: BRICKS, buy: 960, amount: 16, sell-amount: 16, name: '&d&lBricks'}
+  - {item: MAGMA_BLOCK, buy: 960, amount: 16, sell-amount: 16, name: '&d&lMagma Block'}
+  - {item: PURPUR_BLOCK, buy: 960, amount: 16, sell-amount: 16, name: '&d&lPurpur Block'}
+  - {item: QUARTZ_BLOCK, buy: 960, amount: 16, sell-amount: 16, name: '&d&lQuartz Block'}
+  - {item: NETHER_WART_BLOCK, buy: 1120, amount: 16, sell-amount: 16, name: '&d&lNether Wart Block'}
+  - {item: RED_SAND, buy: 1440, amount: 16, sell-amount: 16, name: '&d&lRed Sand'}
+  - {item: CRIMSON_NYLIUM, buy: 1440, amount: 16, sell-amount: 16, name: '&d&lCrimson Nylium'}
+  - {item: PRISMARINE, buy: 1440, amount: 16, sell-amount: 16, name: '&d&lPrismarine'}
+  - {item: WARPED_NYLIUM, buy: 1440, amount: 16, sell-amount: 16, name: '&d&lWarped Nylium'}
+  - {item: DARK_PRISMARINE, buy: 1600, amount: 16, sell-amount: 16, name: '&d&lDark Prismarine'}
+  - {item: PACKED_ICE, buy: 400, amount: 4, sell-amount: 4, name: '&d&lPacked Ice'}
+  - {item: GLASS, buy: 1760, amount: 16, sell-amount: 16, name: '&d&lGlass'}
+  - {item: SHROOMLIGHT, buy: 1760, amount: 16, sell-amount: 16, name: '&d&lShroomlight'}
+  - {item: WHITE_CONCRETE, buy: 1920, amount: 16, sell-amount: 16, name: '&d&lWhite Concrete'}
+  - {item: BLUE_ICE, buy: 2400, amount: 16, sell-amount: 16, name: '&d&lBlue Ice'}
+  - {item: SEA_LANTERN, buy: 720, amount: 4, sell-amount: 4, name: '&d&lSea Lantern'}
+  - {item: OBSIDIAN, buy: 800, amount: 4, sell: 400, sell-amount: 64, name: '&d&lObsidian'}
+  - {item: SPONGE, buy: 1000, amount: 4, sell-amount: 4, name: '&d&lSponge'}
+  - {item: CRYING_OBSIDIAN, buy: 1200, amount: 4, sell-amount: 4, name: '&d&lCrying Obsidian'}
+rotation:
+  enabled: false
+  show: 5
+  every-days: 14
+  announce: true
+  pool: []

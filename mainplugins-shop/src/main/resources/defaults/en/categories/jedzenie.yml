@@ -1,0 +1,21 @@
+# One shop category (edited in the PluginManager app). buy = price for 'amount' pieces, sell = price for 'sell-amount' pieces.
+name: '&e&lFood'
+icon: COOKED_CHICKEN
+items:
+  - {item: MUTTON, buy: 20, sell: 270, sell-amount: 64, name: '&d&lMutton'}
+  - {item: BEEF, buy: 20, sell: 130, sell-amount: 64, name: '&d&lBeef'}
+  - {item: PORKCHOP, buy: 20, sell: 120, sell-amount: 64, name: '&d&lPorkchop'}
+  - {item: CHICKEN, buy: 20, sell: 280, sell-amount: 64, name: '&d&lChicken'}
+  - {item: COOKED_CHICKEN, buy: 40, sell: 450, sell-amount: 64, name: '&d&lCooked Chicken'}
+  - {item: COOKED_MUTTON, buy: 40, sell: 350, sell-amount: 64, name: '&d&lCooked Mutton'}
+  - {item: COOKED_BEEF, buy: 45, sell: 350, sell-amount: 64, name: '&d&lCooked Beef'}
+  - {item: COOKED_PORKCHOP, buy: 45, sell: 450, sell-amount: 64, name: '&d&lCooked Porkchop'}
+  - {item: APPLE, buy: 50, sell: 1500, sell-amount: 64, name: '&d&lApple'}
+  - {item: MUSHROOM_STEW, buy: 60, name: '&d&lMushroom Stew'}
+  - {item: BEETROOT_SOUP, buy: 60, name: '&d&lBeetroot Soup'}
+  - {item: PUMPKIN_PIE, buy: 60, name: '&d&lPumpkin Pie'}
+  - {item: RABBIT_STEW, buy: 60, name: '&d&lRabbit Stew'}
+  - {item: SUSPICIOUS_STEW, buy: 60, name: '&d&lSuspicious Stew'}
+  - {item: HONEY_BOTTLE, buy: 150, name: '&d&lHoney Bottle'}
+  - {item: CAKE, buy: 400, name: '&d&lCake'}
+  - {item: GOLDEN_APPLE, buy: 2000, name: '&d&lGolden Apple'}

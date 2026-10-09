@@ -1,0 +1,37 @@
+# One shop category (edited in the PluginManager app). buy = price for 'amount' pieces, sell = price for 'sell-amount' pieces.
+name: '&e&lTools and Mechanisms'
+icon: FISHING_ROD
+items:
+  - {item: SMITHING_TABLE, buy: 20, name: '&d&lSmithing Table'}
+  - {item: BUNDLE, buy: 100, name: '&d&lBundle'}
+  - {item: FISHING_ROD, buy: 110, name: '&d&lFishing Rod'}
+  - {item: WIND_CHARGE, buy: 200, name: '&d&lWind Charge'}
+  - {item: CARTOGRAPHY_TABLE, buy: 200, name: '&d&lCartography Table'}
+  - {item: COMPOSTER, buy: 200, name: '&d&lComposter'}
+  - {item: LOOM, buy: 200, name: '&d&lLoom'}
+  - {item: WATER_BUCKET, buy: 200, name: '&d&lWater Bucket'}
+  - {item: BARREL, buy: 200, name: '&d&lBarrel'}
+  - {item: SMOKER, buy: 200, name: '&d&lSmoker'}
+  - {item: STONECUTTER, buy: 200, name: '&d&lStonecutter'}
+  - {item: BLAST_FURNACE, buy: 200, name: '&d&lBlast Furnace'}
+  - {item: GRINDSTONE, buy: 300, name: '&d&lGrindstone'}
+  - {item: BRUSH, buy: 300, name: '&d&lBrush'}
+  - {item: DISPENSER, buy: 350, name: '&d&lDispenser'}
+  - {item: LEAD, buy: 400, name: '&d&lLead'}
+  - {item: DROPPER, buy: 450, name: '&d&lDropper'}
+  - {item: LEATHER_HORSE_ARMOR, buy: 500, name: '&d&lLeather Horse Armor'}
+  - {item: CLOCK, buy: 500, name: '&d&lClock'}
+  - {item: COMPASS, buy: 500, name: '&d&lCompass'}
+  - {item: PISTON, buy: 500, name: '&d&lPiston'}
+  - {item: REPEATER, buy: 600, name: '&d&lRepeater'}
+  - {item: SCULK_SENSOR, buy: 800, name: '&d&lSculk Sensor'}
+  - {item: HOPPER, buy: 900, name: '&d&lHopper'}
+  - {item: LAVA_BUCKET, buy: 1000, name: '&d&lLava Bucket'}
+  - {item: OBSERVER, buy: 1300, name: '&d&lObserver'}
+  - {item: IRON_HORSE_ARMOR, buy: 1500, name: '&d&lIron Horse Armor'}
+  - {item: COMPARATOR, buy: 1500, name: '&d&lComparator'}
+  - {item: SADDLE, buy: 2500, name: '&d&lSaddle'}
+  - {item: GOLDEN_HORSE_ARMOR, buy: 2500, name: '&d&lGolden Horse Armor'}
+  - {item: NAME_TAG, buy: 3000, name: '&d&lName Tag'}
+  - {item: DIAMOND_HORSE_ARMOR, buy: 6000, name: '&d&lDiamond Horse Armor'}
+  - {item: GOAT_HORN, buy: 25000, name: '&d&lGoat Horn'}

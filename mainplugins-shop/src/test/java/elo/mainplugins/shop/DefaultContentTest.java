@@ -46,8 +46,9 @@ class DefaultContentTest {
         assertTrue(pl.statsEnabled());
         assertTrue(pl.extras().rankBonuses().isEmpty());
         ShopSettings en = settings("en", w);
-        assertEquals(List.of("blocks", "farming", "ores", "mob-drops", "food"), en.categoryOrder());
-        assertEquals(ShopSettings.defaults().menus(), en.menus());
+        // Angielski sklep startowy = ten sam duży sklep co polski, tylko z angielskimi nazwami (Karol 09.10: małego już nie ma).
+        assertEquals(pl.categoryOrder(), en.categoryOrder());
+        assertEquals(pl.menus(), en.menus());
         for (ShopSettings s : List.of(pl, en)) {
             assertEquals(ShopSettings.defaults().buttonMaterials(), s.buttonMaterials());
             assertEquals(ShopSettings.defaults().dynamic(), s.dynamic());

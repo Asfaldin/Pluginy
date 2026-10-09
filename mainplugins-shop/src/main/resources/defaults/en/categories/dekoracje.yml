@@ -1,0 +1,61 @@
+# One shop category (edited in the PluginManager app). buy = price for 'amount' pieces, sell = price for 'sell-amount' pieces.
+name: '&e&lDecorations'
+icon: PAINTING
+items:
+  - {item: WHITE_DYE, buy: 70, name: '&d&lWhite Dye'}
+  - {item: ORANGE_DYE, buy: 70, name: '&d&lOrange Dye'}
+  - {item: MAGENTA_DYE, buy: 70, name: '&d&lMagenta Dye'}
+  - {item: LIGHT_BLUE_DYE, buy: 70, name: '&d&lLight Blue Dye'}
+  - {item: YELLOW_DYE, buy: 70, name: '&d&lYellow Dye'}
+  - {item: LIME_DYE, buy: 70, name: '&d&lLime Dye'}
+  - {item: PINK_DYE, buy: 70, name: '&d&lPink Dye'}
+  - {item: GRAY_DYE, buy: 70, name: '&d&lGray Dye'}
+  - {item: LIGHT_GRAY_DYE, buy: 70, name: '&d&lLight Gray Dye'}
+  - {item: CYAN_DYE, buy: 70, name: '&d&lCyan Dye'}
+  - {item: PURPLE_DYE, buy: 70, name: '&d&lPurple Dye'}
+  - {item: BLUE_DYE, buy: 70, name: '&d&lBlue Dye'}
+  - {item: BROWN_DYE, buy: 70, name: '&d&lBrown Dye'}
+  - {item: GREEN_DYE, buy: 70, name: '&d&lGreen Dye'}
+  - {item: RED_DYE, buy: 70, name: '&d&lRed Dye'}
+  - {item: BLACK_DYE, buy: 70, name: '&d&lBlack Dye'}
+  - {item: PAINTING, buy: 100, name: '&d&lPainting'}
+  - {item: ITEM_FRAME, buy: 100, name: '&d&lItem Frame'}
+  - {item: FLOWER_POT, buy: 100, name: '&d&lFlower Pot'}
+  - {item: WHITE_GLAZED_TERRACOTTA, buy: 120, name: '&d&lWhite Glazed Terracotta'}
+  - {item: ORANGE_GLAZED_TERRACOTTA, buy: 120, name: '&d&lOrange Glazed Terracotta'}
+  - {item: MAGENTA_GLAZED_TERRACOTTA, buy: 120, name: '&d&lMagenta Glazed Terracotta'}
+  - {item: LIGHT_BLUE_GLAZED_TERRACOTTA, buy: 120, name: '&d&lLight Blue Glazed Terracotta'}
+  - {item: YELLOW_GLAZED_TERRACOTTA, buy: 120, name: '&d&lYellow Glazed Terracotta'}
+  - {item: LIME_GLAZED_TERRACOTTA, buy: 120, name: '&d&lLime Glazed Terracotta'}
+  - {item: PINK_GLAZED_TERRACOTTA, buy: 120, name: '&d&lPink Glazed Terracotta'}
+  - {item: GRAY_GLAZED_TERRACOTTA, buy: 120, name: '&d&lGray Glazed Terracotta'}
+  - {item: LIGHT_GRAY_GLAZED_TERRACOTTA, buy: 120, name: '&d&lLight Gray Glazed Terracotta'}
+  - {item: CYAN_GLAZED_TERRACOTTA, buy: 120, name: '&d&lCyan Glazed Terracotta'}
+  - {item: PURPLE_GLAZED_TERRACOTTA, buy: 120, name: '&d&lPurple Glazed Terracotta'}
+  - {item: BLUE_GLAZED_TERRACOTTA, buy: 120, name: '&d&lBlue Glazed Terracotta'}
+  - {item: BROWN_GLAZED_TERRACOTTA, buy: 120, name: '&d&lBrown Glazed Terracotta'}
+  - {item: GREEN_GLAZED_TERRACOTTA, buy: 120, name: '&d&lGreen Glazed Terracotta'}
+  - {item: RED_GLAZED_TERRACOTTA, buy: 120, name: '&d&lRed Glazed Terracotta'}
+  - {item: BLACK_GLAZED_TERRACOTTA, buy: 120, name: '&d&lBlack Glazed Terracotta'}
+  - {item: ARMOR_STAND, buy: 150, name: '&d&lArmor Stand'}
+  - {item: SCAFFOLDING, buy: 150, name: '&d&lScaffolding'}
+  - {item: IRON_CHAIN, buy: 160, name: '&d&lIron Chain'}
+  - {item: POINTED_DRIPSTONE, buy: 200, name: '&d&lPointed Dripstone'}
+  - {item: END_ROD, buy: 200, name: '&d&lEnd Rod'}
+  - {item: SULFUR_SPIKE, buy: 200, name: '&d&lSulfur Spike'}
+  - {item: CANDLE, buy: 200, name: '&d&lCandle'}
+  - {item: SOUL_LANTERN, buy: 250, name: '&d&lSoul Lantern'}
+  - {item: LANTERN, buy: 250, name: '&d&lLantern'}
+  - {item: DECORATED_POT, buy: 400, name: '&d&lDecorated Pot'}
+  - {item: SCULK_SHRIEKER, buy: 1000, name: '&d&lSculk Shrieker'}
+  - {item: PEARLESCENT_FROGLIGHT, buy: 1000, name: '&d&lPearlescent Froglight'}
+  - {item: VERDANT_FROGLIGHT, buy: 1000, name: '&d&lVerdant Froglight'}
+  - {item: OCHRE_FROGLIGHT, buy: 1000, name: '&d&lOchre Froglight'}
+  - {item: BELL, buy: 2000, name: '&d&lBell'}
+  - {item: SKELETON_SKULL, buy: 3000, name: '&d&lSkeleton Skull'}
+  - {item: ZOMBIE_HEAD, buy: 3000, name: '&d&lZombie Head'}
+  - {item: CREEPER_HEAD, buy: 3000, name: '&d&lCreeper Head'}
+  - {item: PIGLIN_HEAD, buy: 3000, name: '&d&lPiglin Head'}
+  - {item: PLAYER_HEAD, buy: 3000, name: '&d&lPlayer Head'}
+  - {item: WITHER_SKELETON_SKULL, buy: 3000, name: '&d&lWither Skeleton Skull'}
+  - {item: DRAGON_HEAD, buy: 5000, name: '&d&lDragon Head'}

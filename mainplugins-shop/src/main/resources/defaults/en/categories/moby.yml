@@ -1,0 +1,22 @@
+# One shop category (edited in the PluginManager app). buy = price for 'amount' pieces, sell = price for 'sell-amount' pieces.
+name: '&e&lMob Drops'
+icon: BONE
+items:
+  - {item: ROTTEN_FLESH, buy: 10, sell: 200, sell-amount: 64, name: '&d&lRotten Flesh'}
+  - {item: ARROW, buy: 20, sell: 150, sell-amount: 64, name: '&d&lArrow'}
+  - {item: WHITE_WOOL, buy: 25, sell: 270, sell-amount: 64, name: '&d&lWhite Wool'}
+  - {item: FEATHER, buy: 25, sell: 280, sell-amount: 64, name: '&d&lFeather'}
+  - {item: BONE, buy: 30, sell: 150, sell-amount: 64, name: '&d&lBone'}
+  - {item: STRING, buy: 30, sell: 340, sell-amount: 64, name: '&d&lString'}
+  - {item: EGG, buy: 30, sell: 150, sell-amount: 16, name: '&d&lEgg'}
+  - {item: LEATHER, buy: 40, sell: 130, sell-amount: 64, name: '&d&lLeather'}
+  - {item: SPIDER_EYE, buy: 100, sell: 340, sell-amount: 64, name: '&d&lSpider Eye'}
+  - {item: INK_SAC, buy: 150, name: '&d&lInk Sac'}
+  - {item: BREEZE_ROD, buy: 150, sell: 670, sell-amount: 64, name: '&d&lBreeze Rod'}
+  - {item: GUNPOWDER, buy: 200, sell: 600, sell-amount: 64, name: '&d&lGunpowder'}
+  - {item: ENDER_PEARL, buy: 300, name: '&d&lEnder Pearl'}
+  - {item: SLIME_BALL, buy: 500, name: '&d&lSlime Ball'}
+  - {item: MAGMA_CREAM, buy: 1500, name: '&d&lMagma Cream'}
+  - {item: GLOW_INK_SAC, buy: 2500, name: '&d&lGlow Ink Sac'}
+  - {item: BLAZE_ROD, buy: 5000, name: '&d&lBlaze Rod'}
+  - {item: GHAST_TEAR, buy: 25000, name: '&d&lGhast Tear'}

@@ -10,7 +10,6 @@ import elo.mainplugins.crates.model.CrateDef;
 import elo.mainplugins.crates.model.KeyDef;
 import elo.mainplugins.crates.model.PlacedCrate;
 import elo.mainplugins.crates.model.Prize;
-import io.papermc.paper.datacomponent.DataComponentTypes;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
@@ -344,7 +343,7 @@ public class CrateManager implements Listener, CrateService {
 
     private static ItemStack szyba(Material m, Component nazwa) {
         ItemStack item = new ItemStack(m);
-        item.setData(DataComponentTypes.CUSTOM_NAME, nazwa);
+        CrateItems.setNameAndLore(item, nazwa, java.util.List.of());
         return item;
     }
 

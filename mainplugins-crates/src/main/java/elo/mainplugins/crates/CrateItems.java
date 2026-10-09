@@ -6,8 +6,6 @@ import elo.mainplugins.crates.model.CrateDef;
 import elo.mainplugins.crates.model.ItemRef;
 import elo.mainplugins.crates.model.KeyDef;
 import elo.mainplugins.crates.model.Prize;
-import io.papermc.paper.datacomponent.DataComponentTypes;
-import io.papermc.paper.datacomponent.item.ItemLore;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -67,12 +65,9 @@ final class CrateItems {
     /** Ikona wygranej do animacji/podglądu; extraLore dopisywane jako opis (np. szansa z pliku językowego). */
     ItemStack icon(Prize p, List<Component> extraLore) {
         ItemStack item = base(p.icon(), Math.min(64, p.icon().amount()));
-        item.setData(DataComponentTypes.CUSTOM_NAME, text(p.name()));
-        if (!extraLore.isEmpty()) {
-            List<Component> lines = new ArrayList<>();
-            for (Component c : extraLore) lines.add(c.decoration(TextDecoration.ITALIC, false));
-            item.setData(DataComponentTypes.LORE, ItemLore.lore(lines));
-        }
+        List<Component> lines = new ArrayList<>();
+        for (Component c : extraLore) lines.add(c.decoration(TextDecoration.ITALIC, false));
+        setNameAndLore(item, text(p.name()), lines);
         return item;
     }
 
@@ -110,12 +105,18 @@ final class CrateItems {
     }
 
     private static void style(ItemStack item, String name, List<String> lore) {
-        item.setData(DataComponentTypes.CUSTOM_NAME, text(name));
-        if (!lore.isEmpty()) {
-            List<Component> lines = new ArrayList<>();
-            for (String l : lore) lines.add(text(l));
-            item.setData(DataComponentTypes.LORE, ItemLore.lore(lines));
-        }
+        List<Component> lines = new ArrayList<>();
+        for (String l : lore) lines.add(text(l));
+        setNameAndLore(item, text(name), lines);
+    }
+
+    /** Nazwa i opis przez ItemMeta (działa od Paper 1.20.6 do najnowszego, w przeciwieństwie do komponentów danych). */
+    static void setNameAndLore(ItemStack item, Component name, List<Component> lore) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return;
+        if (name != null) meta.displayName(name);
+        if (!lore.isEmpty()) meta.lore(lore);
+        item.setItemMeta(meta);
     }
 
     private static void tag(ItemStack item, NamespacedKey key, String value) {

@@ -36,6 +36,11 @@ function verifyPassword(password, stored) {
     return timingSafeEqual(actual, expected);
 }
 
+/** Ile kont jest w sumie (statystyki na Discordzie - sama liczba). */
+export function customerCount() {
+    return loadAll().length;
+}
+
 export function findCustomerByEmail(email) {
     return loadAll().find((c) => c.email.toLowerCase() === email.toLowerCase()) ?? null;
 }

@@ -12,6 +12,13 @@
 
     <artifactId>mainplugins-core</artifactId>
     <packaging>jar</packaging>
+
+    <properties>
+        <!-- Wielowersyjność (etap A): kompilacja pod NAJSTARSZY wspierany Paper (1.20.6) i Javę 21,
+             więc ten sam jar działa na Paper/Purpur 1.20.6 - 26.x. Nowsze API tylko przez refleksję. -->
+        <paper-api.version>1.20.6-R0.1-SNAPSHOT</paper-api.version>
+        <java.version>21</java.version>
+    </properties>
     <name>Mainplugins - Core</name>
 
     <repositories>

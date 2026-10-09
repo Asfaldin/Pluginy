@@ -66,10 +66,37 @@ public record MobBehavior(double health, double damage, double speed, double arm
      * @param item    dla "item": przedmiot, np. "minecraft:emerald" (puste = dowolny); akcja take_item go podnosi
      */
     public record Skill(String name, String trigger, double cooldown, double rangeMin, double rangeMax, double chance,
-                        double healthBelow, int phase, String animation, List<Action> actions, String item) {}
+                        double healthBelow, int phase, String animation, List<Action> actions, String item, List<Cond> conditions,
+                        List<String> also) {
+        public Skill(String name, String trigger, double cooldown, double rangeMin, double rangeMax, double chance,
+                     double healthBelow, int phase, String animation, List<Action> actions, String item) {
+            this(name, trigger, cooldown, rangeMin, rangeMax, chance, healthBelow, phase, animation, actions, item, List.of(), List.of());
+        }
 
-    /** Akcja umiejętności: typ, chwila (s od startu) i jej ustawienia. */
-    public record Action(String type, double at, Params p) {}
+        /** Czy ten wyzwalacz uruchamia umiejętność (główny albo jeden z dodatkowych - "also": gdy podejdzie LUB gdy kliknięty). */
+        public boolean on(String t) {
+            return trigger.equals(t) || also.contains(t);
+        }
+    }
+
+    /**
+     * Akcja umiejętności: typ, chwila (s od startu), ustawienia i warunki ("if" - wszystkie muszą się zgadzać).
+     * Wspólne ustawienia każdej akcji: on (na kim: target, self, attacker, nearest_player, random_player, players,
+     * allies, mobs, everyone) z onRadius; repeat/every rozwija BehaviorLoader w kopie akcji.
+     */
+    public record Action(String type, double at, Params p, List<Cond> conditions) {
+        public Action(String type, double at, Params p) {
+            this(type, at, p, List.of());
+        }
+    }
+
+    /**
+     * Warunek umiejętności albo akcji. type: health_below/health_above (% życia moba), target_health_below/above,
+     * distance_below/above (do celu), chance (%), has_target, target_is_player, day, night, raining, in_water,
+     * on_ground, phase_at_least, players_nearby/allies_nearby (radius, value = ile co najmniej),
+     * var (name, op, value), target_has_effect (effect). not = odwrotnie.
+     */
+    public record Cond(String type, boolean not, Params p) {}
 
     /** Ustawienia akcji / ataku z dystansu - luźna mapa, każdy typ czyta swoje klucze z wartością domyślną. */
     public record Params(Map<String, Object> values) {

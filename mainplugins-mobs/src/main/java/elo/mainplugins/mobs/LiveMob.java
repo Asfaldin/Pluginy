@@ -272,8 +272,11 @@ final class LiveMob {
         set(m, Attribute.ARMOR, bh.armor());
         set(m, Attribute.KNOCKBACK_RESISTANCE, bh.movement().equals("stationary") ? 1 : bh.knockbackResistance());
         set(m, Attribute.FOLLOW_RANGE, bh.followRange());
-        if (fresh) m.setHealth(bh.health());
-        else if (m.getHealth() > bh.health()) m.setHealth(bh.health());
+        // Serwer obcina maks. życie (spigot.yml: attribute.maxHealth, domyślnie 1024) - boss z 2000 życia dostaje tyle, ile wolno.
+        AttributeInstance maxAttr = m.getAttribute(Attribute.MAX_HEALTH);
+        double hp = Math.min(bh.health(), maxAttr != null ? maxAttr.getValue() : bh.health());
+        if (fresh) m.setHealth(hp);
+        else if (m.getHealth() > hp) m.setHealth(hp);
         m.getPersistentDataContainer().set(host.mobKey(), PersistentDataType.STRING, def.id().toLowerCase(Locale.ROOT));
         // Zwykłe cele (atak, gniew pszczoły, laser strażnika, wędrówka) - zastępuje je brain().
         Bukkit.getMobGoals().removeAllGoals(m);
@@ -573,6 +576,24 @@ final class LiveMob {
     void onDeath() {
         sound(base.getLocation(), bh.deathSound(), 1.5f, 1f);
         skills.trigger("death", target, 0);
+        // Inne moby z paczki obok - umiejętności "ally_death" (np. szał po śmierci towarzysza); cel = zabójca.
+        Player killer = base.getKiller();
+        for (LiveMob a : allies(24)) a.skills.trigger("ally_death", killer != null ? killer : target, 0);
+    }
+
+    /** Ten mob kogoś zabił - umiejętności "kill". */
+    void onKill(LivingEntity victim) {
+        if (alive()) skills.trigger("kill", victim, 0);
+    }
+
+    /** Gracz kliknął moba prawym - umiejętności "interact" (działa też przy NPC, po dialogu). */
+    void onClicked(Player p) {
+        if (alive()) skills.trigger("interact", p, 0);
+    }
+
+    /** Gracz, który ostatnio uderzył moba (jeśli jest online) - cel "attacker" w akcjach. */
+    Player lastAttacker() {
+        return lastAttacker == null ? null : Bukkit.getPlayer(lastAttacker);
     }
 
     /** Usuwa wszystko poza ciałem (wyładowanie chunka, wyłączenie pluginu) - ciało wróci z tagiem. */

@@ -27,7 +27,10 @@ public final class BehaviorLoader {
     static final Set<String> MOVEMENTS = Set.of("walk", "fly", "swim", "stationary");
     static final Set<String> ATTITUDES = Set.of("hostile", "neutral", "passive");
     static final Set<String> ATTACKS = Set.of("melee", "ranged", "none");
-    static final Set<String> TRIGGERS = Set.of("combat", "timer", "hit", "hurt", "spawn", "death", "phase", "item", "trade", "signal");
+    static final Set<String> TRIGGERS = Set.of("combat", "timer", "hit", "hurt", "spawn", "death", "phase", "item", "trade", "signal",
+            "near", "target", "interact", "kill", "ally_death");
+    /** Najwięcej akcji w jednej umiejętności po rozwinięciu powtórzeń (repeat). */
+    static final int MAX_ACTIONS = 400;
 
     private BehaviorLoader() {}
 
@@ -123,13 +126,42 @@ public final class BehaviorLoader {
             JsonObject a = e.getAsJsonObject();
             String type = str(a, "type", "");
             if (type.isBlank()) continue;
-            actions.add(new Action(type, clamp(num(a, "at", 0), 0, 600), params(a)));
+            // repeat x every: kopie akcji co "every" sekund (np. 5 uderzeń pioruna co 0.4 s)
+            double at = clamp(num(a, "at", 0), 0, 600);
+            int repeat = (int) clamp(num(a, "repeat", 1), 1, 100);
+            double every = clamp(num(a, "every", 0.5), 0.05, 60);
+            Params p = params(a);
+            List<MobBehavior.Cond> when = conds(a, "if");
+            for (int i = 0; i < repeat && actions.size() < MAX_ACTIONS; i++) {
+                double t = at + i * every;
+                if (t > 600) break;
+                actions.add(new Action(type, t, p, when));
+            }
         }
         actions.sort((x, y) -> Double.compare(x.at(), y.at()));
         return new Skill(str(s, "name", "skill"), pick(str(s, "trigger", "combat"), TRIGGERS, "combat"), clamp(num(s, "cooldown", 10), 0, 3600),
                 clamp(num(s, "rangeMin", 0), 0, 256), clamp(num(s, "rangeMax", 16), 0, 256), clamp(num(s, "chance", 1), 0, 1),
                 clamp(num(s, "healthBelow", 1), 0, 1), (int) clamp(num(s, "phase", 0), 0, 100), strOrNull(s, "animation"), List.copyOf(actions),
-                str(s, "item", ""));
+                str(s, "item", ""), conds(s, "conditions"), also(s));
+    }
+
+    /** Dodatkowe wyzwalacze umiejętności (pole "also") - znane, bez powtórzeń. */
+    private static List<String> also(JsonObject s) {
+        List<String> out = new ArrayList<>();
+        for (String t : strings(s, "also")) if (TRIGGERS.contains(t) && !out.contains(t)) out.add(t);
+        return List.copyOf(out);
+    }
+
+    /** Lista warunków (pole "conditions" umiejętności albo "if" akcji); bez typu - pomijany. */
+    static List<MobBehavior.Cond> conds(JsonObject o, String key) {
+        List<MobBehavior.Cond> out = new ArrayList<>();
+        for (JsonElement e : arr(o, key)) {
+            if (!e.isJsonObject()) continue;
+            JsonObject c = e.getAsJsonObject();
+            String type = str(c, "type", "");
+            if (!type.isBlank()) out.add(new MobBehavior.Cond(type, bool(c, "not", false), params(c)));
+        }
+        return List.copyOf(out);
     }
 
     // ---- stary config.yml ----
@@ -290,6 +322,8 @@ public final class BehaviorLoader {
             JsonPrimitive p = e.getValue().getAsJsonPrimitive();
             m.put(e.getKey(), p.isNumber() ? (Object) p.getAsDouble() : p.isBoolean() ? (Object) p.getAsBoolean() : p.getAsString());
         }
+        // YAML 1.1 (Bukkit) czyta klucz on: bez cudzysłowu jako true - ręcznie edytowany mobs.yml.
+        if (!m.containsKey("on") && m.get("true") instanceof String s) m.put("on", m.remove("true"));
         return new Params(Map.copyOf(m));
     }
 

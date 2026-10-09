@@ -257,9 +257,14 @@ public final class MainpluginsMobs extends JavaPlugin implements Listener, TabEx
                 }
             }
         }
-        if (m == null || !m.bh.npc().enabled()) return;
+        if (m == null) return;
+        if (!m.bh.npc().enabled()) {
+            m.onClicked(event.getPlayer()); // umiejętności "interact" zwykłego moba
+            return;
+        }
         event.setCancelled(true);
         m.onInteract(event.getPlayer());
+        m.onClicked(event.getPlayer());
     }
 
     /** Fajerwerk z akcji "firework" (np. wieśniak-fajerwerk) - sam efekt, bez obrażeń. */
@@ -383,6 +388,12 @@ public final class MainpluginsMobs extends JavaPlugin implements Listener, TabEx
             m.onDeath();
             return;
         }
+        // Ofiara zabita przez naszego moba (cios albo pocisk) - jego umiejętności "kill".
+        if (event.getEntity().getLastDamageCause() instanceof EntityDamageByEntityEvent last) {
+            Entity d = last.getDamager();
+            LiveMob killer = of(d instanceof Projectile pr && pr.getShooter() instanceof Entity sh ? sh : d);
+            if (killer != null) killer.onKill(event.getEntity());
+        }
         for (LiveMob owner : live.values()) {
             if (owner.ownsMinion(event.getEntity())) {
                 event.getDrops().clear();
@@ -417,7 +428,21 @@ public final class MainpluginsMobs extends JavaPlugin implements Listener, TabEx
         String sub = args.length > 0 ? args[0].toLowerCase(Locale.ROOT) : "";
         switch (sub) {
             case "spawn" -> {
-                // Z konsoli / RCON (aplikacja): /@mob spawn <mob> [ilość] <gracz> - przy tym graczu.
+                // Z konsoli / RCON (aplikacja): /@mob spawn <mob> [ilość] <gracz> - przy tym graczu,
+                // albo /@mob spawn <mob> <ilość> <świat> <x> <y> <z> - w miejscu (bloki poleceń, serwer bez graczy).
+                if (args.length >= 7 && mobs.containsKey(args[1].toLowerCase(Locale.ROOT))) {
+                    World w = Bukkit.getWorld(args[3]);
+                    try {
+                        if (w == null) throw new NumberFormatException(args[3]);
+                        Location at = new Location(w, Double.parseDouble(args[4]), Double.parseDouble(args[5]), Double.parseDouble(args[6]));
+                        int n = Math.max(1, Math.min(50, Integer.parseInt(args[2])));
+                        for (int i = 0; i < n; i++) spawn(args[1], at.clone().add(i == 0 ? 0 : ThreadLocalRandom.current().nextDouble(-2, 2), 0, i == 0 ? 0 : ThreadLocalRandom.current().nextDouble(-2, 2)));
+                        lang.send(sender, this, "admin.spawned", Map.of("mob", behaviors.get(args[1].toLowerCase(Locale.ROOT)).name(), "count", String.valueOf(n)));
+                    } catch (NumberFormatException e) {
+                        sender.sendMessage("/@mob spawn <mob> <amount> <world> <x> <y> <z>");
+                    }
+                    return true;
+                }
                 Player p = args.length >= 4 ? Bukkit.getPlayerExact(args[3]) : sender instanceof Player self ? self : null;
                 if (p == null) {
                     lang.send(sender, this, "admin.only-player");

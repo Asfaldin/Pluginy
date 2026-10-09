@@ -237,4 +237,50 @@ class BehaviorLoaderTest {
         assertTrue(b.npc().oncePerPlayer());
         assertFalse(BehaviorLoader.defaults("x").npc().enabled());
     }
+
+    @Test
+    void logikaV2WarunkiPowtorzeniaWyzwalacze() {
+        String json = """
+                {"id":"boss","bones":[],"animations":[],
+                 "behavior":{"skills":[{"name":"furia","trigger":"near","also":["interact","bogus","near","interact"],"rangeMax":6,
+                   "conditions":[{"type":"health_below","value":50},{"type":"night","not":true},{"type":""}],
+                   "actions":[{"type":"lightning","at":0.5,"repeat":3,"every":0.25,"on":"random_player","onRadius":12,
+                               "if":[{"type":"var","name":"rage","op":">=","value":2}]},
+                              {"type":"var_add","at":0,"name":"rage","value":1}]},
+                   {"name":"x","trigger":"kill"},{"name":"y","trigger":"ally_death"},{"name":"z","trigger":"nonsense"},
+                   {"name":"many","actions":[{"type":"sound","repeat":1000,"every":0.05}]}]}}
+                """;
+        MobBehavior b = BehaviorLoader.fromJson(BehaviorLoader.behaviorOf(json), "Boss");
+        MobBehavior.Skill s = b.skills().get(0);
+        assertEquals("near", s.trigger());
+        assertEquals(java.util.List.of("interact", "near"), s.also());
+        assertTrue(s.on("interact") && s.on("near") && !s.on("combat"));
+        assertEquals(2, s.conditions().size());
+        assertEquals("health_below", s.conditions().get(0).type());
+        assertEquals(50, s.conditions().get(0).p().num("value", 0));
+        assertTrue(s.conditions().get(1).not());
+        // var_add (0 s) + 3 pioruny: 0.5, 0.75, 1.0
+        assertEquals(4, s.actions().size());
+        assertEquals("var_add", s.actions().get(0).type());
+        assertEquals(1.0, s.actions().get(3).at(), 1e-9);
+        assertEquals("random_player", s.actions().get(1).p().str("on", ""));
+        assertEquals("var", s.actions().get(1).conditions().get(0).type());
+        assertEquals(">=", s.actions().get(1).conditions().get(0).p().str("op", ""));
+        assertEquals("kill", b.skills().get(1).trigger());
+        assertEquals("ally_death", b.skills().get(2).trigger());
+        assertEquals("combat", b.skills().get(3).trigger());
+        assertEquals(100, b.skills().get(4).actions().size());
+        assertTrue(BehaviorLoader.defaults("x").skills().isEmpty());
+    }
+
+    @Test
+    void porownaniaZmiennych() {
+        assertTrue(SkillRunner.compare(3, ">=", 3));
+        assertTrue(SkillRunner.compare(2, "<", 3));
+        assertTrue(SkillRunner.compare(2, "!=", 3));
+        assertTrue(SkillRunner.compare(3, "=", 3));
+        assertFalse(SkillRunner.compare(3, ">", 3));
+        assertEquals("5", SkillRunner.fmt(5.0));
+        assertEquals("2.50", SkillRunner.fmt(2.5));
+    }
 }

@@ -21,8 +21,8 @@ import {
 import { createSession, deleteSession, deleteSessionsForCustomer, markSessionMfa, resolveSessionInfo } from "./sessions.js";
 import { generateSecret, otpauthUrl, verifyTotp } from "./totp.js";
 import QRCode from "qrcode";
-import { recordHit, visitorStats } from "./analytics.js";
-import { noteVisit, notifySignup, notifySurvey } from "./siteNotify.js";
+import { recordEvent, recordHit, visitorStats } from "./analytics.js";
+import { noteVisit, notifyAccount, notifySignup, notifySurvey } from "./siteNotify.js";
 import { CATEGORIES, INDIVIDUAL_PLUGINS, PACKAGES } from "./catalog.js";
 import { sendEmail } from "./mailer.js";
 import { allowDownload, findJar, listJars, logDownload } from "./pluginJars.js";
@@ -220,6 +220,9 @@ app.post("/api/auth/register", limitByIp("register", 10, 60 * 60 * 1000), (req, 
         return res.status(409).json({ error: "An account with this email already exists." });
     }
     const token = createSession(customer.id);
+    // statystyki: tylko licznik nowych kont na dzień (+ zbiorcze powiadomienie na Discordzie)
+    recordEvent("account");
+    notifyAccount();
     res.status(201).json({ token, customer });
 });
 

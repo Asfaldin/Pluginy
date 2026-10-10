@@ -11,7 +11,7 @@ import { readJson, writeJson } from "./jsonStore.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_FILE = join(__dirname, "..", "data", "analytics.json");
 const KEEP_DAYS = 730;
-const EVENTS = new Set(["signup", "survey_open", "survey_done", "discord"]);
+const EVENTS = new Set(["signup", "survey_open", "survey_done", "discord", "download"]);
 const BOT = /bot|crawl|spider|slurp|preview|headless|lighthouse|monitor|curl|wget|python|scan|http-client|go-http|java\//i;
 
 let db = null;
@@ -66,6 +66,12 @@ export function recordHit(body, ip, ua) {
     }
 }
 
+/** Zdarzenie z serwera (np. "account" - ktoś założył konto w aplikacji): sama liczba na dzień, bez danych osoby. */
+export function recordEvent(e) {
+    inc(bucket(today()).events, e);
+    dirty = true;
+}
+
 /** Zapis na dysk najwyżej raz na minutę (nie przy każdym wejściu). */
 export function flushAnalytics() {
     if (!dirty || !db) return;
@@ -81,6 +87,22 @@ for (const sig of ["SIGTERM", "SIGINT"]) {
         flushAnalytics();
         process.exit(0);
     });
+}
+
+/** Dzisiejsze liczby (UTC) - wejścia, odwiedzający i zdarzenia. */
+export function todayStats() {
+    const d = load().days[today()];
+    return { views: d?.views ?? 0, visitors: d?.visitors ?? 0, events: { ...(d?.events ?? {}) } };
+}
+
+/** Sumy od początku zbierania: odwiedzający i każde zdarzenie (pobrania, konta, zapisy...). */
+export function allTimeTotals() {
+    const out = { visitors: 0, events: {} };
+    for (const d of Object.values(load().days)) {
+        out.visitors += d.visitors ?? 0;
+        for (const [k, n] of Object.entries(d.events ?? {})) out.events[k] = (out.events[k] ?? 0) + n;
+    }
+    return out;
 }
 
 /** Ostatnie `days` dni (od najstarszego), puste dni jako zera - dla panelu. */

@@ -243,11 +243,22 @@ public final class MainpluginsCore extends JavaPlugin {
             }
         }
 
+        // Dla aplikacji: raport serwera (wersja, pluginy) i komendy przez pliki, gdy RCON jest niedostępny.
+        serverInfo = new elo.mainplugins.core.server.ServerInfoWriter(this);
+        serverInfo.start();
+        commandBridge = new elo.mainplugins.core.server.FileCommandBridge(this);
+        commandBridge.start();
+
         getLogger().info("MainpluginsCore włączony - EconomyService dostępny dla innych pluginów.");
     }
 
+    private elo.mainplugins.core.server.ServerInfoWriter serverInfo;
+    private elo.mainplugins.core.server.FileCommandBridge commandBridge;
+
     @Override
     public void onDisable() {
+        if (commandBridge != null) commandBridge.stop();
+        if (serverInfo != null) serverInfo.stop();
         if (resourcePackManager != null) resourcePackManager.zamknij();
         if (economyManager != null) economyManager.zamknij();   // <-- NOWE
         getServer().getServicesManager().unregisterAll(this);

@@ -3,6 +3,9 @@
 // liczby, domeny, z których ktoś przyszedł, i odpowiedzi wyboru z ankiety. Szczegóły są w panelu admina.
 // Odwiedziny zbieramy w paczki (co 10 minut), żeby kanał nie zamienił się w spam.
 
+import { allTimeTotals, todayStats } from "./analytics.js";
+import { customerCount } from "./customers.js";
+
 const PANEL = `${process.env.PUBLIC_API_URL || "https://api.rsmc-network.pl"}/admin/community.html`;
 const BATCH_MS = 10 * 60 * 1000;
 
@@ -23,7 +26,7 @@ async function post(content) {
 
 // ---- odwiedziny w paczkach ----
 let pending = { visitors: 0, views: 0, refs: {}, events: {} };
-const EVENT_LABELS = { survey_open: "opened the survey", discord: "clicked Discord" };
+const EVENT_LABELS = { survey_open: "opened the survey", discord: "clicked Discord", download: "downloaded the app", account: "created an account" };
 
 export function noteVisit({ newVisitor, ref, event }) {
     if (event) {
@@ -45,13 +48,42 @@ function flushVisits() {
     const from = Object.entries(p.refs).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} (${n})`).join(", ");
     const lines = [];
     if (p.visitors) lines.push(`👀 **${p.visitors} new visitor${p.visitors === 1 ? "" : "s"}** in the last 10 min${from ? ` · from ${from}` : ""}`);
+    const dl = p.events.download;
+    delete p.events.download;
+    if (dl) lines.push(`⬇️ **${dl} download${dl === 1 ? "" : "s"}** in the last 10 min · ${todayStats().events.download ?? dl} today`);
     const ev = Object.entries(p.events).map(([k, n]) => `${n} ${EVENT_LABELS[k]}`).join(", ");
     if (ev) lines.push(`↳ ${ev}`);
     post(lines.join("\n"));
 }
 setInterval(flushVisits, BATCH_MS).unref();
 
+// ---- codzienne podsumowanie o 20:00 czasu polskiego ----
+let lastSummary = "";
+function dailySummary() {
+    const now = new Date();
+    const hour = now.toLocaleString("en-GB", { timeZone: "Europe/Warsaw", hour: "2-digit", hour12: false });
+    const day = now.toLocaleDateString("en-CA", { timeZone: "Europe/Warsaw" });
+    if (hour !== "20" || lastSummary === day) return;
+    lastSummary = day;
+    const t = todayStats(), all = allTimeTotals();
+    const e = (o, k) => o.events[k] ?? 0;
+    post(
+        [
+            `📊 **Daily summary · ${day}**`,
+            `Today: 👀 ${t.visitors} visitors · ⬇️ ${e(t, "download")} downloads · 🎉 ${e(t, "account")} new accounts · 📩 ${e(t, "signup")} sign-ups`,
+            `All time: ⬇️ ${e(all, "download")} downloads · 👥 ${customerCount()} accounts · 👀 ${all.visitors} visitors`,
+            `<${PANEL}>`,
+        ].join("\n"),
+    );
+}
+setInterval(dailySummary, 5 * 60 * 1000).unref();
+
 // ---- zdarzenia od razu ----
+
+/** Nowe konto w aplikacji - od razu, z sumą kont (bez e-maila). */
+export function notifyAccount() {
+    post(`🎉 **New account created** · ${customerCount()} accounts total · ${todayStats().events.account ?? 1} today`);
+}
 
 export function notifySignup({ confirmed, total, confirmedTotal, source }) {
     post(

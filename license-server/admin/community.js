@@ -98,7 +98,7 @@ function renderSignups() {
 // ---- odwiedziny (anonimowe liczniki dzienne z src/analytics.js) ----
 
 let range = 7;
-const EVENT_LABELS = { signup: "Signed up", survey_open: "Opened the survey", survey_done: "Finished the survey", discord: "Clicked Discord" };
+const EVENT_LABELS = { signup: "Signed up", survey_open: "Opened the survey", survey_done: "Finished the survey", discord: "Clicked Discord", download: "Downloaded the app", account: "Created an account (app)" };
 
 function sumMaps(days, key) {
   const out = {};
@@ -134,6 +134,8 @@ function renderVisitors() {
   $("v-views").textContent = sum("views");
   $("v-signups").textContent = events.signup || 0;
   $("v-conv").textContent = visitors ? `${(((events.signup || 0) / visitors) * 100).toFixed(1)}%` : "-";
+  $("v-downloads").textContent = events.download || 0;
+  $("v-accounts").textContent = events.account || 0;
 
   // wykres: odwiedzający dziennie (przy "Today" pokazujemy ostatnie 7 dni dla kontekstu)
   const chartDays = all.slice(-Math.max(range, 7));

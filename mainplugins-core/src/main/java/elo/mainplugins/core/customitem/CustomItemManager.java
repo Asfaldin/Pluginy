@@ -3,16 +3,13 @@ package elo.mainplugins.core.customitem;
 import elo.mainplugins.core.api.CustomItemProvider;
 import elo.mainplugins.core.api.CustomItemService;
 import elo.mainplugins.core.util.CustomItemKeys;
-import io.papermc.paper.datacomponent.DataComponentTypes;
-import io.papermc.paper.datacomponent.item.ItemEnchantments;
-import io.papermc.paper.datacomponent.item.ItemLore;
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
-import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
@@ -109,24 +106,18 @@ public class CustomItemManager implements CustomItemService, Listener {
                 .map(line -> (Component) SERIALIZER.deserialize(line).decoration(TextDecoration.ITALIC, false))
                 .toList();
 
-        Key model = null;
+        NamespacedKey model = null;
         if (spec.model() != null) {
-            try {
-                model = Key.key(spec.model());
-            } catch (IllegalArgumentException e) {
-                plugin.getLogger().warning(where + " has invalid model '" + spec.model() + "' - ignoring model.");
-            }
+            model = NamespacedKey.fromString(spec.model());
+            if (model == null) plugin.getLogger().warning(where + " has invalid model '" + spec.model() + "' - ignoring model.");
         }
 
         Map<Enchantment, Integer> enchants = new LinkedHashMap<>();
         Registry<Enchantment> registry = RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT);
         for (Map.Entry<String, Integer> e : spec.enchants().entrySet()) {
-            Enchantment enchantment = null;
-            try {
-                enchantment = registry.get(Key.key(e.getKey()));
-            } catch (IllegalArgumentException ignored) {
-                // zła składnia klucza - potraktuj jak nieznany enchant
-            }
+            NamespacedKey key = NamespacedKey.fromString(e.getKey());
+            // zła składnia klucza - potraktuj jak nieznany enchant
+            Enchantment enchantment = key == null ? null : registry.get(key);
             if (enchantment == null) {
                 plugin.getLogger().warning(where + " has unknown enchant '" + e.getKey() + "' - skipping enchant.");
                 continue;
@@ -172,16 +163,20 @@ public class CustomItemManager implements CustomItemService, Listener {
         return null;
     }
 
+    /**
+     * Przez ItemMeta, nie komponenty danych - działa od Paper 1.20.6 do najnowszego. Własny model
+     * (item_model) istnieje dopiero od 1.21.4, więc ustawiany przez ItemModelSupport tylko tam, gdzie jest.
+     */
     private ItemStack build(CustomItemDefinition def, int amount) {
         ItemStack item = new ItemStack(def.material(), amount);
-        if (def.name() != null) item.setData(DataComponentTypes.CUSTOM_NAME, def.name());
-        if (!def.lore().isEmpty()) item.setData(DataComponentTypes.LORE, ItemLore.lore(def.lore()));
-        if (def.model() != null) item.setData(DataComponentTypes.ITEM_MODEL, def.model());
-        if (def.glint()) item.setData(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, true);
-        if (!def.enchants().isEmpty()) item.setData(DataComponentTypes.ENCHANTMENTS, ItemEnchantments.itemEnchantments(def.enchants()));
-        if (def.unbreakable()) item.setData(DataComponentTypes.UNBREAKABLE);
-
         ItemMeta meta = item.getItemMeta();
+        if (def.name() != null) meta.displayName(def.name());
+        if (!def.lore().isEmpty()) meta.lore(def.lore());
+        if (def.glint()) meta.setEnchantmentGlintOverride(true);
+        def.enchants().forEach((enchantment, level) -> meta.addEnchant(enchantment, level, true));
+        if (def.unbreakable()) meta.setUnbreakable(true);
+        if (def.model() != null && !ItemModelSupport.apply(meta, def.model()))
+            ItemModelSupport.warnOnce(plugin, "Custom item models need Minecraft 1.21.4+ - '" + def.id() + "' uses the plain material look on this server.");
         meta.getPersistentDataContainer().set(CustomItemKeys.CUSTOM_ITEM_ID, PersistentDataType.STRING, def.id());
         item.setItemMeta(meta);
         return item;

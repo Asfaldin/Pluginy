@@ -10,7 +10,7 @@ limits:
   ranks: {}
 
 min-price: 1
-max-price: 10000000
+max-price: 1000000
 
 # After how many days an unsold offer is taken off the market (0 = never).
 expire-days: 7

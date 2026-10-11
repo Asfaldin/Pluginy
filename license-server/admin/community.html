@@ -14,7 +14,8 @@
       <div class="brand">RSMC <span>Community</span></div>
       <nav class="cm-tabs">
         <button type="button" data-tab="visitors" class="on">Visitors</button>
-        <button type="button" data-tab="signups">Sign-ups <span id="n-signups"></span></button>
+        <button type="button" data-tab="accounts">App accounts <span id="n-accounts"></span></button>
+        <button type="button" data-tab="signups">Newsletter <span id="n-signups"></span></button>
         <button type="button" data-tab="survey">Survey <span id="n-survey"></span></button>
       </nav>
       <span class="cm-spacer"></span>
@@ -45,6 +46,23 @@
       </div>
       <div id="v-chart" class="cm-chart"></div>
       <div id="v-tables" class="cm-summary"></div>
+    </main>
+
+    <main id="accounts" class="cm-view" hidden>
+      <div class="cm-stats">
+        <div><b id="a-total">0</b><span>accounts</span></div>
+        <div><b id="a-today">0</b><span>today (UTC)</span></div>
+        <div><b id="a-week">0</b><span>last 7 days</span></div>
+      </div>
+      <div class="cm-bar">
+        <input id="a-search" type="search" placeholder="Search email..." />
+        <span class="cm-spacer"></span>
+        <button id="a-csv" type="button">Export CSV</button>
+      </div>
+      <table class="cm-table">
+        <thead><tr><th>Email</th><th>Created</th><th>Role</th></tr></thead>
+        <tbody id="a-rows"></tbody>
+      </table>
     </main>
 
     <main id="signups" class="cm-view" hidden>

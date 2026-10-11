@@ -1,0 +1,29 @@
+name: MainpluginsCoreMiner
+version: ${project.version}
+main: elo.mainplugins.coreminer.MainpluginsCoreMiner
+api-version: '1.20'
+depend: [MainpluginsCore]
+
+commands:
+  coreminer:
+    description: Mine a whole vein of ores or a whole tree - turn it on or off for yourself
+    usage: /<command> [on|off|info]
+    aliases: [veinminer, cm]
+    permission: mainplugins.coreminer.use
+    permission-message: "&cNie masz permisji do tej komendy!"
+  "@coreminer":
+    description: (Admin) Reload coreminer.yml without a restart
+    usage: /<command> reload
+    permission: mainplugins.coreminer.admin
+    permission-message: "&cNie masz permisji do tej komendy!"
+
+permissions:
+  mainplugins.coreminer.use:
+    description: Mine whole veins with CoreMiner
+    default: true
+  mainplugins.coreminer.bypass.cooldown:
+    description: No waiting between veins
+    default: op
+  mainplugins.coreminer.admin:
+    description: Reload CoreMiner settings
+    default: op

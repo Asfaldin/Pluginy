@@ -3,6 +3,7 @@ package elo.mainplugins.spawners.config;
 import org.bukkit.Material;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Ustawienia gospodarcze customowych spawnerów wczytane z spawnery-typy.yml (patrz
@@ -13,6 +14,8 @@ import java.util.List;
  * @param ulepszeniaWlaczone false = okno ulepszeń się nie otwiera, wszystkie spawnery działają na poziomie 1
  * @param cenyIlosc          cena podstawowa ulepszenia Ilości z poziomu 1, 2, 3... na kolejny (dalsze poziomy = ostatnia)
  * @param cenySzybkosc       to samo dla Szybkości
+ * @param limityUprawnien    uprawnienie -> limit spawnerów na wyspę (np. VIP 20); gracz dostaje najwyższy pasujący
+ * @param ktoZbiera          kto może podnieść spawner narzędziem zbierania
  */
 public record SpawnerSettings(
         int maxPoziom,
@@ -26,8 +29,13 @@ public record SpawnerSettings(
         Material narzedzieZbierania,
         boolean ulepszeniaWlaczone,
         List<Integer> cenyIlosc,
-        List<Integer> cenySzybkosc
+        List<Integer> cenySzybkosc,
+        Map<String, Integer> limityUprawnien,
+        KtoZbiera ktoZbiera
 ) {
+    /** Kto może podnieść postawiony spawner. */
+    public enum KtoZbiera { WLASCICIEL, WYSPA, KAZDY, NIKT }
+
     /** Sekundy między cyklami spawnu przy danym poziomie - im wyższy poziom, tym częściej (przy domyślnych wartościach). */
     public int interwalSekund(int poziom) {
         return Math.max(1, interwalSekundBazowy + interwalSekundNaPoziom * poziom);

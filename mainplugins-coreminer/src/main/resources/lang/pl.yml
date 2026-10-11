@@ -1,0 +1,14 @@
+# Mainplugins CoreMiner - polskie wiadomości. Kolory: &a &e ...  Zmienne w {klamrach}.
+mined: "&a⛏ Wykopano {count} bloków &7({group})"
+cooldown: "&cCoreMiner się ładuje - {seconds} s"
+stopped:
+  tool: "&eZatrzymano po {count} blokach, żeby nie zniszczyć narzędzia."
+  money: "&cZatrzymano po {count} blokach - nie stać Cię na {price} za blok."
+toggle:
+  on: "&aCoreMiner włączony."
+  off: "&7CoreMiner wyłączony - kopiesz po jednym bloku."
+  sneak-hint: "&7Kucnij podczas kopania, żeby wykopać całą żyłę."
+info: "&6CoreMiner: &f{state} &8| &7{mode} &8| &7grupy (maks. bloków): &f{groups}"
+players-only: "&cTej komendy może użyć tylko gracz."
+reload:
+  done: "&aCoreMiner przeładowany."

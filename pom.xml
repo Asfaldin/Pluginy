@@ -54,6 +54,7 @@
         <module>mainplugins-guilds</module>
         <module>mainplugins-claims</module>
         <module>mainplugins-cosmetics</module>
+        <module>mainplugins-coreminer</module>
     </modules>
 
     <properties>

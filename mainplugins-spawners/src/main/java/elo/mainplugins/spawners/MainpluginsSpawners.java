@@ -56,6 +56,11 @@ public final class MainpluginsSpawners extends JavaPlugin {
             });
         }
 
+        if (getCommand("@spawner") != null) {
+            SpawnerAdminCommand admin = new SpawnerAdminCommand(this, spawnerManager, lang);
+            getCommand("@spawner").setExecutor(admin);
+            getCommand("@spawner").setTabCompleter(admin);
+        }
         if (getCommand("@reloadspawnery") != null) {
             getCommand("@reloadspawnery").setExecutor((sender, command, label, args) -> {
                 spawnerManager.aktualizujKonfiguracje(SpawnerConfigLoader.load(this));

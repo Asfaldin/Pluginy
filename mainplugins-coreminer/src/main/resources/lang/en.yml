@@ -1,0 +1,14 @@
+# Mainplugins CoreMiner - English messages. Colors: &a &e ...  Variables in {braces}.
+mined: "&a⛏ Mined {count} blocks &7({group})"
+cooldown: "&cCoreMiner is cooling down - {seconds} s"
+stopped:
+  tool: "&eStopped after {count} blocks so your tool doesn't break."
+  money: "&cStopped after {count} blocks - you can't afford {price} per block."
+toggle:
+  on: "&aCoreMiner on."
+  off: "&7CoreMiner off - you mine one block at a time."
+  sneak-hint: "&7Sneak while mining to dig the whole vein."
+info: "&6CoreMiner: &f{state} &8| &7{mode} &8| &7groups (max blocks): &f{groups}"
+players-only: "&cOnly a player can use this."
+reload:
+  done: "&aCoreMiner reloaded."

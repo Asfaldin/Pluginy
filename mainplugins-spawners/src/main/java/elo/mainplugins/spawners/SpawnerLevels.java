@@ -9,21 +9,11 @@ import java.io.IOException;
 import java.util.UUID;
 
 /**
- * Poziomy ulepszeń spawnerów, zapisane w poziomy.yml: właściciel -> typ -> ilosc / szybkosc.
+ * Poziomy ulepszeń spawnerów, zapisane w poziomy.yml: właściciel -> typ -> id ulepszenia (np. ilosc, szybkosc, drop).
  * Właściciel = właściciel wyspy (gdy jest Skyblock i gracz ma wyspę) albo sam gracz - ten sam,
  * którego SpawnerManager zapisuje przy postawionym spawnerze. Brak wpisu = poziom 1.
  */
 final class SpawnerLevels {
-
-    enum Rodzaj {
-        ILOSC("ilosc"), SZYBKOSC("szybkosc");
-
-        final String klucz;
-
-        Rodzaj(String klucz) {
-            this.klucz = klucz;
-        }
-    }
 
     private final YamlConfiguration plik;
     private final AsyncConfigSaver saver;
@@ -38,12 +28,12 @@ final class SpawnerLevels {
         this.saver = new AsyncConfigSaver(plugin, plik, f, 30);
     }
 
-    int poziom(UUID wlasciciel, String typ, Rodzaj rodzaj) {
-        return Math.max(1, plik.getInt(wlasciciel + "." + typ + "." + rodzaj.klucz, 1));
+    int poziom(UUID wlasciciel, String typ, String ulepszenie) {
+        return Math.max(1, plik.getInt(wlasciciel + "." + typ + "." + ulepszenie, 1));
     }
 
-    void ustaw(UUID wlasciciel, String typ, Rodzaj rodzaj, int poziom) {
-        plik.set(wlasciciel + "." + typ + "." + rodzaj.klucz, poziom);
+    void ustaw(UUID wlasciciel, String typ, String ulepszenie, int poziom) {
+        plik.set(wlasciciel + "." + typ + "." + ulepszenie, poziom);
         saver.oznaczZmiane();
     }
 

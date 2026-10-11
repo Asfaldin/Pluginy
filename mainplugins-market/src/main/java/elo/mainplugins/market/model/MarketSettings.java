@@ -34,7 +34,7 @@ public record MarketSettings(int defaultLimit, long minPrice, long maxPrice, int
     }
 
     public static MarketSettings defaults() {
-        return new MarketSettings(10, 1, 10_000_000L, 7, true, false, 5, "", "GRAY_STAINED_GLASS_PANE",
+        return new MarketSettings(10, 1, 1_000_000L, 7, true, false, 5, "", "GRAY_STAINED_GLASS_PANE",
                 Map.copyOf(defaultButtons()), 54, DEFAULT_OFFER_SLOTS, Map.of());
     }
 }

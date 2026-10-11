@@ -44,3 +44,9 @@ body.cm { display: block; min-height: 100vh; overflow: auto; }
 .cm-colbar { width: 100%; max-width: 36px; min-height: 2px; border-radius: 4px 4px 0 0; background: #a855f7; }
 .cm-colnum { font-size: 0.72rem; color: #a39bbb; }
 .cm-colday { font-size: 0.7rem; color: #6f6887; height: 14px; }
+
+/* lejek aplikacji */
+.cm-funnel { grid-column: 1 / -1; }
+.cm-funnel .cm-label { min-width: 230px; }
+.cm-worst .cm-label, .cm-worst .cm-num { color: #f87171; font-weight: 700; }
+.cm-worst .cm-fill { background: #f87171; }

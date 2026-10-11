@@ -11,6 +11,29 @@
 # "ikona" = ikona w oknie ulepszen (/spawnery); brak = jajo spawnu tego moba.
 # "mnoznik" = ile razy drozsze sa ulepszenia tego spawnera od cen z sekcji "ulepszenia"
 # nizej (1.0 = tyle samo). Wynik zaokraglany do pelnych setek.
+#
+# CUSTOM MOBY z Kreatora mobow (plugin MainpluginsMobs): zamiast "encja" wpisz
+#   custom-mob: gryf          # id moba z Kreatora (jak w /@mob list)
+# Taki spawner robi moba z modelem, animacjami, umiejetnosciami i dropami z Kreatora,
+# a w klatce kreci sie miniatura jego modelu.
+#
+# Kazdy typ moze nadpisac ustawienia z sekcji "ustawienia" (brak = globalne):
+#   interwal-sekund, interwal-sekund-na-poziom, ilosc-na-cykl, ilosc-na-cykl-na-poziom,
+#   limit-kolejki, promien-aktywnosci,
+#   stackowanie: true/false   # true = jeden mob "Zombie x9"; false = osobne moby
+#   max-mobow-naraz: 6        # przy stackowanie: false - ile zywych naraz
+#   promien-spawnu: 3         # jak daleko od spawnera pojawiaja sie moby
+#   ai: true/false            # false = mob stoi w miejscu (farmy, tylko moby z gry)
+#   mnoznik-dropu: 1.0        # 2.0 = podwojny drop, 0 = bez dropu
+#   xp: -1                    # stale XP za zabicie (-1 = normalne)
+#   pora: zawsze/dzien/noc    # kiedy spawner dziala
+#   ulepszenia: true/false    # czy ten spawner jest w /spawnery
+#   ulepszenia-lista: [ilosc, drop]  # tylko te ulepszenia (brak = wszystkie z ulepszenia.lista)
+#   limit-na-wyspe: 0         # ile spawnerow TEGO typu na wyspe (0 = bez osobnego limitu)
+#   nametag: true/false       # napis "Zombie x9" nad mobem
+#   mob-w-klatce: true/false  # mob kreci sie w klatce spawnera
+#
+# Komendy admina: /@spawner give <gracz> <typ> [ilosc] | list | info | reload
 
 typy:
   COW:
@@ -83,6 +106,22 @@ ustawienia:
   limit-spawnerow-na-wyspe: 10
   promien-aktywnosci-gracza: 16
   narzedzie-zbierania: STICK
+  # Kto moze podniesc spawner narzedziem: wlasciciel / wyspa / kazdy / nikt (admin zawsze moze).
+  kto-moze-zbierac: wyspa
+  # Wyzszy limit spawnerow za uprawnienie (gracz dostaje najwyzszy pasujacy), np.:
+  # limity-uprawnien:
+  #   mainplugins.spawners.vip: 20
+  limity-uprawnien: {}
+  # Domyslne dla wszystkich typow (kazdy typ moze to nadpisac):
+  stackowanie: true
+  max-mobow-naraz: 6
+  promien-spawnu: 3
+  ai: true
+  mnoznik-dropu: 1.0
+  xp: -1
+  pora: zawsze
+  nametag: true
+  mob-w-klatce: true
 
 # Ulepszenia spawnerow: gracz wpisuje /spawnery albo klika swoj spawner pusta reka
 # i placi ze swojego portfela. Ilosc = wiecej mobow naraz, Szybkosc = czesciej.
@@ -93,3 +132,21 @@ ulepszenia:
   # "mnoznik" spawnera. Poziomy dalej niz lista biora ostatnia cene. Ilosc i Szybkosc maja osobne ceny.
   ceny-ilosc: [2500, 5000, 8500, 17000]
   ceny-szybkosc: [3500, 7000, 12000, 24000]
+  # Lista ulepszen - dodawaj, usuwaj, zmieniaj. Brak sekcji = Ilosc i Szybkosc jak wyzej.
+  # efekt: ilosc | szybkosc | drop | xp | max-naraz | stos | zasieg
+  # na-poziom: o ile zmienia sie efekt za kazdy kupiony poziom (drop +0.25x, xp +2, max-naraz +1,
+  #   stos +10, zasieg +4 bloki). Dla ilosc/szybkosc liczy sie wzor z "ustawienia" (na-poziom w typie/ustawieniach).
+  # ceny: cena podstawowa z poziomu 1, 2, 3... na kolejny (dalsze = ostatnia), x mnoznik spawnera.
+  lista:
+    ilosc:
+      nazwa: "Ilość"
+      efekt: ilosc
+      ikona: CHEST
+      max-poziom: 5
+      ceny: [2500, 5000, 8500, 17000]
+    szybkosc:
+      nazwa: "Szybkość"
+      efekt: szybkosc
+      ikona: CLOCK
+      max-poziom: 5
+      ceny: [3500, 7000, 12000, 24000]

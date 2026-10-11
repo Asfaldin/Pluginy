@@ -1058,7 +1058,7 @@ final class LiveMob {
      * Przedmiot części. hurt = czerwona barwa (ściany modelu mają tintindex 0, definicja przedmiotu
      * barwę "dye") - tak mob błyska przy trafieniu jak zwykłe moby. Starsze paczki: bez barwy, nic się nie psuje.
      */
-    private static ItemStack partStack(String itemKey, boolean hurt) {
+    static ItemStack partStack(String itemKey, boolean hurt) {
         ItemStack stack = new ItemStack(Material.PAPER);
         String[] key = itemKey.split(":", 2);
         stack.setData(DataComponentTypes.ITEM_MODEL, Key.key(key[0], key[1]));

@@ -41,6 +41,13 @@ export function customerCount() {
     return loadAll().length;
 }
 
+/** Konta do panelu admina (/admin/community.html) - tylko e-mail, data i rola, bez haseł i 2FA. */
+export function listAccounts() {
+    return loadAll()
+        .map((c) => ({ email: c.email, createdAt: c.createdAt, role: c.role ?? "customer" }))
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+
 export function findCustomerByEmail(email) {
     return loadAll().find((c) => c.email.toLowerCase() === email.toLowerCase()) ?? null;
 }

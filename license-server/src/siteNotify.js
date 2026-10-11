@@ -26,7 +26,10 @@ async function post(content) {
 
 // ---- odwiedziny w paczkach ----
 let pending = { visitors: 0, views: 0, refs: {}, events: {} };
-const EVENT_LABELS = { survey_open: "opened the survey", discord: "clicked Discord", download: "downloaded the app", account: "created an account" };
+const EVENT_LABELS = { survey_open: "opened the survey", discord: "clicked Discord", download: "downloaded the app", account: "created an account",
+    app_first_open: "opened the app for the first time", app_open: "used the app today", welcome_next: "passed the welcome screen",
+    terms_accepted: "accepted the beta terms", tour_done: "finished the tour", tour_skipped: "skipped the tour",
+    server_added: "added a server", plugin_installed: "installed a plugin", config_sent: "sent a config to a server", register_error: "hit a sign-up error" };
 
 export function noteVisit({ newVisitor, ref, event }) {
     if (event) {
@@ -71,7 +74,8 @@ function dailySummary() {
         [
             `📊 **Daily summary · ${day}**`,
             `Today: 👀 ${t.visitors} visitors · ⬇️ ${e(t, "download")} downloads · 🎉 ${e(t, "account")} new accounts · 📩 ${e(t, "signup")} sign-ups`,
-            `All time: ⬇️ ${e(all, "download")} downloads · 👥 ${customerCount()} accounts · 👀 ${all.visitors} visitors`,
+            `App today: 🚀 ${e(t, "app_first_open")} first opens · ✅ ${e(t, "terms_accepted")} accepted terms · 🖥️ ${e(t, "server_added")} added a server · 🧩 ${e(t, "plugin_installed")} installed a plugin · 📅 ${e(t, "app_open")} active`,
+            `All time: ⬇️ ${e(all, "download")} downloads · 🚀 ${e(all, "app_first_open")} installs opened · 👥 ${customerCount()} accounts · 👀 ${all.visitors} visitors`,
             `<${PANEL}>`,
         ].join("\n"),
     );

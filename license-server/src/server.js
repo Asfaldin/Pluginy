@@ -17,6 +17,7 @@ import {
     setPendingTotp,
     checkTotp,
     noteLoginIp,
+    listAccounts,
 } from "./customers.js";
 import { createSession, deleteSession, deleteSessionsForCustomer, markSessionMfa, resolveSessionInfo } from "./sessions.js";
 import { generateSecret, otpauthUrl, verifyTotp } from "./totp.js";
@@ -720,7 +721,7 @@ function requireAdminRole(req, res, next) {
 }
 
 app.get("/api/admin/community", requireAdminRole, (_req, res) => {
-    res.json({ signups: waitlistAll(), survey: surveyResponses(), visitors: visitorStats(90) });
+    res.json({ signups: waitlistAll(), accounts: listAccounts(), survey: surveyResponses(), visitors: visitorStats(90) });
 });
 
 app.post("/api/admin/community/signups/remove", requireAdminRole, (req, res) => {

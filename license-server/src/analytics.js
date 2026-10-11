@@ -11,7 +11,9 @@ import { readJson, writeJson } from "./jsonStore.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_FILE = join(__dirname, "..", "data", "analytics.json");
 const KEEP_DAYS = 730;
-const EVENTS = new Set(["signup", "survey_open", "survey_done", "discord", "download"]);
+const EVENTS = new Set(["signup", "survey_open", "survey_done", "discord", "download",
+    // lejek aplikacji (desktop-app/src/lib/track.ts)
+    "app_first_open", "app_open", "welcome_next", "terms_accepted", "tour_done", "tour_skipped", "server_added", "plugin_installed", "config_sent", "register_error"]);
 const BOT = /bot|crawl|spider|slurp|preview|headless|lighthouse|monitor|curl|wget|python|scan|http-client|go-http|java\//i;
 
 let db = null;

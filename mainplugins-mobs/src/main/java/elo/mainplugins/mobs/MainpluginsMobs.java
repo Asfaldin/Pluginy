@@ -94,6 +94,8 @@ public final class MainpluginsMobs extends JavaPlugin implements Listener, TabEx
             getCommand("@mob").setTabCompleter(this);
         }
         Bukkit.getScheduler().runTaskTimer(this, this::tickAll, 1L, 1L);
+        // Custom moby dla innych pluginów (np. spawnery z mobami z Kreatora) - wyrejestrowane samo przy wyłączeniu.
+        getServer().getServicesManager().register(elo.mainplugins.core.api.CustomMobService.class, new MobServiceImpl(this), this, org.bukkit.plugin.ServicePriority.Normal);
     }
 
     @Override
@@ -288,6 +290,20 @@ public final class MainpluginsMobs extends JavaPlugin implements Listener, TabEx
 
     private LiveMob of(Entity e) {
         return e == null ? null : live.get(e.getUniqueId());
+    }
+
+    // ---- dla MobServiceImpl (Spawnery i inne pluginy) ----
+
+    LiveMob liveOf(Entity e) {
+        return of(e);
+    }
+
+    MobDef def(String id) {
+        return id == null ? null : mobs.get(id.toLowerCase(Locale.ROOT));
+    }
+
+    java.util.Set<String> mobIds() {
+        return java.util.Set.copyOf(mobs.keySet());
     }
 
     // ---- zdarzenia ----

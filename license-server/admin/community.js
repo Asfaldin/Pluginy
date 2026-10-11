@@ -51,6 +51,35 @@ function download(name, text) {
 
 // ---- zapisy ----
 
+// ---- konta z aplikacji (rejestracja w RSMCMANAGER) ----
+
+function renderAccounts() {
+  const all = data.accounts || [];
+  const day = new Date().toISOString().slice(0, 10);
+  const week = Date.now() - 7 * 864e5;
+  $("n-accounts").textContent = all.length;
+  $("a-total").textContent = all.length;
+  $("a-today").textContent = all.filter((a) => String(a.createdAt).startsWith(day)).length;
+  $("a-week").textContent = all.filter((a) => Date.parse(a.createdAt) > week).length;
+  const q = $("a-search").value.trim().toLowerCase();
+  const rows = all.filter((a) => !q || a.email.includes(q));
+  const tb = $("a-rows");
+  tb.replaceChildren();
+  if (!rows.length) {
+    const tr = el("tr");
+    const td = el("td", "muted", all.length ? "Nothing matches." : "No accounts yet.");
+    td.colSpan = 3;
+    tr.append(td);
+    tb.append(tr);
+    return;
+  }
+  for (const a of rows) {
+    const tr = el("tr");
+    tr.append(el("td", "mono", a.email), el("td", null, fmt(a.createdAt)), el("td", "muted", a.role));
+    tb.append(tr);
+  }
+}
+
 function renderSignups() {
   const all = data.signups;
   const week = Date.now() - 7 * 864e5;
@@ -98,7 +127,51 @@ function renderSignups() {
 // ---- odwiedziny (anonimowe liczniki dzienne z src/analytics.js) ----
 
 let range = 7;
-const EVENT_LABELS = { signup: "Signed up", survey_open: "Opened the survey", survey_done: "Finished the survey", discord: "Clicked Discord", download: "Downloaded the app", account: "Created an account (app)" };
+const EVENT_LABELS = { signup: "Signed up", survey_open: "Opened the survey", survey_done: "Finished the survey", discord: "Clicked Discord", download: "Downloaded the app", account: "Created an account (app)",
+  app_first_open: "App: first launch", app_open: "App: used today", welcome_next: "App: passed welcome", terms_accepted: "App: accepted terms", tour_done: "App: finished tour", tour_skipped: "App: skipped tour",
+  server_added: "App: added a server", plugin_installed: "App: installed a plugin", config_sent: "App: sent a config", register_error: "App: sign-up error" };
+
+// Lejek: kolejne kroki nowej osoby, z ilu % poprzedniego kroku przeszło dalej (największy spadek na czerwono).
+const FUNNEL = [
+  ["download", "Clicked download (website)"],
+  ["app_first_open", "Launched the app"],
+  ["welcome_next", "Passed the welcome screen"],
+  ["terms_accepted", "Accepted the beta terms"],
+  ["tour", "Finished or skipped the tour"],
+  ["server_added", "Added a server"],
+  ["plugin_installed", "Installed a plugin"],
+  ["config_sent", "Sent a config to the server"],
+  ["account", "Created an account"],
+];
+
+function funnelCard(events) {
+  const card = el("div", "cm-card cm-funnel");
+  card.append(el("h4", null, "App funnel - where new people stop"));
+  const val = (k) => (k === "tour" ? (events.tour_done || 0) + (events.tour_skipped || 0) : events[k] || 0);
+  const top = Math.max(1, val("download"), val("app_first_open"));
+  let prev = null, worst = -1, worstAt = -1;
+  const rows = FUNNEL.map(([k, label], i) => {
+    const n = val(k);
+    const drop = prev !== null && prev > 0 ? 1 - n / prev : 0;
+    if (i > 0 && prev > 0 && drop > worst) { worst = drop; worstAt = i; }
+    prev = n;
+    return { label, n, pct: prev === null ? null : i };
+  });
+  let p = null;
+  rows.forEach((r, i) => {
+    const row = el("div", "cm-barrow" + (i === worstAt && worst > 0 ? " cm-worst" : ""));
+    const bar = el("span", "cm-fill");
+    bar.style.width = Math.round((r.n / top) * 100) + "%";
+    const track = el("span", "cm-track");
+    track.append(bar);
+    const step = p === null ? "" : p > 0 ? ` (${Math.round((r.n / p) * 100)}%)` : "";
+    row.append(el("span", "cm-label", `${i + 1}. ${r.label}`), track, el("span", "cm-num", `${r.n}${step}`));
+    card.append(row);
+    p = r.n;
+  });
+  card.append(el("p", "muted small", "Each step counts once per install. % = how many of the previous step got here. Red = biggest drop. Sign-up errors: " + (events.register_error || 0) + " · active (opened today, summed): " + (events.app_open || 0)));
+  return card;
+}
 
 function sumMaps(days, key) {
   const out = {};
@@ -153,6 +226,7 @@ function renderVisitors() {
 
   const t = $("v-tables");
   t.replaceChildren(
+    funnelCard(events),
     tableCard("Where they came from", sumMaps(days, "refs"), { "(direct)": "Direct / typed in" }),
     tableCard("What they did", events, EVENT_LABELS),
     tableCard("Campaign links (utm_source)", sumMaps(days, "sources")),
@@ -268,6 +342,7 @@ async function load() {
     if (e.message !== "unauthorized") showError(e.message);
   }
   renderVisitors();
+  renderAccounts();
   renderSignups();
   renderSurvey();
 }
@@ -275,10 +350,12 @@ async function load() {
 document.querySelectorAll(".cm-tabs button").forEach((b) =>
   b.addEventListener("click", () => {
     document.querySelectorAll(".cm-tabs button").forEach((x) => x.classList.toggle("on", x === b));
-    for (const id of ["visitors", "signups", "survey"]) $(id).hidden = b.dataset.tab !== id;
+    for (const id of ["visitors", "accounts", "signups", "survey"]) $(id).hidden = b.dataset.tab !== id;
   })
 );
 $("s-search").addEventListener("input", renderSignups);
+$("a-search").addEventListener("input", renderAccounts);
+$("a-csv").addEventListener("click", () => download(`rsmc-accounts-${new Date().toISOString().slice(0, 10)}.csv`, csv(data.accounts || [], ["email", "createdAt", "role"])));
 $("s-only").addEventListener("change", renderSignups);
 $("refresh").addEventListener("click", load);
 $("s-csv").addEventListener("click", () => download(`rsmc-signups-${new Date().toISOString().slice(0, 10)}.csv`, csv(data.signups, ["email", "confirmed", "createdAt", "confirmedAt", "source"])));

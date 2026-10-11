@@ -1,0 +1,102 @@
+# CoreMiner - mine whole veins (veinminer). Set it up in the app (CoreMiner editor) or here.
+# Reload without a restart: /@coreminer reload
+#
+# Players: /coreminer (turn it on/off for yourself), /coreminer info
+# Permissions: mainplugins.coreminer.use (everyone by default), mainplugins.coreminer.bypass.cooldown,
+#              mainplugins.coreminer.admin, plus your own from "permission-limits" and a group's "permission".
+#
+# Group blocks: an exact name (IRON_ORE), a * pattern (*_ORE, *_LOG) or a game tag (#logs, #leaves).
+# Group tools: pickaxe, axe, shovel, hoe, shears, sword (empty list = any, even a bare hand).
+# linking: same = only the same block (iron with iron, deepslate variants together), group = any block in the group.
+
+settings:
+  # sneak = sneak and mine | always | toggle = only after /coreminer on
+  mode: sneak
+  # with "toggle": whether a new player has it on (in the other modes players can still use /coreminer off)
+  enabled-by-default: true
+  # blocks at once for a normal player (the group limit still applies)
+  max-blocks: 64
+  # a higher limit for a permission, e.g.:
+  # permission-limits:
+  #   mainplugins.coreminer.vip: 128
+  permission-limits: {}
+  # furthest from the first block (blocks)
+  max-distance: 16
+  # only these worlds (empty = all) / never in these
+  enabled-worlds: []
+  disabled-worlds: []
+  in-creative: false
+  # durability per vein block (1 = like normal mining, 0.5 = every other block, 0 = none); Unbreaking works
+  durability: 1.0
+  # stop when the tool has this much durability left (0 = mine until it breaks)
+  protect-tool: 1
+  # hunger (exhaustion) per vein block (normal mining is about 0.005)
+  hunger: 0.005
+  # pause between veins (seconds)
+  cooldown-seconds: 0
+  # money for each vein block (0 = free)
+  cost-per-block: 0
+  # where drops go: natural (from each block) | first-block (everything in one spot) | inventory
+  drops: natural
+  # ores and other blocks come out smelted (like a furnace)
+  auto-smelt: false
+  # experience: orbs | player (straight away, with Mending) | none
+  xp: orbs
+  # highlight the vein with particles before the player mines it
+  preview: true
+  preview-particle: END_ROD
+  preview-max: 64
+  # sound after mining a vein (empty = none)
+  sound: block.amethyst_block.chime
+  # "Mined 12 blocks" above the hotbar
+  message: true
+  # 0 = the whole vein at once; >0 = piece by piece (animation) every this many ticks, "blocks-per-step" at a time
+  delay-ticks: 0
+  blocks-per-step: 4
+
+groups:
+  ores:
+    name: "Ores"
+    enabled: true
+    icon: DIAMOND_ORE
+    blocks: ["*_ORE", ANCIENT_DEBRIS, RAW_IRON_BLOCK, RAW_COPPER_BLOCK, RAW_GOLD_BLOCK]
+    tools: [pickaxe]
+    max-blocks: 64
+    diagonal: true
+    linking: same
+  trees:
+    name: "Trees"
+    enabled: true
+    icon: OAK_LOG
+    blocks: ["#logs", MANGROVE_ROOTS]
+    tools: [axe]
+    max-blocks: 128
+    diagonal: true
+    linking: same
+  leaves:
+    name: "Leaves"
+    enabled: false
+    icon: OAK_LEAVES
+    blocks: ["#leaves"]
+    tools: [shears, hoe]
+    max-blocks: 64
+    diagonal: true
+    linking: group
+  ground:
+    name: "Sand, gravel and clay"
+    enabled: false
+    icon: SAND
+    blocks: [SAND, RED_SAND, GRAVEL, CLAY, SOUL_SAND, SOUL_SOIL]
+    tools: [shovel]
+    max-blocks: 48
+    diagonal: false
+    linking: same
+  other:
+    name: "Glowstone, crystals and ice"
+    enabled: false
+    icon: GLOWSTONE
+    blocks: [GLOWSTONE, AMETHYST_CLUSTER, ICE, PACKED_ICE, BLUE_ICE, OBSIDIAN]
+    tools: [pickaxe]
+    max-blocks: 32
+    diagonal: false
+    linking: same

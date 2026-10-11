@@ -2,6 +2,7 @@ package elo.mainplugins.core;
 
 import elo.mainplugins.core.api.CrateService;
 import elo.mainplugins.core.api.CustomItemService;
+import elo.mainplugins.core.api.CustomMobService;
 import elo.mainplugins.core.api.EconomyService;
 import elo.mainplugins.core.api.IslandService;
 import elo.mainplugins.core.api.ItemNameService;
@@ -69,6 +70,12 @@ public final class CoreAPI {
     /** Opcjonalny jak {@link #getIslandService()} - zwraca null, jeśli mainplugins-quests nie jest wgrany/włączony. */
     public static TytulService getTytulService() {
         RegisteredServiceProvider<TytulService> rsp = Bukkit.getServicesManager().getRegistration(TytulService.class);
+        return rsp != null ? rsp.getProvider() : null;
+    }
+
+    /** Opcjonalny jak {@link #getIslandService()} - zwraca null, jeśli mainplugins-mobs nie jest wgrany/włączony. */
+    public static CustomMobService getCustomMobService() {
+        RegisteredServiceProvider<CustomMobService> rsp = Bukkit.getServicesManager().getRegistration(CustomMobService.class);
         return rsp != null ? rsp.getProvider() : null;
     }
 

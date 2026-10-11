@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>elo</groupId>
+        <artifactId>mainplugins-parent</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>mainplugins-coreminer</artifactId>
+    <packaging>jar</packaging>
+    <name>Mainplugins - CoreMiner</name>
+
+    <!--
+        CoreMiner (veinminer): kucnij i wykop jeden blok żyły - kopie całą żyłę rud, całe drzewo itd.
+        Grupy bloków, aktywacja, limity, koszty, drop i podgląd żyły - wszystko z coreminer.yml
+        (edytor w aplikacji), bez restartu (/@coreminer reload). Darmowy - bez LicenseGuard.
+
+        Zależność od mainplugins-core (provided) - języki (LangService) i ekonomia (koszt za blok).
+        Każdy wykopany blok przechodzi przez BlockBreakEvent, więc działki, wyspy i inne ochrony
+        (oraz questy/joby liczące wykopane bloki) działają same.
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>elo</groupId>
+            <artifactId>mainplugins-core</artifactId>
+        </dependency>
+        <!-- Testy jednostkowe czystej logiki - nie trafiają do jara -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.11.4</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>

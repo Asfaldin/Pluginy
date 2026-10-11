@@ -12,11 +12,15 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.logging.Logger;
 
 /**
@@ -69,9 +73,9 @@ public final class AnnouncerConfig {
 
     // ------------------------------------------------------------------ wczytywanie
 
-    public static AnnouncerConfig load(File file, Logger log) {
+    public static AnnouncerConfig load(File file, Logger log, Supplier<InputStream> bundled) {
         if (!file.exists()) {
-            writeDefault(file, log);
+            writeDefault(file, log, bundled);
         }
         FileConfiguration c = YamlConfiguration.loadConfiguration(file);
 
@@ -148,122 +152,19 @@ public final class AnnouncerConfig {
 
     // ------------------------------------------------------------------ plik domyślny
 
-    private static Map<String, Object> msg(String text, Object... kv) {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("text", text);
-        for (int i = 0; i + 1 < kv.length; i += 2) m.put(kv[i].toString(), kv[i + 1]);
-        return m;
-    }
-
-    private static Map<String, Object> ev(boolean enabled, String text, List<String> channels, Object... kv) {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("enabled", enabled);
-        m.put("text", text);
-        m.put("channels", channels);
-        for (int i = 0; i + 1 < kv.length; i += 2) m.put(kv[i].toString(), kv[i + 1]);
-        return m;
-    }
-
-    public static void writeDefault(File file, Logger log) {
-        file.getParentFile().mkdirs();
-        YamlConfiguration c = new YamlConfiguration();
-
-        c.options().setHeader(List.of(
-                "Ogloszenia serwera. Zmiany na zywo: /@reloadannouncer (bez restartu).",
-                "Kolory kodami & (np. &aTekst). Ustaw minimessage: true na wpisie, by uzyc <gradient>/<click>.",
-                "",
-                "channels: dowolny podzbior [CHAT, ACTIONBAR, TITLE, BOSSBAR].",
-                "Warunki na wpisie: permission, worlds, min-players, condition (\"%papi% >= 5\").",
-                "Interaktywnosc: click (RUN_COMMAND|SUGGEST_COMMAND|OPEN_URL) + click-value + hover.",
-                "Nagroda 'kliknij aby odebrac': blok claim: { limit, window-seconds, commands: [...] } (%player% -> nick)."
-        ));
-
-        c.set("interval-seconds", 300);
-        c.set("default-order", "SEQUENTIAL");
-        c.set("placeholders.enabled", true);
-        c.set("quiet-hours", "");
-
-        c.set("discord.webhook-url", "");
-        c.set("discord.username", "Serwer");
-        c.set("discord.avatar-url", "");
-
-        // plaska lista (wsteczna zgodnosc ze starym announcerem)
-        c.set("messages", List.of(
-                msg("&aWitaj na serwerze! Wpisz &e/menu&a, aby zobaczyc panel gracza.",
-                        "click", "SUGGEST_COMMAND", "click-value", "/menu", "hover", "&7Kliknij, aby wpisac /menu"),
-                msg("&6Nie masz jeszcze wyspy? Wpisz &e/is&6, aby ja zalozyc!", "interval", 900)
-        ));
-
-        // grupy
-        Map<String, Object> tips = new LinkedHashMap<>();
-        tips.put("interval", 420);
-        tips.put("order", "RANDOM");
-        tips.put("no-repeat", true);
-        tips.put("prefix", "&8[&bPorada&8] &7");
-        tips.put("channels", List.of("CHAT"));
-        tips.put("messages", List.of(
-                msg("Sprzedasz lup w &e/targ&7, a szybkie zakupy zrobisz w &e/sklep&7."),
-                msg("Zadania i nagrody znajdziesz w &e/quests&7."),
-                msg("Wbij na Discorda: &e/discord&7.", "click", "RUN_COMMAND", "click-value", "/discord")
-        ));
-
-        Map<String, Object> promo = new LinkedHashMap<>();
-        promo.put("interval", 1800);
-        promo.put("order", "SEQUENTIAL");
-        promo.put("channels", List.of("CHAT", "ACTIONBAR"));
-        promo.put("discord", false);
-        promo.put("schedule", Map.of("days", List.of("SATURDAY", "SUNDAY"), "time-range", ""));
-        promo.put("messages", List.of(
-                msg("&6&lWEEKEND&r &ena serwerze - podbite dropy i szczescie w skrzynkach!"),
-                msg("&aZaproszony znajomy = &e+bonus&a dla Was obu.", "permission", "")
-        ));
-
-        Map<String, Object> reward = new LinkedHashMap<>();
-        reward.put("interval", 3600);
-        reward.put("order", "SEQUENTIAL");
-        reward.put("channels", List.of("CHAT"));
-        reward.put("messages", List.of(
-                msg("&e&lPREZENT!&r &7Pierwsze 10 osob dostaje nagrode.",
-                        "claim", Map.of(
-                                "limit", 10,
-                                "window-seconds", 90,
-                                "button", "&a&l[ODBIERZ]",
-                                "commands", List.of("give %player% diamond 3")))
-        ));
-
-        Map<String, Object> groups = new LinkedHashMap<>();
-        groups.put("porady", tips);
-        groups.put("promocje", promo);
-        groups.put("prezenty", reward);
-        c.set("groups", groups);
-
-        // events (reakcje na ServerAnnounceEvent + wbudowane)
-        Map<String, Object> events = new LinkedHashMap<>();
-        events.put("dungeon-boss", ev(true, "&6%player% &epokonal &6Wladce Lochu&e!", List.of("CHAT"),
-                "sound", "entity.ender_dragon.growl", "discord", true));
-        events.put("rare-fish", ev(true, "&b%player% zlowil &3%fish%&b (%rarity%)!", List.of("CHAT")));
-        events.put("crate-legendary", ev(true, "&6%player% wylosowal &e%reward%&6 ze skrzynki!", List.of("CHAT", "ACTIONBAR"),
-                "discord", true));
-        events.put("island-created", ev(true, "&a%player% zalozyl swoja wyspe!", List.of("CHAT")));
-        events.put("first-join", ev(true, "&e&l+&r &7Przywitajcie &f%player%&7 - pierwszy raz na serwerze!", List.of("CHAT"),
-                "sound", "entity.player.levelup"));
-        events.put("vanilla-advancement", ev(false, "&7%player% zdobyl postep &f%advancement%&7.", List.of("CHAT")));
-        events.put("death", ev(false, "&7%player% &8pozegnal sie z zyciem.", List.of("CHAT")));
-        c.set("events", events);
-
-        // onboarding
-        c.set("onboarding.enabled", true);
-        c.set("onboarding.messages", List.of(
-                Map.of("delay-seconds", 25, "text", "&aMilo Cie widziec! Zacznij od &e/is&a - zalozysz wlasna wyspe.",
-                        "channels", List.of("CHAT")),
-                Map.of("delay-seconds", 150, "text", "&bZajrzyj do &e/sklep&b i &e/targ&b, gdy uzbierasz pierwsze surowce.",
-                        "channels", List.of("CHAT")),
-                Map.of("delay-seconds", 420, "text", "&dPotrzebujesz pomocy? Pisz na czacie lub wbij na &e/discord&d.",
-                        "channels", List.of("CHAT"))
-        ));
-
-        try {
-            c.save(file);
+    /**
+     * Pierwsze uruchomienie: kopiuje dołączony pakiet (defaults/<język>/ogloszenia.yml - powitanie z najważniejszymi
+     * komendami, porady, przydatne eventy i pomoc dla nowych graczy; ten sam co szablon "Gotowy" w aplikacji).
+     * Bez pakietu w jarze plik nie powstaje, a plugin startuje bez ogłoszeń.
+     */
+    public static void writeDefault(File file, Logger log, Supplier<InputStream> bundled) {
+        try (InputStream in = bundled.get()) {
+            if (in == null) {
+                log.warning("Brak domyslnego ogloszenia.yml w jarze - start bez ogloszen.");
+                return;
+            }
+            file.getParentFile().mkdirs();
+            Files.copy(in, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             log.warning("Nie mozna zapisac ogloszenia.yml: " + e.getMessage());
         }

@@ -1,0 +1,76 @@
+# Server announcements (Announcer plugin). The easiest way to change them is the RSMC Manager app. Manual changes: /@reloadannouncer.
+interval-seconds: 300
+default-order: SEQUENTIAL
+placeholders:
+  enabled: true
+quiet-hours: ''
+discord:
+  webhook-url: ''
+  username: Server
+  avatar-url: ''
+groups:
+  welcome:
+    interval: 300
+    order: SEQUENTIAL
+    no-repeat: true
+    channels:
+      - CHAT
+    messages:
+      - text: '&aWelcome to the server! Type &e/commands&a to see all commands.'
+        click: SUGGEST_COMMAND
+        click-value: /commands
+        hover: '&7Click to type /commands'
+      - text: '&bVisit &e/shop &band &e/market&b to buy and sell items!'
+      - text: '&6No island yet? Type &e/is&6 to create one!'
+      - text: '&dInvite your friends to the server!'
+  tips:
+    interval: 420
+    order: RANDOM
+    no-repeat: true
+    prefix: '&8[&bTip&8] &7'
+    channels:
+      - CHAT
+    messages:
+      - text: Lost? &e/spawn&7 takes you back to spawn.
+      - text: Quick trips to important places are in &e/warp&7.
+      - text: Get back to your island with &e/home&7, island help is &e/is help&7.
+      - text: How much money do you have? Check &e/balance&7, send some with &e/pay <player> <amount>&7.
+      - text: Sell what you hold with &e/sell&7, or everything of that type with &e/sellall&7.
+      - text: What's something worth? Hold it and type &e/price&7.
+      - text: 'Sell to other players: hold an item and type &e/market sell <price>&7.'
+      - text: 'We''re on Discord too: &e/discord&7.'
+        click: RUN_COMMAND
+        click-value: /discord
+events:
+  first-join:
+    enabled: true
+    text: '&e&l+&r &7Welcome &f%player%&7, first time on the server!'
+    channels:
+      - CHAT
+    sound: entity.player.levelup
+  island-created:
+    enabled: true
+    text: '&a%player% created their island!'
+    channels:
+      - CHAT
+  crate-legendary:
+    enabled: true
+    text: '&6%player% won &e%reward%&6 from a crate!'
+    channels:
+      - CHAT
+      - ACTIONBAR
+onboarding:
+  enabled: true
+  messages:
+    - delay-seconds: 20
+      text: '&aNice to see you! Start with &e/is&a to create your own island.'
+      channels:
+        - CHAT
+    - delay-seconds: 120
+      text: '&bOnce you gather your first resources, sell them at &e/shop&b or to other players at &e/market&b.'
+      channels:
+        - CHAT
+    - delay-seconds: 300
+      text: '&dNeed help? Type &e/commands&d or ask in chat.'
+      channels:
+        - CHAT

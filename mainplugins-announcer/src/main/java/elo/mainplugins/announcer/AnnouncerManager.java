@@ -43,7 +43,7 @@ public final class AnnouncerManager {
     public AnnouncerManager(Plugin plugin) {
         this.plugin = plugin;
         this.plik = new File(plugin.getDataFolder(), "ogloszenia.yml");
-        this.config = AnnouncerConfig.load(plik, plugin.getLogger());
+        this.config = AnnouncerConfig.load(plik, plugin.getLogger(), this::bundledDefault);
 
         this.stats = new StatsStore(plugin);
         this.claims = new ClaimManager(plugin, stats);
@@ -56,6 +56,18 @@ public final class AnnouncerManager {
 
         stats.start();
         startRunners();
+    }
+
+    /** Pakiet startowy w języku serwera (z Core), a gdy go nie ma w jarze - angielski. */
+    private java.io.InputStream bundledDefault() {
+        String lang = "en";
+        try {
+            lang = elo.mainplugins.core.CoreAPI.getLangService().language();
+        } catch (RuntimeException ignored) {
+            // Core bez usługi języka - zostaje angielski
+        }
+        java.io.InputStream in = plugin.getResource("defaults/" + lang + "/ogloszenia.yml");
+        return in != null ? in : plugin.getResource("defaults/en/ogloszenia.yml");
     }
 
     private void startRunners() {
@@ -76,7 +88,7 @@ public final class AnnouncerManager {
         claims.clear();
         dispatcher.clearBossBars();
 
-        this.config = AnnouncerConfig.load(plik, plugin.getLogger());
+        this.config = AnnouncerConfig.load(plik, plugin.getLogger(), this::bundledDefault);
         dispatcher.setRenderer(new TextRenderer(config.placeholdersEnabled));
         discord.update(config.discordWebhookUrl, config.discordUsername, config.discordAvatarUrl);
         eventBridge.updateConfig(config);

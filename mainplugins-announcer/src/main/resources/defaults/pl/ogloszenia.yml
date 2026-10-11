@@ -1,0 +1,76 @@
+# Ogłoszenia serwera (plugin Announcer). Najwygodniej zmieniasz je w aplikacji RSMC Manager. Ręczne zmiany: /@reloadannouncer.
+interval-seconds: 300
+default-order: SEQUENTIAL
+placeholders:
+  enabled: true
+quiet-hours: ''
+discord:
+  webhook-url: ''
+  username: Serwer
+  avatar-url: ''
+groups:
+  witaj:
+    interval: 300
+    order: SEQUENTIAL
+    no-repeat: true
+    channels:
+      - CHAT
+    messages:
+      - text: '&aWitaj na serwerze! Wpisz &e/komendy&a, aby zobaczyć wszystkie komendy.'
+        click: SUGGEST_COMMAND
+        click-value: /komendy
+        hover: '&7Kliknij, aby wpisać /komendy'
+      - text: '&bOdwiedź &e/sklep &bi &e/targ&b, aby kupować i sprzedawać przedmioty!'
+      - text: '&6Nie masz jeszcze wyspy? Wpisz &e/is&6, aby ją założyć!'
+      - text: '&dZaproś znajomych na serwer!'
+  porady:
+    interval: 420
+    order: RANDOM
+    no-repeat: true
+    prefix: '&8[&bPorada&8] &7'
+    channels:
+      - CHAT
+    messages:
+      - text: Zgubiłeś się? &e/spawn&7 zabierze Cię na spawn.
+      - text: Szybkie przejścia do ważnych miejsc znajdziesz w &e/warp&7.
+      - text: Do swojej wyspy wrócisz komendą &e/dom&7, a pomoc do wysp to &e/is pomoc&7.
+      - text: Ile masz pieniędzy? Sprawdzisz w &e/portfel&7, a przelejesz komuś przez &e/przelej <gracz> <kwota>&7.
+      - text: 'Sprzedasz to, co trzymasz w ręce, komendą &e/sprzedaj&7, a wszystko tego typu: &e/sprzedajwszystko&7.'
+      - text: Ile coś jest warte? Weź przedmiot do ręki i wpisz &e/cena&7.
+      - text: 'Sprzedaj innym graczom: weź przedmiot do ręki i wpisz &e/targ wystaw <cena>&7.'
+      - text: 'Jesteśmy też na Discordzie: &e/discord&7.'
+        click: RUN_COMMAND
+        click-value: /discord
+events:
+  first-join:
+    enabled: true
+    text: '&e&l+&r &7Przywitajcie &f%player%&7, pierwszy raz na serwerze!'
+    channels:
+      - CHAT
+    sound: entity.player.levelup
+  island-created:
+    enabled: true
+    text: '&a%player% założył swoją wyspę!'
+    channels:
+      - CHAT
+  crate-legendary:
+    enabled: true
+    text: '&6%player% wylosował &e%reward%&6 ze skrzynki!'
+    channels:
+      - CHAT
+      - ACTIONBAR
+onboarding:
+  enabled: true
+  messages:
+    - delay-seconds: 20
+      text: '&aMiło Cię widzieć! Zacznij od &e/is&a, założysz własną wyspę.'
+      channels:
+        - CHAT
+    - delay-seconds: 120
+      text: '&bGdy uzbierasz pierwsze surowce, sprzedaj je w &e/sklep&b albo innym graczom w &e/targ&b.'
+      channels:
+        - CHAT
+    - delay-seconds: 300
+      text: '&dPotrzebujesz pomocy? Wpisz &e/komendy&d albo zapytaj na czacie.'
+      channels:
+        - CHAT
